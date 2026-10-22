@@ -4,7 +4,7 @@ Terminal de Mando del LSPD para Eleven Project RP: contratos de ascenso y descen
 
 ## Descarga
 
-Bajá `LSPD-Terminal.exe` desde la [última versión](https://github.com/sixxgg/lspd-terminal/releases/latest) y guardalo en una carpeta propia (por ejemplo, Documentos).
+Bajá [`LSPD-Terminal.exe`](https://github.com/sixxgg/lspd-terminal/raw/main/dist/LSPD-Terminal.exe) y guardalo en una carpeta propia (por ejemplo, Documentos).
 
 - Requiere Windows 10/11 (usa Microsoft Edge WebView2, que ya viene instalado).
 - La primera vez Windows puede mostrar "Windows protegió su PC": *Más información* → *Ejecutar de todas formas*.
@@ -14,4 +14,4 @@ Bajá `LSPD-Terminal.exe` desde la [última versión](https://github.com/sixxgg/
 
 La terminal revisa este repositorio al abrirse. Cuando hay una versión nueva muestra un aviso con **Actualizar ahora**: descarga, verifica y reemplaza el programa sin tocar los datos.
 
-Cada versión se publica como *Release* con el `.exe` adjunto; la descripción de la release se muestra como "novedades" dentro de la terminal.
+Cada versión se publica actualizando `dist/LSPD-Terminal.exe` y `latest.json` (número de versión, sha256 y novedades que se muestran dentro de la terminal).
