@@ -1,12 +1,13 @@
 {
-  "version": "1.4.3",
-  "build": 1,
+  "version": "0.2",
+  "build": 2,
   "fecha": "2026-10-22",
   "url": "https://raw.githubusercontent.com/sixxgg/lspd-terminal/main/dist/LSPD-Terminal.exe",
-  "sha256": "bc43112baa7d00b99b1cc61134e3ed620b988795a555bb6b8a9166b84e913598",
-  "size": 7677952,
+  "sha256": "6475d91caf6e86c7d4e67bf3f932821bf454fdd5824b0494cd79bd53f7b15896",
+  "size": 7686656,
   "notas": [
-    "Pasa a la numeración nueva: v0.1 (versión base de la terminal)",
-    "Después de actualizar vas a ver v0.1 en el encabezado; tus datos se conservan"
+    "Pantalla de Inicio con saludo, hora, indicadores y todas las secciones como íconos agrupados por área",
+    "Barra flotante horizontal de secciones en lugar del menú desplegable",
+    "Acceso al Inicio desde la pestaña Inicio o el título de la terminal"
   ]
 }

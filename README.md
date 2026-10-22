@@ -16,4 +16,4 @@ La terminal revisa este repositorio al abrirse. Cuando hay una versión nueva mu
 
 Cada versión se publica actualizando `dist/LSPD-Terminal.exe` y `latest.json` (versión, número de compilación `build`, sha256 y novedades que se muestran dentro de la terminal). La terminal se actualiza cuando el `build` publicado es mayor que el suyo.
 
-Versión actual: **v0.1** (versión base).
+Versión actual: **v0.2**.
