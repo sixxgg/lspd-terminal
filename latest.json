@@ -1,13 +1,11 @@
 {
-  "version": "1.4.2",
+  "version": "0.1",
+  "build": 1,
   "fecha": "2026-10-22",
   "url": "https://raw.githubusercontent.com/sixxgg/lspd-terminal/main/dist/LSPD-Terminal.exe",
-  "sha256": "22a64229b89b7a27e2cc65a7fc83928cd2055ce08d85ca3a9fdd2fe2a83499a2",
-  "size": 7689728,
+  "sha256": "bc43112baa7d00b99b1cc61134e3ed620b988795a555bb6b8a9166b84e913598",
+  "size": 7677952,
   "notas": [
-    "Barra fija debajo de la tabla de revisión con el resumen y los botones Guardar revisión y Descartar",
-    "Botón Fotos en los vehículos preparados para adjuntar evidencia",
-    "Fotos del maletero en «Qué falta» (clic, arrastrar o Ctrl+V), con visor a pantalla completa",
-    "Actualizaciones automáticas desde este repositorio"
+    "Versión base de la Terminal de Mando del LSPD"
   ]
 }

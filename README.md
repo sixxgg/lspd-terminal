@@ -14,4 +14,6 @@ Bajá [`LSPD-Terminal.exe`](https://github.com/sixxgg/lspd-terminal/raw/main/dis
 
 La terminal revisa este repositorio al abrirse. Cuando hay una versión nueva muestra un aviso con **Actualizar ahora**: descarga, verifica y reemplaza el programa sin tocar los datos.
 
-Cada versión se publica actualizando `dist/LSPD-Terminal.exe` y `latest.json` (número de versión, sha256 y novedades que se muestran dentro de la terminal).
+Cada versión se publica actualizando `dist/LSPD-Terminal.exe` y `latest.json` (versión, número de compilación `build`, sha256 y novedades que se muestran dentro de la terminal). La terminal se actualiza cuando el `build` publicado es mayor que el suyo.
+
+Versión actual: **v0.1** (versión base).
