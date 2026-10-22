@@ -24,7 +24,7 @@ export default wrap(async (req, res) => {
     for (const r of rows) { store[r.k] = r.img ? imgUrl(r.k, r.t) : r.v; kt[r.k] = +r.t; }
     const acc = {};
     for (const r of (await q("select name,last from accounts")).rows) acc[r.name] = r.last ? +r.last : 0;
-    return send(res, 200, { me: { n: u.n, r: u.r }, store, kt, t: +t, defRoster: defRoster(), acc });
+    return send(res, 200, { me: { n: u.n, r: u.r, admin: u.admin }, store, kt, t: +t, defRoster: defRoster(), acc });
   }
 
   if (req.method !== "POST") return send(res, 405, { error: "method" });

@@ -1,5 +1,5 @@
 import { q } from "../lib/db.js";
-import { send, body, wrap, roster, findIn, lvl, MIN_ACC, CAP, norm, emailOf, hashPw, checkPw, newSession, endSession, current } from "../lib/core.js";
+import { send, body, wrap, roster, findIn, lvl, MIN_ACC, CAP, norm, emailOf, hashPw, checkPw, newSession, endSession, current, PUBLIC_KEYS } from "../lib/core.js";
 
 const slim = list => list.map(a => ({ n: a.n, r: a.r, p: a.p }));
 async function regCode() { const r = await q("select v from meta where k='regcode'"); return (r.rows[0] && r.rows[0].v) || ""; }
@@ -9,10 +9,11 @@ export default wrap(async (req, res) => {
   if (req.method === "GET") {
     const me = await current(req), R = await roster();
     const names = (await q("select name from accounts")).rows.map(r => r.name);
-    const logo = (await q("select t, v like 'data:%' as img, case when v like 'data:%' then null else v end as v from kv where k='lspdt.logo' and v is not null")).rows[0];
+    const brand = {};
+    for (const r of (await q("select k, t, v like 'data:%' as img, case when v like 'data:%' then null else v end as v from kv where k = any($1) and v is not null", [PUBLIC_KEYS])).rows)
+      brand[r.k] = r.img ? `/api/img?k=${encodeURIComponent(r.k)}&t=${r.t}` : r.v;
     return send(res, 200, {
-      me: me ? me.n : null, names, roster: slim(R.list), needCode: !!(await regCode()),
-      logo: logo ? (logo.img ? `/api/img?k=lspdt.logo&t=${logo.t}` : logo.v) : null
+      me: me ? me.n : null, names, roster: slim(R.list), needCode: !!(await regCode()), brand
     });
   }
   if (req.method !== "POST") return send(res, 405, { error: "method" });

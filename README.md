@@ -19,6 +19,7 @@ Terminal de mando del LSPD (Eleven Project). Desde la **v0.3** es una página we
   - Quién puede tocar las excepciones (Teniente o superior).
   - Quién puede editar el catálogo del PSB (Vega Chambers y Madison Wells).
   - Quién administra cuentas y el código de registro (Teniente o superior).
+  - Quién cambia logo, favicon, fondos e íconos de secciones: solo administradores (por defecto Ryan Westbrook; se cambia con la variable `ADMINS` en Vercel, nombres separados por coma).
 
 ## Puesta en marcha (una sola vez)
 

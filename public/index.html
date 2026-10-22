@@ -699,6 +699,26 @@ body.noframe .tab-screen{border-radius:0;box-shadow:none}
 .upd-prog{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(0,0,0,.3)}
 .upd-prog i{display:block;height:100%;width:0;background:#e6c65a;transition:width .3s}
 #updSec.off{opacity:.6}
+.adm{width:min(860px,94vw)}
+.adm-brand{display:grid;gap:12px}
+.adm-it{display:flex;gap:14px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:14px}
+.adm-it .prev img{width:70%;height:70%;object-fit:contain}
+.adm-it .prev.bg{width:150px;height:84px;display:grid;place-items:center;background-size:cover;background-position:center}
+.adm-it .mctrl{flex:1;display:grid;gap:6px;text-align:left}
+.adm-it .r{display:flex;gap:8px;flex-wrap:wrap}.adm-it .r .in{flex:1;min-width:150px}
+.adm-icons{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.adm-ic{display:grid;justify-items:center;gap:6px;padding:12px 8px;border:1px solid var(--line);border-radius:14px;text-align:center}
+.adm-ic .ai{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(160deg,var(--navy2),var(--navy));color:var(--gold2)}
+.adm-ic .ai svg{width:24px;height:24px}.adm-ic b{font-size:12.5px;line-height:1.2}.adm-ic .r{display:flex;gap:6px}
+.adm-ic label.mini{cursor:pointer}
+img.cico{object-fit:contain;display:inline-block;vertical-align:middle;width:16px;height:16px;flex:none}
+.hw .ic img.cico{width:26px;height:26px}
+.ha .ai img.cico,.adm-ic .ai img.cico{width:62%;height:62%}
+.adm-b{color:var(--gold2)!important}
+.login.img{background-size:cover!important;background-position:center!important}
+.login.img::before{background:linear-gradient(180deg,rgba(5,15,32,.5),rgba(5,15,32,.82))}
+.stage.img{background-size:cover!important;background-position:center!important}
+@media (max-width:760px){.adm-it{flex-direction:column;align-items:stretch}.adm-it .prev{align-self:center}}
 #wifiIc.net{display:inline-flex;transition:color .3s}#wifiIc.net.saving{color:#e6c65a;animation:netp 1s ease-in-out infinite}#wifiIc.net.off{color:#ef4444}
 @keyframes netp{50%{opacity:.35}}
 .abtn.busy{opacity:.7;pointer-events:none}
@@ -858,6 +878,7 @@ body.noframe .tab-screen{border-radius:0;box-shadow:none}
       <div><div class="nm" id="uName"></div><div class="mt" id="uMeta"></div></div>
       <button class="ibtn" id="themeBtn" title="Modo claro / oscuro"></button>
       <button class="ibtn" id="fsBtn" title="Pantalla completa (F11)"></button>
+      <button class="ibtn adm-b" id="admBtn" title="Administración" hidden></button>
       <button class="ibtn" id="cfgBtn" title="Ajustes"></button>
       <button class="ibtn" id="logout" title="Cerrar sesión"></button>
     </div>
@@ -1119,31 +1140,20 @@ body.noframe .tab-screen{border-radius:0;box-shadow:none}
 </div><!-- /tab-scroll -->
 
 <!-- ============ MODALES ============ -->
+<div class="modal" id="admModal" hidden>
+  <div class="mbox adm">
+    <header><span class="sp"></span><h4>Administración</h4><button class="ibtn" data-close title="Cerrar"></button></header>
+    <div class="note" style="margin:0 0 16px">Los cambios se aplican para <b>todo el departamento</b> al instante. Solo los administradores ven este panel.</div>
+    <section><h5>Logo, ícono y fondos</h5><div id="admBrand" class="adm-brand"></div></section>
+    <section><h5>Íconos de las secciones</h5>
+      <div class="small" style="text-align:center;margin-bottom:12px">Se usan en el Inicio, en la barra de secciones y en el menú. PNG cuadrado con fondo transparente queda mejor.</div>
+      <div id="admIcons" class="adm-icons"></div>
+      <div style="text-align:center;margin-top:12px"><button class="btn ghost" id="admIcReset">Restaurar todos los íconos</button></div></section>
+  </div>
+</div>
 <div class="modal" id="cfg" hidden>
   <div class="mbox">
     <header><span class="sp"></span><h4>Ajustes</h4><button class="ibtn" data-close title="Cerrar"></button></header>
-    <section>
-      <h5>Logo e ícono del programa</h5>
-      <div class="mrow">
-        <div class="prev"><img class="js-logo" alt=""></div>
-        <div class="mctrl">
-          <div class="r"><label class="btn dark">Subir imagen<input type="file" accept="image/*" id="logoFile" hidden></label><button class="btn ghost" id="logoReset">Restaurar</button></div>
-          <div class="r"><input class="in" id="logoUrl" placeholder="o pegá una URL de imagen…"><button class="btn ghost" id="logoUrlOk">Usar</button></div>
-          <div class="small">También se usa como ícono de la ventana en la barra de tareas. PNG cuadrado con fondo transparente queda mejor.</div>
-        </div>
-      </div>
-    </section>
-    <section>
-      <h5>Fondo (detrás de la tablet)</h5>
-      <div class="mrow">
-        <div class="prev bg" id="bgPrev"></div>
-        <div class="mctrl">
-          <div class="r"><label class="btn dark">Subir imagen<input type="file" accept="image/*" id="bgFile" hidden></label><button class="btn ghost" id="bgReset">Quitar</button></div>
-          <div class="r"><input class="in" id="bgUrl" placeholder="o pegá una URL de imagen…"><button class="btn ghost" id="bgUrlOk">Usar</button></div>
-          <div class="small">Recomendado 1920×1080. Por ejemplo, una captura del juego.</div>
-        </div>
-      </div>
-    </section>
     <section id="updSec" hidden>
       <h5>Actualizaciones</h5>
       <div style="text-align:center" class="small">Versión instalada: <b id="updVer"></b></div>
@@ -1250,8 +1260,8 @@ window.__WEB__={};
   const j=async u=>{const r=await fetch(u,{credentials:"same-origin",cache:"no-store"});let d={};try{d=await r.json()}catch(e){}d.__s=r.status;return d};
   let pub; try{pub=await j("/api/auth")}catch(e){pub={__s:0}}
   W.pub=pub; W.store={}; W.kt={}; W.t=0; W.defRoster=pub.roster||[];
-  if(pub.me){try{const d=await j("/api/data");if(d.__s===200){W.store=d.store;W.kt=d.kt;W.t=d.t;W.defRoster=d.defRoster;W.acc=d.acc;W.me=d.me.n}}catch(e){}}
-  if(!W.me&&pub.logo) W.store["lspdt.logo"]=pub.logo;
+  if(pub.me){try{const d=await j("/api/data");if(d.__s===200){W.store=d.store;W.kt=d.kt;W.t=d.t;W.defRoster=d.defRoster;W.acc=d.acc;W.me=d.me.n;W.admin=!!d.me.admin}}catch(e){}}
+  if(!W.me&&pub.brand) Object.assign(W.store,pub.brand);
   const s=document.createElement("script");s.textContent=document.getElementById("appjs").textContent;document.body.appendChild(s);
 })();
 </script>
@@ -1453,7 +1463,7 @@ const CACHE=W.store||{};            // valores actuales (con mis cambios)
 const BASE=Object.assign({},CACHE); // último valor confirmado por el servidor
 const KT=W.kt||{};                  // versión de cada clave en el servidor
 let SYNC_T=W.t||0, ONLINE=!!W.me;
-const isLocal=k=>/^lspdt\.(session|accounts|theme|frame|rankLang|seenVersion|area|sec\..*|agView|upd.*|iconpng|fix\..*|patrol|bg|recent)$/.test(k);
+const isLocal=k=>/^lspdt\.(session|accounts|theme|frame|rankLang|seenVersion|area|sec\..*|agView|upd.*|iconpng|fix\..*|patrol|recent)$/.test(k);
 const has=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
 function api(){}
 const LS={get(k){if(isLocal(k)){try{return localStorage.getItem(k)}catch(e){return null}}return has(CACHE,k)?CACHE[k]:null},
@@ -1559,7 +1569,7 @@ function loadStore(d){
   for(const k of Object.keys(CACHE))delete CACHE[k];
   for(const k of Object.keys(BASE))delete BASE[k];
   Object.assign(CACHE,d.store);Object.assign(BASE,d.store);Object.assign(KT,d.kt||{});
-  SYNC_T=d.t||0; DEF_ROSTER=d.defRoster||DEF_ROSTER; ACCLAST=d.acc||{}; ONLINE=true;
+  SYNC_T=d.t||0; DEF_ROSTER=d.defRoster||DEF_ROSTER; ACCLAST=d.acc||{}; ISADMIN=!!(d.me&&d.me.admin); ONLINE=true; applyBrand();
   reloadKeys(Object.keys(RELOAD)); startSync();
 }
 const rkTxt=r=>LS.get("lspdt.rankLang")==="es"?rankES(r):r;
@@ -1667,7 +1677,7 @@ $("#areas").addEventListener("click",e=>{const b=e.target.closest("[data-a]");if
   SEC=secs.some(s=>s[0]===last)?last:secs[0][0]; show();});
 function renderSecbar(){
   const secs=AREAS[AREA].sec;
-  $("#secbar").innerHTML=secs.map(x=>`<button data-s="${x[0]}"${x[0]===SEC?' class="on"':""} title="${esc(x[2])}">${ico(x[3])}${x[1]}</button>`).join("");
+  $("#secbar").innerHTML=secs.map(x=>`<button data-s="${x[0]}"${x[0]===SEC?' class="on"':""} title="${esc(x[2])}">${sIco(x[0],x[3])}${x[1]}</button>`).join("");
   const on=$("#secbar .on"); if(on) on.scrollIntoView({block:"nearest",inline:"nearest"});
 }
 $("#secbar").addEventListener("click",e=>{const b=e.target.closest("[data-s]");if(!b||b.dataset.s===SEC)return;SEC=b.dataset.s;show();$("#tabScroll").scrollTop=0});
@@ -1680,11 +1690,11 @@ function renderHome(){
   const open=VOTES.filter(v=>v.estado==="abierta").length, act=roster.filter(a=>a.e==="Activo").length;
   const W=[["users",roster.length,`Agentes · ${act} activos`,"sup","prof"],["vote",open,open===1?"Votación abierta":"Votaciones abiertas","sup","vot"],
     ["car",PAT.rows.length,PAT.rows.length?"Agentes en revisión en curso":"Sin revisión en curso","sup","pat"],["list",PHIST.length,PHIST.length===1?"Revisión guardada":"Revisiones guardadas","sup","preg"]];
-  $("#hmW").innerHTML=W.map(([ic,n,l,a,s])=>`<button class="hw" data-go="${a}|${s}"><span class="ic">${ico(ic)}</span><span><b>${n}</b><small>${l}</small></span></button>`).join("");
+  $("#hmW").innerHTML=W.map(([ic,n,l,a,s])=>`<button class="hw" data-go="${a}|${s}"><span class="ic">${sIco(s,ic)}</span><span><b>${n}</b><small>${l}</small></span></button>`).join("");
   const cnt={vot:open,pat:PAT.rows.length};
   $("#hmApps").innerHTML=Object.entries(AREAS).filter(([k])=>k!=="ini").map(([k,a])=>{const ok=canArea(k);
     return `<div class="hm-g"><h4>${a.l}${ok?"":` <em>${ico("lock")} Requiere ${rankES(a.req)} o superior</em>`}</h4><div class="hm-apps">`+
-      a.sec.map(([s,t,d,ic])=>`<button class="ha${ok?"":" locked"}" data-go="${k}|${s}" title="${esc(d)}"><span class="ai">${ico(ok?ic:"lock")}${ok&&cnt[s]?`<span class="bd">${cnt[s]}</span>`:""}</span><b>${t}</b><small>${d}</small></button>`).join("")+`</div></div>`}).join("");
+      a.sec.map(([s,t,d,ic])=>`<button class="ha${ok?"":" locked"}" data-go="${k}|${s}" title="${esc(d)}"><span class="ai">${ok?sIco(s,ic):ico("lock")}${ok&&cnt[s]?`<span class="bd">${cnt[s]}</span>`:""}</span><b>${t}</b><small>${d}</small></button>`).join("")+`</div></div>`}).join("");
 }
 $("#hmW").addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(b){const[a,s]=b.dataset.go.split("|");goSec(a,s)}});
 $("#hmApps").addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(!b)return;const[a,s]=b.dataset.go.split("|");
@@ -1692,8 +1702,8 @@ $("#hmApps").addEventListener("click",e=>{const b=e.target.closest("[data-go]");
 $$(".brand .title,.brand .kicker").forEach(el=>el.addEventListener("click",e=>{if(e.target.closest(".ver")||!ME)return;goSec("ini","home")}));
 function renderDD(){
   const secs=AREAS[AREA].sec, s=secs.find(x=>x[0]===SEC)||secs[0];
-  $("#ddBtn").innerHTML=`<span class="lbl">${AREAS[AREA].l}</span>${ico(s[3])}<span>${s[1]}</span>${ico("chev")}`;
-  $("#ddMenu").innerHTML=secs.map(x=>`<button class="dd-item${x[0]===SEC?" on":""}" data-s="${x[0]}"><span class="ic">${ico(x[3])}</span><span><b>${x[1]}</b><small>${x[2]}</small></span></button>`).join("");
+  $("#ddBtn").innerHTML=`<span class="lbl">${AREAS[AREA].l}</span>${sIco(s[0],s[3])}<span>${s[1]}</span>${ico("chev")}`;
+  $("#ddMenu").innerHTML=secs.map(x=>`<button class="dd-item${x[0]===SEC?" on":""}" data-s="${x[0]}"><span class="ic">${sIco(x[0],x[3])}</span><span><b>${x[1]}</b><small>${x[2]}</small></span></button>`).join("");
 }
 $("#ddBtn").onclick=e=>{e.stopPropagation();$("#ddMenu").hidden=!$("#ddMenu").hidden};
 $("#ddMenu").addEventListener("click",e=>{const b=e.target.closest("[data-s]");if(!b)return;SEC=b.dataset.s;$("#ddMenu").hidden=true;show()});
@@ -2627,6 +2637,7 @@ function login(n){
   $("#uAv").innerHTML=avHTML(n); $("#uName").textContent=n; $("#uMeta").textContent=rankES(ME.r)+(ME.p?" · #"+ME.p:"");
   ascMode="asc"; setSeg($("#ascMode"),"asc"); $("#ascNuevoL").textContent="Nuevo rango";
   renderDe(); pickers.forEach(p=>p.refresh()); permNotes();
+  $("#admBtn").hidden=!ISADMIN;
   $("#login").hidden=true; $("#app").hidden=false;
   AREA="ini"; SEC="home";
   vCur=null; vNewMode=false; show(); gen1080(); genPSB();
@@ -2731,7 +2742,7 @@ $("#bkExp").onclick=async()=>{
 };
 $("#bkImp").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
   r.onload=async()=>{let d;try{const j=JSON.parse(r.result);d=j&&j.datos;if(!d||typeof d!=="object")throw 0}catch(err){toast("El archivo no es un respaldo válido");return}
-    const skip=new Set(["lspdt.accounts","lspdt.session","lspdt.iconpng","lspdt.recent"]);
+    const skip=new Set(["lspdt.accounts","lspdt.session","lspdt.iconpng","lspdt.recent","lspdt.bg"]);
     const ent=Object.entries(d).filter(([k,v])=>k.startsWith("lspdt.")&&!skip.has(k)&&typeof v==="string");
     if(!confirm(`¿Importar el respaldo (${ent.length} registros)?\n\nReemplaza los datos compartidos de TODO el departamento (perfiles, votaciones, registros, fotos…). Las cuentas no se importan: cada uno se registra en la web.`))return;
     // las fotos guardadas dentro de los perfiles (versiones viejas) pasan a registros propios
@@ -2747,15 +2758,12 @@ $("#wifiIc").innerHTML=ico("wifi"); $("#batIc").innerHTML=ico("bat");
 /* ================= LOGO / FONDO ================= */
 const DEFAULT_LOGO="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6dd86"/><stop offset="1" stop-color="#b8901f"/></linearGradient></defs><path d="M60 4 108 22 104 78C100 108 82 124 60 136 38 124 20 108 16 78L12 22Z" fill="url(#g)" stroke="#7a5d10" stroke-width="3"/><path d="M60 16 96 30 93 77C90 101 76 114 60 123 44 114 30 101 27 77L24 30Z" fill="#0b1f3a"/><text x="60" y="50" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="11" letter-spacing="1.5" fill="#e6c65a">POLICE</text><polygon points="60,62 63.8,72.7 75.2,73.1 66.2,80 69.4,90.9 60,84.5 50.6,90.9 53.8,80 44.8,73.1 56.2,72.7" fill="url(#g)"/><text x="60" y="106" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="13" letter-spacing="1" fill="#e6c65a">LSPD</text></svg>`);
 let LOGO_SRC=DEFAULT_LOGO;
-function applyLogo(){LOGO_SRC=LS.get("lspdt.logo")||DEFAULT_LOGO;$$(".js-logo").forEach(i=>i.src=LOGO_SRC);$("#fav").href=LOGO_SRC}
 function pushIcon(){ // envía el logo como ícono de la ventana (PNG 256)
   if(!MDT)return; const img=new Image();
   img.onload=()=>{try{const c=document.createElement("canvas");c.width=c.height=256;const x=c.getContext("2d");const s=Math.min(256/img.width,256/img.height);
     const w=img.width*s,h=img.height*s;x.drawImage(img,(256-w)/2,(256-h)/2,w,h);const d=c.toDataURL("image/png");LS.set("lspdt.iconpng",d);api("/icon",{Png:d})}catch(e){}};
   img.src=LOGO_SRC;
 }
-function applyBg(){const b=LS.get("lspdt.bg");const st=$("#backdrop");
-  st.style.backgroundImage=b?`url("${b}")`:"";st.classList.toggle("img",!!b);$("#bgPrev").style.backgroundImage=b?`url("${b}")`:""}
 function readImg(file,max,keepAlpha,cb){
   const r=new FileReader();
   r.onload=()=>{const img=new Image();
@@ -2767,14 +2775,56 @@ function readImg(file,max,keepAlpha,cb){
   r.readAsDataURL(file);
 }
 function save(k,v,fn){if(!LS.set(k,v)){toast("La imagen es muy pesada, probá con una más chica");return}fn();toast("Guardado")}
-const logoChanged=()=>{applyLogo();pushIcon();if(ME)show()};
-$("#logoFile").onchange=e=>{const f=e.target.files[0];if(f)readImg(f,512,true,d=>save("lspdt.logo",d,logoChanged));e.target.value=""};
-$("#logoUrlOk").onclick=()=>{const u=$("#logoUrl").value.trim();if(u)save("lspdt.logo",u,logoChanged)};
-$("#logoReset").onclick=()=>{LS.del("lspdt.logo");logoChanged();toast("Logo restaurado")};
-$("#bgFile").onchange=e=>{const f=e.target.files[0];if(f)readImg(f,1920,false,d=>save("lspdt.bg",d,applyBg));e.target.value=""};
-$("#bgUrlOk").onclick=()=>{const u=$("#bgUrl").value.trim();if(u)save("lspdt.bg",u,applyBg)};
-$("#bgReset").onclick=()=>{LS.del("lspdt.bg");applyBg();toast("Fondo quitado")};
-$("#cfgBtn").onclick=$("#logoBtn").onclick=()=>openCfg();
+/* ================= ADMINISTRACIÓN (solo administradores) ================= */
+let ISADMIN=!!W.admin;
+const BRAND={ // clave, título, ayuda, tamaño máx., conserva transparencia, forma de la vista previa
+  "lspdt.logo":["Logo","Escudo de la terminal: login, encabezado, marca de agua.",512,true,"sq"],
+  "lspdt.fav":["Ícono de la pestaña (favicon)","Lo que se ve en la pestaña del navegador y al instalarla como app. Si está vacío se usa el logo.",256,true,"sq"],
+  "lspdt.bg.tablet":["Fondo detrás de la tablet","Recomendado 1920×1080, por ejemplo una captura del juego.",1920,false,"bg"],
+  "lspdt.bg.login":["Fondo del inicio de sesión","Se ve detrás del recuadro de ingreso.",1920,false,"bg"],
+  "lspdt.bg.app":["Fondo de la terminal","Detrás de las secciones, con un velo para que se lea bien.",1920,false,"bg"]
+};
+const SECS=(()=>{const m=new Map();Object.values(AREAS).forEach(a=>a.sec.forEach(s=>{if(!m.has(s[0]))m.set(s[0],s)}));return [...m.values()]})();
+const icoOv=s=>LS.get("lspdt.ico."+s)||"";
+/* ícono de una sección: imagen subida por el admin o el ícono original */
+function sIco(sec,k,cls="i"){const u=icoOv(sec);return u?`<img class="${cls} cico" src="${esc(u)}" alt="">`:ico(k,cls)}
+function applyLogo(){
+  LOGO_SRC=LS.get("lspdt.logo")||DEFAULT_LOGO; $$(".js-logo").forEach(i=>i.src=LOGO_SRC);
+  const fav=LS.get("lspdt.fav")||LOGO_SRC; $("#fav").href=fav; const at=$('link[rel="apple-touch-icon"]'); if(at&&LS.get("lspdt.fav")) at.href=fav;
+}
+function applyBg(){
+  const set=(el,k,cls)=>{const b=LS.get(k);if(!el)return;if(b)el.style.setProperty("background-image",`url("${b}")`,"important");else el.style.removeProperty("background-image");el.classList.toggle(cls,!!b)};
+  set($("#backdrop"),"lspdt.bg.tablet","img"); set($("#login"),"lspdt.bg.login","img"); set($("#stage"),"lspdt.bg.app","img");
+}
+function applyBrand(){applyLogo();applyBg()}
+function renderAdm(){
+  $("#admBrand").innerHTML=Object.entries(BRAND).map(([k,[t,h,,,f]])=>{const v=LS.get(k);
+    const pv=f==="bg"?`<div class="prev bg" style="${v?`background-image:url('${esc(v)}')`:""}">${v?"":'<span class="small">Sin fondo</span>'}</div>`
+      :`<div class="prev"><img src="${esc(v||(k==="lspdt.fav"?LOGO_SRC:DEFAULT_LOGO))}" alt=""></div>`;
+    return `<div class="adm-it" data-bk="${k}">${pv}<div class="mctrl"><b>${t}</b><div class="small">${h}</div>
+      <div class="r"><label class="btn dark">Subir imagen<input type="file" accept="image/*" data-up hidden></label>
+      <input class="in" data-url placeholder="o pegá una URL…"><button class="btn ghost" data-useurl>Usar</button>
+      <button class="btn ghost" data-reset${v?"":" disabled"}>${f==="bg"?"Quitar":"Restaurar"}</button></div></div></div>`}).join("");
+  $("#admIcons").innerHTML=SECS.map(([s,t,,k])=>{const v=icoOv(s);
+    return `<div class="adm-ic" data-sk="${s}"><span class="ai">${sIco(s,k)}</span><b>${esc(t)}</b>
+      <div class="r"><label class="mini">Cambiar<input type="file" accept="image/*" data-up hidden></label>${v?`<button class="mini" data-reset>Original</button>`:""}</div></div>`}).join("");
+}
+function openAdm(){if(!ISADMIN)return;renderAdm();openModal("admModal")}
+const brandChanged=()=>{applyBrand();renderAdm();if(ME)show()};
+function admSave(k,v){if(!LS.set(k,v)){toast("La imagen es muy pesada, probá con una más chica");return}brandChanged();toast("Guardado · lo ven todos")}
+$("#admBrand").addEventListener("change",e=>{const i=e.target.closest("[data-up]");if(!i)return;const k=i.closest("[data-bk]").dataset.bk,b=BRAND[k],f=i.files[0];
+  if(f)readImg(f,b[2],b[3],d=>admSave(k,d));i.value=""});
+$("#admBrand").addEventListener("click",e=>{const it=e.target.closest("[data-bk]");if(!it)return;const k=it.dataset.bk;
+  if(e.target.closest("[data-useurl]")){const u=it.querySelector("[data-url]").value.trim();if(/^https?:\/\//.test(u))admSave(k,u);else toast("Pegá una URL que empiece con https://")}
+  if(e.target.closest("[data-reset]")){LS.del(k);brandChanged();toast("Restaurado")}});
+$("#admIcons").addEventListener("change",e=>{const i=e.target.closest("[data-up]");if(!i)return;const s=i.closest("[data-sk]").dataset.sk,f=i.files[0];
+  if(f)readImg(f,256,true,d=>admSave("lspdt.ico."+s,d));i.value=""});
+$("#admIcons").addEventListener("click",e=>{const b=e.target.closest("[data-reset]");if(!b)return;LS.del("lspdt.ico."+b.closest("[data-sk]").dataset.sk);brandChanged();toast("Ícono original restaurado")});
+$("#admIcReset").onclick=()=>{const ks=SECS.map(s=>"lspdt.ico."+s[0]).filter(k=>LS.get(k));if(!ks.length)return;
+  if(!confirm("¿Volver a los íconos originales en todas las secciones?"))return;ks.forEach(k=>LS.del(k));brandChanged();toast("Íconos restaurados")};
+$("#admBtn").innerHTML=ico("shield"); $("#admBtn").onclick=openAdm;
+$("#cfgBtn").onclick=()=>openCfg();
+$("#logoBtn").onclick=()=>ISADMIN?openAdm():openCfg();
 
 /* ================= ROSTER (AJUSTES) ================= */
 function rosterInfo(){
@@ -2860,9 +2910,17 @@ function startUpdChecks(){
 }
 
 /* ================= CHANGELOG ================= */
-const VERSION="0.3";
-const BUILD=3; // número de compilación: sube en cada publicación
+const VERSION="0.4";
+const BUILD=4; // número de compilación: sube en cada publicación
 const CHANGELOG=[
+ {v:"0.4",f:"22/10/2026",s:"Panel de administración para la imagen de la terminal.",
+  add:[
+   "Panel de Administración (botón con escudo en el encabezado), visible solo para los administradores.",
+   "Desde el panel se cambian el logo, el ícono de la pestaña (favicon) y tres fondos: detrás de la tablet, del inicio de sesión y de la terminal.",
+   "Íconos personalizados para cada sección: se ven en el Inicio, en la barra de secciones y en el menú.",
+   "Los cambios del panel se aplican al instante para todo el departamento, incluida la pantalla de ingreso."],
+  chg:["El logo y el fondo ya no se cambian desde Ajustes: ahora son del panel de administración y los verifica el servidor."],
+  fix:[]},
  {v:"0.3",f:"22/10/2026",s:"La terminal pasa a ser una página web con base de datos compartida.",
   add:[
    "Versión web: se abre desde el navegador, en cualquier PC o celular, sin instalar nada.",
@@ -2924,9 +2982,10 @@ const RELOAD={
   "lspdt.votes":()=>{VOTES=LS.json("lspdt.votes",[])},
   "lspdt.profiles":()=>{PROF=LS.json("lspdt.profiles",{});for(const k in SEEDS)delete SEEDS[k]},
   "lspdt.exc":()=>{EXC=LS.json("lspdt.exc",{});permNotes()},
-  "lspdt.logo":()=>applyLogo()
+  "lspdt.logo":()=>applyLogo(), "lspdt.fav":()=>applyLogo(),
+  "lspdt.bg.tablet":()=>applyBg(), "lspdt.bg.login":()=>applyBg(), "lspdt.bg.app":()=>applyBg()
 };
-function reloadKeys(ks){ks.forEach(k=>{try{RELOAD[k]&&RELOAD[k]()}catch(e){console.error(e)}});refreshUI()}
+function reloadKeys(ks){if(!$("#admModal").hidden&&ks.some(k=>k in RELOAD||k.startsWith("lspdt.ico.")))setTimeout(renderAdm,0);ks.forEach(k=>{try{RELOAD[k]&&RELOAD[k]()}catch(e){console.error(e)}});refreshUI()}
 let refreshPending=false;
 function refreshUI(){
   if(!ME||entering) return;
@@ -2950,7 +3009,7 @@ document.addEventListener("click",()=>setTimeout(()=>{if(refreshPending)refreshU
 
 /* ================= INICIO ================= */
 if(ONLINE) startSync(); else netState("ok");
-applyLogo(); applyBg(); applyFrame(); rosterInfo(); renderWho(); startClock(); autoLogin(); startUpdChecks();
+applyBrand(); applyFrame(); rosterInfo(); renderWho(); startClock(); autoLogin(); startUpdChecks();
 if(MDT&&LS.get("lspdt.logo")&&!LS.get("lspdt.iconpng")) pushIcon();
 </script>
 </body>
