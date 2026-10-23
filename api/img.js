@@ -15,7 +15,7 @@ export default wrap(async (req, res) => {
   const buf = isB64 ? Buffer.from(m[3], "base64") : Buffer.from(decodeURIComponent(m[3]), "utf8");
   res.statusCode = 200;
   res.setHeader("Content-Type", m[1]);
-  res.setHeader("Cache-Control", pub ? "public, max-age=31536000, immutable" : "private, max-age=31536000, immutable");
+  res.setHeader("Cache-Control", pub ? "public, max-age=31536000, s-maxage=31536000, immutable" : "private, max-age=31536000, immutable");
   res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.end(buf);

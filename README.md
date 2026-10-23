@@ -19,7 +19,10 @@ Terminal de mando del LSPD (Eleven Project). Desde la **v0.3** es una página we
   - Quién puede tocar las excepciones (Teniente o superior).
   - Quién puede editar el catálogo del PSB (Vega Chambers y Madison Wells).
   - Quién administra cuentas y el código de registro (Teniente o superior).
-  - Quién cambia logo, favicon, fondos e íconos de secciones: solo administradores (por defecto Ryan Westbrook; se cambia con la variable `ADMINS` en Vercel, nombres separados por coma).
+  - Quién cambia logo, favicon, fondos e íconos de secciones: solo administradores.
+  - Quién da o quita administrador: solo los dueños (por defecto Ryan Westbrook; variable `ADMINS` en Vercel, nombres separados por coma), desde Administración → Administradores.
+- Rendimiento: una sola petición al abrir, sesiones en caché 20 s por instancia, sincronización cada 4 s si se usa y cada 30 s si está inactiva (pausada con la pestaña oculta), fotos con caché y carga diferida.
+- Conviene que las funciones de Vercel estén en la misma región que la base (Settings → Functions → Function Region).
 
 ## Puesta en marcha (una sola vez)
 
