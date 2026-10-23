@@ -1,5 +1,5 @@
 import { q, tx } from "../lib/db.js";
-import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY } from "../lib/core.js";
+import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY } from "../lib/core.js";
 
 async function downloadImg(url) {
   const fail = m => Object.assign(new Error(m), { status: 400 });
@@ -30,6 +30,13 @@ export default wrap(async (req, res) => {
       const t = rows.length ? Math.max(since, ...rows.map(r => +r.t)) : since;
       return send(res, 200, { ch, t, me: { admin: u.admin, owner: u.owner } });
     }
+    if (qs.images) { // galería: todas las imágenes guardadas (solo administradores)
+      if (!u.admin) return send(res, 403, { msg: "Solo administradores" });
+      const list = (await q("select k, t, by, at, length(v) as n from kv where v like 'data:%' order by coalesce(at,0) desc, t desc")).rows
+        .map(r => ({ k: r.k, t: +r.t, by: r.by, at: r.at ? +r.at : null, n: +r.n }));
+      const db = +(await q("select pg_database_size(current_database()) as s")).rows[0].s;
+      return send(res, 200, { list, db });
+    }
     return send(res, 200, await fullData(u));
   }
 
@@ -40,6 +47,12 @@ export default wrap(async (req, res) => {
   if (typeof b.url === "string") { // imagen por URL: el servidor la descarga y la guarda (los enlaces de Discord vencen)
     if (!IMG_KEY.test(k)) return send(res, 400, { msg: "Esa clave no admite imágenes" });
     b.v = await downloadImg(b.url); b.base = null;
+  }
+  if (typeof b.from === "string") { // usar una imagen ya guardada (galería)
+    if (!IMG_KEY.test(k)) return send(res, 400, { msg: "Esa clave no admite imágenes" });
+    const r = (await q("select v from kv where k=$1", [b.from])).rows[0];
+    if (!r || !r.v || !r.v.startsWith("data:")) return send(res, 404, { msg: "No se encontró la imagen" });
+    b.v = r.v; b.base = null;
   }
   const del = !!b.del;
   const mine = del ? null : (typeof b.v === "string" ? b.v : null);
@@ -54,11 +67,14 @@ export default wrap(async (req, res) => {
     let v = mine;
     if (!del && curV != null && !mine.startsWith("data:")) v = mergeText(typeof b.base === "string" ? b.base : null, mine, curV);
     if (exists && v === curV) return { v, t: +cur.t };
-    const t = (await c.query("insert into kv(k,v,t,by) values($1,$2,nextval('kv_seq'),$3) on conflict(k) do update set v=excluded.v, t=excluded.t, by=excluded.by returning t", [k, v, u.n])).rows[0].t;
+    // historial: la imagen de la terminal que se reemplaza o quita queda guardada en la galería
+    if (ADMIN_KEY.test(k) && !k.startsWith("lspdt.lib.") && curV && curV.startsWith("data:"))
+      await c.query("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do nothing", ["lspdt.lib.h" + Date.now().toString(36), curV, u.n, Date.now()]);
+    const t = (await c.query("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do update set v=excluded.v, t=excluded.t, by=excluded.by, at=excluded.at returning t", [k, v, u.n, Date.now()])).rows[0].t;
     return { v, t: +t };
   });
   if (k === "lspdt.roster") invalidate(); // el rango de alguien pudo cambiar
   const r = { t: out.t };
-  if (out.v !== mine) r.v = out.v && out.v.startsWith("data:") ? imgUrl(k, out.t) : out.v; // devuelve el resultado solo si cambió por la fusión
+  if (out.v !== mine || b.url || b.from) r.v = out.v && out.v.startsWith("data:") ? imgUrl(k, out.t) : out.v; // devuelve el resultado solo si cambió por la fusión
   return send(res, 200, r);
 });
