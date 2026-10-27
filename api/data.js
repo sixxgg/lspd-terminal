@@ -1,5 +1,5 @@
 import { q, tx } from "../lib/db.js";
-import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY } from "../lib/core.js";
+import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY } from "../lib/core.js";
 
 async function downloadImg(url) {
   const fail = m => Object.assign(new Error(m), { status: 400 });
@@ -42,7 +42,10 @@ export default wrap(async (req, res) => {
 
   if (req.method !== "POST") return send(res, 405, { error: "method" });
   const b = await body(req), k = b.k;
-  const why = canWrite(u, k);
+  let why = canWrite(u, k);
+  if (why === PSB_DENY) { // miembros de la PSB definidos en el panel de administración
+    try { const r = await q("select v from kv where k='lspdt.ui'"); const l = JSON.parse(r.rows[0].v).psb; if (Array.isArray(l) && l.includes(u.n)) why = null; } catch {}
+  }
   if (why) return send(res, 403, { error: "perm", msg: why });
   if (typeof b.url === "string") { // imagen por URL: el servidor la descarga y la guarda (los enlaces de Discord vencen)
     if (!IMG_KEY.test(k)) return send(res, 400, { msg: "Esa clave no admite imágenes" });
