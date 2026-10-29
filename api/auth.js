@@ -1,5 +1,5 @@
 import { q } from "../lib/db.js";
-import { send, body, wrap, roster, findIn, lvl, MIN_ACC, CAP, norm, emailOf, hashPw, checkPw, newSession, endSession, current, PUBLIC_KEYS, query, invalidate, OWNERS, dbAdmins, parseRoster as parseRosterRaw } from "../lib/core.js";
+import { send, body, wrap, roster, findIn, lvl, MIN_ACC, CAP, norm, emailOf, hashPw, checkPw, newSession, endSession, current, PUBLIC_KEYS, query, canEnter, invalidate, OWNERS, dbAdmins, parseRoster as parseRosterRaw } from "../lib/core.js";
 import { fullData } from "../lib/store.js";
 
 const slim = list => list.map(a => ({ n: a.n, r: a.r, p: a.p }));
@@ -7,6 +7,7 @@ async function regCode() { const r = await q("select v from meta where k='regcod
 async function userOf(n, ag) { const owner = OWNERS.includes(n); return { n, r: ag.r, l: lvl(ag.r), owner, admin: owner || (await dbAdmins()).includes(n) }; }
 const tooShort = pw => typeof pw !== "string" || pw.length < 6 || pw.length > 200;
 
+const uiRaw = async () => ((await q("select v from kv where k='lspdt.ui'")).rows[0] || {}).v;
 export default wrap(async (req, res) => {
   if (req.method === "GET") {
     // todo lo público en una sola consulta: cuentas, roster, código de registro e imagen de la terminal
@@ -39,7 +40,7 @@ export default wrap(async (req, res) => {
     if (!checkPw(b.pw, acc.hash)) { await new Promise(r => setTimeout(r, 600)); return send(res, 403, { msg: "Contraseña incorrecta." }); }
     const ag = findIn((await roster()).list, acc.name);
     if (!ag) return send(res, 403, { msg: "Tu agente ya no figura en el roster." });
-    if (lvl(ag.r) < MIN_ACC) return send(res, 403, { msg: "La terminal es para personal de mando (Sargento I o superior)." });
+    if (!canEnter(ag, await uiRaw())) return send(res, 403, { msg: "La terminal es para personal de mando (Sargento I o superior) y miembros de la RTD." });
     await q("update accounts set last=$2 where name=$1", [acc.name, Date.now()]);
     await newSession(res, acc.name, !!b.keep);
     return send(res, 200, { n: acc.name, e: acc.email, data: await fullData(await userOf(acc.name, ag)) });
@@ -48,7 +49,7 @@ export default wrap(async (req, res) => {
   if (a === "register") {
     const ag = findIn((await roster()).list, b.n);
     if (!ag) return send(res, 400, { msg: "Escribí el nombre de tu personaje y elegilo de la lista." });
-    if (lvl(ag.r) < MIN_ACC) return send(res, 403, { msg: "Solo el personal de mando (Sargento I o superior) puede registrarse." });
+    if (!canEnter(ag, await uiRaw())) return send(res, 403, { msg: "Solo el personal de mando (Sargento I o superior) y los miembros de la RTD pueden registrarse." });
     const code = await regCode();
     if (code && String(b.code || "").trim() !== code) return send(res, 403, { msg: "El código de registro no es correcto. Pedíselo a Capitanía." });
     if (tooShort(b.pw)) return send(res, 400, { msg: "La contraseña tiene que tener al menos 6 caracteres." });
