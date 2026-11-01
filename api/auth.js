@@ -1,5 +1,5 @@
 import { q } from "../lib/db.js";
-import { send, body, wrap, roster, findIn, lvl, MIN_ACC, CAP, norm, emailOf, hashPw, checkPw, newSession, endSession, current, PUBLIC_KEYS, query, canEnter, invalidate, OWNERS, dbAdmins, parseRoster as parseRosterRaw } from "../lib/core.js";
+import { send, body, wrap, roster, findIn, lvl, MIN_ACC, CAP, norm, emailOf, hashPw, checkPw, newSession, endSession, current, PUBLIC_KEYS, query, canEnter, invalidate, OWNERS, dbAdmins, parseList, parseRoster as parseRosterRaw } from "../lib/core.js";
 import { fullData } from "../lib/store.js";
 
 const slim = list => list.map(a => ({ n: a.n, r: a.r, p: a.p }));
@@ -8,6 +8,13 @@ async function userOf(n, ag) { const owner = OWNERS.includes(n); return { n, r: 
 const tooShort = pw => typeof pw !== "string" || pw.length < 6 || pw.length > 200;
 
 const uiRaw = async () => ((await q("select v from kv where k='lspdt.ui'")).rows[0] || {}).v;
+const metaList = async k => parseList((await q("select v from meta where k=$1", [k])).rows[0]?.v);
+const setMeta = (k, l) => q("insert into meta(k,v) values($1,$2) on conflict(k) do update set v=excluded.v", [k, JSON.stringify(l)]);
+async function gate(ag) { // ¿puede entrar? (mando, RTD, ASD o aprobado por un administrador)
+  const r = (await q(`select (select v from kv where k='lspdt.ui') ui, (select v from meta where k='approved') ap, (select v from kv where k='lspdt.asdRoster') asd`)).rows[0];
+  return canEnter(ag, r.ui, r.ap, r.asd);
+}
+const PEND_MSG = "Tus credenciales están siendo revisadas por la administración. Intentá más tarde.";
 export default wrap(async (req, res) => {
   if (req.method === "GET") {
     // todo lo público en una sola consulta: cuentas, roster, código de registro e imagen de la terminal
@@ -40,7 +47,10 @@ export default wrap(async (req, res) => {
     if (!checkPw(b.pw, acc.hash)) { await new Promise(r => setTimeout(r, 600)); return send(res, 403, { msg: "Contraseña incorrecta." }); }
     const ag = findIn((await roster()).list, acc.name);
     if (!ag) return send(res, 403, { msg: "Tu agente ya no figura en el roster." });
-    if (!canEnter(ag, await uiRaw())) return send(res, 403, { msg: "La terminal es para personal de mando (Sargento I o superior) y miembros de la RTD." });
+    if (!(await gate(ag))) {
+      if ((await metaList("rejected")).includes(ag.n)) return send(res, 403, { msg: "Tu solicitud de acceso fue rechazada. Consultá con la administración." });
+      return send(res, 403, { pending: true, msg: PEND_MSG });
+    }
     await q("update accounts set last=$2 where name=$1", [acc.name, Date.now()]);
     await newSession(res, acc.name, !!b.keep);
     return send(res, 200, { n: acc.name, e: acc.email, data: await fullData(await userOf(acc.name, ag)) });
@@ -49,13 +59,17 @@ export default wrap(async (req, res) => {
   if (a === "register") {
     const ag = findIn((await roster()).list, b.n);
     if (!ag) return send(res, 400, { msg: "Escribí el nombre de tu personaje y elegilo de la lista." });
-    if (!canEnter(ag, await uiRaw())) return send(res, 403, { msg: "Solo el personal de mando (Sargento I o superior) y los miembros de la RTD pueden registrarse." });
     const code = await regCode();
     if (code && String(b.code || "").trim() !== code) return send(res, 403, { msg: "El código de registro no es correcto. Pedíselo a Capitanía." });
     if (tooShort(b.pw)) return send(res, 400, { msg: "La contraseña tiene que tener al menos 6 caracteres." });
     const now = Date.now();
     const r = await q("insert into accounts(name,email,hash,created,last) values($1,$2,$3,$4,$4) on conflict do nothing returning name", [ag.n, emailOf(ag.n), hashPw(b.pw), now]);
     if (!r.rows[0]) return send(res, 409, { msg: "Ese agente ya tiene cuenta. Iniciá sesión." });
+    if (!(await gate(ag))) { // queda pendiente de aprobación
+      const pend = (await metaList("pending")).filter(x => x !== ag.n); pend.push(ag.n); await setMeta("pending", pend);
+      await setMeta("rejected", (await metaList("rejected")).filter(x => x !== ag.n));
+      return send(res, 202, { pending: true, n: ag.n, e: emailOf(ag.n), msg: "Cuenta creada. " + PEND_MSG });
+    }
     await newSession(res, ag.n, b.keep !== false);
     return send(res, 200, { n: ag.n, e: emailOf(ag.n), data: await fullData(await userOf(ag.n, ag)) });
   }
@@ -75,6 +89,23 @@ export default wrap(async (req, res) => {
     if (!r || !checkPw(b.old, r.hash)) return send(res, 403, { msg: "La contraseña actual no es correcta" });
     if (tooShort(b.nw)) return send(res, 400, { msg: "La nueva contraseña tiene que tener al menos 6 caracteres" });
     await q("update accounts set hash=$2 where name=$1", [me.n, hashPw(b.nw)]);
+    return send(res, 200, { ok: 1 });
+  }
+
+  // Solicitudes de acceso (administradores)
+  if (a === "pending") {
+    if (!me.admin) return send(res, 403, { msg: "Solo administradores." });
+    const accs = new Map((await q("select name,created from accounts")).rows.map(r => [r.name, +r.created]));
+    const pend = (await metaList("pending")).filter(n => accs.has(n));
+    return send(res, 200, { pending: pend.map(n => ({ n, c: accs.get(n) })), approved: await metaList("approved"), rejected: await metaList("rejected") });
+  }
+  if (a === "approve") {
+    if (!me.admin) return send(res, 403, { msg: "Solo administradores." });
+    const n = String(b.n || ""), ok = b.ok !== false;
+    await setMeta("pending", (await metaList("pending")).filter(x => x !== n));
+    const ap = (await metaList("approved")).filter(x => x !== n), rj = (await metaList("rejected")).filter(x => x !== n);
+    if (ok) ap.push(n); else { rj.push(n); await q("delete from sessions where name=$1", [n]); }
+    await setMeta("approved", ap); await setMeta("rejected", rj); invalidate();
     return send(res, 200, { ok: 1 });
   }
 
