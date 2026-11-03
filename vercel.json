@@ -26,7 +26,7 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
+          "value": "public, max-age=0, must-revalidate"
         }
       ]
     },
@@ -35,7 +35,7 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
+          "value": "public, max-age=0, must-revalidate"
         }
       ]
     },
@@ -66,5 +66,25 @@
         }
       ]
     }
-  ]
+  ],
+  "images": {
+    "sizes": [
+      64,
+      128,
+      256,
+      640,
+      1080,
+      1920
+    ],
+    "remotePatterns": [
+      {
+        "protocol": "https",
+        "hostname": "**"
+      }
+    ],
+    "minimumCacheTTL": 2592000,
+    "formats": [
+      "image/webp"
+    ]
+  }
 }
