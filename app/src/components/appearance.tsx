@@ -51,6 +51,7 @@ export function AppearanceModal({ open, onClose }: { open: boolean; onClose: () 
         <div className="flex items-start gap-2.5"><MonitorSmartphone className="mt-0.5 size-4 text-slate-400" /><div><Checkbox checked={p.frame} onChange={v => setPref("frame", v)} label="Marco de tablet" /><p className="text-xs text-slate-500">Bisel, barra de estado y fondo detrás (en pantallas chicas se oculta solo).</p></div></div>
         <div className="flex items-start gap-2.5"><Sparkles className="mt-0.5 size-4 text-slate-400" /><div><Checkbox checked={p.neon} onChange={v => setPref("neon", v)} label="Brillo neón" /><p className="text-xs text-slate-500">Resplandor del color de acento en títulos, botones y terminales (temas oscuros).</p></div></div>
       </div>
+      <Field label="Menú"><Segmented size="sm" value={p.nav} onChange={v => setPref("nav", v)} options={[{ value: "top", label: "Arriba, por áreas (como la clásica)" }, { value: "side", label: "Lateral" }]} /></Field>
       <Field label="Tipografía"><div className="flex items-center gap-2"><Type className="size-4 text-slate-400" />
         <Segmented size="sm" value={p.font} onChange={v => setPref("font", v)} options={[{ value: "inter", label: "Moderna (Inter)" }, { value: "public", label: "Clásica (Public Sans)" }]} /></div></Field>
       <Field label="Puntero del mouse"><div className="flex items-start gap-2"><MousePointer2 className="mt-2 size-4 text-slate-400" /><div className="flex-1"><CursorGrid value={p.cur} onPick={k => setPref("cur", k)} acc={acc} /></div></div></Field>

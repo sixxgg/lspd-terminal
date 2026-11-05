@@ -68,3 +68,19 @@ export function unitPalette(k: UnitKey): { roles: Record<string, string>; acc: s
   u.SUB?.forEach(r => { roles[r[0]] = r[2]; });
   return { roles, acc: toHex(L) };
 }
+
+/* ---- banner de división: colores vivos y legibles a partir del logo ---- */
+function toHsl([r, g, b]: number[]) { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2; let h = 0, s = 0;
+  if (mx !== mn) { const d = mx - mn; s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h /= 6; } return [h, s, l]; }
+function toRgb([h, s, l]: number[]) { if (!s) return [l, l, l].map(v => Math.round(v * 255)); const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+  const f = (t: number) => { t = (t + 1) % 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; };
+  return [f(h + 1 / 3), f(h), f(h - 1 / 3)].map(v => Math.round(v * 255)); }
+const hx = (a: number[]) => "#" + a.map(v => v.toString(16).padStart(2, "0")).join("");
+/* acento: saturado y con luz suficiente para brillar sobre fondo oscuro; claro: siempre legible */
+export function heroColors(d: string) {
+  const [a0, l, k] = divColors(d), a = toHsl(hexRgb(a0))[1] < 0.25 ? divAb(d)[1] : a0, A = toHsl(hexRgb(a)), Lc = toHsl(hexRgb(l)), K = toHsl(hexRgb(k));
+  const acc = toRgb([A[0], Math.max(A[1], A[1] < 0.12 ? A[1] : 0.62), Math.min(Math.max(A[2], 0.5), 0.62)]);
+  const light = Lc[1] > 0.15 && Math.abs(Lc[0] - A[0]) > 0.04 ? toRgb([Lc[0], Math.min(1, Math.max(Lc[1], 0.55)), Math.max(Lc[2], 0.72)]) : toRgb([A[0], Math.min(1, A[1] + 0.2), 0.8]);
+  const base = toRgb([K[1] > 0.1 ? K[0] : A[0], Math.min(K[1] + 0.25, 0.55), Math.min(Math.max(K[2], 0.06), 0.1)]);
+  return { acc: hx(acc), light: hx(light), base: hx(base) };
+}

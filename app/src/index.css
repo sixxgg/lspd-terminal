@@ -21,6 +21,7 @@
 }
 @layer utilities {
   .scrollbar-thin { scrollbar-width: thin; }
+  .scrollbar-none { scrollbar-width: none; } .scrollbar-none::-webkit-scrollbar { display: none; }
   .bg-grid { background-image: radial-gradient(rgb(148 163 184 / .12) 1px, transparent 1px); background-size: 22px 22px; }
 }
 
@@ -101,3 +102,27 @@ body.crt-glitch .crt::after{top:40%;height:7%;transform:none;background:linear-g
 @keyframes glitchB{0%,88%,100%{opacity:0;transform:none}89%{opacity:1;transform:translate(-8px,-120%)}91%{opacity:1;transform:translate(10px,180%)}93%{opacity:1;transform:translate(-4px,420%)}95%{opacity:0}}
 @keyframes vhsN{0%{background-position:0 0,0 0}33%{background-position:-40px 20px,0 0}66%{background-position:30px -30px,0 0}}
 @media (prefers-reduced-motion:reduce){.crt,.crt::after{animation:none}}
+
+/* ===== banner de las divisiones ===== */
+.dv-hero { border: 1px solid color-mix(in srgb, var(--ha) 45%, transparent);
+  box-shadow: inset 0 -3px 0 var(--ha), 0 20px 50px -28px var(--ha), 0 0 0 1px rgba(0,0,0,.25); }
+.dv-hero-bg { background:
+  radial-gradient(60% 170% at 0% 0%, color-mix(in srgb, var(--ha) 60%, transparent), transparent 62%),
+  radial-gradient(45% 150% at 100% 100%, color-mix(in srgb, var(--ha) 38%, transparent), transparent 70%),
+  radial-gradient(35% 120% at 78% 0%, color-mix(in srgb, var(--hl) 20%, transparent), transparent 70%),
+  repeating-linear-gradient(135deg, rgba(255,255,255,.025) 0 2px, transparent 2px 14px),
+  linear-gradient(115deg, color-mix(in srgb, var(--ha) 22%, #070a14) 0%, #06080f 55%, color-mix(in srgb, var(--ha) 16%, #06080f) 100%); }
+.dv-hero-k { color: var(--hl); text-shadow: 0 0 14px color-mix(in srgb, var(--hl) 45%, transparent); }
+.dv-hero-t { text-shadow: 0 2px 12px rgba(0,0,0,.45); }
+html.neon .dv-hero-t { text-shadow: 0 0 18px color-mix(in srgb, var(--ha) 75%, transparent), 0 0 42px color-mix(in srgb, var(--ha) 45%, transparent), 0 2px 10px rgba(0,0,0,.5); }
+.dv-hero-emb::before { content: ""; position: absolute; inset: -14%; border-radius: 9999px; background: radial-gradient(circle, color-mix(in srgb, var(--ha) 55%, transparent), transparent 68%); filter: blur(6px); animation: dvPulse 4.5s ease-in-out infinite; }
+.dv-hero-emb > * { position: relative; filter: drop-shadow(0 6px 16px rgba(0,0,0,.55)); }
+.dv-hero-sweep { background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.07) 48%, transparent 60%); background-size: 250% 100%; animation: dvSweep 7s ease-in-out infinite; pointer-events: none; }
+@keyframes dvPulse { 50% { opacity: .55; transform: scale(.94); } }
+@keyframes dvSweep { 0%, 15% { background-position: 120% 0; } 60%, 100% { background-position: -40% 0; } }
+@media (prefers-reduced-motion: reduce) { .dv-hero-emb::before, .dv-hero-sweep { animation: none; } }
+
+/* neón más marcado */
+html.neon.dark h1 { text-shadow: 0 0 16px rgb(var(--b-500) / .55), 0 0 40px rgb(var(--b-500) / .3); }
+html.neon.dark [class*="rounded-2xl"][class*="border-slate-"] { box-shadow: 0 0 0 1px rgb(var(--b-500) / .07), 0 18px 50px -34px rgb(var(--b-500) / .55); }
+html.neon.dark nav [aria-current="page"] { box-shadow: 0 0 0 1px rgb(var(--b-400) / .45), 0 0 20px -4px rgb(var(--b-500) / .75); }

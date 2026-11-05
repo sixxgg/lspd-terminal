@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Lock } from "lucide-react";
 import { Card } from "@/components/ui";
 import { DivLogo } from "@/sections/sup/Agentes";
-import { DIV_DESC, DIV_DONE, divOpen, subsOf, useDivColors } from "@/lib/divisions";
+import { DIV_DESC, DIV_DONE, divOpen, heroColors, subsOf, useDivColors } from "@/lib/divisions";
 import { divAb, rankES } from "@/lib/domain";
 import { useMe } from "@/lib/me";
 import { useStoreVersion } from "@/lib/store";
@@ -11,18 +11,20 @@ import { Unit } from "./Unit";
 import { cn } from "@/lib/cn";
 
 export function DivHero({ d }: { d: string }) {
-  const [a, l, k] = useDivColors(d), subs = subsOf(d);
+  useDivColors(d);
+  const { acc, light, base } = heroColors(d), subs = subsOf(d);
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-200 shadow-sm dark:border-slate-800" style={{ background: `linear-gradient(120deg, ${k} 0%, ${k} 40%, ${a} 140%)` }}>
-      <div className="absolute inset-0 bg-grid opacity-20" />
-      <div className="absolute -right-10 -top-10 size-56 rounded-full blur-3xl" style={{ background: a, opacity: 0.35 }} />
-      <div className="relative flex flex-wrap items-center gap-5 p-6 sm:p-7">
-        <div className="size-24 shrink-0 drop-shadow-xl sm:size-28"><DivLogo d={d} /></div>
+    <div className="dv-hero group relative overflow-hidden rounded-2xl" style={{ ["--ha" as string]: acc, ["--hl" as string]: light, ["--hb" as string]: base }}>
+      <div className="dv-hero-bg absolute inset-0" />
+      <div className="absolute inset-0 bg-grid opacity-25" />
+      <div className="dv-hero-sweep absolute inset-0" />
+      <div className="relative flex flex-wrap items-center gap-5 p-6 sm:gap-7 sm:p-7">
+        <div className="dv-hero-emb relative size-24 shrink-0 sm:size-28"><DivLogo d={d} /></div>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: l }}>Los Santos Police Department</p>
-          <h2 className="mt-1 text-2xl font-bold tracking-tight text-white sm:text-3xl">{d}</h2>
-          <p className="mt-1.5 max-w-2xl text-sm text-white/75">{DIV_DESC[d] || divAb(d)[0]}</p>
-          {subs.length > 0 && <p className="mt-2 text-xs text-white/55">{subs.length} {subs.length === 1 ? "subdivisión" : "subdivisiones"} · {subs.join(" · ")}</p>}
+          <p className="dv-hero-k text-[11px] font-bold uppercase tracking-[0.2em]">Los Santos Police Department</p>
+          <h2 className="dv-hero-t mt-1 text-2xl font-extrabold tracking-tight text-white sm:text-[2rem]">{d}</h2>
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-white/80">{DIV_DESC[d] || divAb(d)[0]}</p>
+          {subs.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{subs.map(x => <span key={x} className="rounded-full border border-white/15 bg-white/[.07] px-2.5 py-0.5 text-[11px] font-medium text-white/80 backdrop-blur">{x}</span>)}</div>}
         </div>
       </div>
     </div>
