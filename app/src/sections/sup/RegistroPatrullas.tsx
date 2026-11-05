@@ -10,6 +10,7 @@ import { useMe } from "@/lib/me";
 import { VEH, delPhotos, dmy, missOf, patReport, vcount, type PHist } from "@/lib/patrol";
 import { cn } from "@/lib/cn";
 import { StatusPill, Thumbs } from "./Patrullas";
+import { SheetPanel } from "./SheetPanel";
 
 export function RegistroPatrullas() {
   const me = useMe(), { confirm } = useFeedback(), copy = useCopy();
@@ -21,6 +22,7 @@ export function RegistroPatrullas() {
   const ags = new Set(list.flatMap(h => h.rows.map(r => r.n))), ok = list.reduce((n, h) => n + vcount(h.rows, "ok"), 0), no = list.reduce((n, h) => n + vcount(h.rows, "no"), 0);
   return (
     <div className="space-y-5">
+      <SheetPanel />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {([[list.length, "Revisiones", ""], [ags.size, "Agentes revisados", ""], [ok + no, "Vehículos revisados", ""], [no, "No preparados", "text-red-600 dark:text-red-400"], [ok + no ? Math.round((ok * 100) / (ok + no)) + "%" : "—", "Preparados", "text-emerald-600 dark:text-emerald-400"]] as const).map(([n, k, c]) => (
           <Card key={k} className="p-4"><p className={cn("text-2xl font-bold tabular-nums", c)}>{n}</p><p className="text-xs text-slate-500">{k}</p></Card>))}

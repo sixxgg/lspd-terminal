@@ -13,6 +13,7 @@ import { Entrevistas } from "./sections/sup/Entrevistas";
 import { Votaciones } from "./sections/sup/Votaciones";
 import { Agentes } from "./sections/sup/Agentes";
 import { Informes } from "./sections/Informes";
+import { Division } from "./sections/div/Division";
 import { Patrullas } from "./sections/sup/Patrullas";
 import { RegistroPatrullas } from "./sections/sup/RegistroPatrullas";
 import { Equipamiento } from "./sections/cap/Equipamiento";
@@ -59,6 +60,7 @@ export default function App() {
   let view;
   if (sec.k === "home") view = <Home me={user} go={go} />;
   else if (area.k === "sup" && sec.k === "parm") view = <PerdidaArmamento me={user} />;
+  else if (area.k === "div") view = <Division d={sec.l} />;
   else if (VIEWS[`${area.k}/${sec.k}`]) view = VIEWS[`${area.k}/${sec.k}`]();
   else view = <Classic area={area} sec={sec} />;
   return <MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in">{view}</div></Shell></MeCtx.Provider>;

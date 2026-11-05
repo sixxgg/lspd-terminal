@@ -34,14 +34,14 @@ export const AREAS: Area[] = [
     { k: "his", l: "Historial de votaciones", d: "Propuestas cerradas y su resultado", icon: History },
   ] },
   { k: "div", l: "Divisiones", min: 0, sec: [
-    { k: "dv_asb", l: "Administration Services Bureau", d: "Próximamente", icon: Building2 },
-    { k: "dv_asd", l: "Air Support Division", d: "Roster, vuelos y exámenes", icon: Plane },
-    { k: "dv_db", l: "Detective Bureau", d: "Próximamente", icon: Search },
-    { k: "dv_hsiu", l: "High Speed Interception Unit", d: "Próximamente", icon: Gauge },
-    { k: "dv_kd", l: "K-9 Division", d: "Roster y patrullajes", icon: Dog },
-    { k: "dv_md", l: "Metropolitan Division", d: "Próximamente", icon: Crosshair },
-    { k: "dv_psb", l: "Professional Standards Bureau", d: "Roster, notificaciones y expedientes", icon: Shield },
-    { k: "dv_rtd", l: "Recruitment and Training Division", d: "Entrevistas de aspirantes", icon: GraduationCap },
+    { k: "dv_asb", l: "Administration Services Bureau", d: "Próximamente", icon: Building2, ready: true },
+    { k: "dv_asd", l: "Air Support Division", d: "Roster, vuelos y exámenes", icon: Plane, ready: true },
+    { k: "dv_db", l: "Detective Bureau", d: "Próximamente", icon: Search, ready: true },
+    { k: "dv_hsiu", l: "High Speed Interception Unit", d: "Próximamente", icon: Gauge, ready: true },
+    { k: "dv_kd", l: "K-9 Division", d: "Roster y patrullajes", icon: Dog, ready: true },
+    { k: "dv_md", l: "Metropolitan Division", d: "Próximamente", icon: Crosshair, ready: true },
+    { k: "dv_psb", l: "Professional Standards Bureau", d: "Roster, notificaciones y expedientes", icon: Shield, ready: true },
+    { k: "dv_rtd", l: "Recruitment and Training Division", d: "Entrevistas de aspirantes", icon: GraduationCap, ready: true },
   ] },
 ];
 export const canArea = (a: Area, r?: string) => lvl(r) >= a.min;

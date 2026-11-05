@@ -44,3 +44,27 @@ export function readImg(file: File, max: number, keepAlpha = false): Promise<str
     r.readAsDataURL(file);
   });
 }
+
+/* ---------- planilla de Google Sheets (registro de patrullas) ---------- */
+export const SHEET_DEF = "https://docs.google.com/spreadsheets/d/1-jDI6k8kXlPVn5ByjNgJ_yIQ3oaFc5dI_krERNj-Msc/edit?gid=0#gid=0";
+export const sheetUrl = () => LS.get("lspdt.sheet") || SHEET_DEF;
+export function parseCSV(t: string) {
+  t = t.replace(/^﻿/, ""); const rows: string[][] = []; let row: string[] = [], f = "", q = false;
+  for (let i = 0; i < t.length; i++) { const c = t[i];
+    if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true; else if (c === ",") { row.push(f); f = ""; } else if (c === "\n") { row.push(f); rows.push(row); row = []; f = ""; } else if (c !== "\r") f += c; }
+  if (f || row.length) { row.push(f); rows.push(row); } return rows;
+}
+export type SCell = { s: "" | "ok" | "no" | "na" | "?"; raw: string };
+export type SRow = { n: string; r: string; p: string; m?: boolean; v: Record<string, SCell> };
+const nrm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const SH_ST = (v: string): SCell["s"] => { const s = nrm(v).trim(); if (!s) return ""; if (/^no ?prep|falta|^no$/.test(s)) return "no"; if (/^prep|^ok|^si$|completo/.test(s)) return "ok"; if (/asign|n\/a|^na$|^-$/.test(s)) return "na"; return "?"; };
+export function parseSheet(csv: string): SRow[] {
+  const rows = parseCSV(csv).filter(r => r.some(c => String(c).trim())); if (!rows.length) return [];
+  const h = rows[0].map(x => nrm(x).trim()), ix = (re: RegExp) => h.findIndex(x => re.test(x));
+  const iN = ix(/^agente|^nombre|^oficial/), iR = ix(/^rango/), iP = ix(/placa/);
+  const RX: Record<string, RegExp> = { stx: /stx|buffalo/, scout: /scout/, mary: /mary/, int: /interceptor|^inter/ };
+  const V = VEH.map(([k, l]) => [k, ix(RX[k] || new RegExp(nrm(l)))] as const);
+  return rows.slice(1).filter(r => (r[iN] || "").trim()).map(r => ({ n: (r[iN] || "").trim(), r: iR >= 0 ? (r[iR] || "").trim() : "", p: iP >= 0 ? (r[iP] || "").trim() : "",
+    v: Object.fromEntries(V.map(([k, i]) => { const raw = i >= 0 ? (r[i] || "").trim() : ""; return [k, { s: SH_ST(raw), raw }]; })) }));
+}
