@@ -105,7 +105,9 @@ export type Me = { n: string; r: string; admin: boolean; owner: boolean };
 export let DEF_ROSTER: Agent[] = [];
 export type Agent = { n: string; p?: string; r: string; e?: string; s?: string; i?: string; d?: string; a?: string; c?: string };
 
-export function loadStore(d: { store: Dict; kt?: Record<string, number>; t?: number; defRoster?: Agent[]; me?: Me }) {
+export const ACC_LAST: Record<string, number> = {};
+export function loadStore(d: { store: Dict; kt?: Record<string, number>; t?: number; defRoster?: Agent[]; me?: Me; acc?: Record<string, number> }) {
+  Object.assign(ACC_LAST, d.acc || {});
   for (const k of Object.keys(CACHE)) delete CACHE[k];
   for (const k of Object.keys(BASE)) delete BASE[k];
   Object.assign(CACHE, d.store); Object.assign(BASE, d.store); Object.assign(KT, d.kt || {});
@@ -124,4 +126,11 @@ export function useKey(k: string): string | null { useStoreVersion(); return LS.
 export function useJSON<T>(k: string, d: T): [T, (v: T) => void] {
   useStoreVersion();
   return [LS.json(k, d), (v: T) => LS.setJSON(k, v)];
+}
+
+/* el servidor descarga una imagen desde un link y la guarda en la clave */
+export async function fetchImageTo(k: string, url: string): Promise<{ ok: boolean; msg?: string }> {
+  const r = await api("/api/data", { k, url }) as { __s: number; v?: string; t?: number; msg?: string };
+  if (r.__s !== 200 || typeof r.v !== "string") return { ok: false, msg: r.msg || "No se pudo descargar la imagen de ese link" };
+  CACHE[k] = BASE[k] = r.v; KT[k] = r.t || 0; bump(); return { ok: true };
 }

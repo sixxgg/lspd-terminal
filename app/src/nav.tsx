@@ -13,7 +13,7 @@ export const AREAS: Area[] = [
   { k: "ini", l: "Inicio", min: 0, sec: [{ k: "home", l: "Inicio", d: "Resumen del departamento", icon: Home, ready: true }] },
   { k: "inf", l: "Informes", min: 0, sec: [{ k: "inf", l: "Informes policiales", d: "Redactar, registrar y buscar informes · código penal", icon: FileText }] },
   { k: "sup", l: "Supervisión", min: 6, req: "Sargento I", sec: [
-    { k: "prof", l: "Agentes", d: "Planilla del departamento", icon: Users },
+    { k: "prof", l: "Agentes", d: "Planilla del departamento", icon: Users, ready: true },
     { k: "asc", l: "Ascensos / Descensos", d: "Contratos y resoluciones con /me y /do", icon: TrendingUp, ready: true },
     { k: "t1080", l: "10-80", d: "Citación por radio con vestimenta Clase A", icon: Radio, ready: true },
     { k: "alt", l: "Alerta Táctica", d: "Solicitud de elevación o ampliación de la alerta", icon: Siren, ready: true },
