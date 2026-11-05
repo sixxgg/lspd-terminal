@@ -26,20 +26,20 @@ const DVC: Record<string, [string, string, string]> = (() => { try { return JSON
 export const hexRgb = (h: string) => { const x = h.replace("#", ""); const n = parseInt(x.length === 3 ? x.split("").map(c => c + c).join("") : x, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 const busy = new Set<string>(), subs = new Set<() => void>();
 function loadColors(src: string) {
-  if (!src || DVC[src] || busy.has(src)) return; busy.add(src);
+  if (!src || DVC["2:" + src] || busy.has(src)) return; busy.add(src);
   const img = new Image(); img.crossOrigin = "anonymous";
   img.onload = () => { try {
     const S = 48, c = document.createElement("canvas"); c.width = c.height = S; const x = c.getContext("2d", { willReadFrequently: true })!; x.drawImage(img, 0, 0, S, S);
     const px = x.getImageData(0, 0, S, S).data, B: Record<string, { n: number; r: number; g: number; b: number; s: number }> = {};
-    for (let i = 0; i < px.length; i += 4) { if (px[i + 3] < 200) continue; const r = px[i], g = px[i + 1], b = px[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx ? (mx - mn) / mx : 0;
+    for (let i = 0; i < px.length; i += 4) { if (px[i + 3] < 200) continue; const pi = i / 4, dx = (pi % S) / S - 0.5, dy = Math.floor(pi / S) / S - 0.5; if (dx * dx + dy * dy > 0.2) continue; /* solo dentro del escudo, no las esquinas */ const r = px[i], g = px[i + 1], b = px[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx ? (mx - mn) / mx : 0;
       if (mx < 35 || mn > 225) continue; const k = (r >> 5) + "," + (g >> 5) + "," + (b >> 5); const o = B[k] || (B[k] = { n: 0, r: 0, g: 0, b: 0, s: 0 }); o.n++; o.r += r; o.g += g; o.b += b; o.s += sat; }
-    const L = Object.values(B).map(o => ({ c: [o.r / o.n, o.g / o.n, o.b / o.n], sc: o.n * (0.25 + o.s / o.n) })).sort((a, b) => b.sc - a.sc);
+    const L = Object.values(B).map(o => ({ c: [o.r / o.n, o.g / o.n, o.b / o.n], sc: o.n * (0.1 + 3 * (o.s / o.n) ** 2) })).sort((a, b) => b.sc - a.sc);
     const hue = ([r, g, b]: number[]) => { const mx = Math.max(r, g, b), mn = Math.min(r, g, b); if (mx === mn) return -1; const h = mx === r ? (g - b) / (mx - mn) : mx === g ? 2 + (b - r) / (mx - mn) : 4 + (r - g) / (mx - mn); return (h * 60 + 360) % 360; };
     const pick: number[][] = []; for (const o of L) { if (pick.length >= 3) break; if (pick.every(p => Math.abs(hue(p) - hue(o.c)) > 28 || Math.hypot(...p.map((v, i) => v - o.c[i])) > 90)) pick.push(o.c); }
     while (pick.length < 3) pick.push(pick[0] || [124, 156, 255]);
     const hex = pick.map(c => "#" + c.map(v => Math.round(v).toString(16).padStart(2, "0")).join(""));
     const lum = (h: string) => { const [r, g, b] = hexRgb(h); return 0.3 * r + 0.59 * g + 0.11 * b; };
-    const sorted = [...hex].sort((a, b) => lum(a) - lum(b)); DVC[src] = [hex[0], sorted[2], sorted[0]];
+    const sorted = [...hex].sort((a, b) => lum(a) - lum(b)); DVC["2:" + src] = [hex[0], sorted[2], sorted[0]];
     try { localStorage.setItem("lspdt.dvc", JSON.stringify(DVC)); } catch { /* */ }
     subs.forEach(f => f());
   } catch { /* imagen sin CORS */ } };
@@ -47,7 +47,7 @@ function loadColors(src: string) {
 }
 export function divColors(d: string): [string, string, string] {
   const def = !LS.get("lspdt.divlogo." + d) && DVC_DEF[d]; if (def) return def;
-  const src = divEmblem(d); if (src && DVC[src]) return DVC[src];
+  const src = divEmblem(d); if (src && DVC["2:" + src]) return DVC["2:" + src];
   if (src) loadColors(src);
   const c = divAb(d)[1]; return [c, "#e6c65a", "#0b1220"];
 }
@@ -78,9 +78,13 @@ function toRgb([h, s, l]: number[]) { if (!s) return [l, l, l].map(v => Math.rou
 const hx = (a: number[]) => "#" + a.map(v => v.toString(16).padStart(2, "0")).join("");
 /* acento: saturado y con luz suficiente para brillar sobre fondo oscuro; claro: siempre legible */
 export function heroColors(d: string) {
-  const [a0, l, k] = divColors(d), a = toHsl(hexRgb(a0))[1] < 0.25 ? divAb(d)[1] : a0, A = toHsl(hexRgb(a)), Lc = toHsl(hexRgb(l)), K = toHsl(hexRgb(k));
-  const acc = toRgb([A[0], Math.max(A[1], A[1] < 0.12 ? A[1] : 0.62), Math.min(Math.max(A[2], 0.5), 0.62)]);
-  const light = Lc[1] > 0.15 && Math.abs(Lc[0] - A[0]) > 0.04 ? toRgb([Lc[0], Math.min(1, Math.max(Lc[1], 0.55)), Math.max(Lc[2], 0.72)]) : toRgb([A[0], Math.min(1, A[1] + 0.2), 0.8]);
-  const base = toRgb([K[1] > 0.1 ? K[0] : A[0], Math.min(K[1] + 0.25, 0.55), Math.min(Math.max(K[2], 0.06), 0.1)]);
+  /* el acento sale del color más saturado del logo; si el logo no tiene color (blanco y negro), queda en tonos acero */
+  const P = divColors(d).map(c => toHsl(hexRgb(c))), K = P[2];
+  const col = P.filter(c => c[1] >= 0.25 && c[2] > 0.18 && c[2] < 0.85).sort((x, y) => y[1] - x[1])[0];
+  if (!col) return { acc: "#8d99ab", light: "#e3e8f0", base: "#0b0f17" };
+  const acc = toRgb([col[0], Math.min(col[1], 0.7), Math.min(Math.max(col[2], 0.45), 0.58)]);
+  const lc = P.filter(c => c !== col && c[2] > 0.55).sort((x, y) => y[2] - x[2])[0];
+  const light = lc && lc[1] > 0.15 ? toRgb([lc[0], Math.min(lc[1], 0.65), Math.max(lc[2], 0.74)]) : toRgb([col[0], Math.min(col[1], 0.5), 0.82]);
+  const base = toRgb([K[1] > 0.1 ? K[0] : col[0], Math.min(K[1] + 0.15, 0.4), Math.min(Math.max(K[2], 0.05), 0.09)]);
   return { acc: hx(acc), light: hx(light), base: hx(base) };
 }
