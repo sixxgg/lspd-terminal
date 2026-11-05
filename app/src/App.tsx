@@ -10,11 +10,15 @@ import { T1080 } from "./sections/sup/T1080";
 import { Alerta } from "./sections/sup/Alerta";
 import { Bodycam } from "./sections/sup/Bodycam";
 import { Entrevistas } from "./sections/sup/Entrevistas";
+import { Votaciones } from "./sections/sup/Votaciones";
+import { Patrullas } from "./sections/sup/Patrullas";
+import { RegistroPatrullas } from "./sections/sup/RegistroPatrullas";
+import { Equipamiento } from "./sections/cap/Equipamiento";
 import { MeCtx } from "./lib/me";
 import type { ReactNode } from "react";
 
 export const VIEWS: Record<string, () => ReactNode> = {
-  "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/ent": () => <Entrevistas />,
+  "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "cap/vot": () => <Votaciones />, "sup/pat": () => <Patrullas />, "sup/preg": () => <RegistroPatrullas />, "cap/equ": () => <Equipamiento />,
 };
 import { AREAS, canArea } from "./nav";
 import { api, authApi } from "./lib/api";
@@ -37,6 +41,7 @@ export default function App() {
   useEffect(() => {
     void api("/api/auth?full=1").then(r => { const b = r as unknown as Boot; setBoot(b); if (b.me && b.data) enter(b.data); });
   }, [enter]);
+  useEffect(() => { const f = (e: Event) => { setNav((e as CustomEvent<{ a: string; s: string }>).detail); window.scrollTo({ top: 0 }); }; window.addEventListener("lspd:go", f); return () => window.removeEventListener("lspd:go", f); }, []);
   useEffect(() => { try { localStorage.setItem("lspdt.next.nav", JSON.stringify(nav)); } catch { /* */ } }, [nav]);
 
   if (!boot) return <div className="grid min-h-dvh place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>;

@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
-import { TrendingUp, TrendingDown, Megaphone, UserRound } from "lucide-react";
-import { Card, CardBody, CardHeader, Field, Input, Segmented, Select } from "@/components/ui";
+import { TrendingUp, TrendingDown, Megaphone, UserRound, ClipboardCheck } from "lucide-react";
+import { Button, Card, CardBody, CardHeader, Checkbox, Field, Input, Segmented, Select } from "@/components/ui";
+import { useFeedback } from "@/components/feedback";
+import { addMov, takePreset, updateAgent } from "@/lib/profiles";
 import { AgentPicker, Avatar, RankBadge } from "@/components/agents";
 import { CopyLine, DiscordOutput } from "@/components/output";
 import { Col, Note, Split } from "@/components/layout";
@@ -24,17 +26,23 @@ function rankOptions(a: Agent, mode: Mode, my: number) {
   return o.filter(r => lvl(r) < my && (!DET.includes(r) || my >= DET_MIN));
 }
 
+export function rankOptionsFor(a: Agent, mode: Mode, my: number) { return rankOptions(a, mode, my); }
+export const eligibleFor = (x: Agent, mode: Mode, my: number) => { const l = lvl(x.r); if (l <= 0 || l >= my) return false; if (DET.includes(x.r) && my < DET_MIN) return false; return rankOptions(x, mode, my).length > 0; };
+
 export function Ascensos() {
   useStoreVersion();
   const me = useMe();
-  const [mode, setMode] = useState<Mode>("asc");
-  const [ag, setAg] = useState(""), [nuevo, setNuevo] = useState(""), [art, setArt] = useState<"el" | "la">("el");
+  const { toast, confirm } = useFeedback();
+  const [pre] = useState(() => takePreset<{ tipo: Mode; n: string; nr: string }>());
+  const [mode, setMode] = useState<Mode>(pre?.tipo || "asc");
+  const [ag, setAg] = useState(pre?.n || ""), [nuevo, setNuevo] = useState(pre?.nr || ""), [art, setArt] = useState<"el" | "la">(pre && genderOf(pre.n) === "f" ? "la" : "el");
+  const [upd, setUpd] = useState(true);
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
-  const [dcId, setDcId] = useState(""), [variant, setVariant] = useState("1");
+  const [dcId, setDcId] = useState(() => (pre ? dcIdOfAgent(findAgent(pre.n)) : "")), [variant, setVariant] = useState("1");
   const c = dcfg();
   const [desde, setDesde] = useState(c.desde), [firma, setFirma] = useState(c.firma);
   const a = ag ? findAgent(ag) : null;
-  const eligible = (x: Agent) => { const l = lvl(x.r); if (l <= 0 || l >= me.l) return false; if (DET.includes(x.r) && me.l < DET_MIN) return false; return rankOptions(x, mode, me.l).length > 0; };
+  const eligible = (x: Agent) => eligibleFor(x, mode, me.l);
   const opts = a ? rankOptions(a, mode, me.l) : [];
   const nr = a && opts.includes(nuevo) ? nuevo : opts[0] || "";
   const pick = (n: string) => { const x = findAgent(n); setAg(n); setArt(genderOf(n) === "f" ? "la" : "el"); setDcId(dcIdOfAgent(x)); setNuevo(""); };
@@ -73,6 +81,17 @@ export function Ascensos() {
               </Field>
               <Field label="Tratamiento"><Segmented value={art} onChange={setArt} options={[{ value: "el", label: "del" }, { value: "la", label: "de la" }]} /></Field>
             </div>
+            {a && nr && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
+                <Checkbox checked={upd} onChange={setUpd} label="Actualizar también su rango en el roster" />
+                <Button size="sm" icon={<ClipboardCheck />} onClick={async () => {
+                  if (!(await confirm(`¿Registrar el ${mode === "asc" ? "ascenso" : "descenso"} de ${a.n} (${rankES(a.r)} → ${rankES(nr)})${upd ? " y actualizar su rango en el roster" : ""}?`))) return;
+                  addMov(a.n, { tipo: mode, de: a.r, a: nr, via: "Contrato / resolución" }, me);
+                  if (upd) updateAgent(a.n, x => { x.r = nr; if (mode === "asc") (x as Agent & { a?: string }).a = new Date().toISOString().slice(0, 10); });
+                  toast("Movimiento registrado en el perfil");
+                }}>Registrar movimiento</Button>
+              </div>
+            )}
             <Note>{me.l >= DET_MIN ? "Incluye la carrera de detectives." : "Los detectives los gestiona Capitanía (Teniente I o superior)."}</Note>
           </CardBody>
         </Card>
