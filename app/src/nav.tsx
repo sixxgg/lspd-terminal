@@ -1,12 +1,13 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert,
-  Gavel, Package, KeyRound, BarChart3, History, Plane, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair,
+  Gavel, Package, KeyRound, BarChart3, History, Plane, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database,
 } from "lucide-react";
+import { ME_ROLES } from "./lib/store";
 import { lvl } from "./lib/domain";
 
 export type Sec = { k: string; l: string; d: string; icon: LucideIcon; ready?: boolean };
-export type Area = { k: string; l: string; min: number; req?: string; sec: Sec[] };
+export type Area = { k: string; l: string; min: number; req?: string; admin?: boolean; sec: Sec[] };
 
 /* misma estructura que la versión clásica; ready = ya migrada a la versión nueva */
 export const AREAS: Area[] = [
@@ -27,11 +28,11 @@ export const AREAS: Area[] = [
   { k: "cap", l: "Capitanía", min: 8, req: "Teniente", sec: [
     { k: "vot", l: "Resolución de votaciones", d: "Aprobar o rechazar propuestas abiertas", icon: Gavel, ready: true },
     { k: "equ", l: "Equipamiento de patrullas", d: "Lo que debe llevar cada vehículo", icon: Package, ready: true },
-    { k: "perm", l: "Permisos y cuentas", d: "Excepciones de rango y cuentas de la terminal", icon: KeyRound },
+    { k: "perm", l: "Permisos y cuentas", d: "Excepciones de rango y cuentas de la terminal", icon: KeyRound, ready: true },
   ] },
   { k: "jef", l: "Jefatura", min: 10, req: "Comandante", sec: [
-    { k: "ros", l: "Estado del roster", d: "Composición del departamento", icon: BarChart3 },
-    { k: "his", l: "Historial de votaciones", d: "Propuestas cerradas y su resultado", icon: History },
+    { k: "ros", l: "Estado del roster", d: "Composición del departamento", icon: BarChart3, ready: true },
+    { k: "his", l: "Historial de votaciones", d: "Propuestas cerradas y su resultado", icon: History, ready: true },
   ] },
   { k: "div", l: "Divisiones", min: 0, sec: [
     { k: "dv_asb", l: "Administration Services Bureau", d: "Próximamente", icon: Building2, ready: true },
@@ -43,8 +44,13 @@ export const AREAS: Area[] = [
     { k: "dv_psb", l: "Professional Standards Bureau", d: "Roster, notificaciones y expedientes", icon: Shield, ready: true },
     { k: "dv_rtd", l: "Recruitment and Training Division", d: "Entrevistas de aspirantes", icon: GraduationCap, ready: true },
   ] },
+  { k: "adm", l: "Administración", min: 0, admin: true, sec: [
+    { k: "acc", l: "Accesos y administradores", d: "Solicitudes de acceso, administradores y accesos a RTD/PSB", icon: UserCheck, ready: true },
+    { k: "brand", l: "Marca e imágenes", d: "Logos, fondos, fotos por defecto, textos y emblemas", icon: Palette, ready: true },
+    { k: "data", l: "Roster y respaldo", d: "Cargar el roster en CSV y exportar o importar los datos", icon: Database, ready: true },
+  ] },
 ];
-export const canArea = (a: Area, r?: string) => lvl(r) >= a.min;
+export const canArea = (a: Area, r?: string) => (a.admin ? !!ME_ROLES.admin : lvl(r) >= a.min);
 
 /* abre la misma sección en la versión clásica */
 export function openClassic(area: string, sec: string) {

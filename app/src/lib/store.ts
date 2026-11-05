@@ -134,3 +134,5 @@ export async function fetchImageTo(k: string, url: string): Promise<{ ok: boolea
   if (r.__s !== 200 || typeof r.v !== "string") return { ok: false, msg: r.msg || "No se pudo descargar la imagen de ese link" };
   CACHE[k] = BASE[k] = r.v; KT[k] = r.t || 0; bump(); return { ok: true };
 }
+/* espera a que se suban todos los cambios pendientes */
+export const syncIdle = () => new Promise<void>(res => { const f = () => (Sync.pending() ? setTimeout(f, 200) : res()); f(); });

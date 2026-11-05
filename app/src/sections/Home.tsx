@@ -1,5 +1,5 @@
-import { Users, UserCheck, Vote, FileText, ArrowUpRight, Sparkles } from "lucide-react";
-import { Card, CardBody, CardHeader } from "@/components/ui";
+import { Users, UserCheck, Vote, FileText, ArrowUpRight } from "lucide-react";
+import { Card, CardBody } from "@/components/ui";
 import { AREAS, canArea } from "@/nav";
 import { getRoster, rankES } from "@/lib/domain";
 import { LS, useStoreVersion } from "@/lib/store";
@@ -17,8 +17,6 @@ export function Home({ me, go }: { me: { n: string; r: string }; go: (a: string,
     { icon: Vote, n: votes, l: votes === 1 ? "Votación abierta" : "Votaciones abiertas" },
     { icon: FileText, n: infs, l: "Informes registrados" },
   ];
-  const all = AREAS.filter(a => a.k !== "ini").flatMap(a => a.sec.map(s => ({ a, s })));
-  const ready = all.filter(x => x.s.ready).length;
   return (
     <div className="space-y-6">
       <Card className="relative overflow-hidden">
@@ -40,13 +38,6 @@ export function Home({ me, go }: { me: { n: string; r: string }; go: (a: string,
         ))}
       </div>
 
-      <Card>
-        <CardHeader icon={<Sparkles />} title="Versión nueva (beta)" desc={`${ready} de ${all.length} secciones ya migradas. Las demás se abren en la versión clásica con un clic, con los mismos datos.`} />
-        <CardBody>
-          <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-gradient-to-r from-brand-500 to-sky-400" style={{ width: `${Math.max(4, (ready / all.length) * 100)}%` }} /></div>
-        </CardBody>
-      </Card>
-
       {AREAS.filter(a => a.k !== "ini" && canArea(a, me.r)).map(a => (
         <section key={a.k}>
           <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{a.l}</h3>
@@ -56,7 +47,7 @@ export function Home({ me, go }: { me: { n: string; r: string }; go: (a: string,
                 className="group flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-brand-500/50">
                 <div className={cn("grid size-10 shrink-0 place-items-center rounded-xl transition", s.ready ? "bg-brand-50 text-brand-600 group-hover:bg-brand-600 group-hover:text-white dark:bg-brand-500/10 dark:text-brand-300" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400")}><s.icon className="size-5" /></div>
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-2 text-sm font-semibold">{s.l}{s.ready && <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Nueva</span>}</p>
+                  <p className="flex items-center gap-2 text-sm font-semibold">{s.l}</p>
                   <p className="mt-0.5 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">{s.d}</p>
                 </div>
                 <ArrowUpRight className="size-4 shrink-0 text-slate-300 transition group-hover:text-brand-500 dark:text-slate-600" />

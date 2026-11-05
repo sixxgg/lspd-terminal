@@ -4,7 +4,8 @@ import { AREAS, canArea, type Area, type Sec } from "@/nav";
 import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
 import { rankES } from "@/lib/domain";
-import { getNet, useStoreVersion } from "@/lib/store";
+import { LS, getNet, useStoreVersion } from "@/lib/store";
+import { AccountModal } from "@/components/account";
 import { focusRing } from "@/components/ui";
 
 export const APP_VERSION = "1.0 beta";
@@ -22,14 +23,16 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
   me: { n: string; r: string; p?: string }; area: Area; sec: Sec; go: (a: string, s: string) => void; onLogout: () => void; children: ReactNode;
 }) {
   const [dark, setDark] = useTheme();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false), [acc, setAcc] = useState(false);
   useStoreVersion();
+  const ui = LS.json<Record<string, string>>("lspdt.ui", {}), title = (ui.title || "").trim() || "Terminal de Mando", kicker = (ui.kicker || "").trim() || "Los Santos Police Dept.";
+  useEffect(() => { document.title = title + " · LSPD"; }, [title]);
   const net = getNet();
   useEffect(() => setOpen(false), [area.k, sec.k]);
 
   const nav = (
     <nav className="scrollbar-thin flex-1 space-y-5 overflow-y-auto px-3 py-4" aria-label="Secciones">
-      {AREAS.map(a => {
+      {AREAS.filter(a => !a.admin || canArea(a, me.r)).map(a => {
         const ok = canArea(a, me.r);
         return (
           <div key={a.k}>
@@ -48,7 +51,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
                             : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-white")}>
                         <I className={cn("size-4 shrink-0", on ? "text-white" : "text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300")} />
                         <span className="flex-1 truncate">{s.l}</span>
-                        {!s.ready && !on && <span className="size-1.5 rounded-full bg-slate-300 dark:bg-slate-700" title="Todavía en la versión clásica" />}
+                        
                       </button>
                     </li>
                   );
@@ -67,22 +70,25 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
       <aside className={cn("fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-slate-200 bg-white transition-transform duration-200 dark:border-slate-800 dark:bg-slate-900 lg:sticky lg:top-0 lg:h-dvh lg:translate-x-0",
         open ? "translate-x-0 shadow-2xl" : "-translate-x-full")}>
         <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-4 dark:border-slate-800">
-          <img src="/next/logo.svg" alt="" className="h-9 w-auto" />
+          <img src={LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className="h-9 w-9 object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">Los Santos Police Dept.</p>
-            <p className="truncate text-sm font-bold">Terminal de Mando <span className="ml-1 rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">v{APP_VERSION}</span></p>
+            <p className="truncate text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">{kicker}</p>
+            <p className="truncate text-sm font-bold">{title} <span className="ml-1 rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">v{APP_VERSION}</span></p>
           </div>
           <button onClick={() => setOpen(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 lg:hidden dark:hover:bg-slate-800" aria-label="Cerrar menú"><X className="size-5" /></button>
         </div>
         {nav}
         <div className="border-t border-slate-200 p-3 dark:border-slate-800">
-          <div className="flex items-center gap-3 rounded-xl p-2">
-            <Avatar n={me.n} size={36} />
-            <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{me.n}</p><p className="truncate text-xs text-slate-500 dark:text-slate-400">{rankES(me.r)}{me.p ? ` · #${me.p}` : ""}</p></div>
+          <div className="flex items-center gap-1 rounded-xl">
+            <button onClick={() => setAcc(true)} title="Mi cuenta" className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800/70", focusRing)}>
+              <Avatar n={me.n} size={36} />
+              <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{me.n}</p><p className="truncate text-xs text-slate-500 dark:text-slate-400">{rankES(me.r)}{me.p ? ` · #${me.p}` : ""}</p></div>
+            </button>
             <button onClick={onLogout} title="Cerrar sesión" aria-label="Cerrar sesión" className={cn("rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400", focusRing)}><LogOut className="size-4" /></button>
           </div>
         </div>
       </aside>
+      <AccountModal me={me} open={acc} onClose={() => setAcc(false)} />
       {open && <div className="fixed inset-0 z-30 bg-slate-950/40 backdrop-blur-sm lg:hidden" onClick={() => setOpen(false)} />}
 
       {/* contenido */}
@@ -108,10 +114,10 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
           </button>
         </header>
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:py-8">
-          <div className="mb-6 flex items-start gap-4">
+          {area.k !== "div" && <div className="mb-6 flex items-start gap-4">
             <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-brand-600 text-white shadow-lg shadow-brand-600/25 dark:bg-brand-500">{<sec.icon className="size-5" />}</div>
             <div className="min-w-0"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand-600 dark:text-brand-300">{area.l}</p><h1 className="text-2xl font-bold tracking-tight">{sec.l}</h1><p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{sec.d}</p></div>
-          </div>
+          </div>}
           <div key={area.k + sec.k} className="animate-fade-in">{children}</div>
         </main>
       </div>
