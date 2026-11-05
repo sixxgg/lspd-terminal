@@ -12,6 +12,9 @@ import { focusRing } from "@/components/ui";
 
 export const APP_VERSION = "1.0 beta";
 export const BUILD_ID = __BUILD__;
+/* nombre corto de la división para que la barra entre en una línea */
+const divShort = (l: string) => ({ "Administration Services Bureau": "Administration Services", "Air Support Division": "Air Support", "Detective Bureau": "Detective Bureau",
+  "High Speed Interception Unit": "HSIU", "K-9 Division": "K-9", "Metropolitan Division": "Metropolitan", "Professional Standards Bureau": "PSB", "Recruitment and Training Division": "RTD" } as Record<string, string>)[l] || l;
 
 export function Shell({ me, area, sec, go, onLogout, children }: {
   me: { n: string; r: string; p?: string }; area: Area; sec: Sec; go: (a: string, s: string) => void; onLogout: () => void; children: ReactNode;
@@ -74,12 +77,12 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
         </div>
         {area.k !== "ini" && (
           <div className="border-t border-slate-200/70 dark:border-slate-800/70">
-            <nav aria-label="Secciones" className="scrollbar-none mx-auto flex max-w-[1600px] gap-1 overflow-x-auto px-3 py-2 sm:px-5 lg:flex-wrap lg:justify-center lg:overflow-visible">
+            <nav aria-label="Secciones" className="scrollbar-none mx-auto flex max-w-[1760px] gap-0.5 overflow-x-auto px-3 py-2 sm:px-5 [&>*:first-child]:ml-auto [&>*:last-child]:mr-auto">
               {area.sec.map(s => { const on = s.k === sec.k, I = s.icon; return (
                 <button key={s.k} onClick={() => go(area.k, s.k)} title={s.d} aria-current={on ? "page" : undefined}
-                  className={cn("inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-medium transition", focusRing,
+                  className={cn("inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium transition", focusRing,
                     on ? "bg-brand-500/15 text-brand-700 ring-1 ring-inset ring-brand-500/40 dark:text-brand-200" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-white")}>
-                  <I className="size-4" />{s.l}</button>); })}
+                  <I className="hidden size-4 min-[1360px]:block" />{area.k === "div" ? <><span className="hidden min-[1700px]:inline">{s.l}</span><span className="min-[1700px]:hidden">{divShort(s.l)}</span></> : s.l}</button>); })}
             </nav>
           </div>)}
       </header>
