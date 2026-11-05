@@ -1,3 +1,4 @@
+import { scrollTopApp } from "@/lib/appearance";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FileText, Search, Plus, X, Users, UserRound, Shield, Package, ScrollText, ChevronDown, Pencil, Trash2, Copy, Save, FilePlus2, Upload, ClipboardPaste, BookOpen, Info } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Select, Textarea } from "@/components/ui";
@@ -30,7 +31,7 @@ export function Informes() {
     <div className="space-y-5">
       <Segmented value={tab} onChange={setTab} options={[{ value: "new", label: "Nuevo informe", icon: <FilePlus2 /> }, { value: "list", label: `Registrados (${INFS.length})`, icon: <FileText /> }, { value: "pen", label: `Código penal (${P.length})`, icon: <BookOpen /> }]} />
       {tab === "new" ? <InfForm key={edit?.id || "new"} init={edit} onSaved={id => { setEdit(null); setOpen(id); setTab("list"); }} />
-        : tab === "list" ? <InfList open={open} setOpen={setOpen} onEdit={r => { setEdit(r); setTab("new"); window.scrollTo({ top: 0 }); }} />
+        : tab === "list" ? <InfList open={open} setOpen={setOpen} onEdit={r => { setEdit(r); setTab("new"); scrollTopApp(); }} />
         : <PenalView />}
     </div>
   );
@@ -266,13 +267,13 @@ function PenalView() {
         </details>
         {ord.length ? ord.map(g => (
           <section key={g}>
-            <h4 className="sticky top-16 z-10 -mx-4 mb-1 flex items-center gap-2 bg-white/90 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 backdrop-blur dark:bg-slate-900/90">{g}<span className="rounded-md bg-slate-100 px-1.5 text-slate-500 dark:bg-slate-800">{grp[g].length}</span></h4>
+            <h4 className="sticky top-16 z-10 -mx-4 mb-1 flex items-center gap-2 bg-white/90 px-4 py-2 dark:bg-slate-900/95 text-xs font-semibold uppercase tracking-wide text-slate-500 backdrop-blur">{g}<span className="rounded-md bg-slate-100 px-1.5 text-slate-500 dark:bg-slate-800">{grp[g].length}</span></h4>
             <div className="divide-y divide-slate-100 dark:divide-slate-800">{grp[g].map(x => (
               <div key={x.a} className="group flex gap-3 py-2.5">
                 <b className="w-16 shrink-0 font-mono text-xs leading-6">{x.a}</b>
                 <div className="min-w-0 flex-1"><p className="text-sm font-medium">{x.t}<PenMeta x={x} /></p>{x.d && <p className="mt-0.5 text-xs text-slate-500">{x.d}</p>}</div>
                 {can && <div className="flex shrink-0 gap-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
-                  <Button variant="ghost" size="sm" icon={<Pencil />} aria-label="Editar" onClick={() => { setOld(x.a); setEd({ ...x }); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
+                  <Button variant="ghost" size="sm" icon={<Pencil />} aria-label="Editar" onClick={() => { setOld(x.a); setEd({ ...x }); scrollTopApp(); }} />
                   <Button variant="ghost" size="sm" className="text-red-600" icon={<Trash2 />} aria-label="Quitar" onClick={async () => { if (await confirm(`¿Quitar el artículo ${x.a}?`, { danger: true })) savePenal(P.filter(y => y.a !== x.a)); }} />
                 </div>}
               </div>))}</div>

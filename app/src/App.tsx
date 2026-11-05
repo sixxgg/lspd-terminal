@@ -1,3 +1,5 @@
+import { scrollTopApp, setDeptUi } from "@/lib/appearance";
+import { Device } from "./components/device";
 import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Login, type PubInfo } from "./layout/Login";
@@ -29,7 +31,7 @@ export const VIEWS: Record<string, () => ReactNode> = {
 };
 import { AREAS, canArea } from "./nav";
 import { api, authApi } from "./lib/api";
-import { goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
+import { LS, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
 import { findAgent } from "./lib/domain";
 import { useFeedback } from "./components/feedback";
 
@@ -48,17 +50,18 @@ export default function App() {
   useEffect(() => {
     void api("/api/auth?full=1").then(r => { const b = r as unknown as Boot; setBoot(b); if (b.me && b.data) enter(b.data); });
   }, [enter]);
-  useEffect(() => { const f = (e: Event) => { setNav((e as CustomEvent<{ a: string; s: string }>).detail); window.scrollTo({ top: 0 }); }; window.addEventListener("lspd:go", f); return () => window.removeEventListener("lspd:go", f); }, []);
+  useEffect(() => { const f = (e: Event) => { setNav((e as CustomEvent<{ a: string; s: string }>).detail); scrollTopApp(); }; window.addEventListener("lspd:go", f); return () => window.removeEventListener("lspd:go", f); }, []);
   useEffect(() => { try { localStorage.setItem("lspdt.next.nav", JSON.stringify(nav)); } catch { /* */ } }, [nav]);
 
-  if (!boot) return <div className="grid min-h-dvh place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>;
-  if (!me) return <Login pub={boot} onDone={r => enter((r as { data: Parameters<typeof loadStore>[0] }).data)} />;
+  useEffect(() => { if (me) setDeptUi(LS.json<Record<string, string>>("lspdt.ui", {})); });
+  if (!boot) return <Device><div className="grid min-h-[var(--app-h,100dvh)] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div></Device>;
+  if (!me) return <Device brand={boot.brand}><Login pub={boot} onDone={r => enter((r as { data: Parameters<typeof loadStore>[0] }).data)} /></Device>;
 
   const ag = findAgent(me.n), user = { n: me.n, r: ag?.r || me.r, p: ag?.p };
   let area = AREAS.find(a => a.k === nav.a) || AREAS[0];
   if (!canArea(area, user.r)) area = AREAS[0];
   const sec = area.sec.find(s => s.k === nav.s) || area.sec[0];
-  const go = (a: string, s: string) => { setNav({ a, s }); window.scrollTo({ top: 0 }); };
+  const go = (a: string, s: string) => { setNav({ a, s }); scrollTopApp(); };
   const logout = async () => { await authApi({ a: "logout" }); goOffline(); setMe(null); const r = await api("/api/auth"); setBoot(r as unknown as Boot); };
 
   let view;
@@ -67,5 +70,5 @@ export default function App() {
   else if (area.k === "div") view = <Division d={sec.l} />;
   else if (VIEWS[`${area.k}/${sec.k}`]) view = VIEWS[`${area.k}/${sec.k}`]();
   else view = <Classic area={area} sec={sec} />;
-  return <MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in">{view}</div></Shell></MeCtx.Provider>;
+  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in">{view}</div></Shell></MeCtx.Provider></Device>;
 }

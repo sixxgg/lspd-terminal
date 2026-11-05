@@ -1,0 +1,60 @@
+import { Palette, MonitorSmartphone, Sparkles, Type, MousePointer2, Check, Tv } from "lucide-react";
+import { Checkbox, Field, Segmented, Select } from "@/components/ui";
+import { Modal } from "@/components/modal";
+import { ACCENTS, CRT_V, CURS, SKINS, curSvg, deptUiNow, setPref, usePref } from "@/lib/appearance";
+import { cn } from "@/lib/cn";
+
+export function SkinGrid({ value, onPick, auto }: { value: string; onPick: (k: string) => void; auto?: () => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {Object.entries(SKINS).map(([k, s]) => (
+        <button key={k} type="button" onClick={() => onPick(k)}
+          className={cn("flex items-center gap-2.5 rounded-xl border p-2 text-left text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
+            value === k ? "border-brand-500 bg-brand-50 dark:bg-brand-500/10" : "border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50")}>
+          <span className="flex h-7 w-10 shrink-0 overflow-hidden rounded-md ring-1 ring-black/10">{s.sw.map(c => <i key={c} className="flex-1" style={{ background: c }} />)}</span>
+          <span className="flex-1 truncate">{s.l}</span>{value === k && <Check className="size-3.5 text-brand-600 dark:text-brand-300" />}
+        </button>))}
+      {auto && <button type="button" onClick={auto} className="col-span-full rounded-xl border border-dashed border-slate-300 p-2 text-xs font-semibold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50">Usar el del departamento{SKINS[deptUiNow().theme] ? ` (${SKINS[deptUiNow().theme].l})` : ""}</button>}
+    </div>
+  );
+}
+export function CursorGrid({ value, onPick, acc }: { value: string; onPick: (k: string) => void; acc: string }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {Object.entries(CURS).map(([k, c]) => (
+        <button key={k} type="button" onClick={() => onPick(k)} className={cn("flex items-center gap-2 rounded-xl border p-2 text-xs font-semibold transition", value === k ? "border-brand-500 bg-brand-50 dark:bg-brand-500/10" : "border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50")}>
+          <span className="grid size-7 place-items-center rounded-md bg-slate-100 bg-center bg-no-repeat dark:bg-slate-800" style={k === "sys" ? undefined : { backgroundImage: curSvg(k, acc, false).split('") ')[0] + '")', backgroundSize: "22px" }}>{k === "sys" ? "↖" : ""}</span>{c.l}
+        </button>))}
+    </div>
+  );
+}
+
+export function AppearanceModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const p = usePref(), acc = p.acc || SKINS[p.skin].acc;
+  return (
+    <Modal open={open} onClose={onClose} title="Apariencia" desc="Se guarda en este navegador y vale también para la versión clásica." icon={<Palette />} size="lg">
+      <Field label="Tema"><SkinGrid value={p.skinOwn ? p.skin : ""} onPick={k => setPref("skin", k)} auto={() => setPref("skin", null)} /></Field>
+      <Field label="Color de acento">
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setPref("acc", null)} className={cn("h-8 rounded-full border px-3 text-xs font-semibold", !p.acc ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-200" : "border-slate-200 dark:border-slate-700")}>El del tema</button>
+          {ACCENTS.map(c => <button key={c} type="button" title={c} onClick={() => setPref("acc", c)} className={cn("size-8 rounded-full ring-offset-2 ring-offset-white transition dark:ring-offset-slate-900", p.acc === c ? "ring-2 ring-slate-900 dark:ring-white" : "hover:scale-110")} style={{ background: c }} />)}
+          <label className="relative grid size-8 cursor-pointer place-items-center overflow-hidden rounded-full border border-dashed border-slate-300 text-xs text-slate-400 dark:border-slate-600" title="Otro color">+
+            <input type="color" value={acc} onChange={e => setPref("acc", e.target.value)} className="absolute inset-0 opacity-0" /></label>
+        </div>
+      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Efecto de pantalla"><Select value={p.crt} onChange={e => setPref("crt", e.target.value)} className="text-sm">{Object.entries(CRT_V).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}</Select>
+          {CRT_V[p.crt][1] && <p className="mt-1 text-xs text-slate-500">{CRT_V[p.crt][1]}</p>}</Field>
+        <Field label={`Intensidad · ${p.crtI}%`}><input type="range" min={0} max={100} step={5} value={p.crtI} disabled={p.crt === "0"} onChange={e => setPref("crtI", +e.target.value)} className="mt-3 w-full accent-brand-600 disabled:opacity-40" /></Field>
+      </div>
+      <div className="grid gap-3 rounded-xl border border-slate-200 p-3 sm:grid-cols-2 dark:border-slate-800">
+        <div className="flex items-start gap-2.5"><MonitorSmartphone className="mt-0.5 size-4 text-slate-400" /><div><Checkbox checked={p.frame} onChange={v => setPref("frame", v)} label="Marco de tablet" /><p className="text-xs text-slate-500">Bisel, barra de estado y fondo detrás (en pantallas chicas se oculta solo).</p></div></div>
+        <div className="flex items-start gap-2.5"><Sparkles className="mt-0.5 size-4 text-slate-400" /><div><Checkbox checked={p.neon} onChange={v => setPref("neon", v)} label="Brillo neón" /><p className="text-xs text-slate-500">Resplandor del color de acento en títulos, botones y terminales (temas oscuros).</p></div></div>
+      </div>
+      <Field label="Tipografía"><div className="flex items-center gap-2"><Type className="size-4 text-slate-400" />
+        <Segmented size="sm" value={p.font} onChange={v => setPref("font", v)} options={[{ value: "inter", label: "Moderna (Inter)" }, { value: "public", label: "Clásica (Public Sans)" }]} /></div></Field>
+      <Field label="Puntero del mouse"><div className="flex items-start gap-2"><MousePointer2 className="mt-2 size-4 text-slate-400" /><div className="flex-1"><CursorGrid value={p.cur} onPick={k => setPref("cur", k)} acc={acc} /></div></div></Field>
+      <p className="flex items-center gap-1.5 text-xs text-slate-400"><Tv className="size-3.5" />Los administradores definen el tema y el puntero por defecto del departamento en Administración › Marca e imágenes.</p>
+    </Modal>
+  );
+}

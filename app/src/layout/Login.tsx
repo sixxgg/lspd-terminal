@@ -45,7 +45,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
   }
 
   return (
-    <div className="relative grid min-h-dvh place-items-center overflow-hidden bg-slate-100 px-4 py-10 dark:bg-slate-950">
+    <div className="relative grid min-h-[var(--app-h,100dvh)] place-items-center overflow-hidden bg-slate-100 px-4 py-10 dark:bg-slate-950">
       <div className="bg-grid pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
       <div className="pointer-events-none absolute -top-40 left-1/2 h-80 w-[40rem] -translate-x-1/2 rounded-full bg-brand-500/20 blur-3xl" />
       <div className="relative w-full max-w-[420px] animate-fade-in">

@@ -10,6 +10,9 @@ import { DEF_ROSTER, LS, syncIdle, useStoreVersion } from "@/lib/store";
 import { uMap, uSaveMap, rtdMem } from "@/lib/units";
 import { parseCSV } from "@/lib/patrol";
 import { DivLogo } from "@/sections/sup/Agentes";
+import { CursorGrid, SkinGrid } from "@/components/appearance";
+import { SKINS } from "@/lib/appearance";
+import { Palette } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const Row = ({ n, children }: { n: string; children?: React.ReactNode }) => { const a = findAgent(n); return (
@@ -87,6 +90,7 @@ const BRAND: [string, string, string, number, boolean, "sq" | "bg", string][] = 
   ["lspdt.logo.login", "Logo del inicio de sesión", "El escudo grande del recuadro de ingreso.", 512, true, "sq", "Logos"],
   ["lspdt.logo.header", "Logo del encabezado", "Arriba a la izquierda, al lado del título.", 512, true, "sq", "Logos"],
   ["lspdt.fav", "Ícono de la pestaña (favicon)", "Si está vacío se usa el logo general.", 256, true, "sq", "Logos"],
+  ["lspdt.bg.tablet", "Fondo detrás de la tablet", "Recomendado 1920×1080, por ejemplo una captura del juego.", 1920, false, "bg", "Fondos"],
   ["lspdt.bg.login", "Fondo del inicio de sesión", "Se ve detrás del recuadro de ingreso.", 1920, false, "bg", "Fondos"],
   ["lspdt.img.avatar", "Foto por defecto de los agentes", "La que se ve en los perfiles sin foto propia.", 800, false, "sq", "Perfiles de agentes"],
   ["lspdt.img.avatar_m", "Foto por defecto · masculino", "Opcional: reemplaza a la general en los agentes masculinos.", 800, false, "sq", "Perfiles de agentes"],
@@ -109,6 +113,13 @@ export function AdmMarca() {
       <Card>
         <CardHeader icon={<Type />} title="Textos de la interfaz" desc="Los ven todos, en las dos versiones." action={<Button size="sm" icon={<Save />} onClick={() => { const c = LS.json<Record<string, string>>("lspdt.ui", {}); UI_TXT.forEach(([k]) => { c[k] = (txt[k] || "").trim(); }); LS.setJSON("lspdt.ui", c); toast("Textos guardados · lo ven todos"); }}>Guardar textos</Button>} />
         <CardBody><div className="grid gap-4 sm:grid-cols-2">{UI_TXT.map(([k, l, d]) => <Field key={k} label={l}><Input value={txt[k]} onChange={e => setTxt({ ...txt, [k]: e.target.value })} placeholder={d} /></Field>)}</div></CardBody>
+      </Card>
+      <Card>
+        <CardHeader icon={<Palette />} title="Apariencia por defecto del departamento" desc="La ve quien no eligió una propia en Apariencia (en las dos versiones)." />
+        <CardBody>
+          <Field label="Tema"><SkinGrid value={ui.theme || ""} onPick={k => { const c = LS.json<Record<string, string>>("lspdt.ui", {}); c.theme = k; LS.setJSON("lspdt.ui", c); toast("Tema por defecto del departamento: " + SKINS[k].l); }} /></Field>
+          <Field label="Puntero"><CursorGrid value={ui.cursor || "sys"} acc={SKINS[ui.theme]?.acc || "#6366f1"} onPick={k => { const c = LS.json<Record<string, string>>("lspdt.ui", {}); c.cursor = k; LS.setJSON("lspdt.ui", c); toast("Puntero por defecto actualizado"); }} /></Field>
+        </CardBody>
       </Card>
       <Card>
         <CardHeader icon={<ImagePlus />} title="Imágenes" desc="Logos, fondos y fotos por defecto. Se guardan en la terminal y las ven todos." />

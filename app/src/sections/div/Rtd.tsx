@@ -1,3 +1,4 @@
+import { scrollTopApp } from "@/lib/appearance";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GraduationCap, UserRound, Check, X, Plus, Shuffle, PenLine, FileUp, Wand2, Trash2, Save, ClipboardList, ChevronDown, Pencil, Copy, Scale } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Textarea } from "@/components/ui";
@@ -26,7 +27,7 @@ export function Rtd() {
     <div className="space-y-5">
       <Segmented value={tab} onChange={setTab} options={[{ value: "new", label: "Entrevista de aspirante", icon: <GraduationCap /> }, { value: "list", label: `Entrevistas registradas (${L.length})`, icon: <ClipboardList /> }]} />
       {tab === "new" ? <RtdForm key={edit?.id || "n"} init={edit} onSaved={id => { setEdit(null); setOpen(id); setTab("list"); }} />
-        : <RtdList open={open} setOpen={setOpen} onEdit={r => { setEdit(r); setTab("new"); window.scrollTo({ top: 0 }); }} />}
+        : <RtdList open={open} setOpen={setOpen} onEdit={r => { setEdit(r); setTab("new"); scrollTopApp(); }} />}
     </div>
   );
 }

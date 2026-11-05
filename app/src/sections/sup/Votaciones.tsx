@@ -45,7 +45,7 @@ export function Votaciones() {
 
   return (
     <div className="grid gap-5 lg:grid-cols-[22rem_minmax(0,1fr)]">
-      <Card className="flex flex-col lg:sticky lg:top-20 lg:max-h-[calc(100dvh-7rem)]">
+      <Card className="flex flex-col lg:sticky lg:top-20 lg:max-h-[calc(var(--app-h,100dvh)-7rem)]">
         <div className="space-y-3 border-b border-slate-100 p-4 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <Button className="flex-1" icon={<Plus />} onClick={() => { setNuevo(true); setCur(null); }}>Nueva propuesta</Button>
