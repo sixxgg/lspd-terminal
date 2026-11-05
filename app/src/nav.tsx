@@ -11,7 +11,7 @@ export type Area = { k: string; l: string; min: number; req?: string; sec: Sec[]
 /* misma estructura que la versión clásica; ready = ya migrada a la versión nueva */
 export const AREAS: Area[] = [
   { k: "ini", l: "Inicio", min: 0, sec: [{ k: "home", l: "Inicio", d: "Resumen del departamento", icon: Home, ready: true }] },
-  { k: "inf", l: "Informes", min: 0, sec: [{ k: "inf", l: "Informes policiales", d: "Redactar, registrar y buscar informes · código penal", icon: FileText }] },
+  { k: "inf", l: "Informes", min: 0, sec: [{ k: "inf", l: "Informes policiales", d: "Redactar, registrar y buscar informes · código penal", icon: FileText, ready: true }] },
   { k: "sup", l: "Supervisión", min: 6, req: "Sargento I", sec: [
     { k: "prof", l: "Agentes", d: "Planilla del departamento", icon: Users, ready: true },
     { k: "asc", l: "Ascensos / Descensos", d: "Contratos y resoluciones con /me y /do", icon: TrendingUp, ready: true },

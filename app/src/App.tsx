@@ -12,6 +12,7 @@ import { Bodycam } from "./sections/sup/Bodycam";
 import { Entrevistas } from "./sections/sup/Entrevistas";
 import { Votaciones } from "./sections/sup/Votaciones";
 import { Agentes } from "./sections/sup/Agentes";
+import { Informes } from "./sections/Informes";
 import { Patrullas } from "./sections/sup/Patrullas";
 import { RegistroPatrullas } from "./sections/sup/RegistroPatrullas";
 import { Equipamiento } from "./sections/cap/Equipamiento";
@@ -19,7 +20,7 @@ import { MeCtx } from "./lib/me";
 import type { ReactNode } from "react";
 
 export const VIEWS: Record<string, () => ReactNode> = {
-  "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "cap/vot": () => <Votaciones />, "sup/pat": () => <Patrullas />, "sup/prof": () => <Agentes />, "sup/preg": () => <RegistroPatrullas />, "cap/equ": () => <Equipamiento />,
+  "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "cap/vot": () => <Votaciones />, "sup/pat": () => <Patrullas />, "sup/prof": () => <Agentes />, "inf/inf": () => <Informes />, "sup/preg": () => <RegistroPatrullas />, "cap/equ": () => <Equipamiento />,
 };
 import { AREAS, canArea } from "./nav";
 import { api, authApi } from "./lib/api";
