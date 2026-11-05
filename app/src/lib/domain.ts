@@ -1,4 +1,5 @@
 import { LS, DEF_ROSTER, type Agent } from "./store";
+export type { Agent };
 import gta from "./gta.json";
 
 export const LEVEL: Record<string, number> = {
@@ -70,3 +71,40 @@ export const uid = () => Date.now().toString(36) + Math.random().toString(36).sl
 /* escritura guiada de fechas y horas */
 export const maskDMY = (v: string) => { const d = v.replace(/\D/g, "").slice(0, 8); return d.length > 4 ? `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}` : d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d; };
 export const maskHM = (v: string) => { const d = v.replace(/\D/g, "").slice(0, 4); return d.length > 2 ? `${d.slice(0, 2)}:${d.slice(2)}` : d; };
+
+/* carreras y permisos */
+export const LADDER = ["Police Officer I", "Police Officer II", "Police Officer III", "Police Officer III+", "Sergeant I", "Sergeant II", "Lieutenant", "Captain", "Commander", "Deputy Chief", "Assistant Chief", "Chief of Police"];
+export const DET = ["Detective I", "Detective II", "Detective III"];
+export const DET_MIN = 8;
+export const RK_EN: Record<string, string> = { "Chief of Police": "COP", "Assistant Chief": "AC", "Deputy Chief": "DC", "Commander": "CMDR", "Captain": "CPT", "Lieutenant": "LT", "Sergeant II": "SGT II", "Sergeant I": "SGT I",
+  "Detective III": "DET III", "Detective II": "DET II", "Detective I": "DET I", "Police Officer III+": "PO III+", "Police Officer III": "PO III", "Police Officer II": "PO II", "Police Officer I": "PO I" };
+export const RK_AB: Record<string, string> = { "Police Officer I": "PO.I", "Police Officer II": "PO.II", "Police Officer III": "PO.III", "Police Officer III+": "PO.III+", "Detective I": "DET.I", "Detective II": "DET.II", "Detective III": "DET.III" };
+/* idioma del rango en los textos (preferencia de cada uno, igual que en la clásica) */
+export const rkTxt = (r: string) => (LS.get("lspdt.rankLang") === "es" ? rankES(r) : r);
+export type Exc = Record<string, { t1080?: boolean; psb?: boolean; [k: string]: unknown }>;
+export const excOf = () => LS.json<Exc>("lspdt.exc", {});
+export const joinY = (a: string[]) => (a.length < 2 ? a[0] || "" : a.slice(0, -1).join(", ") + " y " + a[a.length - 1]);
+export const apellido = (n: string) => String(n).trim().split(/\s+/).slice(1).join(" ") || n;
+export const rkFem = (r: string, n: string) => { let s = rankES(r); if (genderOf(n) === "f") s = s.replace(/^Capitán\b/, "Capitana").replace(/^Jefe\b/, "Jefa"); return s; };
+export const dcIdOfAgent = (a?: Agent | null) => { const d = String(a?.i || a?.d || "").trim(); return /^\d{15,21}$/.test(d) ? d : ""; };
+
+export const DIVS: [string, string[]?][] = [["Detective Bureau", ["High Tech Crime Unit", "Gang and Narcotics Division", "Major Crimes Division"]],
+  ["Metropolitan Division", ["Special Weapons And Tactics", "Bomb Squad", "Metropolitan Drone Support Operations", "Crisis Negotiation Team", "Underwater Dive Unit"]],
+  ["Air Support Division"], ["Administration Services Bureau"], ["High Speed Interception Unit"], ["Recruitment and Training Division"], ["Professional Standards Bureau"], ["K-9 Division"]];
+export const ALL_DIVS = DIVS.flatMap(d => [d[0], ...(d[1] || [])]);
+export const DIV_INFO: Record<string, [string, string]> = {
+  "Detective Bureau": ["DB", "#7c3aed"], "High Tech Crime Unit": ["HTCU", "#b8975a"], "Gang and Narcotics Division": ["GND", "#3f8f3a"], "Major Crimes Division": ["MCD", "#d4a937"], "Metropolitan Division": ["METRO", "#1f6fb0"],
+  "Special Weapons And Tactics": ["SWAT", "#111827"], "Bomb Squad": ["BS", "#b91c1c"], "Metropolitan Drone Support Operations": ["MDSO", "#0f766e"], "Crisis Negotiation Team": ["CNT", "#9333ea"], "Underwater Dive Unit": ["UDU", "#b7985d"],
+  "Air Support Division": ["ASD", "#1b8cb9"], "Administration Services Bureau": ["ASB", "#475569"], "High Speed Interception Unit": ["HSIU", "#dc2626"], "Recruitment and Training Division": ["RTD", "#b3262a"],
+  "Professional Standards Bureau": ["PSB", "#1e3a8a"], "K-9 Division": ["K-9", "#1f8f4a"] };
+export const divAb = (d: string) => DIV_INFO[d] || [d.split(/\s+/).map(w => w[0]).join("").slice(0, 4).toUpperCase(), "#334155"];
+const DIV_LOGO: Record<string, string> = { "Recruitment and Training Division": "rtd", "Underwater Dive Unit": "udu", "Metropolitan Division": "metro", "Major Crimes Division": "mcd", "High Tech Crime Unit": "htcu", "Gang and Narcotics Division": "gnd", "Air Support Division": "asd" };
+export const divEmblem = (d: string) => LS.get("lspdt.divlogo." + d) || (DIV_LOGO[d] ? `/div/${DIV_LOGO[d]}.webp?v=3` : "");
+export const isoToDMY = (s?: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return m ? `${m[3]}/${m[2]}/${m[1]}` : ""; };
+export function dmyToISO(s: string) {
+  const m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(String(s).trim()); if (!m) return null;
+  const d = +m[1], mo = +m[2], y = m[3].length === 2 ? 2000 + +m[3] : +m[3], dt = new Date(y, mo - 1, d);
+  if (y < 2000 || y > 2100 || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+  return `${y}-${pad2(mo)}-${pad2(d)}`;
+}
+export const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };

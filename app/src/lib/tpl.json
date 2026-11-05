@@ -1,0 +1,86 @@
+{
+ "alerta": {
+  "l": "Anuncio de Alerta Táctica aprobada",
+  "vars": [
+   "tipo",
+   "nivel",
+   "plazo",
+   "inicio_fecha",
+   "inicio_hora",
+   "fin_fecha",
+   "fin_hora",
+   "fin_relativo",
+   "puntos",
+   "lugares",
+   "incidente",
+   "rol",
+   "emoji",
+   "nota"
+  ],
+  "t": "# {emoji} **ALERTA TÁCTICA {nivel}** {emoji}\n\nSe activa la **Alerta Táctica {nivel}** durante un **plazo** de **{plazo}** —del {inicio_fecha} a las {inicio_hora} al {fin_fecha} a las {fin_hora}—; esta alerta entra en vigor desde la emisión de la presente notificación.\n\n> **Zonas afectadas:** {puntos}\n> **Incidente:** C-{incidente}\n> **Finaliza:** {fin_relativo}\n\n{rol}"
+ },
+ "asc": {
+  "l": "Anuncio de ascenso · variante 1",
+  "vars": [
+   "emoji",
+   "fecha",
+   "mencion",
+   "nombre",
+   "rango",
+   "rango_anterior",
+   "desde",
+   "firma",
+   "el_agente",
+   "ascendido"
+  ],
+  "t": "# {emoji} **ASCENSO LSPD** {emoji}\n\nEstimados miembros del Departamento de Policía de Los Santos,\n\nSe informa que, con fecha **{fecha}**, {mencion} ha sido {ascendido} al rango de **{rango}** en reconocimiento a su compromiso, desempeño y dedicación al servicio del Departamento.\n\nEste ascenso refleja la confianza depositada en {el_agente} para asumir nuevas responsabilidades, así como su capacidad para mantener los estándares de profesionalidad y operatividad exigidos.\n\nDesde **{desde}**, se le traslada la enhorabuena y se le anima a continuar desempeñando sus funciones con el mismo nivel de implicación y compromiso.\n\n¡Enhorabuena, {mencion}!\n\n*{firma}*"
+ },
+ "asc2": {
+  "l": "Anuncio de ascenso · variante 2",
+  "vars": [
+   "emoji",
+   "fecha",
+   "mencion",
+   "nombre",
+   "rango",
+   "rango_anterior",
+   "desde",
+   "firma",
+   "el_agente",
+   "ascendido"
+  ],
+  "t": "# {emoji} **ASCENSO LSPD** {emoji}\n\nEstimados miembros del Departamento de Policía de Los Santos,\n\nEs un placer comunicar que, con fecha **{fecha}**, {mencion} ha sido {ascendido} al rango de **{rango}**.\n\nEste nuevo paso en su carrera es fruto de su esfuerzo constante, su vocación de servicio y el ejemplo que ha sabido dar a sus compañeros en cada turno. Su trayectoria demuestra que el trabajo bien hecho siempre encuentra su recompensa.\n\nDesde **{desde}**, le deseamos mucho éxito en esta nueva etapa y confiamos en que seguirá representando los valores del Departamento con el mismo orgullo y profesionalidad.\n\n¡Felicidades, {mencion}!\n\n*{firma}*"
+ },
+ "asc3": {
+  "l": "Anuncio de ascenso · variante 3",
+  "vars": [
+   "emoji",
+   "fecha",
+   "mencion",
+   "nombre",
+   "rango",
+   "rango_anterior",
+   "desde",
+   "firma",
+   "el_agente",
+   "ascendido"
+  ],
+  "t": "# {emoji} **ASCENSO LSPD** {emoji}\n\nEstimados miembros del Departamento de Policía de Los Santos,\n\nNos complace anunciar que, a partir del **{fecha}**, {mencion} pasa a ostentar el rango de **{rango}**.\n\nSu dedicación, disciplina y compromiso con la seguridad de los ciudadanos de Los Santos no han pasado desapercibidos. Este ascenso es el reconocimiento a una labor ejemplar y a la confianza que el mando deposita en su criterio para asumir mayores responsabilidades.\n\nDesde **{desde}**, le trasladamos nuestra más sincera enhorabuena. Que esta nueva insignia sea un motivo de orgullo y un impulso para seguir creciendo dentro del Departamento.\n\n¡Enhorabuena, {mencion}! Sigue así.\n\n*{firma}*"
+ },
+ "desc": {
+  "l": "Anuncio de descenso",
+  "vars": [
+   "emoji",
+   "fecha",
+   "mencion",
+   "nombre",
+   "rango",
+   "rango_anterior",
+   "desde",
+   "firma",
+   "el_agente",
+   "descendido"
+  ],
+  "t": "# {emoji} **DESCENSO LSPD** {emoji}\n\nEstimados miembros del Departamento de Policía de Los Santos,\n\nSe informa que, con fecha **{fecha}**, {mencion} ha sido {descendido} al rango de **{rango}**.\n\nEsta medida responde a la necesidad de mantener los estándares de profesionalidad, disciplina y operatividad exigidos por el Departamento.\n\nDesde **{desde}**, se le anima a reflexionar sobre lo ocurrido y a continuar desempeñando sus funciones con el compromiso que el servicio requiere.\n\n*{firma}*"
+ }
+}

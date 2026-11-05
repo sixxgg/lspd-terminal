@@ -5,6 +5,17 @@ import { Shell } from "./layout/Shell";
 import { Home } from "./sections/Home";
 import { Classic } from "./sections/Classic";
 import { PerdidaArmamento } from "./sections/PerdidaArmamento";
+import { Ascensos } from "./sections/sup/Ascensos";
+import { T1080 } from "./sections/sup/T1080";
+import { Alerta } from "./sections/sup/Alerta";
+import { Bodycam } from "./sections/sup/Bodycam";
+import { Entrevistas } from "./sections/sup/Entrevistas";
+import { MeCtx } from "./lib/me";
+import type { ReactNode } from "react";
+
+export const VIEWS: Record<string, () => ReactNode> = {
+  "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/ent": () => <Entrevistas />,
+};
 import { AREAS, canArea } from "./nav";
 import { api, authApi } from "./lib/api";
 import { goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
@@ -41,6 +52,7 @@ export default function App() {
   let view;
   if (sec.k === "home") view = <Home me={user} go={go} />;
   else if (area.k === "sup" && sec.k === "parm") view = <PerdidaArmamento me={user} />;
+  else if (VIEWS[`${area.k}/${sec.k}`]) view = VIEWS[`${area.k}/${sec.k}`]();
   else view = <Classic area={area} sec={sec} />;
-  return <Shell me={user} area={area} sec={sec} go={go} onLogout={logout}>{view}</Shell>;
+  return <MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in">{view}</div></Shell></MeCtx.Provider>;
 }
