@@ -1,5 +1,6 @@
 import { scrollTopApp, setDeptUi } from "@/lib/appearance";
 import { Device } from "./components/device";
+import { UpdateBar } from "./components/update";
 import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Login, type PubInfo } from "./layout/Login";
@@ -55,7 +56,7 @@ export default function App() {
 
   useEffect(() => { if (me) setDeptUi(LS.json<Record<string, string>>("lspdt.ui", {})); });
   if (!boot) return <Device><div className="grid min-h-[var(--app-h,100dvh)] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div></Device>;
-  if (!me) return <Device brand={boot.brand}><Login pub={boot} onDone={r => enter((r as { data: Parameters<typeof loadStore>[0] }).data)} /></Device>;
+  if (!me) return <Device brand={boot.brand}><UpdateBar /><Login pub={boot} onDone={r => enter((r as { data: Parameters<typeof loadStore>[0] }).data)} /></Device>;
 
   const ag = findAgent(me.n), user = { n: me.n, r: ag?.r || me.r, p: ag?.p };
   let area = AREAS.find(a => a.k === nav.a) || AREAS[0];
@@ -70,5 +71,5 @@ export default function App() {
   else if (area.k === "div") view = <Division d={sec.l} />;
   else if (VIEWS[`${area.k}/${sec.k}`]) view = VIEWS[`${area.k}/${sec.k}`]();
   else view = <Classic area={area} sec={sec} />;
-  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in">{view}</div></Shell></MeCtx.Provider></Device>;
+  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in">{view}</div></Shell><UpdateBar /></MeCtx.Provider></Device>;
 }

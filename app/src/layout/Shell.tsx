@@ -11,6 +11,7 @@ import { usePref } from "@/lib/appearance";
 import { focusRing } from "@/components/ui";
 
 export const APP_VERSION = "1.0 beta";
+export const BUILD_ID = __BUILD__;
 
 export function Shell({ me, area, sec, go, onLogout, children }: {
   me: { n: string; r: string; p?: string }; area: Area; sec: Sec; go: (a: string, s: string) => void; onLogout: () => void; children: ReactNode;
@@ -73,7 +74,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
         </div>
         {area.k !== "ini" && (
           <div className="border-t border-slate-200/70 dark:border-slate-800/70">
-            <nav aria-label="Secciones" className="scrollbar-none mx-auto flex max-w-[1600px] gap-1 overflow-x-auto px-3 py-2 sm:px-5">
+            <nav aria-label="Secciones" className="scrollbar-none mx-auto flex max-w-[1600px] gap-1 overflow-x-auto px-3 py-2 sm:px-5 lg:flex-wrap lg:justify-center lg:overflow-visible">
               {area.sec.map(s => { const on = s.k === sec.k, I = s.icon; return (
                 <button key={s.k} onClick={() => go(area.k, s.k)} title={s.d} aria-current={on ? "page" : undefined}
                   className={cn("inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-medium transition", focusRing,
