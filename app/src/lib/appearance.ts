@@ -23,6 +23,16 @@ export const SKINS: Record<string, Skin> = {
   nord: { l: "Nord", dark: true, sw: ["#2e3440", "#3b4252", "#88c0d0"], bg: "#2a2f3a", card: "#2e3440", soft: "#3b4252", line: "#434c5e", ink: "#eceff4", mut: "#a3adbf", acc: "#88c0d0" },
 };
 export const ACCENTS = ["#7c9cff", "#60a5fa", "#22d3ee", "#22c55e", "#facc15", "#f97316", "#ef4444", "#e879f9", "#e5e7eb", "#c9a227"];
+/* fuentes para títulos y menús (estilo táctico, como Rajdhani SemiBold); se cargan solo si se eligen */
+export const HEADS: Record<string, { l: string; fam: string; g: string; w: number; ls: string }> = {
+  none: { l: "Igual que el texto", fam: "", g: "", w: 700, ls: "" },
+  rajdhani: { l: "Rajdhani", fam: '"Rajdhani"', g: "Rajdhani:wght@500;600;700", w: 600, ls: ".01em" },
+  chakra: { l: "Chakra Petch", fam: '"Chakra Petch"', g: "Chakra+Petch:wght@500;600;700", w: 600, ls: "0" },
+  oxanium: { l: "Oxanium", fam: '"Oxanium"', g: "Oxanium:wght@500;600;700", w: 600, ls: "0" },
+  saira: { l: "Saira Semi Condensed", fam: '"Saira Semi Condensed"', g: "Saira+Semi+Condensed:wght@500;600;700", w: 600, ls: ".005em" },
+  exo: { l: "Exo 2", fam: '"Exo 2"', g: "Exo+2:wght@500;600;700", w: 600, ls: "0" },
+  teko: { l: "Teko", fam: '"Teko"', g: "Teko:wght@400;500;600", w: 500, ls: ".02em" },
+};
 export const CRT_V: Record<string, [string, string]> = {
   suave: ["Suave", "Líneas finas y viñeta leve"], clasico: ["Clásico", "Televisor de tubo: líneas marcadas y bordes oscuros"], retro: ["Monitor retro", "Pantalla curva con máscara de fósforo"],
   fosforo: ["Fósforo verde", "Monitor policial verde"], ambar: ["Ámbar", "Monitor de terminal ámbar"], vhs: ["VHS", "Ruido, desfase de color y franjas"],
@@ -39,20 +49,20 @@ const lsSet = (k: string, v: string | null) => { try { if (v == null) localStora
 let deptUi: Record<string, string> = {};
 export const setDeptUi = (u: Record<string, string>) => { const t = JSON.stringify(u); if (t !== JSON.stringify(deptUi)) { deptUi = u; applyAppearance(); } };
 export const deptUiNow = () => deptUi;
-export type Pref = { skin: string; skinOwn: boolean; acc: string; crt: string; crtI: number; frame: boolean; neon: boolean; font: string; cur: string; curOwn: boolean; nav: "top" | "side" };
+export type Pref = { skin: string; skinOwn: boolean; acc: string; crt: string; crtI: number; frame: boolean; neon: boolean; font: string; head: string; cur: string; curOwn: boolean; nav: "top" | "side" };
 export function pref(): Pref {
   const s = lsGet("lspdt.theme"), old = lsGet("lspdt.next.theme");
   const skin = s && SKINS[s] ? s : SKINS[deptUi.theme] ? deptUi.theme : old === "light" ? "nuevoc" : "nuevo";
   const c = lsGet("lspdt.crt"), i = parseInt(lsGet("lspdt.crtI") || "");
   const cu = lsGet("lspdt.cursor");
   return { skin, skinOwn: !!(s && SKINS[s]), acc: lsGet("lspdt.accent") || "", crt: c === "0" ? "0" : c && CRT_V[c] ? c : "suave", crtI: isNaN(i) ? 70 : Math.max(0, Math.min(100, i)),
-    frame: lsGet("lspdt.frame") !== "0", neon: lsGet("lspdt.next.neon") !== "0", font: lsGet("lspdt.next.font") || "inter",
+    frame: lsGet("lspdt.frame") !== "0", neon: lsGet("lspdt.next.neon") !== "0", font: lsGet("lspdt.next.font") || "inter", head: HEADS[lsGet("lspdt.next.head") || ""] ? lsGet("lspdt.next.head")! : "rajdhani",
     cur: cu && CURS[cu] ? cu : CURS[deptUi.cursor] ? deptUi.cursor : "sys", curOwn: !!(cu && CURS[cu]), nav: lsGet("lspdt.next.navmode") === "side" ? "side" : "top" };
 }
 const subs = new Set<() => void>(); let ver = 0;
 export const usePref = () => { useSyncExternalStore(f => { subs.add(f); return () => { subs.delete(f); }; }, () => ver); return pref(); };
-export function setPref(k: "skin" | "acc" | "crt" | "crtI" | "frame" | "neon" | "font" | "cur" | "nav", v: string | number | boolean | null) {
-  const key = { skin: "lspdt.theme", acc: "lspdt.accent", crt: "lspdt.crt", crtI: "lspdt.crtI", frame: "lspdt.frame", neon: "lspdt.next.neon", font: "lspdt.next.font", cur: "lspdt.cursor", nav: "lspdt.next.navmode" }[k];
+export function setPref(k: "skin" | "acc" | "crt" | "crtI" | "frame" | "neon" | "font" | "head" | "cur" | "nav", v: string | number | boolean | null) {
+  const key = { skin: "lspdt.theme", acc: "lspdt.accent", crt: "lspdt.crt", crtI: "lspdt.crtI", frame: "lspdt.frame", neon: "lspdt.next.neon", font: "lspdt.next.font", head: "lspdt.next.head", cur: "lspdt.cursor", nav: "lspdt.next.navmode" }[k];
   lsSet(key, v === null || v === "" ? null : typeof v === "boolean" ? (v ? "1" : "0") : String(v));
   applyAppearance();
 }
@@ -83,6 +93,9 @@ export function applyAppearance() {
   const on = (c: number[]) => trip(lum(c) > 0.6 ? [11, 12, 16] : W);
   st.setProperty("--b-ink5", on(B[5])); st.setProperty("--b-ink6", on(B[6]));
   root.dataset.skin = p.skin; root.classList.toggle("neon", p.neon); root.classList.toggle("font-classic", p.font === "public");
+  const H = HEADS[p.head] || HEADS.none; root.dataset.head = p.head;
+  st.setProperty("--fh", H.fam ? `${H.fam}, ui-sans-serif, system-ui, sans-serif` : "inherit"); st.setProperty("--fhw", String(H.w)); st.setProperty("--fhls", H.ls || "normal");
+
   const b = document.body; if (b) {
     b.classList.toggle("nocrt", p.crt === "0" || p.crtI === 0); b.style.setProperty("--ci", (p.crtI / 100).toFixed(2));
     Object.keys(CRT_V).forEach(k => b.classList.toggle("crt-" + k, k === p.crt && k !== "0"));

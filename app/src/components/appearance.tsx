@@ -1,7 +1,7 @@
 import { Palette, MonitorSmartphone, Sparkles, Type, MousePointer2, Check, Tv } from "lucide-react";
 import { Checkbox, Field, Segmented, Select } from "@/components/ui";
 import { Modal } from "@/components/modal";
-import { ACCENTS, CRT_V, CURS, SKINS, curSvg, deptUiNow, setPref, usePref } from "@/lib/appearance";
+import { ACCENTS, CRT_V, CURS, HEADS, SKINS, curSvg, deptUiNow, setPref, usePref } from "@/lib/appearance";
 import { cn } from "@/lib/cn";
 
 export function SkinGrid({ value, onPick, auto }: { value: string; onPick: (k: string) => void; auto?: () => void }) {
@@ -31,6 +31,7 @@ export function CursorGrid({ value, onPick, acc }: { value: string; onPick: (k: 
 
 export function AppearanceModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const p = usePref(), acc = p.acc || SKINS[p.skin].acc;
+
   return (
     <Modal open={open} onClose={onClose} title="Apariencia" desc="Se guarda en este navegador y vale también para la versión clásica." icon={<Palette />} size="lg">
       <Field label="Tema"><SkinGrid value={p.skinOwn ? p.skin : ""} onPick={k => setPref("skin", k)} auto={() => setPref("skin", null)} /></Field>
@@ -54,6 +55,12 @@ export function AppearanceModal({ open, onClose }: { open: boolean; onClose: () 
       <Field label="Menú"><Segmented size="sm" value={p.nav} onChange={v => setPref("nav", v)} options={[{ value: "top", label: "Arriba, por áreas (como la clásica)" }, { value: "side", label: "Lateral" }]} /></Field>
       <Field label="Tipografía"><div className="flex items-center gap-2"><Type className="size-4 text-slate-400" />
         <Segmented size="sm" value={p.font} onChange={v => setPref("font", v)} options={[{ value: "inter", label: "Moderna (Inter)" }, { value: "public", label: "Clásica (Public Sans)" }]} /></div></Field>
+      <Field label="Fuente de títulos y menús" hint="(estilo táctico)">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{Object.entries(HEADS).map(([k, h]) => (
+          <button key={k} type="button" onClick={() => setPref("head", k)} style={h.fam ? { fontFamily: h.fam, fontWeight: h.w } : undefined}
+            className={cn("rounded-xl border px-3 py-2 text-left text-[15px] transition", p.head === k ? "border-brand-500 bg-brand-50 dark:bg-brand-500/10" : "border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50")}>
+            {h.l}<span className="block text-[11px] font-normal text-slate-500" style={{ fontFamily: "Inter, sans-serif" }}>{k === "none" ? "Sin fuente aparte" : "LSPD · 10-80 · PSB · ÁÉÑ"}</span></button>))}</div>
+      </Field>
       <Field label="Puntero del mouse"><div className="flex items-start gap-2"><MousePointer2 className="mt-2 size-4 text-slate-400" /><div className="flex-1"><CursorGrid value={p.cur} onPick={k => setPref("cur", k)} acc={acc} /></div></div></Field>
       <p className="flex items-center gap-1.5 text-xs text-slate-400"><Tv className="size-3.5" />Los administradores definen el tema y el puntero por defecto del departamento en Administración › Marca e imágenes.</p>
     </Modal>

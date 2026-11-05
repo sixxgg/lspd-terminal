@@ -125,3 +125,11 @@ html.neon .dv-hero-t { text-shadow: 0 0 16px color-mix(in srgb, var(--ha) 30%, t
 html.neon.dark h1 { text-shadow: 0 0 14px rgb(var(--b-500) / .35); }
 html.neon.dark [class*="rounded-2xl"][class*="border-slate-"] { box-shadow: 0 0 0 1px rgb(var(--b-500) / .07), 0 18px 50px -34px rgb(var(--b-500) / .55); }
 html.neon.dark nav [aria-current="page"] { box-shadow: 0 0 12px -4px rgb(var(--b-500) / .6); }
+
+/* fuente de títulos y menús */
+:is(h1, h2, h3, .font-display, header nav button, .dv-hero-t) { font-family: var(--fh, inherit); }
+html:not([data-head="none"]) :is(h1, h2, h3, .font-display, .dv-hero-t) { font-weight: var(--fhw, 700); letter-spacing: var(--fhls, normal); }
+html:not([data-head="none"]) header nav button { font-size: 14px; letter-spacing: var(--fhls, normal); }
+html[data-head="rajdhani"] header nav button, html[data-head="teko"] header nav button { font-size: 15px; font-weight: 600; }
+html:is([data-head="rajdhani"], [data-head="teko"]) h3.text-sm { font-size: 16px; }
+html:is([data-head="rajdhani"], [data-head="teko"]) h1.text-2xl { font-size: 1.75rem; }
