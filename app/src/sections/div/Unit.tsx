@@ -33,11 +33,19 @@ const newF = (k: UnitKey, me: string): F => { const u = UNITS[k]; return { ag: u
 export const EXAMS: [string, string, string][] = [["EVAL-INS-01", "Instructor de vuelo", "Habilita como instructor de vuelo policial. Si lo supera un Piloto, pasa automáticamente a Piloto experimentado. Permanencia mínima: 3 semanas."],
   ["EVAL-RESC-02", "Búsqueda y rescate (SAR)", "Habilita como operador aéreo de búsqueda y rescate SAR. Permanencia mínima: 2 semanas."],
   ["EVAL-TAC-03", "Táctico", "Solo por recomendación si no se es miembro de METRO/SWAT."],
-  ["CERT-DET-04", "Licencia Detective Bureau", "Licencia de vuelo (no de patrullaje) para DET I+ en vuelos confidenciales de la Detective Bureau. Excluyente de la división."]];
+  ["CERT-DET-04", "Licencia Detective Bureau", "Licencia de vuelo (no de patrullaje) para DET I+ en vuelos confidenciales de la Detective Bureau. Excluyente de la división."],
+  ["EVAL-CRIT-EMG-05", "Emergencias críticas", "Práctica de formación obligatoria. Emergencias críticas simuladas en entorno controlado: fallos falsos de máximo riesgo (rotor central o trasero, humo en cabina, incendio…) para entrenar la respuesta y el manejo de crisis. Reprobarla suspende el patrullaje aéreo hasta aprobarla; se puede volver a intentar al día siguiente."]];
+const EMG = "EVAL-CRIT-EMG-05";
+/* EVAL-CRIT-EMG-05 reprobada: patrullaje aéreo suspendido hasta aprobarla; reintento desde el día siguiente */
+export function asdSusp(n: string) {
+  const x = (LS.json<Record<string, XRec>>("lspdt.asdExam", {})[n] || {})[EMG] as { st: string; t: number } | undefined; if (!x || x.st !== "rep") return null;
+  const d = new Date(x.t || Date.now()); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + 1); return { desde: d, puede: Date.now() >= +d };
+}
+const asdSuspTxt = (n: string) => { const s = asdSusp(n); return s ? `Patrullaje aéreo suspendido · ${s.puede ? "ya puede reintentar" : "reintento desde el " + s.desde.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })}` : ""; };
 const EX_ST: [string, string, string][] = [["apr", "Aprobado", "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"], ["rep", "Reprobado", "bg-red-500/10 text-red-700 dark:text-red-300"], ["pen", "Pendiente", "bg-amber-400/15 text-amber-700 dark:text-amber-300"]];
 type XRec = Record<string, { st: string; t: number; por: string } | string>;
 function asdXText(n: string, X: XRec) {
-  const a = findAgent(n), l = EXAMS.filter(([k]) => X[k]).map(([k]) => `**${k}** ${(EX_ST.find(s => s[0] === (X[k] as { st: string }).st) || [, "—"])[1]}`);
+  const a = findAgent(n), l = EXAMS.filter(([k]) => X[k]).map(([k]) => `**${k}** ${(EX_ST.find(s => s[0] === (X[k] as { st: string }).st) || [, "—"])[1]}${k === EMG && (X[k] as { st: string }).st === "rep" ? " (patrullaje aéreo suspendido hasta aprobar)" : ""}`);
   return `**Oficial:** ${n}${a && a.p ? ` | ${a.p}` : ""}\n**Estado:** ${l.join(" · ") || "—"}${X._n ? `\n**Nota:** ${X._n}` : ""}`;
 }
 
@@ -107,7 +115,8 @@ function Roster({ k, pal }: { k: UnitKey; pal: Record<string, string> }) {
                           <input type="checkbox" className="sr-only" checked={on} onChange={e => save(y => { y[n] = (y[n] || []).filter(z => z !== x); if (e.target.checked) y[n].push(x); if (!y[n].length) y[n] = [u.R[u.R.length - 1][0]]; })} />{sh}</label>); })}
                       <button aria-label={`Quitar a ${n}`} onClick={async () => { if (await confirm(`¿Quitar a ${n} de la ${u.ab}?`, { danger: true })) save(y => { delete y[n]; }); }} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><X className="size-4" /></button>
                     </div>
-                  ) : <div className="flex flex-wrap gap-1"><Tag k={k} x={kk} main pal={pal} />{r.filter(x => x !== kk).map(x => <Tag key={x} k={k} x={x} pal={pal} />)}</div>}
+                  ) : <div className="flex flex-wrap gap-1"><Tag k={k} x={kk} main pal={pal} />{r.filter(x => x !== kk).map(x => <Tag key={x} k={k} x={x} pal={pal} />)}
+                    {k === "asd" && asdSusp(n) && <span title={asdSuspTxt(n)} className="inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-300">Patrullaje aéreo suspendido</span>}</div>}
                 </div>); }) : <p className="px-4 py-3 text-xs text-slate-400">Sin integrantes.</p>}
             </div>);
         })}
@@ -126,6 +135,7 @@ function RegForm({ k, onSaved }: { k: UnitKey; onSaved: () => void }) {
   const save = () => {
     if (!F.ag.length) { toast("Agregá al menos un agente", "err"); return; } if (F.mo === "Otro" && !F.mox.trim()) { toast("Escribí el motivo", "err"); return; }
     if (u.dog && !F.dog.trim()) { toast("Escribí el nombre del K-9", "err"); return; }
+    if (k === "asd" && F.mo !== "Formación / examen") { const su = F.ag.filter(x => asdSusp(x)); if (su.length) { toast(`${su.join(", ")} ${su.length > 1 ? "tienen" : "tiene"} el patrullaje aéreo suspendido (EVAL-CRIT-EMG-05 reprobada). Solo puede volar en «Formación / examen» hasta aprobarla.`, "err"); return; } }
     LS.setJSON(u.lk, [...uLog(k), { ...structuredClone(F), id: uid(), t: Date.now(), por2: me.n }]);
     up({ ...newF(k, me.n), ag: F.ag.slice(), veh: F.veh, dog: F.dog }); toast(u.one![0].toUpperCase() + u.one!.slice(1) + " registrado"); onSaved();
   };
@@ -137,7 +147,7 @@ function RegForm({ k, onSaved }: { k: UnitKey; onSaved: () => void }) {
           <CardBody>
             <div className="flex min-h-10 flex-wrap gap-2">{F.ag.length ? F.ag.map(n => { const a = findAgent(n); return (
               <span key={n} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white py-1 pl-1 pr-1.5 dark:border-slate-700 dark:bg-slate-800"><Avatar n={n} size={26} />
-                <span className="leading-tight"><b className="block text-xs">{n}</b><small className="text-[10.5px] text-slate-500">{a ? (a.p ? "#" + a.p + " · " : "") + rankES(a.r) : ""}</small></span>
+                <span className="leading-tight"><b className="block text-xs">{n}</b><small className="text-[10.5px] text-slate-500">{a ? (a.p ? "#" + a.p + " · " : "") + rankES(a.r) : ""}</small>{k === "asd" && asdSusp(n) && <small className="block text-[10.5px] font-semibold text-red-600 dark:text-red-400">Patrullaje aéreo suspendido</small>}</span>
                 <button aria-label={`Quitar a ${n}`} onClick={() => up({ ag: F.ag.filter(x => x !== n) })} className="rounded p-0.5 text-slate-400 hover:text-red-600"><X className="size-3.5" /></button></span>); })
               : <p className="text-sm text-slate-400">Elegí abajo quiénes participaron.</p>}</div>
             <AgentPicker value="" onChange={n => up({ ag: [...F.ag, n] })} filter={a => lvl(a.r) > 0 && !F.ag.includes(a.n) && (all || !!m[a.n])} empty="No quedan agentes para agregar" />
@@ -211,7 +221,7 @@ function Exams({ pal }: { pal: Record<string, string> }) {
   const grp = RR.map(r => [r, mem.filter(n => uTop(k, m[n]) === r)] as const).filter(([, l]) => l.length);
   const save = () => {
     const n = X.n; if (!n) { toast("Elegí un oficial", "err"); return; }
-    const R: XRec = {}; EXAMS.forEach(([x]) => { if (X.st[x]) R[x] = { st: X.st[x], t: Date.now(), por: me.n }; }); if (X.nota.trim()) R._n = X.nota.trim();
+    const P0 = ASDX[n] || {}, R: XRec = {}; EXAMS.forEach(([x]) => { const o = P0[x] as { st: string; t: number; por: string } | undefined; if (X.st[x]) R[x] = o && o.st === X.st[x] ? o : { st: X.st[x], t: Date.now(), por: me.n }; }); if (X.nota.trim()) R._n = X.nota.trim();
     LS.setJSON("lspdt.asdExam", { ...ASDX, [n]: R });
     const i1 = R["EVAL-INS-01"] as { st: string } | undefined;
     if (i1 && i1.st === "apr" && (m[n] || []).includes("piloto") && !(m[n] || []).includes("pexp")) { const mm = structuredClone(m); mm[n].push("pexp"); uSaveMap("asd", mm); toast(n + " pasa a Piloto experimentado (EVAL-INS-01 aprobado)"); }
@@ -245,7 +255,7 @@ function Exams({ pal }: { pal: Record<string, string> }) {
             ...l.map(n => { const R = ASDX[n] || {}, a = findAgent(n)!; return (
               <tr key={n} onClick={() => load(n)} className={cn("cursor-pointer border-b border-slate-100 transition hover:bg-slate-50 dark:border-slate-800/70 dark:hover:bg-slate-800/40", n === X.n && "bg-brand-50 dark:bg-brand-500/10")}>
                 <td className="px-4 py-2"><p className="font-semibold">{n}</p><p className="text-[11px] text-slate-500">{a.p && `#${a.p} · `}{rankES(a.r)}</p></td>
-                {EXAMS.map(([c]) => { const s = R[c] && EX_ST.find(x => x[0] === (R[c] as { st: string }).st); return <td key={c} className="px-3 py-2">{s ? <span className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-semibold", s[2])}>{s[1]}</span> : <span className="text-slate-300 dark:text-slate-600">—</span>}</td>; })}
+                {EXAMS.map(([c]) => { const s = R[c] && EX_ST.find(x => x[0] === (R[c] as { st: string }).st); return <td key={c} className="px-3 py-2">{s ? <><span className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-semibold", s[2])}>{s[1]}</span>{c === EMG && s[0] === "rep" && <small className="mt-1 block text-[10.5px] leading-tight text-red-600 dark:text-red-400">{asdSuspTxt(n)}</small>}</> : <span className="text-slate-300 dark:text-slate-600">—</span>}</td>; })}
               </tr>); })])}</tbody>
         </table></div>
       </Card>
