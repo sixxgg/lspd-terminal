@@ -14,6 +14,7 @@ import { Alerta } from "./sections/sup/Alerta";
 import { Bodycam } from "./sections/sup/Bodycam";
 import { Entrevistas } from "./sections/sup/Entrevistas";
 import { Votaciones } from "./sections/sup/Votaciones";
+import { Feedback } from "./sections/sup/Feedback";
 import { Agentes } from "./sections/sup/Agentes";
 import { Informes } from "./sections/Informes";
 import { Division } from "./sections/div/Division";
@@ -27,7 +28,7 @@ import { MeCtx } from "./lib/me";
 import type { ReactNode } from "react";
 
 export const VIEWS: Record<string, () => ReactNode> = {
-  "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "cap/vot": () => <Votaciones />, "sup/pat": () => <Patrullas />, "sup/prof": () => <Agentes />, "inf/inf": () => <Informes />, "sup/preg": () => <RegistroPatrullas />, "cap/equ": () => <Equipamiento />, "cap/perm": () => <Permisos />, "jef/ros": () => <EstadoRoster />, "jef/his": () => <HistorialVotaciones />,
+  "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "sup/fbk": () => <Feedback />, "cap/vot": () => <Votaciones />, "sup/pat": () => <Patrullas />, "sup/prof": () => <Agentes />, "inf/inf": () => <Informes />, "sup/preg": () => <RegistroPatrullas />, "cap/equ": () => <Equipamiento />, "cap/perm": () => <Permisos />, "jef/ros": () => <EstadoRoster />, "jef/his": () => <HistorialVotaciones />,
   "adm/acc": () => <AdmAccesos />, "adm/brand": () => <AdmMarca />, "adm/data": () => <AdmDatos />,
 };
 import { AREAS, canArea } from "./nav";

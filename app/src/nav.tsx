@@ -1,12 +1,12 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert,
+  Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
   Gavel, Package, KeyRound, BarChart3, History, Plane, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database,
 } from "lucide-react";
 import { ME_ROLES } from "./lib/store";
 import { lvl } from "./lib/domain";
 
-export type Sec = { k: string; l: string; d: string; icon: LucideIcon; ready?: boolean };
+export type Sec = { k: string; l: string; sl?: string; d: string; icon: LucideIcon; ready?: boolean };
 export type Area = { k: string; l: string; min: number; req?: string; admin?: boolean; sec: Sec[] };
 
 /* misma estructura que la versión clásica; ready = ya migrada a la versión nueva */
@@ -23,7 +23,8 @@ export const AREAS: Area[] = [
     { k: "preg", l: "Registro de patrullas", d: "Revisiones guardadas y su detalle", icon: ClipboardList, ready: true },
     { k: "ent", l: "Entrevistas", d: "Preguntas y seguimiento de los agentes", icon: MessagesSquare, ready: true },
     { k: "vot", l: "Votaciones", d: "Propuestas de ascenso y descenso con debate", icon: Vote, ready: true },
-    { k: "parm", l: "Pérdida de armamento", d: "Informe de incidente por pérdida de arma de servicio", icon: ShieldAlert, ready: true },
+    { k: "fbk", l: "Feedback (incidentes)", sl: "Feedback", d: "Feedback y acciones disciplinarias sobre la actuación de un agente", icon: MessageSquareWarning, ready: true },
+    { k: "parm", l: "Pérdida de armamento", sl: "Pérdida de arma", d: "Informe de incidente por pérdida de arma de servicio", icon: ShieldAlert, ready: true },
   ] },
   { k: "cap", l: "Capitanía", min: 8, req: "Teniente", sec: [
     { k: "vot", l: "Resolución de votaciones", d: "Aprobar o rechazar propuestas abiertas", icon: Gavel, ready: true },
