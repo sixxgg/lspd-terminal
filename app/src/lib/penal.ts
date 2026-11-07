@@ -31,9 +31,9 @@ export async function fileText(f: File): Promise<string> {
 
 /* ---------- informe ---------- */
 export type Charge = { a: string; m: "" | "at" | "ag" };
-export type Suj = { n: string; id: string; cg: Charge[] };
+export type Suj = { n: string; id: string; cg: Charge[]; p?: string };
 export type Unid = { n: string; r: string; u?: string };
-export type Veh = { t: string; mo: string; co: string; mat: string; u: string; est: string; d: string };
+export type Veh = { t: string; mo: string; co: string; mat: string; u: string; est: string; d: string; s?: string };
 /* indicativos de radio del LSPD */
 export const UNITS: string[] = ["10-MANDO-00", "10-AIRE-01", ...Array.from({ length: 20 }, (_, i) => `10-ADAM-${10 + i}`), "10-MARY-01", "10-MARY-02",
   ...["HENRY", "WILLIAM", "KING", "TOM", "ROBERT", "DAVID"].flatMap(x => [`10-${x}-01`, `10-${x}-02`]), "TAC-01", "TAC-02"];
@@ -72,16 +72,16 @@ export function infText(A: Inf, me: string, P = getPenal()) {
     S.forEach(s => { const mods = [...new Set(s.cg.map(c => c.m || ""))], same = mods.length === 1;
       const cg = s.cg.map(c => `${c.a} — ${tt(c.a)}${!same && c.m ? ` (${modTxt(c.m)})` : ""}`);
       const suf = same && mods[0] ? `, ${cg.length === 1 ? "" : cg.length === 2 ? "ambos " : "todos "}con carácter ${modTxt(mods[0])}` : "";
-      p(`${s.n}${s.id ? ` | ID: ${s.id}` : ""}${cg.length ? ` | Procesado por ${plural(cg.length, "el artículo", "los artículos")} ${joinY(cg)}${suf}` : ""}.`); }); }
+      p(`${s.n}${s.id ? ` | ID: ${s.id}` : ""}${cg.length ? ` | Procesado por ${plural(cg.length, "el artículo", "los artículos")} ${joinY(cg)}${suf}` : ""}${s.p ? ` | Agente que lo procesa: ${agTag(s.p)}` : ""}.`); }); }
   const VS = (A.veh || []).filter(v => v.mo || v.mat || v.u);
   if (on("veh") && VS.length) { sec(plural(VS.length, "VEHÍCULO IMPLICADO", "VEHÍCULOS IMPLICADOS"));
-    VS.forEach(v => { p(`- **${v.t}:** ${v.mo || "—"}${v.u ? ` (${v.u})` : ""}${v.co ? ` · Color: ${v.co}` : ""}${v.mat ? ` · Matrícula: ${v.mat}` : ""}${v.est ? ` — ${v.est}` : ""}.`); if (v.d.trim()) p(`  ${v.d.trim()}`); }); }
+    VS.forEach(v => { p(`- **${v.t}:** ${v.mo || "—"}${v.u ? ` (${v.u})` : ""}${v.s ? ` · Vinculado a: ${v.s}` : ""}${v.co ? ` · Color: ${v.co}` : ""}${v.mat ? ` · Matrícula: ${v.mat}` : ""}${v.est ? ` — ${v.est}` : ""}.`); if (v.d.trim()) p(`  ${v.d.trim()}`); }); }
   if (on("fz")) { sec("USO DE LA FUERZA"); p(A.fz || "N/A", "");
     p(A.fz === "N/A" && !A.fzd.trim() ? "No ha sido necesario el uso de la fuerza durante la intervención policial." : (A.fzd || "").trim()); }
   if (on("ev")) { sec("EVIDENCIA INCAUTADA");
     const evs = A.ev.filter(e => e.d || e.mo || e.mat); if (!evs.length) p("Sin evidencia incautada.");
     const bySuj: Record<string, Ev[]> = {}; evs.forEach(e => { (bySuj[e.s || ""] = bySuj[e.s || ""] || []).push(e); });
-    Object.entries(bySuj).forEach(([sn, l]) => { const s = S.find(x => x.n === sn); if (sn) p(`**${sn}${s && s.id ? ` — ID: ${s.id}` : ""}**`);
+    Object.entries(bySuj).forEach(([sn, l]) => { const s = S.find(x => x.n === sn); if (sn) p(`**${sn}${s && s.id ? ` — ID: ${s.id}` : ""}**${s?.p ? ` · incautado por ${agTag(s.p)}` : ""}`);
       l.forEach(e => { if (e.t === "Vehículo") { p(`- Vehículo: ${e.mo || "—"}.`); if (e.co) p(`- Color: ${e.co}.`); if (e.mat) p(`- Matrícula: ${e.mat}.`); if (e.d) p("", e.d.trim()); } else p(`- ${e.t}: ${(e.d || "—").replace(/\.$/, "")}.`); }); p(""); }); }
   if (on("cg")) { sec("CARGOS APLICADOS");
     S.forEach(s => { if (!s.cg.length) return; p(`**${s.n}${s.id ? ` — ID: ${s.id}` : ""}**`); const mods = [...new Set(s.cg.map(c => c.m || ""))], same = mods.length === 1 && mods[0];
@@ -105,6 +105,8 @@ function infProc(A: Inf, S: Suj[], tt: (a: string) => string) {
   t += `\n\n${pl ? "Una vez detenidos, fueron trasladados" : "Una vez detenido, fue trasladado"} a ${A.uf ? (/^(comisar|estaci|prisi|c[aá]rcel|central|jefatura)/i.test(A.uf) ? "la " : "") + A.uf : "la comisaría"}, donde ${pl ? "quedaron" : "quedó"} bajo custodia${cg.length ? ` y ${pl ? "fueron procesados" : "fue procesado"} por los siguientes artículos:` : "."}`;
   const ms = [...new Set(cg.map(c => c.m || ""))]; if (cg.length && ms.length === 1 && ms[0]) t = t.replace(/:$/, `, ${cg.length === 1 ? "aplicado" : cg.length === 2 ? "ambos aplicados" : "todos aplicados"} con carácter ${modTxt(ms[0])}:`);
   if (cg.length) det.forEach(s => s.cg.forEach(c => { t += `\n- Artículo ${c.a} — ${tt(c.a)}${c.m && !(ms.length === 1) ? ` (${modTxt(c.m)})` : ""}${pl ? ` · ${s.n}` : ""}.`; }));
+  const pr = det.filter(s => s.p);
+  if (pr.length) t += "\n\n" + (pr.length === 1 && !pl ? `El procesamiento lo realizó el ${agTag(pr[0].p!)}.` : pr.map(s => `${s.n} fue procesado por el ${agTag(s.p!)}.`).join(" "));
   if (A.est === "Incidente finalizado") t += `\n\nConcluidas las actuaciones policiales, el incidente queda finalizado con ${pl ? "los detenidos" : "el detenido"} bajo custodia.`;
   return t;
 }
