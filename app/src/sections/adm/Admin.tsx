@@ -182,11 +182,11 @@ export function AdmDatos() {
   }; r.readAsText(f); };
   return (
     <div className="grid gap-5 xl:grid-cols-2">
-      <Card>
-        <CardHeader icon={<FileSpreadsheet />} title="Roster" desc={`${R.length} agentes · ${custom ? "roster cargado manualmente" : "roster original"}`} />
-        <CardBody>
-          <p className="text-sm text-slate-500">Cargá un CSV con las columnas <b>Nombre</b> y <b>Rango</b> (y opcionalmente Placa, Estado, Ascenso, Contrato, Discord, Discord ID, State ID, Observaciones).</p>
-          <div className="flex flex-wrap gap-2">
+      <Card className="flex flex-col">
+        <CardHeader icon={<FileSpreadsheet />} title="Roster" desc={`${R.length} agentes · ${custom ? "cargado manualmente" : "roster original"}`} />
+        <CardBody className="flex flex-1 flex-col">
+          <p className="flex-1 text-sm leading-relaxed text-slate-500 dark:text-slate-400">Cargá un CSV con las columnas <b className="text-slate-700 dark:text-slate-200">Nombre</b> y <b className="text-slate-700 dark:text-slate-200">Rango</b>. Opcionales: Placa, Estado, Ascenso, Contrato, Discord, Discord ID, State ID y Observaciones.</p>
+          <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4 dark:border-slate-800/80">
             <Button icon={<Upload />} onClick={() => csv.current?.click()}>Cargar CSV</Button>
             {custom && <Button variant="outline" icon={<RotateCcw />} onClick={async () => { if (await confirm(`¿Volver al roster original (${DEF_ROSTER.length} agentes)?`)) { LS.del("lspdt.roster"); toast("Roster original restaurado"); } }}>Restaurar original</Button>}
             <input ref={csv} type="file" accept=".csv,text/csv" hidden onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; const r = new FileReader();
@@ -194,11 +194,11 @@ export function AdmDatos() {
           </div>
         </CardBody>
       </Card>
-      <Card>
-        <CardHeader icon={<Database />} title="Respaldo" desc="Los datos del departamento se guardan en línea y se comparten entre todos." />
-        <CardBody>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Importar reemplaza los datos compartidos de todo el departamento (perfiles, votaciones, registros, fotos…).</p>
-          <div className="flex flex-wrap gap-2">
+      <Card className="flex flex-col">
+        <CardHeader icon={<Database />} title="Respaldo" desc="Datos en línea, compartidos por todo el departamento" />
+        <CardBody className="flex flex-1 flex-col">
+          <p className="flex-1 text-sm leading-relaxed text-slate-500 dark:text-slate-400">Exportá una copia de todos los datos del departamento. <b className="text-slate-700 dark:text-slate-200">Importar</b> reemplaza los datos compartidos (perfiles, votaciones, registros, fotos…); las cuentas no se incluyen.</p>
+          <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4 dark:border-slate-800/80">
             <Button icon={<Download />} onClick={exp}>Exportar respaldo</Button>
             <Button variant="outline" icon={<Upload />} onClick={() => bk.current?.click()}>Importar respaldo</Button>
             <input ref={bk} type="file" accept=".json,application/json" hidden onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) imp(f); }} />

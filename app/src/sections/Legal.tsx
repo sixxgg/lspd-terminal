@@ -1,6 +1,6 @@
 /* Legal: leyes del servidor por capítulo, con buscador, gravedad y favoritos por agente */
 import { useMemo, useState, type ReactNode } from "react";
-import { BookOpen, ChevronDown, ChevronLeft, ChevronRight, Info, Copy, Gavel, Search, Star, X } from "lucide-react";
+import { Award, BookOpen, ChevronDown, ChevronLeft, ChevronRight, Info, Copy, Gavel, Search, Star, X } from "lucide-react";
 import { Card, Empty, Input, Segmented, Select } from "@/components/ui";
 import { useCopy } from "@/components/output";
 import { norm } from "@/lib/domain";
@@ -116,7 +116,27 @@ export function Legal() {
       {!searching && idx >= 0 && chapters.length > 1 && L.length > 0 && <div className="flex justify-between gap-3">
         <button disabled={idx <= 0} onClick={() => { pickCap(chapters[idx - 1][0]); scrollTo({ top: 0 }); }} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 disabled:invisible dark:hover:bg-slate-800"><ChevronLeft className="size-4" />Capítulo anterior</button>
         <button disabled={idx >= chapters.length - 1} onClick={() => { pickCap(chapters[idx + 1][0]); scrollTo({ top: 0 }); }} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 disabled:invisible dark:hover:bg-slate-800">Capítulo siguiente<ChevronRight className="size-4" /></button></div>}
+      <LegalCredit />
     </div>
+  );
+}
+
+const BERNAL_DC = "231832931780395008";
+function LegalCredit() {
+  const copy = useCopy();
+  return (
+    <Card className="flex flex-wrap items-center gap-4 border-amber-400/30 bg-amber-400/[.04] p-4 dark:border-amber-400/20">
+      <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-amber-400/15 text-amber-500 dark:text-amber-300"><Award className="size-5" /></div>
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-[13px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-300">Mención especial</p>
+        <p className="text-sm text-slate-600 dark:text-slate-300">Todos los derechos de la creación del ámbito legal (Código Penal y leyes administrativas de San Andreas) pertenecen a <b className="text-slate-900 dark:text-white">Bernal (Victor)</b>.</p>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <a href={`https://discord.com/users/${BERNAL_DC}`} target="_blank" rel="noopener" title="Abrir su perfil de Discord"
+          className="rounded-md bg-[#5865f2]/15 px-2 py-1 text-sm font-semibold text-[#5865f2] transition hover:bg-[#5865f2]/25 dark:text-[#c9cdfb]">@Bernal</a>
+        <button title="Copiar mención de Discord" onClick={() => copy(`<@${BERNAL_DC}>`)} className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"><Copy className="size-4" /></button>
+      </div>
+    </Card>
   );
 }
 
