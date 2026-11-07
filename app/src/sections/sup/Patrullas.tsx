@@ -29,7 +29,7 @@ export function Thumbs({ ids, cap }: { ids?: string[]; cap: string }) {
   if (!list.length) return null;
   return (
     <div className="mt-1.5 flex flex-wrap gap-1">
-      {list.slice(0, 4).map((d, i) => <button key={i} onClick={() => setLb(i)} className="overflow-hidden rounded-md ring-1 ring-slate-200 transition hover:ring-brand-400 dark:ring-slate-700"><img src={d} alt="" className="size-9 object-cover" /></button>)}
+      {list.slice(0, 4).map((d, i) => <button key={i} onClick={() => setLb(i)} className="overflow-hidden rounded-md ring-1 ring-slate-200 transition hover:ring-brand-400 dark:ring-slate-700"><img loading="lazy" decoding="async" src={d} alt="" className="size-9 object-cover" /></button>)}
       {list.length > 4 && <button onClick={() => setLb(4)} className="grid size-9 place-items-center rounded-md bg-slate-100 text-[11px] font-bold text-slate-500 dark:bg-slate-800">+{list.length - 4}</button>}
       {lb !== null && <Lightbox list={list} i={lb} cap={cap} onClose={() => setLb(null)} onNav={setLb} />}
     </div>
@@ -121,8 +121,9 @@ export function Patrullas() {
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Card>
-          <CardHeader icon={<FileText />} title="Resumen para enviar" action={<Button size="sm" icon={<Copy />} disabled={!report} onClick={() => copy(report)}>Copiar</Button>} />
-          <CardBody><textarea readOnly value={report} placeholder="Se completa a medida que revisás." className="scrollbar-thin min-h-[12rem] w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-[12.5px] leading-relaxed outline-none dark:border-slate-800 dark:bg-slate-950/60" /></CardBody>
+          <CardHeader icon={<FileText />} title="Resumen para enviar" />
+          <CardBody><textarea readOnly value={report} placeholder="Se completa a medida que revisás." className="scrollbar-thin min-h-[12rem] w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-[12.5px] leading-relaxed outline-none dark:border-slate-800 dark:bg-slate-950/60" />
+            <div className="flex justify-end"><Button size="sm" icon={<Copy />} disabled={!report} onClick={() => copy(report)}>Copiar</Button></div></CardBody>
         </Card>
         <Card className="flex flex-col items-center justify-center p-6 text-center">
           <div className="grid size-11 place-items-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300"><ClipboardList className="size-5" /></div>
@@ -175,7 +176,7 @@ function MissModal({ row, k, items, onClose, onSave }: { row: PRow; k: string; i
             className={cn("rounded-xl border-2 border-dashed p-3 transition", over ? "border-brand-400 bg-brand-50 dark:bg-brand-500/10" : "border-slate-200 dark:border-slate-700")}>
             <div className="flex flex-wrap gap-2">
               {ph.map((p, i) => (
-                <div key={i} className="group relative"><button onClick={() => setLb(i)}><img src={p.d} alt="" className="size-20 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700" /></button>
+                <div key={i} className="group relative"><button onClick={() => setLb(i)}><img loading="lazy" decoding="async" src={p.d} alt="" className="size-20 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700" /></button>
                   <button aria-label="Quitar foto" onClick={() => setPh(ph.filter((_, j) => j !== i))} className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-red-600 text-white opacity-0 shadow transition group-hover:opacity-100 focus-visible:opacity-100"><X className="size-3" /></button></div>))}
               <button onClick={() => fileRef.current?.click()} className="grid size-20 place-items-center rounded-lg border border-slate-200 text-slate-400 transition hover:border-brand-400 hover:text-brand-600 dark:border-slate-700"><ImagePlus className="size-5" /></button>
             </div>

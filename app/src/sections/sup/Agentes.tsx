@@ -56,10 +56,10 @@ function PhotoBox({ a, p, ph, className }: { a: Agent; p: Profile; ph?: Ph; clas
   return (
     <div className={cn("relative aspect-[4/5] overflow-hidden bg-gradient-to-b from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900", className)}>
       {f ? <Img src={f} w={640} className="size-full object-cover" style={phStyle(ph || phOf(p))} /> : <Sil className="absolute inset-x-0 bottom-0 h-[85%]" />}
-      <img src={logoSrc()} alt="" className="absolute left-2 top-2 h-7 w-auto drop-shadow" />
+      <img loading="lazy" decoding="async" src={logoSrc()} alt="" className="absolute left-2 top-2 h-7 w-auto drop-shadow" />
       <div className="absolute right-2 top-2 flex gap-1">
         {!!p.fr && <span title={`${p.fr} ${p.fr === 1 ? "franja" : "franjas"} de servicio`} className="grid size-7 place-items-center rounded-lg bg-slate-950/70 p-0.5 backdrop-blur"><Stripes n={p.fr} /></span>}
-        {ins && <span title={rankES(a.r)} className="grid h-7 min-w-7 place-items-center rounded-lg bg-slate-950/70 px-1 backdrop-blur"><img src={ins} alt="" className="max-h-5 w-auto" /></span>}
+        {ins && <span title={rankES(a.r)} className="grid h-7 min-w-7 place-items-center rounded-lg bg-slate-950/70 px-1 backdrop-blur"><img loading="lazy" decoding="async" src={ins} alt="" className="max-h-5 w-auto" /></span>}
       </div>
       {a.e && a.e !== "Activo" && <span className="absolute inset-x-0 bottom-0 bg-amber-500/90 py-1 text-center text-[10.5px] font-bold uppercase tracking-wider text-amber-950">{a.e}</span>}
     </div>
@@ -170,7 +170,7 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
         <div ref={coverRef} className={cn("relative h-40 overflow-hidden bg-gradient-to-br from-brand-900 via-slate-900 to-slate-950 sm:h-48", cv && "cursor-grab active:cursor-grabbing")}
           onPointerDown={e => { if (!cv || (e.target as HTMLElement).closest("button")) return; const s = { ...cv }; drag(coverRef.current, e, s, (x, y) => setCv({ x, y }), 1, 0.6); }}>
           {cover ? <Img src={cover} w={1080} className="size-full object-cover" style={{ objectPosition: `${(cv || (p.cv as { x: number; y: number }) || { x: 50, y: 50 }).x}% ${(cv || (p.cv as { x: number; y: number }) || { x: 50, y: 50 }).y}%` }} />
-            : <div className="grid size-full place-items-center bg-grid opacity-60"><img src={logoSrc()} alt="" className="h-20 opacity-30" /></div>}
+            : <div className="grid size-full place-items-center bg-grid opacity-60"><img loading="lazy" decoding="async" src={logoSrc()} alt="" className="h-20 opacity-30" /></div>}
           <div className="absolute right-3 top-3 flex gap-1.5">
             {cv ? <><Button size="sm" icon={<Check />} onClick={() => { done(x => { x.cv = cv; }, "Portada guardada"); setCv(null); }}>Guardar portada</Button><Button size="sm" variant="outline" onClick={() => setCv(null)}>Cancelar</Button></>
               : <><Button size="sm" variant="outline" icon={<ImagePlus />} onClick={() => setPick("cover")}>{cover ? "Cambiar portada" : "Subir portada"}</Button>
@@ -204,7 +204,7 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
             <div className="w-40"><div ref={phRef} className="cursor-grab touch-none overflow-hidden rounded-xl active:cursor-grabbing" onWheel={e => setPh({ ...ph, z: Math.max(1, Math.min(3, +(ph.z - e.deltaY * 0.0015).toFixed(2))) })}
               onPointerDown={e => { const s = { ...ph }; drag(phRef.current, e, s, (x, y) => setPh(v => ({ ...v!, x, y })), 1.6 / s.z, 1.6 / s.z); }}><PhotoBox a={a} p={p} ph={ph} /></div><p className="mt-1.5 text-center text-[11px] text-slate-500">Tarjeta · arrastrá para encuadrar</p></div>
             <div>
-              <div className="size-24 overflow-hidden rounded-full ring-2 ring-white dark:ring-slate-800"><img src={foto} alt="" className="size-full object-cover" style={phStyle(ph)} /></div><p className="mt-1.5 text-center text-[11px] text-slate-500">Avatar</p>
+              <div className="size-24 overflow-hidden rounded-full ring-2 ring-white dark:ring-slate-800"><img loading="lazy" decoding="async" src={foto} alt="" className="size-full object-cover" style={phStyle(ph)} /></div><p className="mt-1.5 text-center text-[11px] text-slate-500">Avatar</p>
             </div>
             <div className="min-w-[12rem] flex-1 space-y-3">
               <label className="flex items-center gap-3 text-xs font-semibold text-slate-500">Zoom<input type="range" min={1} max={3} step={0.02} value={ph.z} onChange={e => setPh({ ...ph, z: +e.target.value })} className="flex-1 accent-brand-600" /></label>

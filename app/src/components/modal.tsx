@@ -36,7 +36,7 @@ export function Lightbox({ list, i, cap, onClose, onNav }: { list: string[]; i: 
   const nb = "absolute top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white";
   return createPortal(
     <div className="fixed inset-0 z-[80] grid place-items-center bg-black/85 p-4 animate-fade-in" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-      <img src={list[i]} alt="" className="max-h-[85dvh] max-w-full rounded-xl shadow-2xl" />
+      <img loading="lazy" decoding="async" src={list[i]} alt="" className="max-h-[85dvh] max-w-full rounded-xl shadow-2xl" />
       <p className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs text-white">{cap ? cap + " · " : ""}{i + 1} de {list.length}</p>
       <button aria-label="Cerrar" onClick={onClose} className="absolute right-4 top-4 grid size-10 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"><X className="size-5" /></button>
       {list.length > 1 && <><button aria-label="Anterior" className={cn(nb, "left-4")} onClick={() => onNav((i - 1 + list.length) % list.length)}><ChevronLeft /></button>

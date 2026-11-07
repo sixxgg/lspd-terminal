@@ -10,7 +10,7 @@ export type Sec = { k: string; l: string; sl?: string; d: string; icon: LucideIc
 export type Area = { k: string; l: string; min: number; req?: string; admin?: boolean; sec: Sec[] };
 
 /* misma estructura que la versión clásica; ready = ya migrada a la versión nueva */
-export const AREAS: Area[] = [
+const RAW_AREAS: Area[] = [
   { k: "ini", l: "Inicio", min: 0, sec: [{ k: "home", l: "Inicio", d: "Resumen del departamento", icon: Home, ready: true }] },
   { k: "inf", l: "Informes", min: 0, sec: [{ k: "inf", l: "Informes policiales", d: "Redactar, registrar y buscar informes", icon: FileText, ready: true }] },
   { k: "leg", l: "Legal", min: 0, sec: [{ k: "ley", l: "Leyes", d: "Infracciones administrativas y delitos por capítulo, con favoritos", icon: Scale, ready: true }] },
@@ -52,6 +52,13 @@ export const AREAS: Area[] = [
     { k: "data", l: "Roster y respaldo", d: "Cargar el roster en CSV y exportar o importar los datos", icon: Database, ready: true },
   ] },
 ];
+/* orden A-Z: las áreas (con Inicio siempre primero) y las secciones de cada área; los números van antes que las letras */
+const coll = new Intl.Collator("es", { numeric: true, sensitivity: "base" });
+const byLabel = (a: { l: string }, b: { l: string }) => coll.compare(a.l, b.l);
+export const AREAS: Area[] = RAW_AREAS
+  .map(a => (a.k === "ini" ? a : { ...a, sec: a.sec.slice().sort(byLabel) }))
+  .sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
+
 export const canArea = (a: Area, r?: string) => (a.admin ? !!ME_ROLES.admin : lvl(r) >= a.min);
 
 /* abre la misma sección en la versión clásica */

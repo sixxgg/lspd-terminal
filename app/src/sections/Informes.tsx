@@ -1,6 +1,6 @@
 import { scrollTopApp } from "@/lib/appearance";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileText, Search, Plus, X, Users, UserRound, Shield, Package, ScrollText, ChevronDown, Pencil, Trash2, Copy, Save, FilePlus2, Info } from "lucide-react";
+import { FileText, Search, Plus, X, Users, UserRound, Shield, Package, ScrollText, ChevronDown, Pencil, Trash2, Copy, Save, FilePlus2, Info, Star } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Select, Textarea } from "@/components/ui";
 import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
@@ -8,7 +8,8 @@ import { Col, Split } from "@/components/layout";
 import { LUGARES, fmtDate, getRoster, norm, rankES, uid } from "@/lib/domain";
 import { LS, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { EV_T, INF_EST, INF_FZ, INF_ROLES, INF_TIPOS, agTag, dcParts, getPenal, infErrs, infNew, infText, penalOf, penalSearch, type Art, type Inf } from "@/lib/penal";
+import { legalFavKey } from "./Legal";
+import { EV_T, INF_EST, INF_FZ, INF_ROLES, INF_TIPOS, agTag, dcParts, getPenal, infErrs, infNew, infText, penalOf, penalSearch, artCmp, type Art, type Inf } from "@/lib/penal";
 import { cn } from "@/lib/cn";
 
 const fmtMoney = (n: number) => Number(n).toLocaleString("es-AR") + " $";
@@ -45,6 +46,9 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
   const set = <K extends keyof Inf>(k: K) => (e: { target: { value: string } }) => up(x => { (x[k] as unknown as string) = e.target.value; });
   const P = getPenal(), text = useMemo(() => infText(A, me.n, P), [A, me.n, P]), errs = infErrs(A), parts = dcParts(text);
   const R = getRoster(), copy = useCopy();
+  const [favIds] = useJSON<string[]>(legalFavKey(me.n), []);
+  const favArts = useMemo(() => favIds.map(a => penalOf(a, P)).filter((x): x is Art => !!x).sort((a, b) => artCmp(a, b)), [favIds, P]);
+  const tot = useMemo(() => { const t = { n: 0, m: 0, p: 0 }; A.suj.forEach(s => s.cg.forEach(c => { const x = penalOf(c.a, P); t.n++; t.m += x?.m || 0; t.p += x?.p || 0; })); return t; }, [A.suj, P]);
   const save = async () => {
     if (errs.length) { setShowErr(true); toast("Falta completar: " + errs.join(", "), "err"); return; }
     const INFS = LS.json<Inf[]>("lspdt.informes", []);
@@ -54,7 +58,7 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
     else { r.id = uid(); L = [...INFS, r]; }
     LS.setJSON("lspdt.informes", L); LS.del("lspdt.infDraft"); toast(A.id ? "Cambios guardados" : "Informe registrado"); onSaved(r.id);
   };
-  const tipos = [...INF_TIPOS as string[], ...A.tipos.filter(x => !(INF_TIPOS as string[]).includes(x))];
+  const tipos = [...INF_TIPOS as string[], ...A.tipos.filter(x => !(INF_TIPOS as string[]).includes(x))].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
   return (
     <Split>
       <datalist id="rosterDL">{R.map(a => <option key={a.n} value={a.n}>{rankES(a.r)}{a.p ? " · #" + a.p : ""}</option>)}</datalist>
@@ -82,6 +86,33 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
           </CardBody>
         </Card>
         <Card>
+          <CardHeader icon={<UserRound />} title="Sujetos implicados y cargos" desc="Los cargos salen del apartado Legal: buscalos por artículo o palabra, o tocá un favorito." />
+          <CardBody>
+            {A.suj.map((s, si) => (
+              <div key={si} className="space-y-2 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                <div className="flex gap-2">
+                  <Input value={s.n} onChange={e => up(x => { x.suj[si].n = e.target.value; })} placeholder="Nombre y apellido" />
+                  <Input value={s.id} onChange={e => up(x => { x.suj[si].id = e.target.value.toUpperCase(); })} placeholder="ID (CitizenID)" className="max-w-[11rem] font-mono uppercase" />
+                  <Button variant="ghost" size="icon" aria-label="Quitar sujeto" onClick={() => up(x => { x.suj.splice(si, 1); })}><X /></Button>
+                </div>
+                {s.cg.map((c, ci) => { const x = penalOf(c.a, P); return (
+                  <div key={c.a} className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 dark:bg-slate-800/50">
+                    <b className="font-mono text-xs">{c.a}</b><span className="min-w-0 flex-1 text-sm">{x ? <>{x.t}<PenMeta x={x} /></> : "Artículo sin cargar en el catálogo"}</span>
+                    <Segmented size="sm" value={c.m || ""} onChange={v => up(y => { y.suj[si].cg[ci].m = v as "" | "at" | "ag"; })} options={[{ value: "", label: "Normal" }, { value: "at", label: "Atenuado" }, { value: "ag", label: "Agravado" }]} />
+                    <button aria-label="Quitar cargo" onClick={() => up(y => { y.suj[si].cg.splice(ci, 1); })} className="rounded p-1 text-slate-400 hover:text-red-600"><X className="size-4" /></button>
+                  </div>); })}
+                {favArts.filter(f => !s.cg.some(c => c.a === f.a)).length > 0 && <div className="flex flex-wrap items-center gap-1.5"><span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400"><Star className="size-3 fill-amber-400 text-amber-400" />Favoritos</span>
+                  {favArts.filter(f => !s.cg.some(c => c.a === f.a)).map(f => <button key={f.a} type="button" title={f.t} onClick={() => up(x => { x.suj[si].cg.push({ a: f.a, m: "" }); })}
+                    className="max-w-[16rem] truncate rounded-full border border-amber-400/40 bg-amber-400/10 px-2.5 py-1 text-xs font-medium text-amber-800 transition hover:bg-amber-400/20 dark:text-amber-200"><b className="font-mono">{f.a}</b> {f.t}</button>)}</div>}
+                <ChargeSearch P={P} onPick={a => up(x => { if (!x.suj[si].cg.some(c => c.a === a)) x.suj[si].cg.push({ a, m: "" }); })} />
+              </div>))}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Button variant="outline" size="sm" icon={<Plus />} onClick={() => up(x => { x.suj.push({ n: "", id: "", cg: [] }); })}>Añadir sujeto</Button>
+              {tot.n > 0 && <span className="text-xs text-slate-500 dark:text-slate-400">{tot.n} {tot.n === 1 ? "cargo" : "cargos"} · multas <b className="text-slate-800 dark:text-slate-100">{fmtMoney(tot.m)}</b> · prisión <b className="text-slate-800 dark:text-slate-100">{tot.p} meses</b> <span className="opacity-70">(suma de los artículos, sin atenuantes ni agravantes)</span></span>}
+            </div>
+          </CardBody>
+        </Card>
+        <Card>
           <CardHeader icon={<ScrollText />} title="Relato" />
           <CardBody>
             <Field label="Motivo de la intervención"><Textarea rows={3} value={A.motivo} onChange={set("motivo")} placeholder="Por qué se inicia la intervención, quién acude primero, cómo termina." /></Field>
@@ -98,27 +129,6 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
                 <Button variant="ghost" size="icon" aria-label="Quitar unidad" onClick={() => up(x => { x.unid.splice(i, 1); })}><X /></Button>
               </div>))}
             <Button variant="outline" size="sm" icon={<Plus />} onClick={() => up(x => { x.unid.push({ n: "", r: "Unidad de apoyo" }); })}>Añadir unidad</Button>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardHeader icon={<UserRound />} title="Sujetos implicados y cargos" />
-          <CardBody>
-            {A.suj.map((s, si) => (
-              <div key={si} className="space-y-2 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-                <div className="flex gap-2">
-                  <Input value={s.n} onChange={e => up(x => { x.suj[si].n = e.target.value; })} placeholder="Nombre y apellido" />
-                  <Input value={s.id} onChange={e => up(x => { x.suj[si].id = e.target.value.toUpperCase(); })} placeholder="ID (CitizenID)" className="max-w-[11rem] font-mono uppercase" />
-                  <Button variant="ghost" size="icon" aria-label="Quitar sujeto" onClick={() => up(x => { x.suj.splice(si, 1); })}><X /></Button>
-                </div>
-                {s.cg.map((c, ci) => { const x = penalOf(c.a, P); return (
-                  <div key={c.a} className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 dark:bg-slate-800/50">
-                    <b className="font-mono text-xs">{c.a}</b><span className="min-w-0 flex-1 truncate text-sm">{x ? x.t : "Artículo sin cargar en el catálogo"}</span>
-                    <Segmented size="sm" value={c.m || ""} onChange={v => up(y => { y.suj[si].cg[ci].m = v as "" | "at" | "ag"; })} options={[{ value: "", label: "Normal" }, { value: "at", label: "Atenuado" }, { value: "ag", label: "Agravado" }]} />
-                    <button aria-label="Quitar cargo" onClick={() => up(y => { y.suj[si].cg.splice(ci, 1); })} className="rounded p-1 text-slate-400 hover:text-red-600"><X className="size-4" /></button>
-                  </div>); })}
-                <ChargeSearch P={P} onPick={a => up(x => { if (!x.suj[si].cg.some(c => c.a === a)) x.suj[si].cg.push({ a, m: "" }); })} />
-              </div>))}
-            <Button variant="outline" size="sm" icon={<Plus />} onClick={() => up(x => { x.suj.push({ n: "", id: "", cg: [] }); })}>Añadir sujeto</Button>
           </CardBody>
         </Card>
         <Card>

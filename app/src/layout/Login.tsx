@@ -51,7 +51,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
       <div className="relative w-full max-w-[420px] animate-fade-in">
         <div className="rounded-3xl border border-slate-200 bg-white/90 p-7 shadow-xl shadow-slate-900/5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-black/40">
           <div className="flex flex-col items-center text-center">
-            <img src={logo} alt="" className="h-16 w-auto drop-shadow" />
+            <img decoding="async" src={logo} alt="" className="h-16 w-auto drop-shadow" />
             <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.2em] text-brand-600 dark:text-brand-300">Los Santos Police Department</p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight">Terminal de Mando</h1>
           </div>

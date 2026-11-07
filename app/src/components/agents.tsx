@@ -24,7 +24,7 @@ export function RankBadge({ r }: { r: string }) {
   const ins = insigniaUrl(r);
   return (
     <Badge color={RANK_COLOR[r] || "#94a3b8"}>
-      {ins && <img src={ins} alt="" className="h-3 w-auto" />}{rankES(r)}
+      {ins && <img loading="lazy" decoding="async" src={ins} alt="" className="h-3 w-auto" />}{rankES(r)}
     </Badge>
   );
 }

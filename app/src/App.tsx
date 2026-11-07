@@ -1,31 +1,36 @@
 import { scrollTopApp, setDeptUi } from "@/lib/appearance";
 import { Device } from "./components/device";
 import { UpdateBar } from "./components/update";
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState, type ComponentType } from "react";
 import { Loader2 } from "lucide-react";
 import { Login, type PubInfo } from "./layout/Login";
 import { Shell } from "./layout/Shell";
 import { Home } from "./sections/Home";
-import { Classic } from "./sections/Classic";
-import { PerdidaArmamento } from "./sections/PerdidaArmamento";
-import { Ascensos } from "./sections/sup/Ascensos";
-import { T1080 } from "./sections/sup/T1080";
-import { Alerta } from "./sections/sup/Alerta";
-import { Bodycam } from "./sections/sup/Bodycam";
-import { Entrevistas } from "./sections/sup/Entrevistas";
-import { Votaciones } from "./sections/sup/Votaciones";
-import { Feedback } from "./sections/sup/Feedback";
-import { Agentes } from "./sections/sup/Agentes";
-import { Informes } from "./sections/Informes";
-import { Legal } from "./sections/Legal";
-import { Division } from "./sections/div/Division";
-import { Permisos } from "./sections/cap/Permisos";
-import { EstadoRoster, HistorialVotaciones } from "./sections/jef/Jefatura";
-import { AdmAccesos, AdmDatos, AdmMarca } from "./sections/adm/Admin";
-import { Patrullas } from "./sections/sup/Patrullas";
-import { RegistroPatrullas } from "./sections/sup/RegistroPatrullas";
-import { Equipamiento } from "./sections/cap/Equipamiento";
 import { MeCtx } from "./lib/me";
+const lz = <T extends Record<string, unknown>>(f: () => Promise<T>, n: keyof T) => lazy(() => f().then(m => ({ default: m[n] as ComponentType<any> }))); // eslint-disable-line @typescript-eslint/no-explicit-any
+const Classic = lz(() => import("./sections/Classic"), "Classic");
+const PerdidaArmamento = lz(() => import("./sections/PerdidaArmamento"), "PerdidaArmamento");
+const Ascensos = lz(() => import("./sections/sup/Ascensos"), "Ascensos");
+const T1080 = lz(() => import("./sections/sup/T1080"), "T1080");
+const Alerta = lz(() => import("./sections/sup/Alerta"), "Alerta");
+const Bodycam = lz(() => import("./sections/sup/Bodycam"), "Bodycam");
+const Entrevistas = lz(() => import("./sections/sup/Entrevistas"), "Entrevistas");
+const Votaciones = lz(() => import("./sections/sup/Votaciones"), "Votaciones");
+const Feedback = lz(() => import("./sections/sup/Feedback"), "Feedback");
+const Agentes = lz(() => import("./sections/sup/Agentes"), "Agentes");
+const Informes = lz(() => import("./sections/Informes"), "Informes");
+const Legal = lz(() => import("./sections/Legal"), "Legal");
+const Division = lz(() => import("./sections/div/Division"), "Division");
+const Permisos = lz(() => import("./sections/cap/Permisos"), "Permisos");
+const EstadoRoster = lz(() => import("./sections/jef/Jefatura"), "EstadoRoster");
+const HistorialVotaciones = lz(() => import("./sections/jef/Jefatura"), "HistorialVotaciones");
+const AdmAccesos = lz(() => import("./sections/adm/Admin"), "AdmAccesos");
+const AdmDatos = lz(() => import("./sections/adm/Admin"), "AdmDatos");
+const AdmMarca = lz(() => import("./sections/adm/Admin"), "AdmMarca");
+const Patrullas = lz(() => import("./sections/sup/Patrullas"), "Patrullas");
+const RegistroPatrullas = lz(() => import("./sections/sup/RegistroPatrullas"), "RegistroPatrullas");
+const Equipamiento = lz(() => import("./sections/cap/Equipamiento"), "Equipamiento");
+
 import type { ReactNode } from "react";
 
 export const VIEWS: Record<string, () => ReactNode> = {
@@ -56,6 +61,7 @@ export default function App() {
   useEffect(() => { const f = (e: Event) => { setNav((e as CustomEvent<{ a: string; s: string }>).detail); scrollTopApp(); }; window.addEventListener("lspd:go", f); return () => window.removeEventListener("lspd:go", f); }, []);
   useEffect(() => { try { localStorage.setItem("lspdt.next.nav", JSON.stringify(nav)); } catch { /* */ } }, [nav]);
 
+  useEffect(() => { if (!me) return; const t = setTimeout(() => { void import("./sections/Informes"); void import("./sections/Legal"); }, 2500); return () => clearTimeout(t); }, [me]);
   useEffect(() => { if (me) setDeptUi(LS.json<Record<string, string>>("lspdt.ui", {})); });
   if (!boot) return <Device><div className="grid min-h-[var(--app-h,100dvh)] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div></Device>;
   if (!me) return <Device brand={boot.brand}><UpdateBar /><Login pub={boot} onDone={r => enter((r as { data: Parameters<typeof loadStore>[0] }).data)} /></Device>;
@@ -73,5 +79,5 @@ export default function App() {
   else if (area.k === "div") view = <Division d={sec.l} />;
   else if (VIEWS[`${area.k}/${sec.k}`]) view = VIEWS[`${area.k}/${sec.k}`]();
   else view = <Classic area={area} sec={sec} />;
-  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in">{view}</div></Shell><UpdateBar /></MeCtx.Provider></Device>;
+  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in"><Suspense fallback={<div className="grid min-h-[40vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{view}</Suspense></div></Shell><UpdateBar /></MeCtx.Provider></Device>;
 }

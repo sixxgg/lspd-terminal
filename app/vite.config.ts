@@ -10,6 +10,7 @@ export default defineConfig({
   define: { __BUILD__: JSON.stringify(BUILD) },
   plugins: [react(), { name: "version-json", generateBundle() { this.emitFile({ type: "asset", fileName: "version.json", source: JSON.stringify({ b: BUILD, t: Date.now() }) }); } }],
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
-  build: { outDir: process.env.OUT || "../public/next", emptyOutDir: true, chunkSizeWarningLimit: 800 },
+  build: { outDir: process.env.OUT || "../public/next", emptyOutDir: true, target: "es2020", chunkSizeWarningLimit: 800,
+    rollupOptions: { output: { manualChunks: { react: ["react", "react-dom"], icons: ["lucide-react"] } } } },
   server: { proxy: { "/api": "http://localhost:3100" } },
 });

@@ -58,8 +58,9 @@ export function Entrevistas() {
         ))}
       </div>
       <Card>
-        <CardHeader icon={<MessagesSquare />} title="Preguntas de la entrevista" action={<Button size="sm" variant="outline" icon={<Copy />} onClick={() => copy(ENT_Q.map(([x, n], i) => `${i + 1}. ${x}${n ? `\n   (${n})` : ""}`).join("\n"))}>Copiar</Button>} />
-        <CardBody><ol className="list-decimal space-y-1.5 pl-5 text-sm text-slate-700 dark:text-slate-300">{ENT_Q.map(([x, n]) => <li key={x}>{x}{n && <span className="block text-xs text-amber-600 dark:text-amber-400">{n}</span>}</li>)}</ol></CardBody>
+        <CardHeader icon={<MessagesSquare />} title="Preguntas de la entrevista" />
+        <CardBody><ol className="list-decimal space-y-1.5 pl-5 text-sm text-slate-700 dark:text-slate-300">{ENT_Q.map(([x, n]) => <li key={x}>{x}{n && <span className="block text-xs text-amber-600 dark:text-amber-400">{n}</span>}</li>)}</ol>
+          <div className="flex justify-end"><Button size="sm" variant="outline" icon={<Copy />} onClick={() => copy(ENT_Q.map(([x, n], i) => `${i + 1}. ${x}${n ? `\n   (${n})` : ""}`).join("\n"))}>Copiar</Button></div></CardBody>
       </Card>
       <Card>
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 p-4 dark:border-slate-800">

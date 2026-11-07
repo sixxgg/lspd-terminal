@@ -243,8 +243,9 @@ function Exams({ pal }: { pal: Record<string, string> }) {
             <div className="flex justify-end"><Button icon={<Save />} onClick={save}>Guardar resultado</Button></div>
           </CardBody>
         </Card>
-        {X.n && <Card><CardHeader icon={<Copy />} title="Resultado para Discord" action={<Button size="sm" icon={<Copy />} onClick={() => copy(asdXText(X.n, ASDX[X.n] || {}))}>Copiar</Button>} />
-          <CardBody><pre className="whitespace-pre-wrap rounded-xl bg-slate-950 p-3 font-mono text-[12.5px] text-slate-200">{asdXText(X.n, ASDX[X.n] || {})}</pre></CardBody></Card>}
+        {X.n && <Card><CardHeader icon={<Copy />} title="Resultado para Discord" />
+          <CardBody><pre className="whitespace-pre-wrap rounded-xl bg-slate-950 p-3 font-mono text-[12.5px] text-slate-200">{asdXText(X.n, ASDX[X.n] || {})}</pre>
+          <div className="flex justify-end"><Button size="sm" icon={<Copy />} onClick={() => copy(asdXText(X.n, ASDX[X.n] || {}))}>Copiar</Button></div></CardBody></Card>}
       </Col>
       <Card className="overflow-hidden">
         <CardHeader icon={<ListChecks />} title="Estado de exámenes" desc="Tocá una fila para cargar a ese oficial en el formulario." />

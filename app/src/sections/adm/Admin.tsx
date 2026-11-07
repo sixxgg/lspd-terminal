@@ -111,8 +111,9 @@ export function AdmMarca() {
   return (
     <div className="space-y-5">
       <Card>
-        <CardHeader icon={<Type />} title="Textos de la interfaz" desc="Los ven todos, en las dos versiones." action={<Button size="sm" icon={<Save />} onClick={() => { const c = LS.json<Record<string, string>>("lspdt.ui", {}); UI_TXT.forEach(([k]) => { c[k] = (txt[k] || "").trim(); }); LS.setJSON("lspdt.ui", c); toast("Textos guardados · lo ven todos"); }}>Guardar textos</Button>} />
-        <CardBody><div className="grid gap-4 sm:grid-cols-2">{UI_TXT.map(([k, l, d]) => <Field key={k} label={l}><Input value={txt[k]} onChange={e => setTxt({ ...txt, [k]: e.target.value })} placeholder={d} /></Field>)}</div></CardBody>
+        <CardHeader icon={<Type />} title="Textos de la interfaz" desc="Los ven todos, en las dos versiones." />
+        <CardBody><div className="grid gap-4 sm:grid-cols-2">{UI_TXT.map(([k, l, d]) => <Field key={k} label={l}><Input value={txt[k]} onChange={e => setTxt({ ...txt, [k]: e.target.value })} placeholder={d} /></Field>)}</div>
+          <div className="flex justify-end"><Button size="sm" icon={<Save />} onClick={() => { const c = LS.json<Record<string, string>>("lspdt.ui", {}); UI_TXT.forEach(([k]) => { c[k] = (txt[k] || "").trim(); }); LS.setJSON("lspdt.ui", c); toast("Textos guardados · lo ven todos"); }}>Guardar textos</Button></div></CardBody>
       </Card>
       <Card>
         <CardHeader icon={<Palette />} title="Apariencia por defecto del departamento" desc="La ve quien no eligió una propia en Apariencia (en las dos versiones)." />
@@ -129,7 +130,7 @@ export function AdmMarca() {
               {head && <p className="pb-2 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400 first:pt-0">{head}</p>}
               <div className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
                 <div className={cn("grid shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800", f === "bg" ? "h-16 w-28" : "size-16")}>
-                  {v || g === "Logos" ? <img src={v || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className={cn("size-full", f === "bg" ? "object-cover" : "object-contain p-1.5", !v && "opacity-60")} /> : <span className="text-[10px] text-slate-400">{f === "bg" ? "Sin fondo" : "Por defecto"}</span>}</div>
+                  {v || g === "Logos" ? <img loading="lazy" decoding="async" src={v || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className={cn("size-full", f === "bg" ? "object-cover" : "object-contain p-1.5", !v && "opacity-60")} /> : <span className="text-[10px] text-slate-400">{f === "bg" ? "Sin fondo" : "Por defecto"}</span>}</div>
                 <div className="min-w-[12rem] flex-1"><p className="text-sm font-semibold">{t}</p><p className="text-xs text-slate-500">{h}</p></div>
                 <Button size="sm" variant="outline" icon={<Upload />} onClick={() => setPick({ k, t, max, alpha })}>Cambiar</Button>
                 {v && <Button size="sm" variant="ghost" icon={<RotateCcw />} onClick={async () => { if (!(await confirm(`¿Quitar «${t}»?`))) return; if (SUBS.includes(k)) LS.set(k, LS.get("lspdt.logo") || "/next/logo.svg"); else LS.del(k); toast("Restaurado"); }}>{SUBS.includes(k) ? "Copiar el general" : "Quitar"}</Button>}

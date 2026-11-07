@@ -31,12 +31,10 @@ export function DiscordOutput({ title, text, footer, errors, ctx, tag = "Discord
   const shown = mode === "web" ? discordPlain(val) : val;
   const edited = val !== text;
   return (
-    <Card className={cn("flex flex-col overflow-hidden", sticky && "lg:sticky lg:top-20")}>
+    <Card className={cn("flex flex-col overflow-hidden", sticky && "lg:sticky lg:top-32")}>
       <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
         <div className="grid size-8 place-items-center rounded-lg bg-[#5865F2]/10 text-[#5865F2] dark:bg-[#5865F2]/20 dark:text-[#a5b0ff]"><MessageSquareText className="size-4" /></div>
         <div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{tag}</p><h3 className="truncate text-sm font-semibold">{title}</h3></div>
-        {edited && <Button variant="ghost" size="sm" icon={<RotateCcw />} onClick={() => setVal(text)} title="Volver al texto generado">Restaurar</Button>}
-        <Button size="sm" onClick={async () => { if (await copy(shown, errors)) { setDone(true); setTimeout(() => setDone(false), 1500); } }} icon={done ? <Check /> : <Copy />}>{done ? "Copiado" : "Copiar"}</Button>
       </div>
       <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
         <Segmented size="sm" value={mode} onChange={setMode} options={[
@@ -59,7 +57,11 @@ export function DiscordOutput({ title, text, footer, errors, ctx, tag = "Discord
         )}
         <p className="mt-2 text-[11px] text-slate-400">{val.length} caracteres{edited ? " · editado a mano" : ""} · Copiar copia el formato elegido</p>
       </div>
-      {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-4 py-3 dark:border-slate-800">{footer}</div>}
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+        {edited && <Button variant="ghost" size="sm" icon={<RotateCcw />} onClick={() => setVal(text)} title="Volver al texto generado">Restaurar</Button>}
+        {footer}
+        <Button onClick={async () => { if (await copy(shown, errors)) { setDone(true); setTimeout(() => setDone(false), 1500); } }} icon={done ? <Check /> : <Copy />}>{done ? "Copiado" : "Copiar"}</Button>
+      </div>
     </Card>
   );
 }
@@ -73,10 +75,10 @@ export function CopyLine({ label, text, errors, tag }: { label: string; text: st
       <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
         {tag && <span className="rounded-md bg-slate-900 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-100 dark:bg-slate-800">{tag}</span>}
         <span className="flex-1 text-sm font-semibold">{label}</span>
-        <Button size="sm" variant="outline" icon={<Copy />} onClick={() => copy(val, errors)}>Copiar</Button>
       </div>
       <textarea value={val} onChange={e => setVal(e.target.value)} rows={3} spellCheck={false}
         className="block w-full resize-y bg-slate-950 px-4 py-3 font-mono text-[12.5px] leading-relaxed text-slate-200 outline-none focus:ring-2 focus:ring-inset focus:ring-brand-500/60" />
+      <div className="flex justify-end border-t border-slate-100 px-4 py-2.5 dark:border-slate-800"><Button size="sm" variant="outline" icon={<Copy />} onClick={() => copy(val, errors)}>Copiar</Button></div>
     </Card>
   );
 }

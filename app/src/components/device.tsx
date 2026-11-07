@@ -24,7 +24,7 @@ export function Device({ children, brand }: { children: ReactNode; brand?: Recor
         <div className="tab-screen bg-slate-50 dark:bg-slate-950">
           <div className="tab-status">
             <div className="l"><span>LSPD · {title}</span></div>
-            <div className="r flex items-center gap-3.5"><span className="sec">● Conexión segura</span>
+            <div className="r flex items-center gap-3.5"><span className={cn("sec", net === "off" && "off")}>{net === "off" ? "● Sin conexión" : "● Conexión segura"}</span>
               <span className={cn("inline-flex transition-colors", net === "off" ? "text-red-500" : net === "saving" ? "animate-pulse text-amber-400" : "")}>{net === "off" ? <WifiOff className="size-3.5" /> : <Wifi className="size-3.5" />}</span>
               <Clock /><span className="flex items-center gap-1.5"><BatteryFull className="size-3.5" />100%</span></div>
           </div>

@@ -10,7 +10,9 @@ import { AppearanceModal } from "@/components/appearance";
 import { usePref } from "@/lib/appearance";
 import { focusRing } from "@/components/ui";
 
-export const APP_VERSION = "1.0 beta";
+export const APP_VERSION = "1.0";
+/* distintivo rojo intermitente de la versión nueva */
+export const VersionBadge = () => <span className="ver-new" title={`Versión ${APP_VERSION} · ya está disponible`}><i />v{APP_VERSION} NEW</span>;
 export const BUILD_ID = __BUILD__;
 /* nombre corto de la división para que la barra entre en una línea */
 const divShort = (l: string) => ({ "Administration Services Bureau": "Administration Services", "Air Support Division": "Air Support", "Detective Bureau": "Detective Bureau",
@@ -28,7 +30,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
   useEffect(() => setOpen(false), [area.k, sec.k]);
   useEffect(() => { LS.set("lspdt.sec." + area.k, sec.k); }, [area.k, sec.k]);
   const { nav: mode } = usePref();
-  const logo = <img src={LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className="h-9 w-9 object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />;
+  const logo = <img decoding="async" src={LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className="h-9 w-9 object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />;
   const sync = (
     <span className={cn("hidden items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium sm:inline-flex",
       net === "off" ? "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400" : net === "saving" ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400")}>
@@ -54,12 +56,13 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
     <div className="flex min-h-[var(--app-h,100dvh)] flex-col bg-slate-50 dark:bg-slate-950">
       {modals}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/80">
-        <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-3 px-3 sm:px-5">
+        <div className="mx-auto flex h-16 max-w-[1760px] items-center gap-3 px-3 sm:px-5">
           <button onClick={() => go("ini", "home")} title="Inicio" className={cn("flex shrink-0 items-center gap-2.5 rounded-xl p-1 pr-2 text-left", focusRing)}>
             {logo}
             <span className="hidden min-w-0 md:block"><span className="block truncate text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">{kicker}</span>
               <span className="block truncate text-sm font-bold">{title}</span></span>
           </button>
+          <VersionBadge />
           <nav aria-label="Áreas" className="scrollbar-none flex min-w-0 flex-1 justify-start gap-1 overflow-x-auto lg:justify-center">
             {areas.map(a => { const on = a.k === area.k; return (
               <button key={a.k} onClick={() => goArea(a)} aria-current={on ? "page" : undefined}
@@ -86,7 +89,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
             </nav>
           </div>)}
       </header>
-      <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:py-8">
+      <main className="mx-auto w-full max-w-[1760px] flex-1 px-4 py-6 sm:px-6 lg:py-8">
         {pageHead}
         <div key={area.k + sec.k} className="animate-fade-in">{children}</div>
       </main>
@@ -133,10 +136,10 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
       <aside className={cn("fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-slate-200 bg-white transition-transform duration-200 dark:border-slate-800 dark:bg-slate-900 lg:sticky lg:top-0 lg:h-[var(--app-h,100dvh)] lg:translate-x-0",
         open ? "translate-x-0 shadow-2xl" : "-translate-x-full")}>
         <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-4 dark:border-slate-800">
-          <img src={LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className="h-9 w-9 object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />
+          <img decoding="async" src={LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className="h-9 w-9 object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">{kicker}</p>
-            <p className="truncate text-sm font-bold">{title} <span className="ml-1 rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">v{APP_VERSION}</span></p>
+            <p className="truncate text-sm font-bold">{title} <span className="ml-1"><VersionBadge /></span></p>
           </div>
           <button onClick={() => setOpen(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 lg:hidden dark:hover:bg-slate-800" aria-label="Cerrar menú"><X className="size-5" /></button>
         </div>
@@ -165,7 +168,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
           </div>
           {sync}{tools}
         </header>
-        <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:py-8">
+        <main className="mx-auto w-full max-w-[1760px] flex-1 px-4 py-6 sm:px-6 lg:py-8">
           {pageHead}
           <div key={area.k + sec.k} className="animate-fade-in">{children}</div>
         </main>

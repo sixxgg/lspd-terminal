@@ -34,7 +34,7 @@ export function AccountModal({ me, open, onClose }: { me: { n: string; r: string
         <Input type="password" autoComplete="new-password" value={n2} onChange={e => setN2(e.target.value)} placeholder="Repetir la nueva" onKeyDown={e => e.key === "Enter" && chpw()} />
         <div className="flex justify-end"><Button loading={busy} icon={<Save />} onClick={chpw}>Guardar contraseña</Button></div>
       </div>
-      <p className="border-t border-slate-100 pt-3 text-center font-mono text-[11px] text-slate-400 dark:border-slate-800">Versión 1.0 beta · build {__BUILD__}</p>
+      <p className="border-t border-slate-100 pt-3 text-center font-mono text-[11px] text-slate-400 dark:border-slate-800">Versión 1.0 · build {__BUILD__}</p>
     </Modal>
   );
 }
