@@ -33,7 +33,7 @@ export async function fileText(f: File): Promise<string> {
 export type Charge = { a: string; m: "" | "at" | "ag" };
 export type Suj = { n: string; id: string; cg: Charge[]; p?: string };
 export type Unid = { n: string; r: string; u?: string };
-export type Veh = { t: string; mo: string; co: string; mat: string; u: string; est: string; d: string; s?: string };
+export type Veh = { t: string; cat?: string; mk?: string; md?: string; mo: string; co: string; mat: string; u: string; est: string; d: string; s?: string };
 /* indicativos de radio del LSPD */
 export const UNITS: string[] = ["10-MANDO-00", "10-AIRE-01", ...Array.from({ length: 20 }, (_, i) => `10-ADAM-${10 + i}`), "10-MARY-01", "10-MARY-02",
   ...["HENRY", "WILLIAM", "KING", "TOM", "ROBERT", "DAVID"].flatMap(x => [`10-${x}-01`, `10-${x}-02`]), "TAC-01", "TAC-02"];
@@ -41,7 +41,7 @@ export const VEH_T = ["Policial", "Sospechoso", "Civil", "Otro"];
 export const VEH_EST = ["Sin daños", "Daños leves", "Daños graves", "Siniestro total", "Incautado", "Retenido en depósito", "Devuelto al propietario", "Abandonado / fugado"];
 /* secciones que se pueden sacar del informe */
 export const INF_SECS: [string, string][] = [["motivo", "Motivo"], ["hechos", "Hechos"], ["unid", "Unidades"], ["suj", "Sujetos"], ["veh", "Vehículos"], ["fz", "Uso de la fuerza"], ["ev", "Evidencia"], ["cg", "Cargos"], ["proc", "Detención y procesamiento"]];
-export type Ev = { s: string; t: string; mo?: string; co?: string; mat?: string; d?: string };
+export type Ev = { s: string; t: string; cat?: string; mk?: string; md?: string; mo?: string; co?: string; mat?: string; d?: string };
 export type Inf = { fecha: string; hora: string; ui: string; ux: string; uf: string; tipos: string[]; est: string; motivo: string; hechos: string; unid: Unid[]; suj: Suj[]; fz: string; fzd: string; ev: Ev[]; veh?: Veh[]; off?: string[]; extra: string; id: string; por?: string; t?: number; texto?: string; edit?: string };
 export const SEP = "━━━━━━━━━━━━━━━━━━━━━━━";
 const rkAb = (r: string) => RK_AB[r] || rankES(r);
@@ -75,14 +75,14 @@ export function infText(A: Inf, me: string, P = getPenal()) {
       p(`${s.n}${s.id ? ` | ID: ${s.id}` : ""}${cg.length ? ` | Procesado por ${plural(cg.length, "el artículo", "los artículos")} ${joinY(cg)}${suf}` : ""}${s.p ? ` | Agente que lo procesa: ${agTag(s.p)}` : ""}.`); }); }
   const VS = (A.veh || []).filter(v => v.mo || v.mat || v.u);
   if (on("veh") && VS.length) { sec(plural(VS.length, "VEHÍCULO IMPLICADO", "VEHÍCULOS IMPLICADOS"));
-    VS.forEach(v => { p(`- **${v.t}:** ${v.mo || "—"}${v.u ? ` (${v.u})` : ""}${v.s ? ` · Vinculado a: ${v.s}` : ""}${v.co ? ` · Color: ${v.co}` : ""}${v.mat ? ` · Matrícula: ${v.mat}` : ""}${v.est ? ` — ${v.est}` : ""}.`); if (v.d.trim()) p(`  ${v.d.trim()}`); }); }
+    VS.forEach(v => { p(`- **${v.t}:** ${v.mo || "—"}${v.cat && !(v.cat === "Policial" && v.t === "Policial") ? ` (${v.cat})` : ""}${v.u ? ` (${v.u})` : ""}${v.s ? ` · Vinculado a: ${v.s}` : ""}${v.co ? ` · Color: ${v.co}` : ""}${v.mat ? ` · Matrícula: ${v.mat}` : ""}${v.est ? ` — ${v.est}` : ""}.`); if (v.d.trim()) p(`  ${v.d.trim()}`); }); }
   if (on("fz")) { sec("USO DE LA FUERZA"); p(A.fz || "N/A", "");
     p(A.fz === "N/A" && !A.fzd.trim() ? "No ha sido necesario el uso de la fuerza durante la intervención policial." : (A.fzd || "").trim()); }
   if (on("ev")) { sec("EVIDENCIA INCAUTADA");
     const evs = A.ev.filter(e => e.d || e.mo || e.mat); if (!evs.length) p("Sin evidencia incautada.");
     const bySuj: Record<string, Ev[]> = {}; evs.forEach(e => { (bySuj[e.s || ""] = bySuj[e.s || ""] || []).push(e); });
     Object.entries(bySuj).forEach(([sn, l]) => { const s = S.find(x => x.n === sn); if (sn) p(`**${sn}${s && s.id ? ` — ID: ${s.id}` : ""}**${s?.p ? ` · incautado por ${agTag(s.p)}` : ""}`);
-      l.forEach(e => { if (e.t === "Vehículo") { p(`- Vehículo: ${e.mo || "—"}.`); if (e.co) p(`- Color: ${e.co}.`); if (e.mat) p(`- Matrícula: ${e.mat}.`); if (e.d) p("", e.d.trim()); } else p(`- ${e.t}: ${(e.d || "—").replace(/\.$/, "")}.`); }); p(""); }); }
+      l.forEach(e => { if (e.t === "Vehículo") { p(`- Vehículo: ${e.mo || "—"}${e.cat ? ` (${e.cat})` : ""}.`); if (e.co) p(`- Color: ${e.co}.`); if (e.mat) p(`- Matrícula: ${e.mat}.`); if (e.d) p("", e.d.trim()); } else p(`- ${e.t}: ${(e.d || "—").replace(/\.$/, "")}.`); }); p(""); }); }
   if (on("cg")) { sec("CARGOS APLICADOS");
     S.forEach(s => { if (!s.cg.length) return; p(`**${s.n}${s.id ? ` — ID: ${s.id}` : ""}**`); const mods = [...new Set(s.cg.map(c => c.m || ""))], same = mods.length === 1 && mods[0];
       if (same) p(`Los siguientes cargos se aplican con carácter ${modTxt(mods[0])}:`);

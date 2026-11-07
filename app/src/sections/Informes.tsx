@@ -11,7 +11,7 @@ import { useMe } from "@/lib/me";
 import { legalFavKey } from "./Legal";
 import { EV_T, INF_EST, INF_FZ, INF_ROLES, INF_SECS, INF_TIPOS, UNITS, VEH_EST, VEH_T, agTag, dcParts, getPenal, infErrs, infNew, infText, penalOf, penalSearch, artCmp, type Art, type Inf } from "@/lib/penal";
 import { cn } from "@/lib/cn";
-import { GAME_MODELS, POLICE_MODELS } from "@/lib/vehicles";
+import { VehPick } from "@/components/vehpick";
 
 const fmtMoney = (n: number) => Number(n).toLocaleString("es-AR") + " $";
 export function PenMeta({ x }: { x: Art }) {
@@ -64,10 +64,12 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
     <div key={i} className={cn("grid gap-2 rounded-xl border border-slate-200 p-2.5 dark:border-slate-800", subj ? "sm:grid-cols-[10rem_9rem_1fr_auto]" : "sm:grid-cols-[9rem_1fr_auto]")}>
       {subj && <Select value={e.s} onChange={v => up(x => { x.ev[i].s = v.target.value; })} className="text-sm"><option value="">Sin sujeto</option>{A.suj.filter(s => s.n).map(s => <option key={s.n}>{s.n}</option>)}</Select>}
       <Select value={e.t} onChange={v => up(x => { x.ev[i].t = v.target.value; })} className="text-sm">{(EV_T as string[]).map(x => <option key={x}>{x}</option>)}</Select>
-      {e.t === "Vehículo" ? <div className="grid grid-cols-3 gap-2">
-        <Input list="vehDL" value={e.mo || ""} onChange={v => up(x => { x.ev[i].mo = v.target.value; })} placeholder="Marca y modelo" />
-        <Input value={e.co || ""} onChange={v => up(x => { x.ev[i].co = v.target.value; })} placeholder="Color" />
-        <Input value={e.mat || ""} onChange={v => up(x => { x.ev[i].mat = v.target.value.toUpperCase(); })} placeholder="Matrícula" className="font-mono uppercase" />
+      {e.t === "Vehículo" ? <div className="space-y-2">
+        <VehPick v={e} onChange={p => up(x => { Object.assign(x.ev[i], p); })} />
+        <div className="grid grid-cols-2 gap-2">
+          <Input value={e.co || ""} onChange={v => up(x => { x.ev[i].co = v.target.value; })} placeholder="Color" />
+          <Input value={e.mat || ""} onChange={v => up(x => { x.ev[i].mat = v.target.value.toUpperCase(); })} placeholder="Matrícula" className="font-mono uppercase" />
+        </div>
       </div> : <Input value={e.d || ""} onChange={v => up(x => { x.ev[i].d = v.target.value; })} placeholder="Descripción (ej: 2 bolsas de marihuana, Pistola SNS)" />}
       <Button variant="ghost" size="icon" aria-label="Quitar evidencia" onClick={() => up(x => { x.ev.splice(i, 1); })}><X /></Button>
       {e.t === "Vehículo" && <Input className={subj ? "sm:col-span-4" : "sm:col-span-3"} value={e.d || ""} onChange={v => up(x => { x.ev[i].d = v.target.value; })} placeholder="Nota (opcional, ej: queda identificada como el vehículo sustraído)" />}
@@ -79,8 +81,6 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
     <Split>
       <datalist id="rosterDL">{R.map(a => <option key={a.n} value={a.n}>{rankES(a.r)}{a.p ? " · #" + a.p : ""}</option>)}</datalist>
       <datalist id="unitDL">{UNITS.map(u => <option key={u} value={u} />)}</datalist>
-      <datalist id="vehDL">{[...POLICE_MODELS, ...GAME_MODELS].map(m => <option key={m.s + m.n} value={m.n}>{m.s} · {m.c}</option>)}</datalist>
-      <datalist id="vehPolDL">{[...POLICE_MODELS, ...GAME_MODELS.filter(m => m.c === "Emergencia")].map(m => <option key={m.s + m.n} value={m.n}>{m.s} · {m.c}</option>)}</datalist>
       <datalist id="lugDL">{LUGARES.slice(0, 600).map(x => <option key={x} value={x} />)}</datalist>
       <Col>
         <Card className="flex flex-wrap items-center gap-2 p-3">
@@ -182,13 +182,15 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
           <CardHeader icon={<Car />} title="Vehículos implicados" desc="Patrullas, vehículos de los sospechosos o de civiles: modelo, matrícula y en qué estado quedaron." />
           <CardBody>
             {(A.veh || []).map((v, i) => (
-              <div key={i} className="grid gap-2 rounded-xl border border-slate-200 p-2.5 dark:border-slate-800 sm:grid-cols-[8.5rem_1fr_7rem_8rem_auto]">
-                <Select value={v.t} onChange={e => up(x => { x.veh![i].t = e.target.value; })} className="text-sm">{VEH_T.map(t => <option key={t}>{t}</option>)}</Select>
-                <Input list={v.t === "Policial" ? "vehPolDL" : "vehDL"} value={v.mo} onChange={e => up(x => { x.veh![i].mo = e.target.value; })} placeholder="Marca y modelo (ej: Bravado Buffalo STX)" />
-                <Input value={v.co} onChange={e => up(x => { x.veh![i].co = e.target.value; })} placeholder="Color" />
-                <Input value={v.mat} onChange={e => up(x => { x.veh![i].mat = e.target.value.toUpperCase(); })} placeholder="Matrícula" className="font-mono uppercase" />
+              <div key={i} className="grid gap-2 rounded-xl border border-slate-200 p-2.5 dark:border-slate-800 sm:grid-cols-[8.5rem_1fr_auto]">
+                <Select value={v.t} onChange={e => up(x => { x.veh![i].t = e.target.value; if (e.target.value === "Policial" && !x.veh![i].mo) x.veh![i].cat = "Policial"; })} className="text-sm">{VEH_T.map(t => <option key={t}>{t}</option>)}</Select>
+                <VehPick v={v} police={v.t === "Policial"} onChange={p => up(x => { Object.assign(x.veh![i], p); })} />
                 <Button variant="ghost" size="icon" aria-label="Quitar vehículo" onClick={() => up(x => { x.veh!.splice(i, 1); })}><X /></Button>
-                <div className="grid gap-2 sm:col-span-5 sm:grid-cols-[8.5rem_12rem_1fr]">
+                <div className="grid grid-cols-2 gap-2 sm:col-span-3">
+                  <Input value={v.co} onChange={e => up(x => { x.veh![i].co = e.target.value; })} placeholder="Color" />
+                  <Input value={v.mat} onChange={e => up(x => { x.veh![i].mat = e.target.value.toUpperCase(); })} placeholder="Matrícula" className="font-mono uppercase" />
+                </div>
+                <div className="grid gap-2 sm:col-span-3 sm:grid-cols-[8.5rem_12rem_1fr]">
                   {v.t === "Policial" ? <Input list="unitDL" value={v.u} onChange={e => up(x => { x.veh![i].u = e.target.value.toUpperCase(); })} placeholder="Unidad" className="font-mono text-sm uppercase" />
                     : <Select value={v.s || ""} onChange={e => up(x => { x.veh![i].s = e.target.value; })} className="text-sm" title="Sujeto vinculado (conductor o propietario)"><option value="">Sin sujeto</option>{A.suj.filter(z => z.n).map(z => <option key={z.n}>{z.n}</option>)}</Select>}
                   <Select value={v.est} onChange={e => up(x => { x.veh![i].est = e.target.value; })} className="text-sm"><option value="">Estado…</option>{VEH_EST.map(t => <option key={t}>{t}</option>)}</Select>
@@ -197,7 +199,7 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
               </div>))}
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" icon={<Plus />} onClick={() => up(x => { x.veh = [...(x.veh || []), { t: "Sospechoso", mo: "", co: "", mat: "", u: "", est: "", d: "" }]; })}>Añadir vehículo</Button>
-              <Button variant="ghost" size="sm" icon={<Car />} onClick={() => up(x => { const mine = x.unid.find(u => u.u); x.veh = [...(x.veh || []), { t: "Policial", mo: "", co: "", mat: "", u: mine?.u || "", est: "Sin daños", d: "" }]; })}>Añadir patrulla</Button>
+              <Button variant="ghost" size="sm" icon={<Car />} onClick={() => up(x => { const mine = x.unid.find(u => u.u); x.veh = [...(x.veh || []), { t: "Policial", cat: "Policial", mo: "", co: "", mat: "", u: mine?.u || "", est: "Sin daños", d: "" }]; })}>Añadir patrulla</Button>
             </div>
           </CardBody>
         </Card>
