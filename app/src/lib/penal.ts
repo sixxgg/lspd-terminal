@@ -3,13 +3,13 @@ import { LS } from "./store";
 import { RK_AB, findAgent, joinY, norm, rankES } from "./domain";
 import { CIRC, EV_T, INF_EST, INF_FZ, INF_ROLES, INF_TIPOS, PENAL_DEF, PEN_CATS, SYN } from "@/legacy/penal";
 
-export type Art = { a: string; t: string; d: string; c: string; k?: "cp" | "adm"; g?: string; m?: number; p?: number; pt?: number };
+export type Art = { a: string; t: string; d: string; c: string; k?: "cp" | "adm"; g?: string; m?: number; p?: number; pt?: number; v?: number };
 export { CIRC, EV_T, INF_EST, INF_FZ, INF_ROLES, INF_TIPOS, PEN_CATS };
 export const PENAL_BASE = PENAL_DEF as Art[];
 export const artCmp = (x: Art, y: Art) => { const A = x.a.split(".").map(Number), B = y.a.split(".").map(Number); return A[0] - B[0] || (A[1] || 0) - (B[1] || 0) || (A[2] || 0) - (B[2] || 0); };
 export function getPenal(): Art[] {
   const s = LS.json<Art[] | null>("lspdt.penal", null); if (!Array.isArray(s)) return PENAL_BASE.slice();
-  const m = new Map(PENAL_BASE.map(x => [x.a, x])); s.forEach(x => m.set(x.a, { ...(m.get(x.a) || {}), ...x, d: x.d || m.get(x.a)?.d || "" } as Art)); return [...m.values()];
+  const m = new Map(PENAL_BASE.map(x => [x.a, x])); s.forEach(x => { const b = m.get(x.a); if (b && (b.v || 0) > (x.v || 0)) return; /* texto oficial más nuevo que lo guardado */ m.set(x.a, { ...(b || {}), ...x, d: x.d || b?.d || "" } as Art); }); return [...m.values()];
 }
 export const savePenal = (l: Art[]) => LS.setJSON("lspdt.penal", l);
 export const penalOf = (a: string, P = getPenal()) => P.find(x => x.a === a);
