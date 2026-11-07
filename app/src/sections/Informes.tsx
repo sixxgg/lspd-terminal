@@ -1,6 +1,6 @@
 import { scrollTopApp } from "@/lib/appearance";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileText, Search, Plus, X, Users, UserRound, Shield, Package, ScrollText, ChevronDown, Pencil, Trash2, Copy, Save, FilePlus2, Upload, ClipboardPaste, BookOpen, Info } from "lucide-react";
+import { FileText, Search, Plus, X, Users, UserRound, Shield, Package, ScrollText, ChevronDown, Pencil, Trash2, Copy, Save, FilePlus2, Info } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Select, Textarea } from "@/components/ui";
 import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
@@ -8,7 +8,7 @@ import { Col, Split } from "@/components/layout";
 import { LUGARES, fmtDate, getRoster, norm, rankES, uid } from "@/lib/domain";
 import { LS, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { CIRC, EV_T, INF_EST, INF_FZ, INF_ROLES, INF_TIPOS, PENAL_BASE, PEN_CATS, agTag, artCmp, dcParts, fileText, getPenal, infErrs, infNew, infText, parsePenal, penalOf, penalSearch, savePenal, type Art, type Inf } from "@/lib/penal";
+import { EV_T, INF_EST, INF_FZ, INF_ROLES, INF_TIPOS, agTag, dcParts, getPenal, infErrs, infNew, infText, penalOf, penalSearch, type Art, type Inf } from "@/lib/penal";
 import { cn } from "@/lib/cn";
 
 const fmtMoney = (n: number) => Number(n).toLocaleString("es-AR") + " $";
@@ -25,14 +25,13 @@ export function PenMeta({ x }: { x: Art }) {
 export function Informes() {
   useStoreVersion();
   const [INFS] = useJSON<Inf[]>("lspdt.informes", []);
-  const P = getPenal();
-  const [tab, setTab] = useState<"new" | "list" | "pen">("new"), [edit, setEdit] = useState<Inf | null>(null), [open, setOpen] = useState<string | null>(null);
+  const [tab, setTab] = useState<"new" | "list">("new"), [edit, setEdit] = useState<Inf | null>(null), [open, setOpen] = useState<string | null>(null);
   return (
     <div className="space-y-5">
-      <Segmented value={tab} onChange={setTab} options={[{ value: "new", label: "Nuevo informe", icon: <FilePlus2 /> }, { value: "list", label: `Registrados (${INFS.length})`, icon: <FileText /> }, { value: "pen", label: `Código penal (${P.length})`, icon: <BookOpen /> }]} />
+      <Segmented value={tab} onChange={setTab} options={[{ value: "new", label: "Nuevo informe", icon: <FilePlus2 /> }, { value: "list", label: `Registrados (${INFS.length})`, icon: <FileText /> }]} />
       {tab === "new" ? <InfForm key={edit?.id || "new"} init={edit} onSaved={id => { setEdit(null); setOpen(id); setTab("list"); }} />
-        : tab === "list" ? <InfList open={open} setOpen={setOpen} onEdit={r => { setEdit(r); setTab("new"); scrollTopApp(); }} />
-        : <PenalView />}
+        
+        : <InfList open={open} setOpen={setOpen} onEdit={r => { setEdit(r); setTab("new"); scrollTopApp(); }} />}
     </div>
   );
 }
@@ -172,7 +171,7 @@ function ChargeSearch({ P, onPick }: { P: Art[]; onPick: (a: string) => void }) 
             <button key={x.a} onMouseDown={e => { e.preventDefault(); onPick(x.a); setQ(""); }} onMouseEnter={() => setI(j)} className={cn("flex w-full gap-3 px-3 py-2 text-left", j === i ? "bg-brand-50 dark:bg-brand-500/10" : "")}>
               <b className="w-14 shrink-0 font-mono text-xs leading-5">{x.a}</b>
               <span className="min-w-0"><span className="text-sm">{x.t}<PenMeta x={x} /></span>{x.d && <small className="block truncate text-xs text-slate-500">{x.d}</small>}</span>
-            </button>)) : <p className="p-3 text-xs text-slate-400">Sin resultados. Podés cargar el artículo en la pestaña «Código penal».</p>}
+            </button>)) : <p className="p-3 text-xs text-slate-400">Sin resultados. Revisá el número o buscá en Legal → Leyes.</p>}
         </div>
       )}
     </div>
@@ -220,66 +219,3 @@ function InfList({ open, setOpen, onEdit }: { open: string | null; setOpen: (id:
   );
 }
 
-function PenalView() {
-  const me = useMe(), { toast, confirm } = useFeedback();
-  const P = getPenal(), can = me.admin || me.l >= 6;
-  const [q, setQ] = useState(""), [k, setK] = useState("all"), [ed, setEd] = useState<Art | null>(null), [old, setOld] = useState(""), [paste, setPaste] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const L = penalSearch(q, 600, P).filter(x => k === "all" || (x.k || "cp") === k);
-  const grp: Record<string, Art[]> = {}; L.forEach(x => { const c = x.c || "Capítulo " + x.a.split(".")[0]; (grp[c] = grp[c] || []).push(x); });
-  const ord = Object.keys(grp).sort((a, b) => { const ia = (PEN_CATS as string[]).indexOf(a), ib = (PEN_CATS as string[]).indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
-  const nc = P.filter(x => (x.k || "cp") === "cp").length;
-  const imp = async (txt: string) => {
-    const N = parsePenal(txt); if (!N.length) { toast("No encontré artículos con formato «132.104 — Título»", "err"); return; }
-    if (!(await confirm(`¿Importar ${N.length} artículos al código penal? Los que ya existen se actualizan; el resto se mantiene.`, { ok: "Importar" }))) return;
-    const m = new Map(P.map(x => [x.a, x])); N.forEach(x => m.set(x.a, { ...m.get(x.a), ...x, d: x.d || m.get(x.a)?.d || "" } as Art));
-    savePenal([...m.values()].sort(artCmp)); setPaste(null); toast(`${N.length} artículos importados`);
-  };
-  return (
-    <Card>
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-4 dark:border-slate-800">
-        <div className="relative min-w-[15rem] flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input className="pl-9" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar: robo, joyería, alcohol, 143, evasión…" /></div>
-        <Segmented size="sm" value={k} onChange={setK} options={[{ value: "all", label: `Todo (${P.length})` }, { value: "cp", label: `Delitos (${nc})` }, { value: "adm", label: `Faltas (${P.length - nc})` }]} />
-        {can && <>
-          <Button size="sm" variant="outline" icon={<Plus />} onClick={() => { setOld(""); setEd({ a: "", t: "", d: "", c: "" }); }}>Artículo</Button>
-          <Button size="sm" variant="outline" icon={<Upload />} onClick={() => fileRef.current?.click()}>Importar PDF/TXT</Button>
-          <Button size="sm" variant="outline" icon={<ClipboardPaste />} onClick={() => setPaste("")}>Pegar texto</Button>
-          <input ref={fileRef} type="file" accept=".pdf,.txt,text/plain,application/pdf" hidden onChange={async e => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; try { toast("Leyendo " + f.name + "…"); await imp(await fileText(f)); } catch (err) { toast((err as Error).message || "No se pudo leer", "err"); } }} />
-        </>}
-      </div>
-      <div className="space-y-4 p-4">
-        {paste !== null && <div className="space-y-2 rounded-xl border border-brand-200 bg-brand-50/40 p-3 dark:border-brand-500/30 dark:bg-brand-500/5">
-          <Textarea rows={6} value={paste} onChange={e => setPaste(e.target.value)} placeholder="Pegá el código penal. Cada artículo en una línea: «132.104 — Robo o uso no autorizado de vehículos motorizados», y debajo su descripción." />
-          <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={() => setPaste(null)}>Cancelar</Button><Button size="sm" onClick={() => imp(paste)}>Importar</Button></div></div>}
-        {ed && <div className="space-y-3 rounded-xl border border-brand-200 bg-brand-50/40 p-3 dark:border-brand-500/30 dark:bg-brand-500/5">
-          <div className="grid gap-3 sm:grid-cols-[8rem_1fr]"><Field label="Artículo"><Input className="font-mono" value={ed.a} onChange={e => setEd({ ...ed, a: e.target.value })} placeholder="132.104" /></Field><Field label="Título"><Input value={ed.t} onChange={e => setEd({ ...ed, t: e.target.value })} /></Field></div>
-          <Field label="Capítulo" hint="(opcional)"><Input value={ed.c || ""} onChange={e => setEd({ ...ed, c: e.target.value })} placeholder="Ej: Delitos contra la propiedad" /></Field>
-          <Field label="Descripción"><Textarea rows={3} value={ed.d || ""} onChange={e => setEd({ ...ed, d: e.target.value })} /></Field>
-          <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={() => setEd(null)}>Cancelar</Button>
-            <Button size="sm" icon={<Save />} onClick={() => { const a = ed.a.trim(), t = ed.t.trim(); if (!/^\d{1,3}(\.\d{1,3}){1,2}$/.test(a) || !t) { toast("Completá el artículo (ej: 132.104) y el título", "err"); return; }
-              savePenal([...P.filter(x => x.a !== old && x.a !== a), { ...(PENAL_BASE.find(x => x.a === a) || {}), a, t, d: (ed.d || "").trim(), c: (ed.c || "").trim() } as Art].sort(artCmp)); setEd(null); toast("Artículo guardado"); }}>Guardar</Button></div></div>}
-        <details className="group rounded-xl border border-slate-200 dark:border-slate-800">
-          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-semibold"><Info className="size-4 text-brand-500" />Circunstancias atenuantes, agravantes y de parentesco<ChevronDown className="ml-auto size-4 text-slate-400 transition-transform group-open:rotate-180" /></summary>
-          <div className="space-y-4 border-t border-slate-100 p-4 dark:border-slate-800">
-            {(CIRC as [string, [string, string][]][]).map(([h, l]) => <div key={h}><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{h}</p><div className="grid gap-2 sm:grid-cols-2">{l.map(([n, d]) => <div key={n} className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800/50"><b className="text-sm">{n}</b><p className="text-xs text-slate-500">{d}</p></div>)}</div></div>)}
-            <p className="text-xs text-slate-400">Se aplica siempre el artículo base y se anotan en el informe con los hechos que las acreditan.</p>
-          </div>
-        </details>
-        {ord.length ? ord.map(g => (
-          <section key={g}>
-            <h4 className="sticky top-16 z-10 -mx-4 mb-1 flex items-center gap-2 bg-white/90 px-4 py-2 dark:bg-slate-900/95 text-xs font-semibold uppercase tracking-wide text-slate-500 backdrop-blur">{g}<span className="rounded-md bg-slate-100 px-1.5 text-slate-500 dark:bg-slate-800">{grp[g].length}</span></h4>
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">{grp[g].map(x => (
-              <div key={x.a} className="group flex gap-3 py-2.5">
-                <b className="w-16 shrink-0 font-mono text-xs leading-6">{x.a}</b>
-                <div className="min-w-0 flex-1"><p className="text-sm font-medium">{x.t}<PenMeta x={x} /></p>{x.d && <p className="mt-0.5 text-xs text-slate-500">{x.d}</p>}</div>
-                {can && <div className="flex shrink-0 gap-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
-                  <Button variant="ghost" size="sm" icon={<Pencil />} aria-label="Editar" onClick={() => { setOld(x.a); setEd({ ...x }); scrollTopApp(); }} />
-                  <Button variant="ghost" size="sm" className="text-red-600" icon={<Trash2 />} aria-label="Quitar" onClick={async () => { if (await confirm(`¿Quitar el artículo ${x.a}?`, { danger: true })) savePenal(P.filter(y => y.a !== x.a)); }} />
-                </div>}
-              </div>))}</div>
-          </section>)) : <p className="py-8 text-center text-sm text-slate-400">Nada coincide con «{q}».</p>}
-        <p className="pt-2 text-center text-xs text-slate-400">Fuente: Manual del sistema sancionador · Ley 19/2025 (Código Penal) y leyes 25, 26, 27 y 29/2024.</p>
-      </div>
-    </Card>
-  );
-}

@@ -12,7 +12,7 @@ export type Area = { k: string; l: string; min: number; req?: string; admin?: bo
 /* misma estructura que la versión clásica; ready = ya migrada a la versión nueva */
 export const AREAS: Area[] = [
   { k: "ini", l: "Inicio", min: 0, sec: [{ k: "home", l: "Inicio", d: "Resumen del departamento", icon: Home, ready: true }] },
-  { k: "inf", l: "Informes", min: 0, sec: [{ k: "inf", l: "Informes policiales", d: "Redactar, registrar y buscar informes · código penal", icon: FileText, ready: true }] },
+  { k: "inf", l: "Informes", min: 0, sec: [{ k: "inf", l: "Informes policiales", d: "Redactar, registrar y buscar informes", icon: FileText, ready: true }] },
   { k: "leg", l: "Legal", min: 0, sec: [{ k: "ley", l: "Leyes", d: "Infracciones administrativas y delitos por capítulo, con favoritos", icon: Scale, ready: true }] },
   { k: "sup", l: "Supervisión", min: 6, req: "Sargento I", sec: [
     { k: "prof", l: "Agentes", d: "Planilla del departamento", icon: Users, ready: true },

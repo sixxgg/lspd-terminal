@@ -1,12 +1,12 @@
 /* Legal: leyes del servidor por capítulo, con buscador, gravedad y favoritos por agente */
 import { useMemo, useState, type ReactNode } from "react";
-import { BookOpen, ChevronDown, Copy, Gavel, Search, Star, X } from "lucide-react";
+import { BookOpen, ChevronDown, Info, Copy, Gavel, Search, Star, X } from "lucide-react";
 import { Card, Empty, Input, Segmented, Select } from "@/components/ui";
 import { useCopy } from "@/components/output";
 import { norm } from "@/lib/domain";
 import { useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { artCmp, getPenal, type Art } from "@/lib/penal";
+import { CIRC, artCmp, getPenal, type Art } from "@/lib/penal";
 import { cn } from "@/lib/cn";
 
 type Kind = "adm" | "cp";
@@ -111,6 +111,14 @@ export function Legal() {
                 {q && <button onClick={() => setQ("")} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X className="size-3.5" /></button>}</div>
             </div>
             <Segmented size="sm" value={grav} onChange={setGrav} options={tabs} />
+            {kind === "cp" && <details className="group rounded-xl border border-slate-200 dark:border-slate-800">
+              <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-sm font-semibold"><Info className="size-4 text-brand-500" />Circunstancias atenuantes, agravantes y de parentesco<ChevronDown className="ml-auto size-4 text-slate-400 transition-transform group-open:rotate-180" /></summary>
+              <div className="max-h-80 space-y-4 overflow-y-auto border-t border-slate-100 p-3 dark:border-slate-800">
+                {(CIRC as [string, [string, string][]][]).map(([h, l]) => <div key={h}><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{h}</p>
+                  <div className="grid gap-2 sm:grid-cols-2">{l.map(([n, d]) => <div key={n} className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800/50"><p className="text-sm font-medium">{n}</p><p className="text-xs text-slate-500 dark:text-slate-400">{d}</p></div>)}</div></div>)}
+                <p className="text-xs text-slate-400">Se aplica siempre el artículo base y se anotan en el informe con los hechos que las acreditan.</p>
+              </div>
+            </details>}
           </div>
           <div className="max-h-[calc(100vh-19rem)] space-y-3 overflow-y-auto p-4">
             {L.length ? (searching ? groupBy(L).map(([c, l]) => <div key={c} className="space-y-3">
