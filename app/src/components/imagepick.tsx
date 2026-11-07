@@ -38,8 +38,8 @@ export function ImagePicker({ open, title, k, max, alpha, wide, onClose, onFile,
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => { void take(e.target.files?.[0]); e.target.value = ""; }} />
       <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400"><span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />o con un link<span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" /></div>
       <div className="flex gap-2">
-        <Input value={url} onChange={e => setUrl(e.target.value)} onKeyDown={e => e.key === "Enter" && void go()} placeholder="https://…" autoFocus />
-        <Button loading={busy} icon={<Link2 />} onClick={() => void go()}>Usar link</Button>
+        <Input className="min-w-0" value={url} onChange={e => setUrl(e.target.value)} onKeyDown={e => e.key === "Enter" && void go()} placeholder="https://…" autoFocus />
+        <Button size="sm" className="h-10 shrink-0 whitespace-nowrap px-3" loading={busy} icon={<Link2 />} onClick={() => void go()}>Usar</Button>
       </div>
       {err && <p className="text-sm font-medium text-red-600 dark:text-red-400">{err}</p>}
     </Modal>
@@ -48,12 +48,12 @@ export function ImagePicker({ open, title, k, max, alpha, wide, onClose, onFile,
 
 /* tamaño y peso recomendados, a la vista en cada lugar donde se sube una imagen */
 export function imgSpec(max: number, alpha?: boolean, wide?: boolean) {
-  const px = wide ? `${max}×${Math.round(max * 9 / 16)} px (horizontal 16:9)` : `${max}×${max} px (cuadrada)`;
-  return { px, fmt: alpha ? "PNG o WebP con fondo transparente" : "JPG, PNG o WebP", peso: "hasta 3 MB" };
+  const px = wide ? `${max}×${Math.round(max * 9 / 16)} px · 16:9` : `${max}×${max} px · cuadrada`;
+  return { px, fmt: alpha ? "PNG o WebP transparente" : "JPG, PNG o WebP", peso: "hasta 3 MB" };
 }
 export function ImgSpec({ max, alpha, wide, className }: { max: number; alpha?: boolean; wide?: boolean; className?: string }) {
   const s = imgSpec(max, alpha, wide);
-  return <div className={cn("rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800/50 dark:text-slate-400", className)}>
-    <b className="text-slate-700 dark:text-slate-200">Recomendado:</b> {s.px} · {s.fmt} · {s.peso}.
-    <span className="block">Si es más grande se achica y comprime sola; no hace falta editarla antes.</span></div>;
+  return <div className={cn("flex flex-wrap items-center justify-center gap-1.5 text-[11px]", className)}>
+    {[s.px, s.fmt, s.peso].map(x => <span key={x} className="whitespace-nowrap rounded-md bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{x}</span>)}
+    <span className="w-full text-center text-slate-400">Si es más grande se ajusta sola.</span></div>;
 }
