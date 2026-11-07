@@ -17,7 +17,7 @@ export function PenMeta({ x }: { x: Art }) {
   return <span className="ml-1.5 inline-flex flex-wrap gap-1 align-middle">
     {x.k === "adm" ? <span className={cn(pk, "bg-amber-500/10 text-amber-700 dark:text-amber-300")}>Falta{x.g ? " " + x.g.toLowerCase() : ""}</span> : <span className={cn(pk, "bg-red-500/10 text-red-700 dark:text-red-300")}>Delito</span>}
     {x.m != null && <span className={cn(pk, "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300")}>{fmtMoney(x.m)}</span>}
-    {x.p != null && <span className={cn(pk, "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300")}>{x.p} min</span>}
+    {x.p != null && <span className={cn(pk, "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300")}>{x.p} meses</span>}
     {!!x.pt && <span className={cn(pk, "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300")}>{x.pt} pts</span>}
   </span>;
 }

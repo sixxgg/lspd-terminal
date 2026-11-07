@@ -6,7 +6,7 @@ import { useCopy } from "@/components/output";
 import { norm } from "@/lib/domain";
 import { useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { PEN_CATS, artCmp, getPenal, type Art } from "@/lib/penal";
+import { artCmp, getPenal, type Art } from "@/lib/penal";
 import { cn } from "@/lib/cn";
 
 type Kind = "adm" | "cp";
@@ -35,7 +35,8 @@ export function Legal() {
   const byKind = (k: Kind) => P.filter(x => (x.k || "cp") === k);
   const chapters = useMemo(() => {
     const m = new Map<string, Art[]>(); byKind(kind).forEach(x => { const c = x.c || "Sin capítulo"; m.set(c, [...(m.get(c) || []), x]); });
-    return [...m.entries()].sort(([a], [b]) => kind === "adm" ? lawNum(a) - lawNum(b) : ((PEN_CATS as string[]).indexOf(a) + 1 || 99) - ((PEN_CATS as string[]).indexOf(b) + 1 || 99));
+    const minA = (l: Art[]) => l.reduce((mn, x) => (artCmp(x, mn) < 0 ? x : mn), l[0]);
+    return [...m.entries()].sort(([a, la], [b, lb]) => kind === "adm" ? lawNum(a) - lawNum(b) : artCmp(minA(la), minA(lb)));
   }, [P, kind]); // eslint-disable-line react-hooks/exhaustive-deps
   const curCap = chapters.find(([c]) => c === cap[kind])?.[0] || chapters[0]?.[0] || "";
   const pickCap = (c: string) => { setCap({ ...cap, [kind]: c }); setGrav("all"); setQ(""); };
@@ -111,7 +112,7 @@ function ArtCard({ x, fav, onFav, showCap }: { x: Art; fav: boolean; onFav: () =
   const copy = useCopy();
   const meta: [string, string][] = [];
   if (x.m != null) meta.push(["Sanción", money(x.m)]);
-  if (x.p != null) meta.push(["Prisión", `${x.p} min`]);
+  if (x.p != null) meta.push(["Condena en prisión", `${x.p} meses`]);
   meta.push(["Puntos", `${x.pt || 0} pts`]);
   return (
     <article className={cn("group relative rounded-xl border border-l-4 border-slate-200 bg-white/60 p-4 transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900/40",
