@@ -1,6 +1,6 @@
 import { scrollTopApp } from "@/lib/appearance";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileText, Search, Plus, X, Users, UserRound, Shield, Package, ScrollText, ChevronDown, Pencil, Trash2, Copy, Save, FilePlus2, Info, Star } from "lucide-react";
+import { FileText, Search, Plus, X, Users, UserRound, Shield, Package, ScrollText, ChevronDown, Pencil, Trash2, Copy, Save, FilePlus2, Info, Star, Car, ListChecks, Radio, Check } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Select, Textarea } from "@/components/ui";
 import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
@@ -9,7 +9,7 @@ import { LUGARES, fmtDate, getRoster, norm, rankES, uid } from "@/lib/domain";
 import { LS, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { legalFavKey } from "./Legal";
-import { EV_T, INF_EST, INF_FZ, INF_ROLES, INF_TIPOS, agTag, dcParts, getPenal, infErrs, infNew, infText, penalOf, penalSearch, artCmp, type Art, type Inf } from "@/lib/penal";
+import { EV_T, INF_EST, INF_FZ, INF_ROLES, INF_SECS, INF_TIPOS, UNITS, VEH_EST, VEH_T, agTag, dcParts, getPenal, infErrs, infNew, infText, penalOf, penalSearch, artCmp, type Art, type Inf } from "@/lib/penal";
 import { cn } from "@/lib/cn";
 
 const fmtMoney = (n: number) => Number(n).toLocaleString("es-AR") + " $";
@@ -62,8 +62,16 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
   return (
     <Split>
       <datalist id="rosterDL">{R.map(a => <option key={a.n} value={a.n}>{rankES(a.r)}{a.p ? " · #" + a.p : ""}</option>)}</datalist>
+      <datalist id="unitDL">{UNITS.map(u => <option key={u} value={u} />)}</datalist>
       <datalist id="lugDL">{LUGARES.slice(0, 600).map(x => <option key={x} value={x} />)}</datalist>
       <Col>
+        <Card className="flex flex-wrap items-center gap-2 p-3">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500"><ListChecks className="size-4 text-brand-500" />Secciones del informe</span>
+          {INF_SECS.map(([k, l]) => { const onS = !(A.off || []).includes(k); return (
+            <button key={k} type="button" aria-pressed={onS} title={onS ? "Sale en el informe · clic para quitarla" : "No sale en el informe · clic para incluirla"} onClick={() => up(x => { const o = x.off || []; x.off = onS ? [...o, k] : o.filter(y => y !== k); })}
+              className={cn("inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition", onS ? "border-brand-500/50 bg-brand-500/10 text-brand-700 dark:text-brand-200" : "border-slate-200 text-slate-400 line-through dark:border-slate-700")}>
+              {onS && <Check className="size-3" />}{l}</button>); })}
+        </Card>
         <Card>
           <CardHeader icon={<Info />} title="Información del incidente" desc={A.id ? "Editando un informe registrado" : undefined} />
           <CardBody>
@@ -120,15 +128,39 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
           </CardBody>
         </Card>
         <Card>
-          <CardHeader icon={<Users />} title="Unidades intervinientes" />
+          <CardHeader icon={<Users />} title="Unidades intervinientes" desc="Agente, indicativo (10-ADAM-12, 10-AIRE-01…) o los dos. La unidad se puede escribir a mano." />
           <CardBody>
             {A.unid.map((u, i) => (
               <div key={i} className="flex gap-2">
-                <Input list="rosterDL" value={u.n} onChange={e => up(x => { x.unid[i].n = e.target.value; })} placeholder="Agente" />
+                <Input list="rosterDL" value={u.n} onChange={e => up(x => { x.unid[i].n = e.target.value; })} placeholder="Agente (opcional si ponés la unidad)" />
+                <div className="relative w-44 shrink-0"><Radio className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+                  <Input list="unitDL" value={u.u || ""} onChange={e => up(x => { x.unid[i].u = e.target.value.toUpperCase(); })} placeholder="Unidad" className="pl-8 font-mono text-sm uppercase" /></div>
                 <Select value={u.r} onChange={e => up(x => { x.unid[i].r = e.target.value; })} className="max-w-[16rem] text-sm">{[...(INF_ROLES as string[]), ...((INF_ROLES as string[]).includes(u.r) ? [] : [u.r])].map(r => <option key={r}>{r}</option>)}</Select>
                 <Button variant="ghost" size="icon" aria-label="Quitar unidad" onClick={() => up(x => { x.unid.splice(i, 1); })}><X /></Button>
               </div>))}
             <Button variant="outline" size="sm" icon={<Plus />} onClick={() => up(x => { x.unid.push({ n: "", r: "Unidad de apoyo" }); })}>Añadir unidad</Button>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardHeader icon={<Car />} title="Vehículos implicados" desc="Patrullas, vehículos de los sospechosos o de civiles: modelo, matrícula y en qué estado quedaron." />
+          <CardBody>
+            {(A.veh || []).map((v, i) => (
+              <div key={i} className="grid gap-2 rounded-xl border border-slate-200 p-2.5 dark:border-slate-800 sm:grid-cols-[8.5rem_1fr_7rem_8rem_auto]">
+                <Select value={v.t} onChange={e => up(x => { x.veh![i].t = e.target.value; })} className="text-sm">{VEH_T.map(t => <option key={t}>{t}</option>)}</Select>
+                <Input value={v.mo} onChange={e => up(x => { x.veh![i].mo = e.target.value; })} placeholder="Modelo (ej: Buffalo STX)" />
+                <Input value={v.co} onChange={e => up(x => { x.veh![i].co = e.target.value; })} placeholder="Color" />
+                <Input value={v.mat} onChange={e => up(x => { x.veh![i].mat = e.target.value.toUpperCase(); })} placeholder="Matrícula" className="font-mono uppercase" />
+                <Button variant="ghost" size="icon" aria-label="Quitar vehículo" onClick={() => up(x => { x.veh!.splice(i, 1); })}><X /></Button>
+                <div className="grid gap-2 sm:col-span-5 sm:grid-cols-[8.5rem_12rem_1fr]">
+                  {v.t === "Policial" ? <Input list="unitDL" value={v.u} onChange={e => up(x => { x.veh![i].u = e.target.value.toUpperCase(); })} placeholder="Unidad" className="font-mono text-sm uppercase" /> : <span className="hidden sm:block" />}
+                  <Select value={v.est} onChange={e => up(x => { x.veh![i].est = e.target.value; })} className="text-sm"><option value="">Estado…</option>{VEH_EST.map(t => <option key={t}>{t}</option>)}</Select>
+                  <Input value={v.d} onChange={e => up(x => { x.veh![i].d = e.target.value; })} placeholder="Nota (opcional, ej: impacto en el lateral durante la persecución)" />
+                </div>
+              </div>))}
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" icon={<Plus />} onClick={() => up(x => { x.veh = [...(x.veh || []), { t: "Sospechoso", mo: "", co: "", mat: "", u: "", est: "", d: "" }]; })}>Añadir vehículo</Button>
+              <Button variant="ghost" size="sm" icon={<Car />} onClick={() => up(x => { const mine = x.unid.find(u => u.u); x.veh = [...(x.veh || []), { t: "Policial", mo: "", co: "", mat: "", u: mine?.u || "", est: "Sin daños", d: "" }]; })}>Añadir patrulla</Button>
+            </div>
           </CardBody>
         </Card>
         <Card>

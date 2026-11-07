@@ -32,9 +32,17 @@ export async function fileText(f: File): Promise<string> {
 /* ---------- informe ---------- */
 export type Charge = { a: string; m: "" | "at" | "ag" };
 export type Suj = { n: string; id: string; cg: Charge[] };
-export type Unid = { n: string; r: string };
+export type Unid = { n: string; r: string; u?: string };
+export type Veh = { t: string; mo: string; co: string; mat: string; u: string; est: string; d: string };
+/* indicativos de radio del LSPD */
+export const UNITS: string[] = ["10-MANDO-00", "10-AIRE-01", ...Array.from({ length: 20 }, (_, i) => `10-ADAM-${10 + i}`), "10-MARY-01", "10-MARY-02",
+  ...["HENRY", "WILLIAM", "KING", "TOM", "ROBERT", "DAVID"].flatMap(x => [`10-${x}-01`, `10-${x}-02`]), "TAC-01", "TAC-02"];
+export const VEH_T = ["Policial", "Sospechoso", "Civil", "Otro"];
+export const VEH_EST = ["Sin daños", "Daños leves", "Daños graves", "Siniestro total", "Incautado", "Retenido en depósito", "Devuelto al propietario", "Abandonado / fugado"];
+/* secciones que se pueden sacar del informe */
+export const INF_SECS: [string, string][] = [["motivo", "Motivo"], ["hechos", "Hechos"], ["unid", "Unidades"], ["suj", "Sujetos"], ["veh", "Vehículos"], ["fz", "Uso de la fuerza"], ["ev", "Evidencia"], ["cg", "Cargos"], ["proc", "Detención y procesamiento"]];
 export type Ev = { s: string; t: string; mo?: string; co?: string; mat?: string; d?: string };
-export type Inf = { fecha: string; hora: string; ui: string; ux: string; uf: string; tipos: string[]; est: string; motivo: string; hechos: string; unid: Unid[]; suj: Suj[]; fz: string; fzd: string; ev: Ev[]; extra: string; id: string; por?: string; t?: number; texto?: string; edit?: string };
+export type Inf = { fecha: string; hora: string; ui: string; ux: string; uf: string; tipos: string[]; est: string; motivo: string; hechos: string; unid: Unid[]; suj: Suj[]; fz: string; fzd: string; ev: Ev[]; veh?: Veh[]; off?: string[]; extra: string; id: string; por?: string; t?: number; texto?: string; edit?: string };
 export const SEP = "━━━━━━━━━━━━━━━━━━━━━━━";
 const rkAb = (r: string) => RK_AB[r] || rankES(r);
 export const agTag = (n: string) => { const a = findAgent(n); return a ? `${rkAb(a.r)} ${a.n}${a.p ? ` [${a.p}]` : ""}` : n; };
@@ -42,49 +50,56 @@ const modTxt = (m?: string) => (m === "at" ? "atenuado" : m === "ag" ? "agravado
 const plural = (n: number, s: string, p: string) => (n === 1 ? s : p);
 const pad = (n: number) => String(n).padStart(2, "0");
 export const infNew = (me?: string): Inf => { const d = new Date(); return { fecha: `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`, hora: `${pad(d.getHours())}:${pad(d.getMinutes())}`, ui: "", ux: "", uf: "Comisaría de Mission Row", tipos: [], est: "Incidente finalizado", motivo: "", hechos: "",
-  unid: me ? [{ n: me, r: "Unidad de apoyo" }] : [], suj: [{ n: "", id: "", cg: [] }], fz: "N/A", fzd: "", ev: [], extra: "", id: "" }; };
+  unid: me ? [{ n: me, r: "Unidad de apoyo" }] : [], suj: [{ n: "", id: "", cg: [] }], fz: "N/A", fzd: "", ev: [], veh: [], off: [], extra: "", id: "" }; };
 
+export const unitTag = (u: Unid) => (u.n ? agTag(u.n) + (u.u ? ` (${u.u})` : "") : u.u || "");
 export function infText(A: Inf, me: string, P = getPenal()) {
   const red = me ? agTag(A.por || me) : "—", S = A.suj.filter(s => s.n.trim()), L: string[] = [], p = (...x: string[]) => L.push(...x);
+  const on = (k: string) => !(A.off || []).includes(k), sec = (t: string) => p("", SEP, `**${t}**`, "");
   const tt = (a: string) => penalOf(a, P)?.t || "[artículo]";
   p(`| Informe redactado por ${A.por ? agTag(A.por) : red}`, "", SEP, "**INFORMACIÓN DEL INCIDENTE**", "", `**Fecha:** ${A.fecha || "—"}`, `**Hora:** ${A.hora || "—"}`, `**Ubicación inicial:** ${A.ui || "—"}`);
   if (A.ux) p(`**Ubicación de interceptación:** ${A.ux}`);
-  p(`**Ubicación final:** ${A.uf || "—"}`, `**Tipo de incidente:** ${A.tipos.length ? A.tipos.join(" — ") : "—"}`, `**Estado:** ${A.est}`, "", SEP,
-    "**MOTIVO DE LA INTERVENCIÓN**", "", (A.motivo || "—").trim(), "", SEP, "**DESCRIPCIÓN DE LOS HECHOS**", "", (A.hechos || "—").trim(), "", SEP, "**UNIDADES INTERVINIENTES**", "");
-  const rdN = A.por || me, ro = (u: Unid) => { const i = (INF_ROLES as string[]).indexOf(u.r); return (i < 0 ? 9 : i) * 2 + (u.n === rdN ? 1 : 0); };
-  A.unid.filter(u => u.n).sort((a, b) => ro(a) - ro(b)).forEach(u => p(`- ${agTag(u.n)} — ${u.r.replace(/\.$/, "")}${u.n === rdN ? " y agente redactor del informe" : ""}.`));
-  if (rdN && !A.unid.some(u => u.n === rdN)) p(`- ${agTag(rdN)} — Agente redactor del informe.`);
-  p("", SEP, `**${plural(S.length, "SUJETO IMPLICADO", "SUJETOS IMPLICADOS")}**`, "");
-  if (!S.length) p("—");
-  S.forEach(s => { const mods = [...new Set(s.cg.map(c => c.m || ""))], same = mods.length === 1;
-    const cg = s.cg.map(c => `${c.a} — ${tt(c.a)}${!same && c.m ? ` (${modTxt(c.m)})` : ""}`);
-    const suf = same && mods[0] ? `, ${cg.length === 1 ? "" : cg.length === 2 ? "ambos " : "todos "}con carácter ${modTxt(mods[0])}` : "";
-    p(`${s.n}${s.id ? ` | ID: ${s.id}` : ""}${cg.length ? ` | Procesado por ${plural(cg.length, "el artículo", "los artículos")} ${joinY(cg)}${suf}` : ""}.`); });
-  p("", SEP, "**USO DE LA FUERZA**", "", A.fz || "N/A", "");
-  p(A.fz === "N/A" && !A.fzd.trim() ? "No ha sido necesario el uso de la fuerza durante la intervención policial." : (A.fzd || "").trim());
-  p("", SEP, "**EVIDENCIA INCAUTADA**", "");
-  const evs = A.ev.filter(e => e.d || e.mo || e.mat); if (!evs.length) p("Sin evidencia incautada.");
-  const bySuj: Record<string, Ev[]> = {}; evs.forEach(e => { (bySuj[e.s || ""] = bySuj[e.s || ""] || []).push(e); });
-  Object.entries(bySuj).forEach(([sn, l]) => { const s = S.find(x => x.n === sn); if (sn) p(`**${sn}${s && s.id ? ` — ID: ${s.id}` : ""}**`);
-    l.forEach(e => { if (e.t === "Vehículo") { p(`- Vehículo: ${e.mo || "—"}.`); if (e.co) p(`- Color: ${e.co}.`); if (e.mat) p(`- Matrícula: ${e.mat}.`); if (e.d) p("", e.d.trim()); } else p(`- ${e.t}: ${(e.d || "—").replace(/\.$/, "")}.`); }); p(""); });
-  p(SEP, "**CARGOS APLICADOS**", "");
-  S.forEach(s => { if (!s.cg.length) return; p(`**${s.n}${s.id ? ` — ID: ${s.id}` : ""}**`); const mods = [...new Set(s.cg.map(c => c.m || ""))], same = mods.length === 1 && mods[0];
-    if (same) p(`Los siguientes cargos se aplican con carácter ${modTxt(mods[0])}:`);
-    s.cg.forEach(c => p(`- Artículo ${c.a} — ${tt(c.a)}${!same && c.m ? ` (${modTxt(c.m)})` : ""}.`)); p(""); });
-  if (!S.some(s => s.cg.length)) p("Sin cargos aplicados.", "");
-  p(SEP, "**DETENCIÓN Y PROCESAMIENTO**", "", infProc(A, S, tt));
-  if ((A.extra || "").trim()) p("", A.extra.trim());
-  return L.join("\n").replace(/\n{3,}/g, "\n\n");
+  p(`**Ubicación final:** ${A.uf || "—"}`, `**Tipo de incidente:** ${A.tipos.length ? A.tipos.join(" — ") : "—"}`, `**Estado:** ${A.est}`);
+  if (on("motivo")) { sec("MOTIVO DE LA INTERVENCIÓN"); p((A.motivo || "—").trim()); }
+  if (on("hechos")) { sec("DESCRIPCIÓN DE LOS HECHOS"); p((A.hechos || "—").trim()); }
+  const rdN = A.por || me;
+  if (on("unid")) { sec("UNIDADES INTERVINIENTES");
+    const ro = (u: Unid) => { const i = (INF_ROLES as string[]).indexOf(u.r); return (i < 0 ? 9 : i) * 2 + (u.n === rdN ? 1 : 0); };
+    A.unid.filter(u => u.n || u.u).sort((a, b) => ro(a) - ro(b)).forEach(u => p(`- ${unitTag(u)} — ${u.r.replace(/\.$/, "")}${u.n && u.n === rdN ? " y agente redactor del informe" : ""}.`));
+    if (rdN && !A.unid.some(u => u.n === rdN)) p(`- ${agTag(rdN)} — Agente redactor del informe.`); }
+  if (on("suj")) { sec(plural(S.length, "SUJETO IMPLICADO", "SUJETOS IMPLICADOS"));
+    if (!S.length) p("—");
+    S.forEach(s => { const mods = [...new Set(s.cg.map(c => c.m || ""))], same = mods.length === 1;
+      const cg = s.cg.map(c => `${c.a} — ${tt(c.a)}${!same && c.m ? ` (${modTxt(c.m)})` : ""}`);
+      const suf = same && mods[0] ? `, ${cg.length === 1 ? "" : cg.length === 2 ? "ambos " : "todos "}con carácter ${modTxt(mods[0])}` : "";
+      p(`${s.n}${s.id ? ` | ID: ${s.id}` : ""}${cg.length ? ` | Procesado por ${plural(cg.length, "el artículo", "los artículos")} ${joinY(cg)}${suf}` : ""}.`); }); }
+  const VS = (A.veh || []).filter(v => v.mo || v.mat || v.u);
+  if (on("veh") && VS.length) { sec(plural(VS.length, "VEHÍCULO IMPLICADO", "VEHÍCULOS IMPLICADOS"));
+    VS.forEach(v => { p(`- **${v.t}:** ${v.mo || "—"}${v.u ? ` (${v.u})` : ""}${v.co ? ` · Color: ${v.co}` : ""}${v.mat ? ` · Matrícula: ${v.mat}` : ""}${v.est ? ` — ${v.est}` : ""}.`); if (v.d.trim()) p(`  ${v.d.trim()}`); }); }
+  if (on("fz")) { sec("USO DE LA FUERZA"); p(A.fz || "N/A", "");
+    p(A.fz === "N/A" && !A.fzd.trim() ? "No ha sido necesario el uso de la fuerza durante la intervención policial." : (A.fzd || "").trim()); }
+  if (on("ev")) { sec("EVIDENCIA INCAUTADA");
+    const evs = A.ev.filter(e => e.d || e.mo || e.mat); if (!evs.length) p("Sin evidencia incautada.");
+    const bySuj: Record<string, Ev[]> = {}; evs.forEach(e => { (bySuj[e.s || ""] = bySuj[e.s || ""] || []).push(e); });
+    Object.entries(bySuj).forEach(([sn, l]) => { const s = S.find(x => x.n === sn); if (sn) p(`**${sn}${s && s.id ? ` — ID: ${s.id}` : ""}**`);
+      l.forEach(e => { if (e.t === "Vehículo") { p(`- Vehículo: ${e.mo || "—"}.`); if (e.co) p(`- Color: ${e.co}.`); if (e.mat) p(`- Matrícula: ${e.mat}.`); if (e.d) p("", e.d.trim()); } else p(`- ${e.t}: ${(e.d || "—").replace(/\.$/, "")}.`); }); p(""); }); }
+  if (on("cg")) { sec("CARGOS APLICADOS");
+    S.forEach(s => { if (!s.cg.length) return; p(`**${s.n}${s.id ? ` — ID: ${s.id}` : ""}**`); const mods = [...new Set(s.cg.map(c => c.m || ""))], same = mods.length === 1 && mods[0];
+      if (same) p(`Los siguientes cargos se aplican con carácter ${modTxt(mods[0])}:`);
+      s.cg.forEach(c => p(`- Artículo ${c.a} — ${tt(c.a)}${!same && c.m ? ` (${modTxt(c.m)})` : ""}.`)); p(""); });
+    if (!S.some(s => s.cg.length)) p("Sin cargos aplicados."); }
+  if (on("proc")) { sec("DETENCIÓN Y PROCESAMIENTO"); p(infProc(A, S, tt)); if ((A.extra || "").trim()) p("", A.extra.trim()); }
+  return L.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 function infProc(A: Inf, S: Suj[], tt: (a: string) => string) {
   const det = S.filter(s => s.n); if (!det.length) return "Sin detenidos.";
   const pl = det.length > 1, who = det.map(s => `${s.n}${s.id ? `, con ID ${s.id},` : ""}`);
-  const ic = A.unid.find(u => /COMMANDER|Mando/i.test(u.r)), rest = A.unid.filter(u => u !== ic && u.n);
+  const ic = A.unid.find(u => /COMMANDER|Mando/i.test(u.r) && (u.n || u.u)), rest = A.unid.filter(u => u !== ic && (u.n || u.u));
   let t = `${pl ? "Los sospechosos, identificados como" : "El sospechoso, identificado como"} ${joinY(who)} ${pl ? "son detenidos" : "es detenido"}${A.ux ? ` en las inmediaciones de ${A.ux}` : ""}${A.tipos.includes("Persecución policial") ? " tras una persecución policial" : ""}${A.ui ? ` iniciada en ${A.ui}` : ""}.`;
-  const el = (u: Unid) => "el " + agTag(u.n), ini = rest.filter(u => /inicial/i.test(u.r)), apo = rest.filter(u => !/inicial/i.test(u.r)), pz: string[] = [];
+  const el = (u: Unid) => (u.n ? "el " + unitTag(u) : "la unidad " + u.u), ini = rest.filter(u => /inicial/i.test(u.r)), apo = rest.filter(u => !/inicial/i.test(u.r)), pz: string[] = [];
   if (ini.length) pz.push(`la intervención inicial d${joinY(ini.map(el))}`);
   if (apo.length) pz.push(`${ini.length ? "la posterior incorporación" : "la intervención"} de ${apo.length > 1 ? "las unidades de apoyo formadas por" : "la unidad de apoyo formada por"} ${joinY(apo.map(el))}`);
-  if (ic) t += `\n\nEl operativo estuvo bajo el mando del ${agTag(ic.n)}${pz.length ? `, con ${joinY(pz)}` : ""}.`;
+  if (ic) t += `\n\nEl operativo estuvo bajo el mando ${ic.n ? "del " + unitTag(ic) : "de la unidad " + ic.u}${pz.length ? `, con ${joinY(pz)}` : ""}.`;
   else if (pz.length) t += `\n\nEl operativo contó con ${joinY(pz)}.`;
   const cg = det.flatMap(s => s.cg);
   t += `\n\n${pl ? "Una vez detenidos, fueron trasladados" : "Una vez detenido, fue trasladado"} a ${A.uf ? (/^(comisar|estaci|prisi|c[aá]rcel|central|jefatura)/i.test(A.uf) ? "la " : "") + A.uf : "la comisaría"}, donde ${pl ? "quedaron" : "quedó"} bajo custodia${cg.length ? ` y ${pl ? "fueron procesados" : "fue procesado"} por los siguientes artículos:` : "."}`;
@@ -96,8 +111,9 @@ function infProc(A: Inf, S: Suj[], tt: (a: string) => string) {
 export const isDMYValid = (s: string) => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s); if (!m) return false; const d = new Date(+m[3], +m[2] - 1, +m[1]); return d.getMonth() === +m[2] - 1 && d.getDate() === +m[1]; };
 export function infErrs(A: Inf) {
   const e: string[] = []; if (!isDMYValid(A.fecha)) e.push("fecha (dd/mm/aaaa)"); if (!/^\d{1,2}:\d{2}$/.test(A.hora)) e.push("hora (hh:mm)");
-  if (!A.ui.trim()) e.push("ubicación inicial"); if (!A.tipos.length) e.push("tipo de incidente"); if (!A.motivo.trim()) e.push("motivo de la intervención");
-  if (!A.hechos.trim()) e.push("descripción de los hechos"); if (!A.unid.some(u => u.n)) e.push("unidades intervinientes"); return e;
+  const on = (k: string) => !(A.off || []).includes(k);
+  if (!A.ui.trim()) e.push("ubicación inicial"); if (!A.tipos.length) e.push("tipo de incidente"); if (on("motivo") && !A.motivo.trim()) e.push("motivo de la intervención");
+  if (on("hechos") && !A.hechos.trim()) e.push("descripción de los hechos"); if (on("unid") && !A.unid.some(u => u.n || u.u)) e.push("unidades intervinientes"); return e;
 }
 /* Discord admite 2000 caracteres por mensaje */
 export function dcParts(s: string) {
