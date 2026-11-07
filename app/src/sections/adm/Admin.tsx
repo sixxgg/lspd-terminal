@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { UserCheck, Crown, ShieldPlus, ImagePlus, Type, Save, Trash2, Check, X, Upload, Download, FileSpreadsheet, RotateCcw, GraduationCap, Shield, Database } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Select } from "@/components/ui";
 import { Avatar } from "@/components/agents";
-import { ImagePicker } from "@/components/imagepick";
+import { ImagePicker, imgSpec } from "@/components/imagepick";
 import { useFeedback } from "@/components/feedback";
 import { ALL_DIVS, findAgent, fmtDate, getRoster, lvl, norm, rankES } from "@/lib/domain";
 import { authApi } from "@/lib/api";
@@ -103,7 +103,7 @@ const UI_TXT: [string, string, string][] = [["title", "Título de la terminal", 
 export function AdmMarca() {
   useStoreVersion();
   const { toast, confirm } = useFeedback();
-  const [pick, setPick] = useState<{ k: string; t: string; max: number; alpha: boolean } | null>(null);
+  const [pick, setPick] = useState<{ k: string; t: string; max: number; alpha: boolean; wide?: boolean } | null>(null);
   const ui = LS.json<Record<string, string>>("lspdt.ui", {}), [txt, setTxt] = useState<Record<string, string>>(() => Object.fromEntries(UI_TXT.map(([k]) => [k, ui[k] || ""])));
   const SUBS = ["lspdt.logo.login", "lspdt.logo.boot", "lspdt.logo.header", "lspdt.logo.hero", "lspdt.logo.wm", "lspdt.fav"];
   const freeze = () => { const cur = LS.get("lspdt.logo") || "/next/logo.svg"; SUBS.forEach(k => { if (!LS.get(k)) LS.set(k, cur); }); };
@@ -131,8 +131,9 @@ export function AdmMarca() {
               <div className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
                 <div className={cn("grid shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800", f === "bg" ? "h-16 w-28" : "size-16")}>
                   {v || g === "Logos" ? <img loading="lazy" decoding="async" src={v || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className={cn("size-full", f === "bg" ? "object-cover" : "object-contain p-1.5", !v && "opacity-60")} /> : <span className="text-[10px] text-slate-400">{f === "bg" ? "Sin fondo" : "Por defecto"}</span>}</div>
-                <div className="min-w-[12rem] flex-1"><p className="text-sm font-semibold">{t}</p><p className="text-xs text-slate-500">{h}</p></div>
-                <Button size="sm" variant="outline" icon={<Upload />} onClick={() => setPick({ k, t, max, alpha })}>Cambiar</Button>
+                <div className="min-w-[12rem] flex-1"><p className="text-sm font-semibold">{t}</p><p className="text-xs text-slate-500">{h.replace(/\s*Recomendado [^.]*\.?/, "")}</p>
+                  <p className="mt-1 flex flex-wrap gap-1.5 text-[11px]">{(() => { const sp = imgSpec(max, alpha, f === "bg"); return [sp.px, sp.fmt, sp.peso].map(x => <span key={x} className="rounded-md bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{x}</span>); })()}</p></div>
+                <Button size="sm" variant="outline" icon={<Upload />} onClick={() => setPick({ k, t, max, alpha, wide: f === "bg" })}>Cambiar</Button>
                 {v && <Button size="sm" variant="ghost" icon={<RotateCcw />} onClick={async () => { if (!(await confirm(`¿Quitar «${t}»?`))) return; if (SUBS.includes(k)) LS.set(k, LS.get("lspdt.logo") || "/next/logo.svg"); else LS.del(k); toast("Restaurado"); }}>{SUBS.includes(k) ? "Copiar el general" : "Quitar"}</Button>}
               </div>
             </div>); })}</div>
@@ -147,7 +148,7 @@ export function AdmMarca() {
               {own && <Button size="sm" variant="ghost" onClick={async () => { if (await confirm(`¿Volver al emblema original de ${d}?`)) { LS.del("lspdt.divlogo." + d); toast("Emblema original restaurado"); } }}>Original</Button>}</div>
           </div>); })}</div></CardBody>
       </Card>
-      {pick && <ImagePicker open title={pick.t} k={pick.k} max={pick.max} alpha={pick.alpha} onClose={() => setPick(null)}
+      {pick && <ImagePicker open title={pick.t} k={pick.k} max={pick.max} alpha={pick.alpha} wide={pick.wide} onClose={() => setPick(null)}
         onFile={d => { if (pick.k === "lspdt.logo") freeze(); LS.set(pick.k, d); toast("Guardado · lo ven todos"); }} onUrl={() => toast("Imagen guardada en la terminal · lo ven todos")} />}
     </div>
   );

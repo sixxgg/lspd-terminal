@@ -159,3 +159,8 @@ html:is([data-head="rajdhani"], [data-head="teko"]) h1.text-2xl { font-size: 1.7
 .boot-logo{filter:drop-shadow(0 0 12px rgba(56,189,248,.35))}
 .boot-glow{text-shadow:0 0 18px rgba(52,211,153,.45)}
 @media (prefers-reduced-motion:reduce){.boot-line,.boot-caret,.boot-dot{animation:none}}
+.boot-radar{background:conic-gradient(from 0deg,rgba(56,189,248,.45),rgba(56,189,248,0) 25%,transparent);animation:bootSpin 1.6s linear infinite;will-change:transform}
+@keyframes bootSpin{to{transform:rotate(360deg)}}
+.boot-fpscan{top:20%;animation:bootFp 1s ease-in-out infinite alternate;will-change:transform}
+@keyframes bootFp{to{transform:translateY(3.6rem)}}
+@media (prefers-reduced-motion:reduce){.boot-radar,.boot-fpscan{animation:none}}

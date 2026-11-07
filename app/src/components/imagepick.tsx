@@ -7,8 +7,8 @@ import { fetchImageTo } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
 /* elegir imagen: archivo, arrastrar, pegar (Ctrl+V) o link (lo descarga el servidor a la clave k) */
-export function ImagePicker({ open, title, k, max, alpha, onClose, onFile, onUrl, onDelete }: {
-  open: boolean; title: string; k: string; max: number; alpha?: boolean; onClose: () => void;
+export function ImagePicker({ open, title, k, max, alpha, wide, onClose, onFile, onUrl, onDelete }: {
+  open: boolean; title: string; k: string; max: number; alpha?: boolean; wide?: boolean; onClose: () => void;
   onFile: (dataUrl: string) => void; onUrl: () => void; onDelete?: () => void;
 }) {
   const [url, setUrl] = useState(""), [err, setErr] = useState(""), [busy, setBusy] = useState(false), [over, setOver] = useState(false);
@@ -34,6 +34,7 @@ export function ImagePicker({ open, title, k, max, alpha, onClose, onFile, onUrl
         <span className="text-sm font-semibold">Elegí, arrastrá o pegá una imagen</span>
         <span className="text-xs text-slate-400">Ctrl+V con una imagen copiada también funciona</span>
       </button>
+      <ImgSpec max={max} alpha={alpha} wide={wide ?? /\.(bg|cover)|^lspdt\.(cover|bg)/.test(k)} />
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => { void take(e.target.files?.[0]); e.target.value = ""; }} />
       <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400"><span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />o con un link<span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" /></div>
       <div className="flex gap-2">
@@ -43,4 +44,16 @@ export function ImagePicker({ open, title, k, max, alpha, onClose, onFile, onUrl
       {err && <p className="text-sm font-medium text-red-600 dark:text-red-400">{err}</p>}
     </Modal>
   );
+}
+
+/* tamaño y peso recomendados, a la vista en cada lugar donde se sube una imagen */
+export function imgSpec(max: number, alpha?: boolean, wide?: boolean) {
+  const px = wide ? `${max}×${Math.round(max * 9 / 16)} px (horizontal 16:9)` : `${max}×${max} px (cuadrada)`;
+  return { px, fmt: alpha ? "PNG o WebP con fondo transparente" : "JPG, PNG o WebP", peso: "hasta 3 MB" };
+}
+export function ImgSpec({ max, alpha, wide, className }: { max: number; alpha?: boolean; wide?: boolean; className?: string }) {
+  const s = imgSpec(max, alpha, wide);
+  return <div className={cn("rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800/50 dark:text-slate-400", className)}>
+    <b className="text-slate-700 dark:text-slate-200">Recomendado:</b> {s.px} · {s.fmt} · {s.peso}.
+    <span className="block">Si es más grande se achica y comprime sola; no hace falta editarla antes.</span></div>;
 }

@@ -33,13 +33,24 @@ export function patReport(rec: { fecha: string; rows: PRow[]; nota?: string }, b
   if (rec.nota) t += `\nNotas: ${rec.nota}\n`;
   return t.trim();
 }
+/* límite del servidor: 3 MB por imagen. Se achica y comprime sola hasta entrar (y nunca se sube algo que el servidor rechace) */
+export const IMG_MAX_BYTES = 2.8e6;
+const b64Size = (d: string) => Math.round((d.length - d.indexOf(",") - 1) * 0.75);
 export function readImg(file: File, max: number, keepAlpha = false): Promise<string> {
   return new Promise(res => {
     const r = new FileReader();
     r.onload = () => { const src = String(r.result), img = new Image();
-      img.onload = () => { const s = Math.min(1, max / Math.max(img.width, img.height)); if (s === 1 && file.size < 700000) { res(src); return; }
-        const c = document.createElement("canvas"); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
-        c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height); res(c.toDataURL(keepAlpha ? "image/png" : "image/jpeg", 0.88)); };
+      img.onload = () => {
+        let s = Math.min(1, max / Math.max(img.width, img.height)); if (s === 1 && file.size < 700000) { res(src); return; }
+        const type = keepAlpha ? "image/webp" : "image/jpeg"; let q = 0.88, out = src;
+        for (let i = 0; i < 8; i++) {
+          const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(img.width * s)); c.height = Math.max(1, Math.round(img.height * s));
+          c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height); out = c.toDataURL(type, q);
+          if (!out.startsWith("data:" + type)) out = c.toDataURL("image/png"); /* navegador sin WebP */
+          if (b64Size(out) <= IMG_MAX_BYTES) break;
+          q = Math.max(0.6, q - 0.08); s *= 0.85;
+        }
+        res(out); };
       img.onerror = () => res(src); img.src = src; };
     r.readAsDataURL(file);
   });

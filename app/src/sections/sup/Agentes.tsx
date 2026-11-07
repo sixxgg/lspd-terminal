@@ -51,7 +51,7 @@ function Img({ src, w, className, style }: { src: string; w: number; className?:
   const [s, setS] = useState(() => imgOpt(src, w));
   return <img src={s} alt="" draggable={false} decoding="async" loading="lazy" className={className} style={style} onError={() => s !== src && setS(src)} />;
 }
-function PhotoBox({ a, p, ph, className }: { a: Agent; p: Profile; ph?: Ph; className?: string }) {
+function PhotoBox({ a, p, ph, className, onClear }: { a: Agent; p: Profile; ph?: Ph; className?: string; onClear?: () => void }) {
   const f = fotoOf(a.n), ins = insigniaUrl(a.r);
   return (
     <div className={cn("relative aspect-[4/5] overflow-hidden bg-gradient-to-b from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900", className)}>
@@ -61,7 +61,10 @@ function PhotoBox({ a, p, ph, className }: { a: Agent; p: Profile; ph?: Ph; clas
         {!!p.fr && <span title={`${p.fr} ${p.fr === 1 ? "franja" : "franjas"} de servicio`} className="grid size-7 place-items-center rounded-lg bg-slate-950/70 p-0.5 backdrop-blur"><Stripes n={p.fr} /></span>}
         {ins && <span title={rankES(a.r)} className="grid h-7 min-w-7 place-items-center rounded-lg bg-slate-950/70 px-1 backdrop-blur"><img loading="lazy" decoding="async" src={ins} alt="" className="max-h-5 w-auto" /></span>}
       </div>
-      {a.e && a.e !== "Activo" && <span className="absolute inset-x-0 bottom-0 bg-amber-500/90 py-1 text-center text-[10.5px] font-bold uppercase tracking-wider text-amber-950">{a.e}</span>}
+      {a.e && a.e !== "Activo" && <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-amber-500/90 py-1 text-center text-[10.5px] font-bold uppercase tracking-wider text-amber-950">{a.e}
+        {onClear && <span role="button" tabIndex={0} title={`Quitar «${a.e}» (vuelve a Activo)`} aria-label={`Quitar etiqueta ${a.e}`}
+          onClick={e => { e.stopPropagation(); onClear(); }} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onClear(); } }}
+          className="absolute right-1 grid size-5 place-items-center rounded bg-amber-950/20 text-amber-950 transition hover:bg-amber-950/40"><X className="size-3" /></span>}</span>}
     </div>
   );
 }
@@ -73,8 +76,8 @@ function MiniPhoto({ a, p, size }: { a: Agent; p: Profile; size: number }) {
 
 export function Agentes() {
   useStoreVersion();
-  const me = useMe();
-  const R = getRoster(), P = allProfiles();
+  const me = useMe(), { toast, confirm } = useFeedback();
+  const R = getRoster(), P = allProfiles(), nVac = R.filter(x => x.e === "Vacaciones").length;
   const [q, setQ] = useState(""), [g, setG] = useState(""), [d, setD] = useState("");
   const [view, setView] = useState<"grid" | "list">(() => (LS.get("lspdt.agView") === "list" ? "list" : "grid"));
   const [cur, setCur] = useState<string | null>(null), [reg, setReg] = useState<string | null | false>(false);
@@ -88,6 +91,9 @@ export function Agentes() {
         <Select className="w-auto text-sm" value={g} onChange={e => setG(e.target.value)}><option value="">LSPD · Todos</option>{Object.entries(GROUPS).filter(([, x]) => R.some(a => x.r.includes(a.r))).map(([k, x]) => <option key={k} value={k}>{x.l}</option>)}</Select>
         <Select className="w-auto max-w-[16rem] text-sm" value={d} onChange={e => setD(e.target.value)}><option value="">Todas las divisiones</option><option value="-">Sin división</option>{ALL_DIVS.map(x => <option key={x} value={x}>{SUBDIVS.has(x) ? "— " : ""}{x}</option>)}</Select>
         <Segmented size="sm" value={view} onChange={v => { setView(v); LS.set("lspdt.agView", v); }} options={[{ value: "grid", label: <LayoutGrid className="size-4" aria-label="Tarjetas" /> }, { value: "list", label: <Rows3 className="size-4" aria-label="Lista" /> }]} />
+        {nVac > 0 && <Button variant="outline" icon={<X />} title="Pasa a Activo a todos los agentes de vacaciones" onClick={async () => {
+          if (!(await confirm(`¿Quitar la etiqueta «Vacaciones» a ${nVac} ${nVac === 1 ? "agente" : "agentes"}? Pasan a Activo.`))) return;
+          const RR = getRoster().map(x => (x.e === "Vacaciones" ? { ...x, e: "Activo" } : x)); LS.setJSON("lspdt.roster", RR); toast("Etiquetas de vacaciones quitadas"); }}>Quitar vacaciones ({nVac})</Button>}
         <Button icon={<UserPlus />} onClick={() => setReg(null)}>Registrar agente</Button>
       </Card>
       <p className="text-xs text-slate-400">Planilla del departamento · {list.length} de {R.length} agentes</p>
@@ -99,7 +105,7 @@ export function Agentes() {
               {l.map(a => { const p = profFull(a.n, P), md = mainDiv(p); return (
                 <button key={a.n} onClick={() => setCur(a.n)} title={p.div.join(" · ") || "Sin división"}
                   className="group overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-800 dark:bg-slate-900/60">
-                  <PhotoBox a={a} p={p} className="transition group-hover:brightness-105" />
+                  <PhotoBox a={a} p={p} className="transition group-hover:brightness-105" onClear={() => { updateAgent(a.n, x => { x.e = "Activo"; }); toast(`${a.n}: vuelve a Activo`); }} />
                   <div className="p-3">
                     <p className="truncate text-sm font-semibold">{a.n}</p>
                     <p className="truncate font-mono text-[11px] text-slate-400">{a.s || "—"}{p.cs && ` · ${p.cs}`}</p>

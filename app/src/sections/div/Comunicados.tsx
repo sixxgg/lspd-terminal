@@ -1,15 +1,16 @@
 /* Comunicados de división (ASD y UDU): registro de los avisos publicados en Discord, con plantillas y editor */
-import { useMemo, useRef, useState } from "react";
-import { CalendarClock, Copy, FilePlus2, Megaphone, Pencil, Save, Trash2, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { CalendarClock, Copy, FilePlus2, Megaphone, Pencil, RefreshCw, Save, Trash2, Wand2, X } from "lucide-react";
 import { Button, Card, Empty, Field, Input, Select, Textarea } from "@/components/ui";
 import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
+import { RK_AB, findAgent, getRoster } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 
 export type CommDiv = "asd" | "udu";
-type Comm = { id: string; t: string; body: string; ts: number; by: string };
+type Comm = { id: string; t: string; body: string; ts: number; by: string; f?: Form };
 
 const ROLE_LSPD = "887963542437888004", ROLE_ASD = "1493377759680925919";
 const INFO: Record<CommDiv, { n: string; ab: string; em: string; roles: [string, string][]; firma: string }> = {
@@ -93,76 +94,76 @@ Atentamente,
   ],
 };
 
-/* plantillas: {E} = emoji de la división · [CORCHETES] = a completar */
-const TPLS: [string, (d: CommDiv) => string][] = [
-  ["Instrucción o práctica", () => `# {E} [Título de la instrucción] {E}
+/* ===================== asistente: todo personalizable ===================== */
+type Tipo = "evento" | "licencia" | "convocatoria" | "documentacion" | "resultados" | "cambio" | "recordatorio" | "libre";
+type Estilo = "clasico" | "destacado" | "compacto" | "sobrio";
+type Firma = "atentamente" | "att" | "oficial" | "ninguna";
+export type Form = {
+  tipo: Tipo; estilo: Estilo; titulo: string; saludo: string; intro: string; cuerpo: string;
+  fecha: string; fechaFmt: "F" | "f" | "D"; relativa: boolean; lugar: string;
+  lista: string; listaTit: string; enlaces: string; cita: string; reaccion: boolean; aviso: string;
+  autor: string; cargo: string; firma: Firma; rol: string; spoiler: boolean; emoji: boolean;
+};
+const TIPOS: [Tipo, string][] = [["evento", "Instrucción, práctica o evento"], ["licencia", "Habilitación o licencia"], ["convocatoria", "Convocatoria / instancias"],
+  ["documentacion", "Documentación"], ["resultados", "Resultados (aptos / no aptos)"], ["cambio", "Cambio o cancelación"], ["recordatorio", "Recordatorio de normas"], ["libre", "Aviso libre"]];
+const ESTILOS: [Estilo, string][] = [["clasico", "Clásico · título grande con emblemas"], ["destacado", "Destacado · MAYÚSCULAS subrayadas"], ["compacto", "Compacto · título mediano"], ["sobrio", "Sobrio · sin emojis decorativos"]];
+const FIRMAS: [Firma, string][] = [["atentamente", "«Atentamente,» + cargo"], ["att", "«Att.» en cursiva (una línea)"], ["oficial", "Cargo + Departamento de Policía"], ["ninguna", "Sin firma"]];
 
-Se informa que el día [DD/MM/AA] a las [HORA] se llevará a cabo [descripción de la actividad].
+const coordOf = (d: CommDiv) => `Coordinación – ${INFO[d].n} (${INFO[d].ab})`;
+function newForm(d: CommDiv, tipo: Tipo, me: string): Form {
+  const ag = findAgent(me), b: Form = { tipo, estilo: "clasico", titulo: "", saludo: "", intro: "", cuerpo: "", fecha: "", fechaFmt: "F", relativa: false, lugar: "",
+    lista: "", listaTit: "", enlaces: "", cita: "", reaccion: false, aviso: "", autor: ag ? me : "", cargo: coordOf(d), firma: "atentamente", rol: ROLE_LSPD, spoiler: false, emoji: true };
+  const I = INFO[d];
+  switch (tipo) {
+    case "evento": return { ...b, titulo: "Instrucción de [actividad]", intro: "Se informa que se llevará a cabo una instrucción de [actividad], en conjunto con [unidad o división].",
+      cuerpo: "Durante la práctica se efectuará la entrega de materiales y equipamiento a todos los oficiales interesados en formar parte de la división.\n\nSe solicita puntualidad a todos los participantes.", lugar: "Sede de METRO", cita: "", aviso: "", firma: "ninguna" };
+    case "licencia": return { ...b, titulo: "Licencia de [nombre]", intro: `Desde la **Coordinación de la ${I.ab}** abrimos el periodo de habilitación de licencia para [uso]. Al ser material policial sensible, se deberán cumplir los siguientes requisitos:`,
+      listaTit: "", lista: "Pertenecer al Pelotón C o D, o a la DB.\nTener al menos el rango de PO-III.", cuerpo: "Cumplir los requisitos no garantiza la aceptación de la candidatura; la coordinación se reserva el derecho de aceptar a los candidatos que considere más aptos.", reaccion: true, firma: "att", cargo: `Coordinación de la ${I.n}` };
+    case "convocatoria": return { ...b, estilo: "destacado", titulo: `Instancias - (${I.ab}) ${I.n} (Promoción [000])`, saludo: "Buenas noches:",
+      intro: `Me complace informar la apertura de oposiciones para acceder a la división **${I.n}** (__${I.ab}__) de la LSPD.`,
+      cuerpo: "A todos los formularios **APTOS** se les informará en la fecha indicada para poder realizar las siguientes partes del proceso.", enlaces: "Formulario de Acceso | https://", listaTit: "Requisito de acceso",
+      lista: "Pertenecer, como mínimo, al **PELOTÓN B** de la **METRO**.", cita: d === "asd" ? "The mission is the same, only the vehicle has changed." : "", firma: "oficial", spoiler: true, cargo: `Coordinador de la ${I.n} (${I.ab})` };
+    case "documentacion": return { ...b, estilo: "compacto", titulo: `Documentación – ${I.n} (${I.ab})`, intro: `Desde la coordinación de la **${I.n}** se recuerda a todo el personal activo la importancia de manejar y conocer correctamente la documentación esencial de la división.`,
+      listaTit: "Documentos obligatorios", lista: `Manual de la ${I.ab}: procedimientos operativos, protocolos de actuación y normativa interna.\nInforme de Daños: debe completarse tras cada intervención con incidentes o daños materiales.`,
+      enlaces: `Manual de la ${I.ab} | https://\nInforme de Daños | https://`, aviso: "El incumplimiento de estos lineamientos podrá derivar en advertencias o sanciones según corresponda.", spoiler: true, rol: I.roles[I.roles.length - 1][0] };
+    case "resultados": return { ...b, titulo: "Resultados de [proceso]", intro: "Se publican los resultados de [proceso]. Agradecemos a todos los participantes.", listaTit: "✅ Aptos", lista: "[Nombre Apellido]\n[Nombre Apellido]",
+      cuerpo: "Los oficiales **APTOS** serán contactados para coordinar la siguiente etapa. Quienes no hayan sido seleccionados podrán volver a presentarse en la próxima convocatoria." };
+    case "cambio": return { ...b, titulo: "Cambio en [actividad]", intro: "Se informa que la actividad prevista para el día [DD/MM] **queda [reprogramada / cancelada]** por [motivo].", cuerpo: "Disculpen las molestias. Ante cualquier duda, consulten con la coordinación.", firma: "att" };
+    case "recordatorio": return { ...b, estilo: "compacto", titulo: "Recordatorio importante", intro: "Desde la coordinación se recuerda a todo el personal:", lista: "[Norma o procedimiento 1]\n[Norma o procedimiento 2]",
+      aviso: "El incumplimiento podrá derivar en advertencias o sanciones según corresponda.", rol: I.roles[I.roles.length - 1][0] };
+    default: return { ...b, titulo: "[Título]", cuerpo: "[Texto del comunicado]" };
+  }
+}
+const ts = (s: string) => Math.floor(new Date(s).getTime() / 1000);
+const firmaAgent = (n: string) => { const a = findAgent(n); return a ? `${(RK_AB[a.r] || a.r).replace(/\./g, ". ").replace(/\s+/g, " ").trim()} ${a.n}` : n; };
+function build(d: CommDiv, f: Form) {
+  const E = f.emoji && f.estilo !== "sobrio" ? INFO[d].em : "", T = f.titulo.trim() || "[Título]", o: string[] = [];
+  const titulo = f.estilo === "destacado" ? `# **${E ? E + " " : ""}__${T.toUpperCase()}__${E ? " " + E : ""}**` : f.estilo === "compacto" ? `## ${E ? E + " " : ""}**${T.toUpperCase()}**`
+    : `# ${E ? E + " " : ""}${T}${E && f.estilo === "clasico" ? " " + E : ""}`;
+  o.push(titulo, "");
+  if (f.saludo.trim()) o.push(f.saludo.trim());
+  if (f.intro.trim()) o.push(f.intro.trim(), "");
+  if (f.fecha) { const t = ts(f.fecha); o.push(`📅 **Fecha:** <t:${t}:${f.fechaFmt}>${f.relativa ? ` (<t:${t}:R>)` : ""}`); }
+  if (f.lugar.trim()) o.push(`📍 **Lugar:** ${f.lugar.trim()}`);
+  if (f.fecha || f.lugar.trim()) o.push("");
+  const L = f.lista.split("\n").map(x => x.trim()).filter(Boolean);
+  if (L.length) { if (f.listaTit.trim()) o.push(`### ${f.listaTit.trim()}`); o.push(...L.map(x => `* ${x}`), ""); }
+  if (f.cuerpo.trim()) o.push(f.cuerpo.trim(), "");
+  const LK = f.enlaces.split("\n").map(x => x.split("|").map(y => y.trim())).filter(x => x[0]);
+  if (LK.length) { o.push(f.estilo === "sobrio" ? "**Enlaces:**" : "### 🔗 **Enlaces:**"); o.push(...LK.map(([n, u]) => (u ? `> 📄 [**__${n}__**](${u})` : `> ${n}`)), ""); }
+  if (f.reaccion) o.push("Todos aquellos que quieran postularse deben reaccionar con un <:Si:1316169901450199051>", "");
+  if (f.cita.trim()) o.push("`" + f.cita.trim().replace(/`/g, "") + "`");
+  if (f.aviso.trim()) o.push(`## ⚠️ ${f.aviso.trim()}`, "");
+  const autor = f.autor.trim() ? firmaAgent(f.autor.trim()) : "";
+  if (f.firma === "atentamente") o.push("Atentamente,", autor ? `**${autor}**` : "", f.cargo.trim() ? (autor ? `*${f.cargo.trim()}*` : `**${f.cargo.trim()}**`) : "");
+  else if (f.firma === "att") o.push(`*Att. ${[autor, f.cargo.trim()].filter(Boolean).join(" — ")}*`);
+  else if (f.firma === "oficial") o.push("Atentamente,", autor ? `**${autor}**` : "", f.cargo.trim() ? `**${f.cargo.trim()}**` : "", "*Departamento de Policía de Los Santos*");
+  const m = f.rol ? `<@&${f.rol}>` : "";
+  if (m) o.push("", f.spoiler ? `||${m}||` : m);
+  return o.filter((x, i, a) => !(x === "" && (i === 0 || a[i - 1] === ""))).join("\n").trim();
+}
 
-Durante la práctica [qué se hará: entrega de equipamiento, evaluación, etc.].
-
-Se solicita puntualidad a todos los participantes. [Requisitos o material necesario.]
-
-Los esperamos.
-
-{ROL}`],
-  ["Habilitación o licencia", d => `# {E} [Nombre de la licencia] {E}
-
-Desde la **Coordinación de la ${INFO[d].ab}** abrimos el periodo de habilitación de [licencia]. Se deberán cumplir los siguientes requisitos:
-
-* [Requisito 1]
-* [Requisito 2]
-
-Cumplir los requisitos no garantiza la aceptación de la candidatura; la coordinación se reserva el derecho de aceptar a los candidatos que considere más aptos.
-
-Todos aquellos que quieran postularse deben reaccionar con un <:Si:1316169901450199051>
-
-*Att. [Rango y nombre] — [Cargo]*
-
-{ROL}`],
-  ["Convocatoria / instancias", d => `# **{E} __INSTANCIAS - (${INFO[d].ab}) ${INFO[d].n.toUpperCase()} (PROMOCIÓN [000])__ {E}**
-
-Buenas noches:
-Me complace informar la apertura de oposiciones para acceder a la división **${INFO[d].n}** (__${INFO[d].ab}__) de la LSPD.
-
-A todos los formularios **APTOS** se les informará en la fecha indicada para poder realizar las siguientes partes del proceso.
-📅 El plazo máximo para realizar el cuestionario es el [DD/MM/AA] a las [HH:MM] h.
-
-📄 [**__Formulario de Acceso__**]([enlace])
-
-### __[Requisito mínimo de acceso]__
-Atentamente,
-${INFO[d].firma}
-*Departamento de Policía de Los Santos*
-
-||{ROL}||`],
-  ["Documentación y recordatorio", d => `## {E} **DOCUMENTACIÓN – ${INFO[d].n.toUpperCase()} (${INFO[d].ab})**
-
-Desde la coordinación de la **${INFO[d].n}** se recuerda a todo el personal activo la importancia de conocer correctamente la documentación esencial de la división.
-
-### 📘 **[Documento]**
-[Por qué es obligatorio conocerlo.]
-
-### 🔗 **Enlaces a la documentación:**
-> *([Documento]([enlace]))*
-
-## ⚠️ El incumplimiento de estos lineamientos podrá derivar en advertencias o sanciones según corresponda.
-
-Atentamente,
-${INFO[d].firma}
-
-||{ROL}||`],
-  ["Aviso libre", () => `# {E} [Título] {E}
-
-[Texto del comunicado]
-
-Atentamente,
-{FIRMA}
-
-{ROL}`],
-];
-
-const fmt = (ts: number) => new Date(ts).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+const fmt = (t: number) => new Date(t).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" });
 const firstLine = (b: string) => (b.split("\n").find(l => l.trim()) || "").replace(/<a?:\w+:\d+>/g, "").replace(/<t:\d+(:\w)?>/g, "").replace(/<@&?\d+>/g, "").replace(/[#*_|`>]/g, "").trim();
 
 export function Comunicados({ div, canEdit }: { div: CommDiv; canEdit: boolean }) {
@@ -173,11 +174,10 @@ export function Comunicados({ div, canEdit }: { div: CommDiv; canEdit: boolean }
   const [sel, setSel] = useState<string>(""), [ed, setEd] = useState<Comm | null>(null);
   const cur = list.find(x => x.id === sel) || list[0];
   const save = (l: Comm[]) => setSaved(l);
-
-  const startNew = () => setEd({ id: "", t: "", body: fill(TPLS[0][1](div), div, ROLE_LSPD), ts: Date.now(), by: me.n });
+  const startNew = () => { const f = newForm(div, "evento", me.n); setEd({ id: "", t: "", body: build(div, f), ts: Date.now(), by: me.n, f }); };
   return (
     <div className="grid gap-5 xl:grid-cols-[22rem_1fr]">
-      <Card className="flex flex-col overflow-hidden">
+      <Card className="flex flex-col self-start overflow-hidden">
         <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
           <Megaphone className="size-4 text-brand-500" /><h3 className="font-semibold">Comunicados · {I.ab}</h3>
           <span className="rounded-md bg-slate-900/5 px-1.5 text-[11px] tabular-nums text-slate-500 dark:bg-white/10">{list.length}</span>
@@ -210,46 +210,78 @@ export function Comunicados({ div, canEdit }: { div: CommDiv; canEdit: boolean }
   );
 }
 
-function fill(t: string, d: CommDiv, role: string) {
-  return t.replace(/\{E\}/g, INFO[d].em).replace(/\{FIRMA\}/g, INFO[d].firma).replace(/\{ROL\}/g, role ? `<@&${role}>` : "");
-}
-
 function Editor({ div, init, onSave, onCancel }: { div: CommDiv; init: Comm; onSave: (c: Comm) => void; onCancel: () => void }) {
-  const I = INFO[div], { toast } = useFeedback();
-  const [c, setC] = useState(init), [role, setRole] = useState(I.roles[0][0]), [when, setWhen] = useState("");
-  const ta = useRef<HTMLTextAreaElement>(null);
-  const insert = (s: string) => { const el = ta.current; if (!el) { setC({ ...c, body: c.body + s }); return; }
-    const a = el.selectionStart, b = el.selectionEnd; setC({ ...c, body: c.body.slice(0, a) + s + c.body.slice(b) });
-    requestAnimationFrame(() => { el.focus(); el.selectionStart = el.selectionEnd = a + s.length; }); };
+  const I = INFO[div], me = useMe(), { toast } = useFeedback();
+  /* con formulario → asistente; los comunicados viejos (sin formulario) abren en texto libre */
+  const [f, setF] = useState<Form | null>(init.f || null), [manual, setManual] = useState(!init.f), [body, setBody] = useState(init.body);
+  const [t, setT] = useState(init.t), [by, setBy] = useState(init.by);
+  const text = f && !manual ? build(div, f) : body;
+  const up = <K extends keyof Form>(k: K, v: Form[K]) => setF(x => (x ? { ...x, [k]: v } : x));
+  const names = useMemo(() => getRoster().map(a => a.n).sort((a, b) => a.localeCompare(b)), []);
+  const field = (k: keyof Form, label: string, ph = "", rows = 0, hint?: string) => <Field label={label} hint={hint}>
+    {rows ? <Textarea rows={rows} value={String(f![k])} placeholder={ph} onChange={e => up(k, e.target.value as never)} />
+      : <Input value={String(f![k])} placeholder={ph} onChange={e => up(k, e.target.value as never)} />}</Field>;
   return (
     <div className="grid gap-5 min-[1800px]:grid-cols-2">
       <Card className="space-y-4 p-5">
-        <div className="flex items-center gap-2"><Pencil className="size-4 text-brand-500" /><h3 className="font-semibold">{init.id ? "Editar comunicado" : "Nuevo comunicado"}</h3>
-          <button onClick={onCancel} className="ml-auto rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Cancelar"><X className="size-4" /></button></div>
+        <div className="flex flex-wrap items-center gap-2"><Pencil className="size-4 text-brand-500" /><h3 className="font-semibold">{init.id ? "Editar comunicado" : "Nuevo comunicado"}</h3>
+          <div className="ml-auto flex items-center gap-1">
+            {f && <Button size="sm" variant={manual ? "outline" : "ghost"} icon={manual ? <Wand2 /> : <Pencil />} onClick={() => { if (!manual) setBody(text); setManual(!manual); }}>{manual ? "Volver al asistente" : "Editar el texto a mano"}</Button>}
+            {!f && <Button size="sm" variant="outline" icon={<Wand2 />} onClick={() => { const nf = newForm(div, "libre", me.n); setF(nf); setManual(false); }}>Armar con el asistente</Button>}
+            <button onClick={onCancel} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Cancelar"><X className="size-4" /></button></div></div>
+
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Plantilla"><Select defaultValue="" onChange={e => { const t = TPLS[+e.target.value]; if (t) setC({ ...c, body: fill(t[1](div), div, role) }); e.target.value = ""; }}>
-            <option value="" disabled>Elegir para reemplazar el texto…</option>{TPLS.map(([l], i) => <option key={l} value={i}>{l}</option>)}</Select></Field>
-          <Field label="Mención"><Select value={role} onChange={e => { const r = e.target.value; setC({ ...c, body: c.body.replace(/<@&\d+>/g, r ? `<@&${r}>` : "") }); setRole(r); }}>
-            {I.roles.map(([id, l]) => <option key={id} value={id}>{l}</option>)}<option value="">Sin mención</option></Select></Field>
+          <Field label="Título en el registro"><Input value={t} onChange={e => setT(e.target.value)} placeholder={f ? f.titulo : "Ej: Instrucción de buceo"} /></Field>
+          <Field label="Registrado por"><Input list="cm-names" value={by} onChange={e => setBy(e.target.value)} /></Field>
         </div>
-        <Field label="Título" hint="(para el registro)"><Input value={c.t} onChange={e => setC({ ...c, t: e.target.value })} placeholder="Ej: Instrucción de buceo" /></Field>
-        <Field label="Texto en formato Discord" hint="Completá lo que está [entre corchetes]">
-          <Textarea ref={ta} rows={16} className="font-mono text-[13px]" value={c.body} onChange={e => setC({ ...c, body: e.target.value })} /></Field>
-        <div className="flex flex-wrap items-end gap-2">
-          <Field label="Insertar fecha y hora de Discord" className="min-w-[14rem] flex-1"><Input type="datetime-local" value={when} onChange={e => setWhen(e.target.value)} /></Field>
-          <Button variant="outline" size="sm" disabled={!when} onClick={() => insert(`<t:${Math.floor(new Date(when).getTime() / 1000)}:F>`)}>Fecha y hora</Button>
-          <Button variant="outline" size="sm" disabled={!when} onClick={() => insert(`<t:${Math.floor(new Date(when).getTime() / 1000)}:t>`)}>Solo hora</Button>
-          <Button variant="outline" size="sm" disabled={!when} onClick={() => insert(`<t:${Math.floor(new Date(when).getTime() / 1000)}:R>`)}>Relativa</Button>
-        </div>
-        <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+
+        {f && !manual ? <>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Tipo de comunicado" hint="(carga una base)"><Select value={f.tipo} onChange={e => { const nf = newForm(div, e.target.value as Tipo, me.n); setF({ ...nf, autor: f.autor, cargo: f.cargo === coordOf(div) ? nf.cargo : f.cargo }); }}>
+              {TIPOS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
+            <Field label="Variante de diseño"><Select value={f.estilo} onChange={e => up("estilo", e.target.value as Estilo)}>{ESTILOS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
+          </div>
+          {field("titulo", "Título del comunicado")}
+          <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">{field("saludo", "Saludo", "Ej: Buenas noches:", 0, "(opcional)")}{field("intro", "Introducción", "Primer párrafo", 0)}</div>
+          {field("cuerpo", "Cuerpo", "Detalle, instrucciones, aclaraciones…", 4)}
+          <div className="grid gap-3 sm:grid-cols-[1fr_9rem_auto]">
+            <Field label="Fecha y hora" hint="(opcional)"><Input type="datetime-local" value={f.fecha} onChange={e => up("fecha", e.target.value)} /></Field>
+            <Field label="Formato"><Select value={f.fechaFmt} onChange={e => up("fechaFmt", e.target.value as Form["fechaFmt"])}><option value="F">Día y hora completos</option><option value="f">Fecha y hora</option><option value="D">Solo la fecha</option></Select></Field>
+            <label className="flex items-end gap-2 pb-2.5 text-sm"><input type="checkbox" checked={f.relativa} onChange={e => up("relativa", e.target.checked)} />Cuenta regresiva</label>
+          </div>
+          {field("lugar", "Lugar", "Ej: Sede de METRO, helipuerto de Mission Row…", 0, "(opcional)")}
+          <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">{field("listaTit", "Título de la lista", "Ej: Requisitos", 0, "(opcional)")}{field("lista", "Lista con viñetas", "Un elemento por línea", 3)}</div>
+          {field("enlaces", "Enlaces", "Nombre | https://… (uno por línea)", 2, "(opcional)")}
+          <div className="grid gap-3 sm:grid-cols-2">{field("cita", "Lema o frase destacada", "Ej: The mission is the same…", 0, "(opcional)")}{field("aviso", "Aviso final ⚠️", "Ej: El incumplimiento podrá derivar en sanciones", 0, "(opcional)")}</div>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.reaccion} onChange={e => up("reaccion", e.target.checked)} />Pedir que reaccionen con el emoji «Sí» para postularse</label>
+          <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Firma y mención</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Quién firma" hint="(agente del roster o texto libre)"><Input list="cm-names" value={f.autor} placeholder="Ej: Kyle Clarkson" onChange={e => up("autor", e.target.value)} /></Field>
+              {field("cargo", "Cargo", "Ej: Subcoordinador de la ASD")}
+              <Field label="Formato de la firma"><Select value={f.firma} onChange={e => up("firma", e.target.value as Firma)}>{FIRMAS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
+              <Field label="Mención"><Select value={f.rol} onChange={e => up("rol", e.target.value)}>{I.roles.map(([id, l]) => <option key={id} value={id}>{l}</option>)}<option value="">Sin mención</option></Select></Field>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-4 text-sm">
+              <label className="flex items-center gap-2"><input type="checkbox" checked={f.spoiler} onChange={e => up("spoiler", e.target.checked)} />Mención oculta (spoiler)</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={f.emoji} onChange={e => up("emoji", e.target.checked)} />Emblema de la {I.ab} en el título</label>
+            </div>
+          </div>
+        </> : <Field label="Texto en formato Discord" hint="Completá lo que está [entre corchetes]">
+          <Textarea rows={18} className="font-mono text-[13px]" value={body} onChange={e => setBody(e.target.value)} /></Field>}
+        <datalist id="cm-names">{names.map(n => <option key={n} value={n} />)}</datalist>
+
+        <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+          {f && manual && <Button variant="ghost" icon={<RefreshCw />} className="mr-auto" onClick={() => setBody(build(div, f))}>Regenerar desde el asistente</Button>}
           <Button variant="ghost" onClick={onCancel}>Cancelar</Button>
-          <Button icon={<Save />} onClick={() => { const pend = (c.body.match(/\[[^\]\n]{2,60}\](?!\()/g) || []).filter(x => !/^\[\*\*/.test(x));
-            if (!c.body.trim()) { toast("El comunicado está vacío", "err"); return; }
-            if (pend.length) toast(`Quedan ${pend.length} campos [entre corchetes] sin completar`, "err");
-            onSave({ ...c, t: c.t.trim() || firstLine(c.body), ts: init.id ? c.ts : Date.now() }); }}>Guardar</Button>
+          <Button icon={<Save />} onClick={() => {
+            if (!text.trim()) { toast("El comunicado está vacío", "err"); return; }
+            const pend = (text.match(/\[[^\]\n]{2,60}\](?!\()/g) || []).filter(x => !/^\[\*\*/.test(x));
+            if (pend.length) toast(`Ojo: quedan ${pend.length} campos [entre corchetes] sin completar`, "err");
+            onSave({ ...init, t: t.trim() || (f ? f.titulo.trim() : "") || firstLine(text), by: by.trim() || me.n, body: text, f: f || undefined, ts: init.id ? init.ts : Date.now() }); }}>Guardar</Button>
         </div>
       </Card>
-      <DiscordOutput title="Vista previa" text={c.body} sticky={false} />
+      <DiscordOutput title="Vista previa" text={text} sticky={false} />
     </div>
   );
 }
