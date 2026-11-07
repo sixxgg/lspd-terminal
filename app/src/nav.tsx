@@ -31,7 +31,7 @@ const RAW_AREAS: Area[] = [
   { k: "sgt", l: "Sargentos", icon: Award, min: 7, req: "Sargento II", sec: [
     { k: "exa", l: "Examen escrito", d: "Fase II del ascenso a Sargento I: corte 70 % y bonificación por antigüedad", icon: ClipboardCheck, ready: true },
     { k: "ent", l: "Entrevista (Oral Board)", sl: "Entrevista", d: "Fase III: tribunal de mandos, cada pregunta del 1 al 5", icon: MessageCircle, ready: true },
-    { k: "list", l: "Lista de elegibles", d: "Ranking por examen y entrevista", icon: Trophy, ready: true },
+    { k: "list", l: "Lista de elegibles", d: "Convocatorias: nota final /22 y sobre 100, ranking y observaciones", icon: Trophy, ready: true },
   ] },
   { k: "cap", l: "Capitanía", icon: Briefcase, min: 8, req: "Teniente", sec: [
     { k: "vot", l: "Resolución de votaciones", d: "Aprobar o rechazar propuestas abiertas", icon: Gavel, ready: true },

@@ -1,8 +1,9 @@
 /* Ascenso a Sargento (solo Sargento II o superior): examen escrito, entrevista (Oral Board) y lista de elegibles.
-   Proceso: Fase I elegibilidad · Fase II examen (corte 70 %, +0,25 por año de antigüedad hasta +2) · Fase III entrevista (apto ≥ 70 %). */
+   Lista de elegibles igual a la planilla «nota_final_sargentos»: Nota final (/22) = Examen (/10) + Entrevista (/10 = media×2) + Bonificación (0,25 por año, máx. 2);
+   Nota sobre 100 = Nota final / 22 × 100. */
 import { useMemo, useState } from "react";
 import { Check, ClipboardCheck, ClipboardPaste, Copy, MessageCircle, Minus, Pencil, Plus, Save, Star, Trash2, Trophy, X } from "lucide-react";
-import { Button, Card, Empty, Field, Input, Select, Textarea } from "@/components/ui";
+import { Button, Card, Field, Input, Select, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
@@ -16,7 +17,31 @@ type Q = { id: string; a: string; q: string; r: string };            // pregunta
 type Grade = "" | "ok" | "mid" | "no";
 type Eval = { id: string; tipo: "exa" | "ent"; cand: string; rango: string; fecha: string; anios?: number;
   notas: Record<string, Grade | number>; obs: Record<string, string>; pct: number; nota: number; apto: boolean; by: string; ts: number; qs?: { id: string; t: string }[] };
-const K_EVAL = "lspdt.sgt.eval", K_BANK = "lspdt.sgt.bank";
+const K_EVAL = "lspdt.sgt.eval", K_BANK = "lspdt.sgt.bank", K_CONV = "lspdt.sgt.conv";
+type Row = { id: string; cand: string; rango: string; exa?: number; media?: number; anios: number; obs: string };
+type Conv = { id: string; n: string; rows: Row[] };
+const r_ = (cand: string, rango: string, exa: number | undefined, media: number | undefined, anios: number, obs = ""): Row => ({ id: uid(), cand, rango, exa, media, anios, obs });
+/* convocatorias ya hechas (de la planilla) */
+const CONV0: Conv[] = [
+  { id: "c1", n: "C1", rows: [r_("Liam Campbell", "Oficial III", 8.6, 3.9, 5), r_("Evelyn Molina", "Oficial III", 8.6, 3.9, 6), r_("Kellan Ross", "Oficial III", 8.6, 3.9, 5), r_("Ryan Westbrook", "Oficial III", 9, 3.6, 4)] },
+  { id: "c2", n: "C2", rows: [
+    r_("Lloyd Burnett", "Oficial III+", 8.6, 3.6, 6, "Las áreas de mejora son claras: le falta profundidad táctica en situaciones críticas de mando (P9, P12), y en dos momentos clave (P4 y P16) no logra concretar con ejemplos reales o autocrítica desarrollada. Son carencias trabajables, no descalificadoras."),
+    r_("Lara Calloway", "Oficial III+", 8, 5, 9, "Entrevista impecable"),
+    r_("Clancy Skinner", "Oficial III", 8, 3.6, 4, "Las debilidades principales son dos: no sabe diferenciar entre reaccionar y decidir (P4), y en P6 acepta ejecutar sabiendo que puede salir mal sin intentar influir. Ambas apuntan a un perfil que actúa correctamente pero que todavía no ejerce el criterio proactivo que requiere el rango de Sargento."),
+    r_("Yooa Baek-Harrington", "Oficial III", 9.6, 4.3, 4), r_("Daniel López", "Oficial III", 9.3, 4.3, 4), r_("Kai Jeon-Soo", "Oficial III", 9.3, 3.9, 5),
+    r_("William Weston", "Oficial III", 9.6, undefined, 6),
+    r_("Khalan Smith", "Oficial III", 9, 3.6, 7, "Durante el táctico de los disparos al camión vio mal la forma del mando y hubiera cambiado el no haber tomado el mando del equipo. También comentó que ayudó al oficial con el que estuvo en el táctico, calmándolo porque estaba alterado por la situación, y recomendándole salir de servicio."),
+  ] },
+];
+const score = (r: Row) => { const ent = (r.media || 0) * 2, b = bonus(r.anios), fin = (r.exa || 0) + ent + b; return { ent, b, fin, c: (fin / 22) * 100 }; };
+const f2 = (n?: number, d = 2) => (n == null || Number.isNaN(n) ? "" : n.toFixed(d).replace(".", ","));
+const num = (s: string) => { const v = parseFloat(s.replace(",", ".")); return Number.isFinite(v) ? v : undefined; };
+/* al registrar un examen o una entrevista, se vuelca en la convocatoria abierta (la última) */
+function toConv(convs: Conv[], set: (c: Conv[]) => void, e: { cand: string; rango: string }, p: Partial<Row>) {
+  const L = convs.length ? convs : CONV0, last = L[L.length - 1], ex = last.rows.find(r => r.cand === e.cand);
+  const rows = ex ? last.rows.map(r => r === ex ? { ...r, ...p, rango: e.rango || r.rango } : r) : [...last.rows, { ...r_(e.cand, e.rango, undefined, undefined, 0), ...p }];
+  set([...L.slice(0, -1), { ...last, rows }]); return last.n;
+}
 const today = () => new Date().toISOString().slice(0, 10);
 const dmy = (s: string) => (s ? s.split("-").reverse().join("/") : "—");
 const CANDS = () => getRoster().filter(a => ["Police Officer III+", "Police Officer III", "Police Officer II", "Detective I", "Detective II", "Detective III"].includes(a.r)).map(a => a.n).sort((a, b) => a.localeCompare(b));
@@ -112,18 +137,18 @@ function Examen({ evals, onSave, onDel }: { evals: Eval[]; onSave: (e: Eval) => 
   const e = cur || blank(), qs = bank;
   const set = (p: Partial<Eval>) => setCur({ ...e, ...p });
   const graded = qs.filter(q => e.notas[q.id]), pts = qs.reduce((a, q) => a + gradeVal(e.notas[q.id] || ""), 0);
-  const pct = qs.length ? pts / qs.length : 0, nota = pct * 10 + bonus(e.anios), done = graded.length === qs.length && qs.length > 0, apto = pct >= 0.7;
+  const [convs, setConvs] = useJSON<Conv[]>(K_CONV, CONV0);
+  const pct = qs.length ? pts / qs.length : 0, nota = pct * 10, done = graded.length === qs.length && qs.length > 0, apto = pct >= 0.7;
   const txt = [`## 📝 Examen escrito · Ascenso a Sargento I`, `**Candidato:** ${e.cand || "—"} (${e.rango || "—"}) · **Fecha:** ${dmy(e.fecha)}`, "",
     ...AREAS_EXA.map(a => { const l = qs.filter(q => q.a === a); if (!l.length) return ""; const p = l.reduce((s, q) => s + gradeVal(e.notas[q.id] || ""), 0); return `**${a}:** ${p}/${l.length}`; }).filter(Boolean), "",
-    `**Resultado:** ${Math.round(pct * 100)} % · ${pts}/${qs.length} · antigüedad +${bonus(e.anios).toFixed(2)} → **nota ${nota.toFixed(2)}**`,
+    `**Resultado:** ${Math.round(pct * 100)} % · ${pts}/${qs.length} → **nota ${f2(nota)}/10**`,
     `**${done ? (apto ? "✅ APTO" : "❌ NO APTO") : "⏳ PENDIENTE"}** (corte 70 %)`, `-# Evaluó: ${me.n}`].join("\n");
   return (
     <div className="space-y-5">
       <Card className="flex flex-wrap items-center gap-2 p-3 text-sm text-slate-500"><ClipboardCheck className="size-4 text-brand-500" />
-        Fase II · corte <b>70 %</b> · +0,25 por año de antigüedad (máx. +2,00) · {qs.length} preguntas en {AREAS_EXA.length} áreas
+        Fase II · nota sobre 10 · corte <b>70 %</b> · {qs.length} preguntas en {AREAS_EXA.length} áreas · la antigüedad se suma en la lista de elegibles
         <Button size="sm" variant="outline" className="ml-auto" icon={<Pencil />} onClick={() => setEdit(true)}>Banco de preguntas</Button></Card>
-      <Head cand={e.cand} setCand={c => set({ cand: c, rango: findAgent(c) ? rankES(findAgent(c)!.r) : "" })} rango={e.rango} fecha={e.fecha} setFecha={f => set({ fecha: f })}
-        extra={<Field label="Años de servicio"><Input type="number" min={0} max={30} className="w-28" value={e.anios || 0} onChange={x => set({ anios: +x.target.value })} /></Field>} />
+      <Head cand={e.cand} setCand={c => set({ cand: c, rango: findAgent(c) ? rankES(findAgent(c)!.r) : "" })} rango={e.rango} fecha={e.fecha} setFecha={f => set({ fecha: f })} />
       {AREAS_EXA.map(a => { const l = qs.filter(q => q.a === a); return l.length ? <section key={a} className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{a}</p>
         {l.map((q, i) => { const g = (e.notas[q.id] || "") as Grade; return (
@@ -135,11 +160,11 @@ function Examen({ evals, onSave, onDel }: { evals: Eval[]; onSave: (e: Eval) => 
             {q.r && <details className="text-xs text-slate-500"><summary className="cursor-pointer select-none">Respuesta esperada</summary><p className="mt-1 rounded-lg bg-slate-50 p-2 dark:bg-slate-800/50">{q.r}</p></details>}
             <Input className="h-8 text-xs" value={e.obs[q.id] || ""} onChange={x => set({ obs: { ...e.obs, [q.id]: x.target.value } })} placeholder="Observación (opcional)…" />
           </Card>); })}</section> : null; })}
-      <Result items={[["Puntaje", `${pts}/${qs.length}`], ["Porcentaje", `${Math.round(pct * 100)} %`], ["Nota (con antigüedad)", nota.toFixed(2)], ["Resultado", done ? (apto ? "APTO" : "NO APTO") : "Pendiente", done ? (apto ? "text-emerald-500" : "text-red-500") : "text-amber-500"]]} />
+      <Result items={[["Puntaje", `${pts}/${qs.length}`], ["Porcentaje", `${Math.round(pct * 100)} %`], ["Nota", `${f2(nota)} / 10`], ["Resultado", done ? (apto ? "APTO" : "NO APTO") : "Pendiente", done ? (apto ? "text-emerald-500" : "text-red-500") : "text-amber-500"]]} />
       <div className="flex flex-wrap justify-end gap-2">
         {cur?.id && <Button variant="ghost" onClick={() => setCur(null)}>Nueva evaluación</Button>}
         <Button icon={<Save />} onClick={() => { if (!e.cand.trim()) { toast("Elegí el candidato", "err"); return; } if (!done) { toast("Faltan preguntas por corregir", "err"); return; }
-          const r = { ...e, id: e.id || uid(), pct, nota, apto, ts: e.ts || Date.now(), by: me.n, qs: qs.map(q => ({ id: q.id, t: q.q })) }; onSave(r); setCur(r); toast("Examen registrado"); }}>Registrar examen</Button>
+          const r = { ...e, id: e.id || uid(), pct, nota, apto, ts: e.ts || Date.now(), by: me.n, qs: qs.map(q => ({ id: q.id, t: q.q })) }; onSave(r); setCur(r); toast(`Examen registrado · volcado a la convocatoria ${toConv(convs, setConvs, r, { exa: +nota.toFixed(2) })}`); }}>Registrar examen</Button>
       </div>
       <DiscordOutput title="Resultado del examen" text={txt} sticky={false} />
       <History evals={evals} tipo="exa" onOpen={setCur} onDel={onDel} />
@@ -177,12 +202,13 @@ function Entrevista({ evals, onSave, onDel }: { evals: Eval[]; onSave: (e: Eval)
   const me = useMe(), { toast } = useFeedback();
   const blank = (): Eval => ({ id: "", tipo: "ent", cand: "", rango: "", fecha: today(), notas: {}, obs: {}, pct: 0, nota: 0, apto: false, by: me.n, ts: 0 });
   const [cur, setCur] = useState<Eval | null>(null), [rep, setRep] = useState<Record<number, boolean>>({});
+  const [convs, setConvs] = useJSON<Conv[]>(K_CONV, CONV0);
   const e = cur || blank(), set = (p: Partial<Eval>) => setCur({ ...e, ...p });
   const MAX = ENT.length * 5, vals = ENT.map((_, i) => Number(e.notas["q" + i]) || 0), n = vals.filter(Boolean).length, tot = vals.reduce((a, b) => a + b, 0);
   const pct = tot / MAX, done = n === ENT.length, apto = done && pct >= 0.7;
   const txt = [`## 🎙️ Entrevista de ascenso · Sargento (Oral Board)`, `**Candidato:** ${e.cand || "—"} (${e.rango || "—"}) · **Fecha:** ${dmy(e.fecha)}`, "",
     ...ENT.map(([q], i) => `**P${i + 1}** ${"★".repeat(vals[i])}${"☆".repeat(5 - vals[i])}${e.obs["q" + i] ? ` — ${e.obs["q" + i]}` : ""}\n-# ${q}`), "",
-    `**Total:** ${tot}/${MAX} · **Media:** ${n ? (tot / n).toFixed(1) : "—"}/5 · **${done ? (apto ? "✅ APTO" : "❌ NO APTO") : "⏳ PENDIENTE"}** (umbral 70 %)`, `-# Tribunal: ${me.n}`].join("\n");
+    `**Total:** ${tot}/${MAX} · **Media:** ${n ? f2(tot / n) : "—"}/5 · **Entrevista:** ${n ? f2((tot / n) * 2) : "—"}/10 · **${done ? (apto ? "✅ APTO" : "❌ NO APTO") : "⏳ PENDIENTE"}** (umbral 70 %)`, `-# Tribunal: ${me.n}`].join("\n");
   return (
     <div className="space-y-5">
       <Card className="flex flex-wrap items-center gap-2 p-3 text-sm text-slate-500"><MessageCircle className="size-4 text-brand-500" />Fase III · Oral Board · cada pregunta del 1 al 5 · apto con <b>70 %</b> (eliminatorio aunque el examen sea bueno)</Card>
@@ -198,11 +224,11 @@ function Entrevista({ evals, onSave, onDel }: { evals: Eval[]; onSave: (e: Eval)
             <button key={v} role="radio" aria-checked={vals[i] === v} title={`${v} de 5`} onClick={() => set({ notas: { ...e.notas, ["q" + i]: vals[i] === v ? 0 : v } })}>
               <Star className={cn("size-6 transition", v <= vals[i] ? "fill-amber-400 text-amber-400" : "text-slate-300 hover:text-amber-300 dark:text-slate-600")} /></button>)}</div>
         </Card>))}</div>
-      <Result items={[["Total", n ? String(tot) : "—"], ["Máximo", String(MAX)], ["Media", n ? (tot / n).toFixed(1) : "—"], ["Resultado", done ? (apto ? "APTA" : "NO APTA") : n ? "Pendiente" : "—", done ? (apto ? "text-emerald-500" : "text-red-500") : "text-amber-500"]]} />
+      <Result items={[["Total", n ? String(tot) : "—"], ["Máximo", String(MAX)], ["Media", n ? `${f2(tot / n)} / 5` : "—"], ["Resultado", done ? (apto ? "APTA" : "NO APTA") : n ? "Pendiente" : "—", done ? (apto ? "text-emerald-500" : "text-red-500") : "text-amber-500"]]} />
       <div className="flex flex-wrap justify-end gap-2">
         {cur?.id && <Button variant="ghost" onClick={() => { setCur(null); setRep({}); }}>Nueva entrevista</Button>}
         <Button icon={<Save />} onClick={() => { if (!e.cand.trim()) { toast("Elegí el candidato", "err"); return; } if (!done) { toast("Faltan preguntas por puntuar", "err"); return; }
-          const r = { ...e, id: e.id || uid(), pct, nota: pct * 10, apto, ts: e.ts || Date.now(), by: me.n }; onSave(r); setCur(r); toast("Entrevista registrada"); }}>Registrar entrevista</Button>
+          const r = { ...e, id: e.id || uid(), pct, nota: pct * 10, apto, ts: e.ts || Date.now(), by: me.n }; onSave(r); setCur(r); toast(`Entrevista registrada · volcada a la convocatoria ${toConv(convs, setConvs, r, { media: +(tot / ENT.length).toFixed(2), obs: Object.values(e.obs).filter(Boolean).join(" · ") })}`); }}>Registrar entrevista</Button>
       </div>
       <DiscordOutput title="Resumen de la entrevista" text={txt} sticky={false} />
       <History evals={evals} tipo="ent" onOpen={x => { setCur(x); setRep({}); }} onDel={onDel} />
@@ -210,29 +236,62 @@ function Entrevista({ evals, onSave, onDel }: { evals: Eval[]; onSave: (e: Eval)
   );
 }
 
-/* ---------- lista de elegibles ---------- */
-function Elegibles({ evals }: { evals: Eval[] }) {
-  const last = (n: string, t: Eval["tipo"]) => evals.filter(e => e.cand === n && e.tipo === t).sort((a, b) => b.ts - a.ts)[0];
-  const rows = [...new Set(evals.map(e => e.cand))].map(n => { const x = last(n, "exa"), y = last(n, "ent");
-    const elig = !!(x?.apto && y?.apto), total = (x?.nota || 0) + (y ? y.pct * 10 : 0); return { n, x, y, elig, total }; })
-    .sort((a, b) => +b.elig - +a.elig || b.total - a.total);
-  const copy = (s: string) => navigator.clipboard?.writeText(s);
-  const txt = [`## 🏅 Lista de elegibles · Ascenso a Sargento I`, ...rows.filter(r => r.elig).map((r, i) => `**${i + 1}.** ${r.n} — examen ${r.x!.nota.toFixed(2)} · entrevista ${(r.y!.pct * 10).toFixed(2)} · **total ${r.total.toFixed(2)}**`),
-    "", "-# Las vacantes se cubren de mayor a menor puntuación. Aprobar no implica ascenso automático."].join("\n");
-  if (!rows.length) return <Card><Empty icon={<Trophy />} title="Sin evaluaciones" desc="Registrá exámenes y entrevistas para armar la lista de elegibles." /></Card>;
+/* ---------- lista de elegibles (como la planilla) ---------- */
+function Elegibles({ evals: _ }: { evals: Eval[] }) {
+  const { toast, confirm } = useFeedback();
+  const [convs, setConvs] = useJSON<Conv[]>(K_CONV, CONV0);
+  const [sel, setSel] = useState(convs[convs.length - 1]?.id || ""), [obs, setObs] = useState<Row | null>(null);
+  const c = convs.find(x => x.id === sel) || convs[convs.length - 1];
+  const names = useMemo(CANDS, []);
+  if (!c) return null;
+  const save = (rows: Row[]) => setConvs(convs.map(x => x.id === c.id ? { ...x, rows } : x));
+  const upd = (id: string, p: Partial<Row>) => save(c.rows.map(r => r.id === id ? { ...r, ...p } : r));
+  const rank = [...c.rows].filter(r => r.cand.trim()).sort((a, b) => score(b).c - score(a).c);
+  const txt = [`## 🏅 Convocatoria ascenso a Sargento I · ${c.n} · Lista de elegibles`, "-# Nota sobre 100 = (Examen + Entrevista + Bonificación por antigüedad) / 22 × 100", "",
+    ...rank.map((r, i) => { const s = score(r); return `**${i + 1}.** ${r.cand} (${r.rango}) — examen ${f2(r.exa)} · entrevista ${r.media == null ? "—" : f2(s.ent)} · antigüedad +${f2(s.b)} · **${f2(s.c, 1)}/100**`; }),
+    "", "-# Las vacantes se cubren de mayor a menor nota. Aprobar no implica ascenso automático."].join("\n");
+  const tsv = ["Candidato\tRango\tNota examen (/10)\tMedia entrevista (/5)\tEntrevista (/10)\tAños servicio\tBonificación (máx. +2,00)\tNota final (/22)\tNota sobre 100\tObs",
+    ...c.rows.map(r => { const s = score(r); return [r.cand, r.rango, f2(r.exa), f2(r.media), f2(s.ent), r.anios, f2(s.b), f2(s.fin), f2(s.c, 1), r.obs].join("\t"); })].join("\n");
+  const cell = "h-8 w-20 px-2 text-right text-sm";
   return (
     <div className="space-y-5">
-      <Card className="overflow-x-auto"><table className="w-full text-sm">
-        <thead><tr className="border-b border-slate-100 text-left text-[11px] uppercase tracking-wide text-slate-400 dark:border-slate-800"><th className="px-4 py-3">#</th><th>Candidato</th><th>Examen</th><th>Entrevista</th><th>Total</th><th className="pr-4">Estado</th></tr></thead>
-        <tbody>{rows.map((r, i) => (
-          <tr key={r.n} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
-            <td className="px-4 py-2.5 font-semibold text-slate-400">{r.elig ? i + 1 : "—"}</td><td className="font-semibold">{r.n}</td>
-            <td>{r.x ? <span className={r.x.apto ? "" : "text-red-500"}>{r.x.nota.toFixed(2)} ({Math.round(r.x.pct * 100)} %)</span> : <span className="text-slate-400">Falta</span>}</td>
-            <td>{r.y ? <span className={r.y.apto ? "" : "text-red-500"}>{(r.y.pct * 10).toFixed(2)} ({Math.round(r.y.pct * 100)} %)</span> : <span className="text-slate-400">Falta</span>}</td>
-            <td className="font-display font-semibold">{r.total.toFixed(2)}</td>
-            <td className="pr-4"><span className={cn("rounded-md px-2 py-0.5 text-[11px] font-bold", r.elig ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300" : r.x && r.y ? "bg-red-500/10 text-red-600 dark:text-red-300" : "bg-amber-500/10 text-amber-700 dark:text-amber-300")}>{r.elig ? "ELEGIBLE" : r.x && r.y ? "NO APTO" : "EN PROCESO"}</span></td>
-          </tr>))}</tbody></table></Card>
-      <DiscordOutput title="Lista de elegibles" text={txt} sticky={false} extra={<Button size="sm" variant="ghost" icon={<Copy />} onClick={() => copy(rows.map(r => `${r.n}\t${r.x?.nota.toFixed(2) || ""}\t${r.y ? (r.y.pct * 10).toFixed(2) : ""}\t${r.total.toFixed(2)}`).join("\n"))}>Copiar para Sheets</Button>} />
+      <Card className="flex flex-wrap items-center gap-2 p-3">
+        <Trophy className="size-4 text-brand-500" /><span className="text-sm font-semibold">Convocatoria</span>
+        <div className="flex flex-wrap gap-1">{convs.map(x => <button key={x.id} onClick={() => setSel(x.id)} className={cn("rounded-lg px-3 py-1 text-sm font-semibold transition", x.id === c.id ? "bg-brand-600 text-white" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800")}>{x.n}</button>)}</div>
+        <Button size="sm" variant="outline" icon={<Plus />} onClick={() => { const n = "C" + (convs.length + 1), id = uid(); setConvs([...convs, { id, n, rows: [] }]); setSel(id); toast(`Convocatoria ${n} abierta: los exámenes y entrevistas nuevos se vuelcan acá`); }}>Nueva convocatoria</Button>
+        <span className="ml-auto text-xs text-slate-500">Nota sobre 100 = (Examen + Entrevista×2 + Bonificación) / 22 × 100 · máx. 22 puntos</span>
+      </Card>
+      <Card className="overflow-x-auto"><table className="w-full min-w-[60rem] text-sm">
+        <thead><tr className="border-b border-slate-100 text-left text-[11px] uppercase tracking-wide text-slate-400 dark:border-slate-800">
+          <th className="px-3 py-3">Candidato</th><th>Rango</th><th className="text-right">Examen /10</th><th className="text-right">Media entr. /5</th><th className="text-right">Entrevista /10</th><th className="text-right">Años</th><th className="text-right">Bonif.</th><th className="text-right">Final /22</th><th className="text-right">Sobre 100</th><th className="px-3">Obs</th><th /></tr></thead>
+        <tbody>{c.rows.map(r => { const s = score(r); return (
+          <tr key={r.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
+            <td className="px-3 py-1.5"><Input list="sg-el" className="h-8 min-w-[11rem] text-sm font-semibold" value={r.cand} onChange={e => { const a = findAgent(e.target.value); upd(r.id, { cand: e.target.value, ...(a ? { rango: rankES(a.r) } : {}) }); }} /></td>
+            <td><Input className="h-8 w-32 text-sm" value={r.rango} onChange={e => upd(r.id, { rango: e.target.value })} /></td>
+            <td className="text-right"><Input className={cell} inputMode="decimal" defaultValue={f2(r.exa)} onBlur={e => upd(r.id, { exa: num(e.target.value) })} /></td>
+            <td className="text-right"><Input className={cell} inputMode="decimal" defaultValue={f2(r.media)} onBlur={e => upd(r.id, { media: num(e.target.value) })} /></td>
+            <td className="text-right tabular-nums">{r.media == null ? <span className="text-slate-400">—</span> : f2(s.ent)}</td>
+            <td className="text-right"><Input className="h-8 w-14 px-2 text-right text-sm" type="number" min={0} value={r.anios} onChange={e => upd(r.id, { anios: +e.target.value })} /></td>
+            <td className="text-right tabular-nums">{f2(s.b)}</td>
+            <td className="text-right font-semibold tabular-nums">{f2(s.fin)}</td>
+            <td className={cn("text-right font-display font-semibold tabular-nums", s.c >= 80 ? "text-emerald-500" : s.c >= 70 ? "text-amber-500" : "text-red-500")}>{f2(s.c, 1)}</td>
+            <td className="px-3"><button onClick={() => setObs(r)} title={r.obs || "Agregar observación"} className={cn("max-w-[14rem] truncate text-left text-xs", r.obs ? "text-slate-600 dark:text-slate-300" : "text-slate-400")}>{r.obs || "+ obs"}</button></td>
+            <td className="pr-2"><button aria-label="Quitar" onClick={async () => { if (await confirm(`¿Quitar a ${r.cand || "esta fila"} de ${c.n}?`, { danger: true })) save(c.rows.filter(x => x.id !== r.id)); }} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><Trash2 className="size-4" /></button></td>
+          </tr>); })}</tbody></table>
+        <datalist id="sg-el">{names.map(n => <option key={n} value={n} />)}</datalist>
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 p-3 dark:border-slate-800">
+          <Button size="sm" variant="outline" icon={<Plus />} onClick={() => save([...c.rows, r_("", "", undefined, undefined, 0)])}>Agregar candidato</Button>
+          {c.rows.length === 0 && convs.length > 1 && <Button size="sm" variant="ghost" icon={<Trash2 />} onClick={async () => { if (await confirm(`¿Borrar la convocatoria ${c.n}?`, { danger: true })) { setConvs(convs.filter(x => x.id !== c.id)); setSel(""); } }}>Borrar convocatoria</Button>}
+          <Button size="sm" variant="ghost" className="ml-auto" icon={<Copy />} onClick={() => { navigator.clipboard?.writeText(tsv); toast("Copiado: pegalo en Google Sheets"); }}>Copiar para Sheets</Button>
+        </div></Card>
+      {!!rank.length && <Card className="overflow-hidden"><p className="border-b border-slate-100 px-4 py-3 text-sm font-semibold dark:border-slate-800">Ranking · Eligible List ({c.n})</p>
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">{rank.map((r, i) => (
+          <div key={r.id} className="flex items-center gap-3 px-4 py-2"><span className={cn("grid size-7 place-items-center rounded-lg text-xs font-bold", i === 0 ? "bg-amber-400/20 text-amber-600 dark:text-amber-300" : "bg-slate-100 text-slate-500 dark:bg-slate-800")}>{i + 1}</span>
+            <span className="flex-1 text-sm font-semibold">{r.cand}</span><span className="font-display font-semibold tabular-nums">{f2(score(r).c, 1)}</span></div>))}</div></Card>}
+      <DiscordOutput title="Lista de elegibles" text={txt} sticky={false} />
+      {obs && <Modal open onClose={() => setObs(null)} title={`Observaciones · ${obs.cand}`} icon={<MessageCircle />}
+        footer={<><Button variant="ghost" onClick={() => setObs(null)}>Cancelar</Button><Button icon={<Save />} onClick={() => { upd(obs.id, { obs: obs.obs.trim() }); setObs(null); }}>Guardar</Button></>}>
+        <Textarea rows={6} value={obs.obs} onChange={e => setObs({ ...obs, obs: e.target.value })} placeholder="Fortalezas, debilidades, preguntas flojas (P4, P9…)" /></Modal>}
     </div>
   );
 }
