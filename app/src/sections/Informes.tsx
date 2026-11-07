@@ -1,6 +1,6 @@
 import { scrollTopApp } from "@/lib/appearance";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileText, Search, Plus, X, Users, UserRound, Shield, Package, ScrollText, ChevronDown, Pencil, Trash2, Copy, Save, FilePlus2, Info, Star, Car, ListChecks, Radio, Check } from "lucide-react";
+import { FileText, Search, Plus, X, Users, UserRound, Shield, Package, ScrollText, ChevronDown, Pencil, Trash2, Copy, Save, FilePlus2, Info, Star, Car, ListChecks, Radio, Check, GripVertical, ArrowDownUp } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Select, Textarea } from "@/components/ui";
 import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
@@ -40,7 +40,8 @@ export function Informes() {
 function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) => void }) {
   const me = useMe(), { toast, confirm } = useFeedback();
   const [A, setA] = useState<Inf>(() => init ? structuredClone(init) : Object.assign(infNew(me.n), LS.json<Partial<Inf>>("lspdt.infDraft", {})));
-  const [showErr, setShowErr] = useState(false), [otro, setOtro] = useState("");
+  const [showErr, setShowErr] = useState(false), [otro, setOtro] = useState(""), [drag, setDrag] = useState<number | null>(null), [over, setOver] = useState<number | null>(null);
+  const moveU = (from: number, to: number) => { if (from === to) return; up(x => { const [m] = x.unid.splice(from, 1); x.unid.splice(to, 0, m); }); };
   useEffect(() => { LS.setJSON("lspdt.infDraft", A); }, [A]);
   const up = (fn: (x: Inf) => void) => setA(a => { const x = structuredClone(a); fn(x); return x; });
   const set = <K extends keyof Inf>(k: K) => (e: { target: { value: string } }) => up(x => { (x[k] as unknown as string) = e.target.value; });
@@ -128,17 +129,27 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
           </CardBody>
         </Card>
         <Card>
-          <CardHeader icon={<Users />} title="Unidades intervinientes" desc="Agente, indicativo (10-ADAM-12, 10-AIRE-01…) o los dos. La unidad se puede escribir a mano." />
+          <CardHeader icon={<Users />} title="Unidades intervinientes" desc="Agente, indicativo o los dos (la unidad se puede escribir a mano). Arrastralos desde ⋮⋮ para ordenarlos: el informe sale en ese orden." />
           <CardBody>
             {A.unid.map((u, i) => (
-              <div key={i} className="flex gap-2">
+              <div key={i} onDragOver={e => { if (drag === null) return; e.preventDefault(); setOver(i); }} onDrop={e => { e.preventDefault(); if (drag !== null) moveU(drag, i); setDrag(null); setOver(null); }}
+                className={cn("flex gap-2 rounded-xl transition", drag === i && "opacity-40", over === i && drag !== null && drag !== i && (drag > i ? "shadow-[0_-2px_0_0_rgb(var(--b-500))]" : "shadow-[0_2px_0_0_rgb(var(--b-500))]"))}>
+                <button type="button" draggable aria-label={`Mover ${u.n || u.u || "fila"} (arrastrá, o usá las flechas)`} title="Arrastrá para reordenar"
+                  onDragStart={e => { setDrag(i); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(i)); const row = e.currentTarget.parentElement; if (row) e.dataTransfer.setDragImage(row, 16, 20); }}
+                  onDragEnd={() => { setDrag(null); setOver(null); }}
+                  onKeyDown={e => { if (e.key === "ArrowUp" && i > 0) { e.preventDefault(); moveU(i, i - 1); } if (e.key === "ArrowDown" && i < A.unid.length - 1) { e.preventDefault(); moveU(i, i + 1); } }}
+                  className="grid w-6 shrink-0 cursor-grab place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing dark:hover:bg-slate-800"><GripVertical className="size-4" /></button>
                 <Input list="rosterDL" value={u.n} onChange={e => up(x => { x.unid[i].n = e.target.value; })} placeholder="Agente (opcional si ponés la unidad)" />
                 <div className="relative w-44 shrink-0"><Radio className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
                   <Input list="unitDL" value={u.u || ""} onChange={e => up(x => { x.unid[i].u = e.target.value.toUpperCase(); })} placeholder="Unidad" className="pl-8 font-mono text-sm uppercase" /></div>
                 <Select value={u.r} onChange={e => up(x => { x.unid[i].r = e.target.value; })} className="max-w-[16rem] text-sm">{[...(INF_ROLES as string[]), ...((INF_ROLES as string[]).includes(u.r) ? [] : [u.r])].map(r => <option key={r}>{r}</option>)}</Select>
                 <Button variant="ghost" size="icon" aria-label="Quitar unidad" onClick={() => up(x => { x.unid.splice(i, 1); })}><X /></Button>
               </div>))}
-            <Button variant="outline" size="sm" icon={<Plus />} onClick={() => up(x => { x.unid.push({ n: "", r: "Unidad de apoyo" }); })}>Añadir unidad</Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" icon={<Plus />} onClick={() => up(x => { const last = x.unid[x.unid.length - 1]; x.unid.push({ n: "", r: "Unidad de apoyo", u: last?.u || "" }); })}>Añadir agente</Button>
+              {A.unid.length > 1 && <Button variant="ghost" size="sm" icon={<ArrowDownUp />} onClick={() => up(x => { const ord = (u: string) => { const i = UNITS.indexOf(u); return u ? (i < 0 ? 999 : i) : 1e4; };
+                x.unid = x.unid.map((u, i) => ({ u, i })).sort((a, b) => ord(a.u.u || "") - ord(b.u.u || "") || (a.u.u || "").localeCompare(b.u.u || "") || a.i - b.i).map(y => y.u); })}>Ordenar por unidad</Button>}
+            </div>
           </CardBody>
         </Card>
         <Card>

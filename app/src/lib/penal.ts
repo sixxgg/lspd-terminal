@@ -64,8 +64,8 @@ export function infText(A: Inf, me: string, P = getPenal()) {
   if (on("hechos")) { sec("DESCRIPCIÓN DE LOS HECHOS"); p((A.hechos || "—").trim()); }
   const rdN = A.por || me;
   if (on("unid")) { sec("UNIDADES INTERVINIENTES");
-    const ro = (u: Unid) => { const i = (INF_ROLES as string[]).indexOf(u.r); return (i < 0 ? 9 : i) * 2 + (u.n === rdN ? 1 : 0); };
-    A.unid.filter(u => u.n || u.u).sort((a, b) => ro(a) - ro(b)).forEach(u => p(`- ${unitTag(u)} — ${u.r.replace(/\.$/, "")}${u.n && u.n === rdN ? " y agente redactor del informe" : ""}.`));
+    /* mismo orden que en el formulario (se reordena arrastrando) */
+    A.unid.filter(u => u.n || u.u).forEach(u => p(`- ${unitTag(u)} — ${u.r.replace(/\.$/, "")}${u.n && u.n === rdN ? " y agente redactor del informe" : ""}.`));
     if (rdN && !A.unid.some(u => u.n === rdN)) p(`- ${agTag(rdN)} — Agente redactor del informe.`); }
   if (on("suj")) { sec(plural(S.length, "SUJETO IMPLICADO", "SUJETOS IMPLICADOS"));
     if (!S.length) p("—");
