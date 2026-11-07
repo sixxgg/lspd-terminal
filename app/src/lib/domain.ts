@@ -87,7 +87,9 @@ export const DET = ["Detective I", "Detective II", "Detective III"];
 export const DET_MIN = 8;
 export const RK_EN: Record<string, string> = { "Chief of Police": "COP", "Assistant Chief": "AC", "Deputy Chief": "DC", "Commander": "CMDR", "Captain": "CPT", "Lieutenant": "LT", "Sergeant II": "SGT II", "Sergeant I": "SGT I",
   "Detective III": "DET III", "Detective II": "DET II", "Detective I": "DET I", "Police Officer III+": "PO III+", "Police Officer III": "PO III", "Police Officer II": "PO II", "Police Officer I": "PO I" };
-export const RK_AB: Record<string, string> = { "Police Officer I": "PO.I", "Police Officer II": "PO.II", "Police Officer III": "PO.III", "Police Officer III+": "PO.III+", "Detective I": "DET.I", "Detective II": "DET.II", "Detective III": "DET.III" };
+/* abreviatura de rango como en la radio del servidor (PO III. · Det. II. · Sgt. I.); de Teniente para arriba va completo */
+export const RK_AB: Record<string, string> = { "Police Officer I": "PO I.", "Police Officer II": "PO II.", "Police Officer III": "PO III.", "Police Officer III+": "PO III+.",
+  "Detective I": "Det. I.", "Detective II": "Det. II.", "Detective III": "Det. III.", "Sergeant I": "Sgt. I.", "Sergeant II": "Sgt. II." };
 /* idioma del rango en los textos (preferencia de cada uno, igual que en la clásica) */
 export const rkTxt = (r: string) => (LS.get("lspdt.rankLang") === "es" ? rankES(r) : r);
 export type Exc = Record<string, { t1080?: boolean; psb?: boolean; [k: string]: unknown }>;

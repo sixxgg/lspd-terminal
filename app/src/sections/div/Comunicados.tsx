@@ -34,7 +34,7 @@ const E = (d: CommDiv, v: Record<string, string>) => (v.emoji === "0" ? "" : INF
 const dots = (ab: string) => ab.split("").join(".");
 const join = (o: (string | false | undefined)[]) => o.filter((x): x is string => x !== false && x !== undefined).join("\n").replace(/\n{3,}/g, "\n\n").trim();
 /* firma «Sgto. I Clarkson» a partir de un agente del roster (o lo escrito tal cual) */
-export const firmaDe = (s: string) => { const a = findAgent(s.trim()); if (!a) return s.trim(); const ab = (RK_AB[a.r] || a.r).replace(/^SGT\.?/i, "Sgto. ").replace(/\.(?=\S)/g, ". "); return `${ab} ${a.n.split(" ").slice(-1)[0]}`; };
+export const firmaDe = (s: string) => { const a = findAgent(s.trim()); if (!a) return s.trim(); const ab = /^Sergeant/.test(a.r) ? "Sgto. " + a.r.split(" ")[1] : (RK_AB[a.r] || a.r).replace(/\.$/, ""); return `${ab} ${a.n.split(" ").slice(-1)[0]}`; };
 
 const COMMON: Fd[] = [{ k: "rol", l: "Mención", t: "role", w: "half" }, { k: "spoiler", l: "Mención oculta (spoiler)", t: "check", w: "half" }, { k: "emoji", l: "Emblema de la división en el título", t: "check", w: "half" }];
 
