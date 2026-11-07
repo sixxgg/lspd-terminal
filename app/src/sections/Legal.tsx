@@ -51,7 +51,7 @@ export function Legal() {
 
   const qn = norm(q.trim()), searching = !!qn;
   const scope = searching ? byKind(kind) : chapters.find(([c]) => c === curCap)?.[1] || [];
-  const hit = (x: Art) => !qn || qn.split(/\s+/).every(w => norm(`${x.a} ${x.t} ${x.d || ""}`).includes(w));
+  const hit = (x: Art) => !qn || qn.split(/\s+/).every(w => { const h = norm(`${x.a} ${x.t} ${x.d || ""}`); return /^\d+(\.\d+)*$/.test(w) ? new RegExp(`(^|[^\\d.])${w.replace(/\./g, "\\.")}(?![\\d]|\\.\\d)`).test(h) : h.includes(w); });
   const base = scope.filter(hit);
   const L = base.filter(x => grav === "all" ? true : grav === "fav" ? favs.has(x.a) : x.g === grav).sort(artCmp);
   const cnt = (g: Grav) => g === "all" ? base.length : g === "fav" ? base.filter(x => favs.has(x.a)).length : base.filter(x => x.g === g).length;
@@ -104,6 +104,8 @@ export function Legal() {
           <div className="space-y-3 border-b border-slate-100 p-4 dark:border-slate-800">
             <div className="flex flex-wrap items-center gap-3">
               <h3 className="text-base font-semibold">{searching ? `Resultados en ${kind === "adm" ? "infracciones administrativas" : "delitos"}` : chapterName(curCap)}</h3>
+              {searching && <span className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">{L.length} {L.length === 1 ? "resultado" : "resultados"}
+                <button onClick={() => setQ("")} className="rounded-lg px-2 py-1 font-semibold text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">Limpiar</button></span>}
               <div className="relative ml-auto w-full sm:w-80"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <Input className="h-9 pl-9 pr-8 text-sm" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar en todo el ámbito: artículo, título o palabra…" />
                 {q && <button onClick={() => setQ("")} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X className="size-3.5" /></button>}</div>
@@ -111,7 +113,10 @@ export function Legal() {
             <Segmented size="sm" value={grav} onChange={setGrav} options={tabs} />
           </div>
           <div className="max-h-[calc(100vh-19rem)] space-y-3 overflow-y-auto p-4">
-            {L.length ? L.map(x => <ArtCard key={x.a} x={x} fav={favs.has(x.a)} onFav={() => toggle(x.a)} showCap={searching || grav === "fav"} />)
+            {L.length ? (searching ? groupBy(L).map(([c, l]) => <div key={c} className="space-y-3">
+                <div className="flex items-center gap-2 pt-1 text-[13px] font-semibold text-slate-700 dark:text-slate-200">{chapterName(c)}<span className="rounded-md bg-slate-900/5 px-1.5 text-[11px] font-normal tabular-nums text-slate-500 dark:bg-white/10 dark:text-slate-400">{l.length}</span></div>
+                {l.map(x => <ArtCard key={x.a} x={x} fav={favs.has(x.a)} onFav={() => toggle(x.a)} showCap={false} />)}</div>)
+              : L.map(x => <ArtCard key={x.a} x={x} fav={favs.has(x.a)} onFav={() => toggle(x.a)} showCap={grav === "fav"} />))
               : <Empty icon={grav === "fav" ? <Star /> : <Gavel />} title={grav === "fav" ? "Sin favoritos acá" : searching ? "Sin resultados" : "Nada en esta gravedad"}
                 desc={grav === "fav" ? "Tocá la estrella de un artículo para tenerlo a mano." : searching ? "Probá con otra palabra o con el número del artículo." : "Este capítulo no tiene infracciones de esta gravedad. Probá en otra pestaña."} />}
           </div>
@@ -130,6 +135,8 @@ function CapBtn({ on, n, nf, kind, label, sub, onClick }: { on: boolean; n: numb
     <span className={cn("font-display mt-0.5 block font-semibold leading-snug", sub ? "text-[14px]" : "text-[15px]", on ? "text-brand-700 dark:text-brand-300" : "text-slate-800 dark:text-slate-100")}>{label}</span>
   </button>;
 }
+
+const groupBy = (L: Art[]) => { const m = new Map<string, Art[]>(); L.forEach(x => { const c = x.c || "Sin capítulo"; m.set(c, [...(m.get(c) || []), x]); }); return [...m.entries()]; };
 
 const Count = ({ n }: { n: number }) => <span className="rounded-md bg-slate-900/5 px-1.5 text-[11px] tabular-nums opacity-70 dark:bg-white/10">{n}</span>;
 
