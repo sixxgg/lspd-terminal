@@ -197,12 +197,12 @@ export function AdmDatos() {
       <Card>
         <CardHeader icon={<Database />} title="Respaldo" desc="Los datos del departamento se guardan en línea y se comparten entre todos." />
         <CardBody>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Importar reemplaza los datos compartidos de todo el departamento (perfiles, votaciones, registros, fotos…).</p>
           <div className="flex flex-wrap gap-2">
             <Button icon={<Download />} onClick={exp}>Exportar respaldo</Button>
             <Button variant="outline" icon={<Upload />} onClick={() => bk.current?.click()}>Importar respaldo</Button>
             <input ref={bk} type="file" accept=".json,application/json" hidden onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) imp(f); }} />
           </div>
-          <p className="text-xs text-slate-400">Importar reemplaza los datos compartidos de todo el departamento (perfiles, votaciones, registros, fotos…).</p>
         </CardBody>
       </Card>
     </div>
