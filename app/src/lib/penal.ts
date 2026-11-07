@@ -1,5 +1,4 @@
 /* Código penal (lspdt.penal sobre el catálogo base) e informes policiales (lspdt.informes): misma lógica y texto que la versión clásica */
-import { LS } from "./store";
 import { RK_AB, findAgent, joinY, norm, rankES } from "./domain";
 import { CIRC, EV_T, INF_EST, INF_FZ, INF_ROLES, INF_TIPOS, PENAL_DEF, PEN_CATS, SYN } from "@/legacy/penal";
 
@@ -9,7 +8,6 @@ export const PENAL_BASE = PENAL_DEF as Art[];
 export const artCmp = (x: Art, y: Art) => { const A = x.a.split(".").map(Number), B = y.a.split(".").map(Number); return A[0] - B[0] || (A[1] || 0) - (B[1] || 0) || (A[2] || 0) - (B[2] || 0); };
 /* el catálogo oficial (apartado Legal) es la única fuente: lo guardado antes en lspdt.penal ya no se usa */
 export function getPenal(): Art[] { return PENAL_BASE.slice(); }
-export const savePenal = (l: Art[]) => LS.setJSON("lspdt.penal", l);
 export const penalOf = (a: string, P = getPenal()) => P.find(x => x.a === a);
 export function penalSearch(q: string, lim = 40, P = getPenal()): Art[] {
   q = norm(q.trim()); if (!q) return P.slice().sort(artCmp).slice(0, lim);
@@ -17,17 +15,6 @@ export function penalSearch(q: string, lim = 40, P = getPenal()): Art[] {
   return P.map(x => { const h = norm(x.a + " " + x.t + " " + (x.d || "") + " " + (x.c || "")); let s = 0; if (x.a.startsWith(q)) s += 10; const ht = norm(x.t);
     words.forEach(w => { if (h.includes(w)) s += 4; if (ht.includes(w)) s += 3; }); ext.forEach(w => { if (h.includes(w)) s += 1; }); return [s, x] as const; })
     .filter(([s]) => s > 0).sort((a, b) => b[0] - a[0] || artCmp(a[1], b[1])).slice(0, lim).map(x => x[1]);
-}
-export function parsePenal(txt: string): Art[] {
-  const out: Art[] = []; let cur: Art | null = null, chap = "";
-  for (let l of String(txt).replace(/\r/g, "").split("\n")) {
-    l = l.replace(/\s+/g, " ").trim(); if (!l) continue;
-    const ch = /^(T[IÍ]TULO|CAP[IÍ]TULO|SECCI[OÓ]N)\b\s*(.*)$/i.exec(l); if (ch) { chap = (ch[1][0].toUpperCase() + ch[1].slice(1).toLowerCase() + " " + ch[2]).trim(); cur = null; continue; }
-    const m = /^(?:Art(?:[ií]culo|\.)?\s*)?(\d{1,3}\.\d{1,3})\s*(?:[-—–:.)]\s*)?(.*)$/i.exec(l);
-    if (m && m[2].length > 2) { cur = { a: m[1], t: m[2].replace(/[.:]$/, ""), d: "", c: chap }; out.push(cur); continue; }
-    if (cur && l.length < 600) cur.d = (cur.d ? cur.d + " " : "") + l;
-  }
-  const seen = new Map<string, Art>(); out.forEach(x => seen.set(x.a, x)); return [...seen.values()];
 }
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
 const loadJs = (src: string) => new Promise((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => no(new Error("No se pudo cargar el lector de PDF")); document.head.appendChild(s); });

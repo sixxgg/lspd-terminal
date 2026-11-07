@@ -1,5 +1,6 @@
+import { Comunicados } from "./Comunicados";
 import { useMemo, useState } from "react";
-import { Users, Pencil, Check, Plus, X, Plane, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio } from "lucide-react";
+import { Megaphone, Users, Pencil, Check, Plus, X, Plane, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input, Segmented, Select } from "@/components/ui";
 import { AgentPicker, Avatar } from "@/components/agents";
 import { DiscordOutput, useCopy } from "@/components/output";
@@ -55,14 +56,14 @@ export function Unit({ k }: { k: UnitKey }) {
   useStoreVersion();
   const me = useMe(), u = UNITS[k], co = isUCoord(k, me.n), pal = unitPalette(k);
   const tabs: [string, string, typeof Bell][] = k === "psb" ? [["ros", "Roster", Users], ...PSB_TABS]
-    : [["ros", "Roster", Users], ["reg", u.reg!, ClipboardPen], ["log", `${u.regs} (${uLog(k).length})`, ListChecks], ...(k === "asd" && co ? [["exa", "Exámenes", GraduationCap] as [string, string, typeof Bell]] : [])];
+    : [["ros", "Roster", Users], ["reg", u.reg!, ClipboardPen], ["log", `${u.regs} (${uLog(k).length})`, ListChecks], ...(k === "asd" ? [["com", "Comunicados", Megaphone] as [string, string, typeof Bell]] : []), ...(k === "asd" && co ? [["exa", "Exámenes", GraduationCap] as [string, string, typeof Bell]] : [])];
   const [tab, setTab] = useState(() => LS.get(`lspdt.next.utab.${k}`) || "ros");
   const t = tabs.some(x => x[0] === tab) ? tab : "ros";
   const go = (v: string) => { setTab(v); LS.set(`lspdt.next.utab.${k}`, v); };
   return (
     <div className="space-y-5" style={{ ["--uacc" as string]: pal.acc }}>
       <Segmented value={t} onChange={go} options={tabs.map(([v, l, I]) => ({ value: v, label: l, icon: <I /> }))} />
-      {t === "ros" ? <Roster k={k} pal={pal.roles} /> : t === "reg" ? <RegForm k={k} onSaved={() => go("log")} /> : t === "log" ? <LogView k={k} /> : t === "exa" ? <Exams pal={pal.roles} />
+      {t === "ros" ? <Roster k={k} pal={pal.roles} /> : t === "reg" ? <RegForm k={k} onSaved={() => go("log")} /> : t === "log" ? <LogView k={k} /> : t === "exa" ? <Exams pal={pal.roles} /> : t === "com" ? <Comunicados div="asd" canEdit={co} />
         : t === "cit" ? <T1080 psbOnly /> : <Psb tab={t} />}
     </div>
   );

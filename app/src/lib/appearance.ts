@@ -136,7 +136,10 @@ export function curSvg(k: string, c: string, pnt: boolean) {
   };
   return `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">${s[k]}</svg>`)}") ${(CURS[k].h || [0, 0]).join(" ")}`;
 }
+let lastCur = "";
 function applyCursor(k: string, c: string) {
+  /* reescribir la hoja del puntero fuerza a recalcular el estilo de toda la página: solo si cambió */
+  const sig = k + "|" + (k === "sys" ? "" : c); if (sig === lastCur) return; lastCur = sig;
   let st = document.getElementById("curCss") as HTMLStyleElement | null;
   if (!st) { st = document.createElement("style"); st.id = "curCss"; document.head.appendChild(st); }
   if (k === "sys" || !CURS[k]) { st.textContent = ""; return; }

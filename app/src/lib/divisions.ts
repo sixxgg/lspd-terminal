@@ -12,6 +12,7 @@ export const DIV_DESC: Record<string, string> = {
   "High Speed Interception Unit": "Interceptación de vehículos a alta velocidad y control de persecuciones en vía pública.",
   "Recruitment and Training Division": "Reclutamiento, selección y formación de nuevos aspirantes y agentes del LSPD.",
   "Professional Standards Bureau": "Asuntos internos: vela por la integridad, la conducta y la ética de todo el personal del departamento.",
+  "Underwater Dive Unit": "Unidad de buceo de la Metropolitan Division: rescate y búsqueda subacuática, persecución marítima y apoyo en operativos en el agua.",
   "K-9 Division": "Unidad canina: detección de sustancias y explosivos, búsqueda de personas y apoyo en operativos.",
 };
 export const DIV_DONE: Record<string, "rtd" | UnitKey> = { "Recruitment and Training Division": "rtd", "Air Support Division": "asd", "K-9 Division": "k9", "Professional Standards Bureau": "psb" };

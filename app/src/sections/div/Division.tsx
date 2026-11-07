@@ -1,13 +1,14 @@
-import type { ReactNode } from "react";
-import { Lock } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Lock, Megaphone } from "lucide-react";
 import { Card } from "@/components/ui";
 import { DivLogo } from "@/sections/sup/Agentes";
 import { DIV_DESC, DIV_DONE, divOpen, heroColors, subsOf, useDivColors } from "@/lib/divisions";
-import { divAb, rankES } from "@/lib/domain";
+import { divAb, lvl, rankES } from "@/lib/domain";
 import { useMe } from "@/lib/me";
-import { useStoreVersion } from "@/lib/store";
+import { LS, ME_ROLES, useStoreVersion } from "@/lib/store";
 import { Rtd } from "./Rtd";
 import { Unit } from "./Unit";
+import { Comunicados, type CommDiv } from "./Comunicados";
 import { cn } from "@/lib/cn";
 
 export function DivHero({ d }: { d: string }) {
@@ -30,28 +31,37 @@ export function DivHero({ d }: { d: string }) {
     </div>
   );
 }
-function SubTiles({ d }: { d: string }) {
+/* subdivisiones con contenido propio en la terminal */
+const SUB_OPEN: Record<string, CommDiv> = { "Underwater Dive Unit": "udu" };
+function SubTiles({ d, sel, onSel }: { d: string; sel: string; onSel: (s: string) => void }) {
   const subs = subsOf(d); if (!subs.length) return null;
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-      {subs.map(s => <SubTile key={s} s={s} />)}
+      {subs.map(s => <SubTile key={s} s={s} on={sel === s} onClick={SUB_OPEN[s] ? () => onSel(sel === s ? "" : s) : undefined} />)}
     </div>
   );
 }
-function SubTile({ s }: { s: string }) {
+function SubTile({ s, on, onClick }: { s: string; on: boolean; onClick?: () => void }) {
   const [a] = useDivColors(s);
-  return (
+  if (!onClick) return (
     <div title="Subdivisión bloqueada" className="flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-center opacity-80 dark:border-slate-800 dark:bg-slate-900/60" style={{ boxShadow: `inset 0 -3px 0 ${a}` }}>
       <div className="size-14 grayscale-[35%]"><DivLogo d={s} /></div>
       <b className="text-xs font-semibold leading-tight">{s}</b>
       <span className="inline-flex items-center gap-1 text-[11px] text-slate-400"><Lock className="size-3" />Bloqueada</span>
-    </div>
-  );
+    </div>);
+  return (
+    <button onClick={onClick} title={on ? "Cerrar" : "Abrir comunicados"} className={cn("flex flex-col items-center gap-2 rounded-2xl border bg-white p-4 text-center transition hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900/60", on ? "border-[color:var(--a)] ring-2 ring-[color:var(--a)]/40" : "border-slate-200 dark:border-slate-800")}
+      style={{ boxShadow: `inset 0 -3px 0 ${a}`, ["--a" as string]: a }}>
+      <div className="size-14"><DivLogo d={s} /></div>
+      <b className="text-xs font-semibold leading-tight">{s}</b>
+      <span className="inline-flex items-center gap-1 text-[11px] font-semibold" style={{ color: a }}><Megaphone className="size-3" />Comunicados</span>
+    </button>);
 }
 
 export function Division({ d }: { d: string }) {
   useStoreVersion();
   const me = useMe(), k = DIV_DONE[d], open = divOpen(d, me.n);
+  const [sub, setSub] = useState(() => LS.get("lspdt.next.dsub." + d) || "");
   let body: ReactNode;
   if (!open) body = (
     <Card className="flex flex-col items-center px-6 py-14 text-center">
@@ -62,5 +72,11 @@ export function Division({ d }: { d: string }) {
     </Card>);
   else if (k === "rtd") body = <Rtd />;
   else body = <Unit k={k} />;
-  return <div className={cn("space-y-5")}><DivHero d={d} /><SubTiles d={d} />{body}</div>;
+  const subDiv = SUB_OPEN[sub];
+  if (subDiv && subsOf(d).includes(sub)) body = (
+    <div className="space-y-5">
+      <DivHero d={sub} />
+      <Comunicados div={subDiv} canEdit={!!ME_ROLES.admin || lvl(me.r) >= lvl("Sargento I")} />
+    </div>);
+  return <div className={cn("space-y-5")}><DivHero d={d} /><SubTiles d={d} sel={sub} onSel={s => { setSub(s); LS.set("lspdt.next.dsub." + d, s); }} />{body}</div>;
 }

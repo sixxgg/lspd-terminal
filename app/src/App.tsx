@@ -39,8 +39,9 @@ export const VIEWS: Record<string, () => ReactNode> = {
 };
 import { AREAS, canArea } from "./nav";
 import { api, authApi } from "./lib/api";
+import { BootScreen } from "./components/boot";
 import { LS, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
-import { findAgent } from "./lib/domain";
+import { findAgent, getRoster, rankES } from "./lib/domain";
 import { useFeedback } from "./components/feedback";
 
 type Boot = { me: string | null; names: string[]; needCode: boolean; brand?: Record<string, string>; roster?: PubInfo["roster"]; data?: Parameters<typeof loadStore>[0] };
@@ -52,7 +53,12 @@ export default function App() {
   const { toast } = useFeedback();
   useStoreVersion();
 
-  const enter = useCallback((d: Parameters<typeof loadStore>[0]) => { loadStore(d); setMe(d.me!); }, []);
+  const [fx, setFx] = useState<"" | "full" | "short">("");
+  const enter = useCallback((d: Parameters<typeof loadStore>[0], fresh?: boolean) => { loadStore(d); setMe(d.me!);
+    let seen = false; try { seen = !!sessionStorage.getItem("lspdt.next.booted"); sessionStorage.setItem("lspdt.next.booted", "1"); } catch { /* */ }
+    if (fresh || !seen) setFx(fresh ? "full" : "short");
+    /* limpieza: el código penal viejo guardado en la base ya no se usa (Legal es la única fuente); se borra una sola vez */
+    if (LS.get("lspdt.penal") != null) LS.del("lspdt.penal"); }, []);
   const lost = useCallback(() => { goOffline(); setMe(null); toast("La sesión se cerró. Volvé a ingresar.", "err"); void api("/api/auth").then(r => setBoot(r as unknown as Boot)); }, [toast]);
   useEffect(() => { storeHooks(toast, lost); }, [toast, lost]);
   useEffect(() => {
@@ -62,9 +68,12 @@ export default function App() {
   useEffect(() => { try { localStorage.setItem("lspdt.next.nav", JSON.stringify(nav)); } catch { /* */ } }, [nav]);
 
   useEffect(() => { if (!me) return; const t = setTimeout(() => { void import("./sections/Informes"); void import("./sections/Legal"); }, 2500); return () => clearTimeout(t); }, [me]);
+  useEffect(() => { /* favicon editable desde Administración → Marca e imágenes */
+    const src = LS.get("lspdt.fav") || boot?.brand?.["lspdt.fav"] || LS.get("lspdt.logo") || boot?.brand?.["lspdt.logo"] || "/next/logo.svg";
+    document.querySelectorAll<HTMLLinkElement>('link[rel="icon"],link[rel="apple-touch-icon"]').forEach(l => { if (l.getAttribute("href") !== src) l.href = src; }); });
   useEffect(() => { if (me) setDeptUi(LS.json<Record<string, string>>("lspdt.ui", {})); });
   if (!boot) return <Device><div className="grid min-h-[var(--app-h,100dvh)] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div></Device>;
-  if (!me) return <Device brand={boot.brand}><UpdateBar /><Login pub={boot} onDone={r => enter((r as { data: Parameters<typeof loadStore>[0] }).data)} /></Device>;
+  if (!me) return <Device brand={boot.brand}><UpdateBar /><Login pub={boot} onDone={r => enter((r as { data: Parameters<typeof loadStore>[0] }).data, true)} /></Device>;
 
   const ag = findAgent(me.n), user = { n: me.n, r: ag?.r || me.r, p: ag?.p };
   let area = AREAS.find(a => a.k === nav.a) || AREAS[0];
@@ -79,5 +88,5 @@ export default function App() {
   else if (area.k === "div") view = <Division d={sec.l} />;
   else if (VIEWS[`${area.k}/${sec.k}`]) view = VIEWS[`${area.k}/${sec.k}`]();
   else view = <Classic area={area} sec={sec} />;
-  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in"><Suspense fallback={<div className="grid min-h-[40vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{view}</Suspense></div></Shell><UpdateBar /></MeCtx.Provider></Device>;
+  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in"><Suspense fallback={<div className="grid min-h-[40vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{view}</Suspense></div></Shell><UpdateBar /></MeCtx.Provider>{fx && <BootScreen name={me.n} rank={rankES(user.r)} badge={user.p} agents={getRoster().length} short={fx === "short"} onDone={() => setFx("")} />}</Device>;
 }

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Palette, MonitorSmartphone, Sparkles, Type, MousePointer2, Check, Tv } from "lucide-react";
 import { Checkbox, Field, Segmented, Select } from "@/components/ui";
 import { Modal } from "@/components/modal";
@@ -40,7 +41,7 @@ export function AppearanceModal({ open, onClose }: { open: boolean; onClose: () 
           <button type="button" onClick={() => setPref("acc", null)} className={cn("h-8 rounded-full border px-3 text-xs font-semibold", !p.acc ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-200" : "border-slate-200 dark:border-slate-700")}>El del tema</button>
           {ACCENTS.map(c => <button key={c} type="button" title={c} onClick={() => setPref("acc", c)} className={cn("size-8 rounded-full ring-offset-2 ring-offset-white transition dark:ring-offset-slate-900", p.acc === c ? "ring-2 ring-slate-900 dark:ring-white" : "hover:scale-110")} style={{ background: c }} />)}
           <label className="relative grid size-8 cursor-pointer place-items-center overflow-hidden rounded-full border border-dashed border-slate-300 text-xs text-slate-400 dark:border-slate-600" title="Otro color">+
-            <input type="color" value={acc} onChange={e => setPref("acc", e.target.value)} className="absolute inset-0 opacity-0" /></label>
+            <AccPicker value={acc} /></label>
         </div>
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -65,4 +66,17 @@ export function AppearanceModal({ open, onClose }: { open: boolean; onClose: () 
       <p className="flex items-center gap-1.5 text-xs text-slate-400"><Tv className="size-3.5" />Los administradores definen el tema y el puntero por defecto del departamento en Administración › Marca e imágenes.</p>
     </Modal>
   );
+}
+
+/* selector libre de color: mientras se arrastra solo se pinta la muestra; el tema se aplica como mucho cada 200 ms
+   (antes se recalculaba toda la página en cada movimiento y la pantalla se congelaba) */
+function AccPicker({ value }: { value: string }) {
+  const [v, setV] = useState(value), t = useRef<number>(0);
+  useEffect(() => setV(value), [value]);
+  useEffect(() => () => window.clearTimeout(t.current), []);
+  const push = (c: string) => { setV(c); window.clearTimeout(t.current); t.current = window.setTimeout(() => setPref("acc", c), 200); };
+  return <>
+    <span aria-hidden className="pointer-events-none absolute inset-1 rounded-full" style={{ background: v, opacity: v === value ? 0 : 1 }} />
+    <input type="color" value={v} onChange={e => push(e.target.value)} onBlur={e => { window.clearTimeout(t.current); if (e.target.value !== value) setPref("acc", e.target.value); }} className="absolute inset-0 opacity-0" />
+  </>;
 }

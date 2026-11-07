@@ -146,3 +146,16 @@ html:not([data-head="none"]) header nav button { font-size: 14px; letter-spacing
 html[data-head="rajdhani"] header nav button, html[data-head="teko"] header nav button { font-size: 15px; font-weight: 600; }
 html:is([data-head="rajdhani"], [data-head="teko"]) h3.text-sm { font-size: 16px; }
 html:is([data-head="rajdhani"], [data-head="teko"]) h1.text-2xl { font-size: 1.75rem; }
+
+/* ===== pantalla de carga (liviana: solo transform/opacity) ===== */
+.boot-grid{background-image:linear-gradient(rgba(56,189,248,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.06) 1px,transparent 1px);background-size:40px 40px;
+  mask-image:radial-gradient(ellipse at center,#000 30%,transparent 75%);-webkit-mask-image:radial-gradient(ellipse at center,#000 30%,transparent 75%)}
+.boot-scan{background:repeating-linear-gradient(180deg,rgba(0,0,0,.25) 0 1px,transparent 1px 3px);pointer-events:none}
+.boot-line{animation:bootIn .22s ease-out both}
+@keyframes bootIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+.boot-caret{display:inline-block;width:8px;height:15px;background:#38bdf8;animation:bootBlink .9s steps(1) infinite}
+@keyframes bootBlink{50%{opacity:0}}
+.boot-dot{animation:bootBlink 1.2s steps(1) infinite}
+.boot-logo{filter:drop-shadow(0 0 12px rgba(56,189,248,.35))}
+.boot-glow{text-shadow:0 0 18px rgba(52,211,153,.45)}
+@media (prefers-reduced-motion:reduce){.boot-line,.boot-caret,.boot-dot{animation:none}}
