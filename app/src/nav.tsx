@@ -63,5 +63,5 @@ export const canArea = (a: Area, r?: string) => (a.admin ? !!ME_ROLES.admin : lv
 
 /* abre la misma sección en la versión clásica */
 export function openClassic(area: string, sec: string) {
-  location.href = `/#go=${area}/${sec}`;
+  location.href = `/clasica/#go=${area}/${sec}`;
 }

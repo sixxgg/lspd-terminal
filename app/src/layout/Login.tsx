@@ -103,7 +103,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
             </form>
           )}
         </div>
-        <p className="mt-5 text-center text-xs text-slate-400">Mission Row 10 · Uso interno · <a href="/" className="font-medium text-brand-600 hover:underline dark:text-brand-300">Versión clásica</a></p>
+        <p className="mt-5 text-center text-xs text-slate-400">Mission Row 10 · Uso interno · <a href="/clasica/" className="font-medium text-brand-600 hover:underline dark:text-brand-300">Versión clásica</a></p>
       </div>
     </div>
   );

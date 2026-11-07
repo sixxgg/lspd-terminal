@@ -38,7 +38,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
       <span className="hidden lg:inline">{net === "off" ? "Sin conexión" : net === "saving" ? "Guardando…" : "Sincronizado"}</span>
     </span>);
   const tools = <>
-    <a href="/" title="Versión clásica" className={cn("hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 xl:inline-flex dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white", focusRing)}>
+    <a href="/clasica/" title="Versión clásica" className={cn("hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 xl:inline-flex dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white", focusRing)}>
       Versión clásica <ExternalLink className="size-3.5" /></a>
     <button onClick={() => setAp(true)} className={cn("rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white", focusRing)}
       aria-label="Apariencia: temas y efectos" title="Temas, colores y efectos"><Palette className="size-[18px]" /></button></>;

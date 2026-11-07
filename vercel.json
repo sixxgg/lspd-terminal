@@ -31,6 +31,15 @@
       ]
     },
     {
+      "source": "/clasica/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
       "source": "/index.html",
       "headers": [
         {
@@ -132,10 +141,21 @@
       "image/webp"
     ]
   },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/next/index.html"
+    }
+  ],
   "redirects": [
     {
       "source": "/next",
-      "destination": "/next/",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/next/",
+      "destination": "/",
       "permanent": false
     }
   ]
