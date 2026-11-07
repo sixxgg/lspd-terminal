@@ -14,6 +14,8 @@ const Ascensos = lz(() => import("./sections/sup/Ascensos"), "Ascensos");
 const T1080 = lz(() => import("./sections/sup/T1080"), "T1080");
 const Alerta = lz(() => import("./sections/sup/Alerta"), "Alerta");
 const Bodycam = lz(() => import("./sections/sup/Bodycam"), "Bodycam");
+const Sargentos = lz(() => import("./sections/sgt/Sargentos"), "Sargentos");
+const Condecoraciones = lz(() => import("./sections/sup/Condecoraciones"), "Condecoraciones");
 const Entrevistas = lz(() => import("./sections/sup/Entrevistas"), "Entrevistas");
 const Votaciones = lz(() => import("./sections/sup/Votaciones"), "Votaciones");
 const Feedback = lz(() => import("./sections/sup/Feedback"), "Feedback");
@@ -34,7 +36,7 @@ const Equipamiento = lz(() => import("./sections/cap/Equipamiento"), "Equipamien
 import type { ReactNode } from "react";
 
 export const VIEWS: Record<string, () => ReactNode> = {
-  "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "sup/fbk": () => <Feedback />, "cap/vot": () => <Votaciones />, "sup/pat": () => <Patrullas />, "sup/prof": () => <Agentes />, "inf/inf": () => <Informes />, "leg/ley": () => <Legal />, "sup/preg": () => <RegistroPatrullas />, "cap/equ": () => <Equipamiento />, "cap/perm": () => <Permisos />, "jef/ros": () => <EstadoRoster />, "jef/his": () => <HistorialVotaciones />,
+  "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/cond": () => <Condecoraciones />, "sgt/exa": () => <Sargentos tab="exa" />, "sgt/ent": () => <Sargentos tab="ent" />, "sgt/list": () => <Sargentos tab="list" />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "sup/fbk": () => <Feedback />, "cap/vot": () => <Votaciones />, "sup/pat": () => <Patrullas />, "sup/prof": () => <Agentes />, "inf/inf": () => <Informes />, "leg/ley": () => <Legal />, "sup/preg": () => <RegistroPatrullas />, "cap/equ": () => <Equipamiento />, "cap/perm": () => <Permisos />, "jef/ros": () => <EstadoRoster />, "jef/his": () => <HistorialVotaciones />,
   "adm/acc": () => <AdmAccesos />, "adm/brand": () => <AdmMarca />, "adm/data": () => <AdmDatos />,
 };
 import { AREAS, canArea } from "./nav";

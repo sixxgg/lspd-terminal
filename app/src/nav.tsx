@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
-  Gavel, Package, KeyRound, BarChart3, History, Plane, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Settings, Briefcase, Star, Landmark,
+  Gavel, Package, KeyRound, BarChart3, History, Plane, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, Award, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, Star, Landmark,
 } from "lucide-react";
 import { ME_ROLES } from "./lib/store";
 import { lvl } from "./lib/domain";
@@ -19,6 +19,7 @@ const RAW_AREAS: Area[] = [
     { k: "asc", l: "Ascensos / Descensos", sl: "Ascensos", d: "Contratos y resoluciones con /me y /do", icon: TrendingUp, ready: true },
     { k: "t1080", l: "10-80", d: "Citación por radio con vestimenta Clase A", icon: Radio, ready: true },
     { k: "alt", l: "Alerta Táctica", d: "Solicitud de elevación o ampliación de la alerta", icon: Siren, ready: true },
+    { k: "cond", l: "Condecoraciones", sl: "Condecoraciones", d: "Medallas, franjas de servicio y condecoraciones de los agentes", icon: Medal, ready: true },
     { k: "bod", l: "Bodycam", d: "Pedido de la grabación de un oficial", icon: Video, ready: true },
     { k: "pat", l: "Revisión de patrullas", sl: "Rev. patrullas", d: "Control del equipamiento del maletero", icon: Car, ready: true },
     { k: "preg", l: "Registro de patrullas", sl: "Reg. patrullas", d: "Revisiones guardadas y su detalle", icon: ClipboardList, ready: true },
@@ -26,6 +27,11 @@ const RAW_AREAS: Area[] = [
     { k: "vot", l: "Votaciones", d: "Propuestas de ascenso y descenso con debate", icon: Vote, ready: true },
     { k: "fbk", l: "Feedback (incidentes)", sl: "Feedback", d: "Feedback y acciones disciplinarias sobre la actuación de un agente", icon: MessageSquareWarning, ready: true },
     { k: "parm", l: "Pérdida de armamento", sl: "Pérdida de arma", d: "Informe de incidente por pérdida de arma de servicio", icon: ShieldAlert, ready: true },
+  ] },
+  { k: "sgt", l: "Sargentos", icon: Award, min: 7, req: "Sargento II", sec: [
+    { k: "exa", l: "Examen escrito", d: "Fase II del ascenso a Sargento I: corte 70 % y bonificación por antigüedad", icon: ClipboardCheck, ready: true },
+    { k: "ent", l: "Entrevista (Oral Board)", sl: "Entrevista", d: "Fase III: tribunal de mandos, cada pregunta del 1 al 5", icon: MessageCircle, ready: true },
+    { k: "list", l: "Lista de elegibles", d: "Ranking por examen y entrevista", icon: Trophy, ready: true },
   ] },
   { k: "cap", l: "Capitanía", icon: Briefcase, min: 8, req: "Teniente", sec: [
     { k: "vot", l: "Resolución de votaciones", d: "Aprobar o rechazar propuestas abiertas", icon: Gavel, ready: true },

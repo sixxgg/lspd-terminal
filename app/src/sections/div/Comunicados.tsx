@@ -1,4 +1,5 @@
-/* Comunicados de división (ASD y UDU): registro de los avisos publicados en Discord, con plantillas y editor */
+/* Comunicados de división (ASD y UDU): registro de los avisos publicados en Discord.
+   Las plantillas son los comunicados reales de la división: misma estructura y redacción, con sus partes variables como campos. */
 import { useMemo, useState } from "react";
 import { CalendarClock, Copy, FilePlus2, Megaphone, Pencil, RefreshCw, Save, Trash2, Wand2, X } from "lucide-react";
 import { Button, Card, Empty, Field, Input, Select, Textarea } from "@/components/ui";
@@ -10,158 +11,117 @@ import { RK_AB, findAgent, getRoster } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 
 export type CommDiv = "asd" | "udu";
+type Form = { tpl: string; v: Record<string, string> };
 type Comm = { id: string; t: string; body: string; ts: number; by: string; f?: Form };
 
 const ROLE_LSPD = "887963542437888004", ROLE_ASD = "1493377759680925919";
-const INFO: Record<CommDiv, { n: string; ab: string; em: string; roles: [string, string][]; firma: string }> = {
-  asd: { n: "Air Support Division", ab: "ASD", em: "<:ASD:1316164563506434078>", roles: [[ROLE_LSPD, "LSPD (todo el departamento)"], [ROLE_ASD, "ASD (miembros de la división)"]], firma: "**Coordinación – Air Support Division (ASD)**" },
-  udu: { n: "Underwater Dive Unit", ab: "UDU", em: "<:UDU:1511307840986550352>", roles: [[ROLE_LSPD, "LSPD (todo el departamento)"]], firma: "**Coordinación – Underwater Dive Unit (UDU)**" },
+const INFO: Record<CommDiv, { n: string; ab: string; em: string; roles: [string, string][] }> = {
+  asd: { n: "Air Support Division", ab: "ASD", em: "<:ASD:1316164563506434078>", roles: [[ROLE_LSPD, "LSPD (todo el departamento)"], [ROLE_ASD, "ASD (miembros de la división)"]] },
+  udu: { n: "Underwater Dive Unit", ab: "UDU", em: "<:UDU:1511307840986550352>", roles: [[ROLE_LSPD, "LSPD (todo el departamento)"]] },
 };
 
-/* comunicados ya publicados (corregidos de ortografía), para que la sección no arranque vacía */
+/* ---------- campos ---------- */
+type FT = "text" | "area" | "lines" | "date" | "time" | "role" | "check" | "agent";
+type Fd = { k: string; l: string; t: FT; ph?: string; hint?: string; w?: "half" | "full" };
+type Tpl = { k: string; l: string; d: string; fields: Fd[]; def: (d: CommDiv, me: string) => Record<string, string>; render: (d: CommDiv, v: Record<string, string>) => string };
+
+const lines = (s = "") => s.split("\n").map(x => x.trim()).filter(Boolean);
+const pairs = (s = "") => lines(s).map(x => { const i = x.indexOf("|"); return i < 0 ? [x, ""] : [x.slice(0, i).trim(), x.slice(i + 1).trim()]; });
+const unix = (date: string, time = "00:00") => (date ? Math.floor(new Date(`${date}T${time || "00:00"}`).getTime() / 1000) : 0);
+const dmyShort = (date: string) => (date ? date.slice(2).split("-").reverse().join("/") : "[DD/MM/AA]");
+const mention = (v: Record<string, string>) => (v.rol ? (v.spoiler === "1" ? `||<@&${v.rol}>||` : `<@&${v.rol}>`) : "");
+const E = (d: CommDiv, v: Record<string, string>) => (v.emoji === "0" ? "" : INFO[d].em);
+const dots = (ab: string) => ab.split("").join(".");
+const join = (o: (string | false | undefined)[]) => o.filter((x): x is string => x !== false && x !== undefined).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+/* firma «Sgto. I Clarkson» a partir de un agente del roster (o lo escrito tal cual) */
+export const firmaDe = (s: string) => { const a = findAgent(s.trim()); if (!a) return s.trim(); const ab = (RK_AB[a.r] || a.r).replace(/^SGT\.?/i, "Sgto. ").replace(/\.(?=\S)/g, ". "); return `${ab} ${a.n.split(" ").slice(-1)[0]}`; };
+
+const COMMON: Fd[] = [{ k: "rol", l: "Mención", t: "role", w: "half" }, { k: "spoiler", l: "Mención oculta (spoiler)", t: "check", w: "half" }, { k: "emoji", l: "Emblema de la división en el título", t: "check", w: "half" }];
+
+const TPLS: Tpl[] = [
+  { k: "instruccion", l: "Instrucción / práctica", d: "Como la instrucción de persecución marítima y buceo de la UDU",
+    fields: [{ k: "titulo", l: "Título", t: "text" }, { k: "fecha", l: "Día", t: "date", w: "half" }, { k: "hora", l: "Hora", t: "time", w: "half" },
+      { k: "actividad", l: "Qué se va a hacer", t: "area", ph: "una instrucción de…" }, { k: "conjunto", l: "En conjunto con", t: "text", hint: "(opcional)", ph: "la SAED y su unidad marítima" },
+      { k: "detalle", l: "Durante la práctica", t: "area" }, { k: "requisito", l: "Qué deben traer o tener", t: "area", hint: "(opcional, sigue a «Asimismo,»)" },
+      { k: "cierre", l: "Cierre", t: "text" }, ...COMMON],
+    def: d => d === "udu"
+      ? { titulo: "Instrucción de Persecución Marítima y Buceo", actividad: "una instrucción de persecución marítima y uso del equipo de buceo", conjunto: "la SAED y su unidad marítima",
+        detalle: "Durante la práctica se efectuará la entrega de materiales y equipamiento a todos los oficiales interesados en formar parte de la división.",
+        requisito: "deberán disponer de embarcaciones aptas para la actividad, las cuales pueden adquirirse en la sede de **METRO**.", cierre: "Los esperamos.", rol: ROLE_LSPD, emoji: "1" }
+      : { titulo: "Instrucción de Vuelo Táctico", actividad: "una instrucción de vuelo táctico y uso del dron policial", conjunto: "",
+        detalle: "Durante la práctica se evaluarán las maniobras básicas y se entregará el equipamiento a todos los oficiales interesados en formar parte de la división.",
+        requisito: "deberán presentarse con el uniforme de vuelo reglamentario en el helipuerto de Mission Row.", cierre: "Los esperamos.", rol: ROLE_LSPD, emoji: "1" },
+    render: (d, v) => { const e = E(d, v), t = Number(v.ts) || unix(v.fecha, v.hora); return join([
+      `# ${e ? e + " " : ""}${v.titulo || "[Título]"}${e ? " " + e : ""}`, "",
+      `Se informa que el día ${dmyShort(v.fecha)} a las ${t ? `<t:${t}:t>` : "[HORA]"} se llevará a cabo ${v.actividad || "[actividad]"}${v.conjunto ? `, realizada en conjunto con ${v.conjunto}` : ""}.`, "",
+      v.detalle, "", `Se solicita puntualidad a todos los participantes.${v.requisito ? " Asimismo, " + v.requisito : ""}`, "", v.cierre, "", mention(v)]); } },
+  { k: "licencia", l: "Habilitación / licencia", d: "Como la licencia de dron policial de la ASD",
+    fields: [{ k: "titulo", l: "Título", t: "text" }, { k: "habilita", l: "Licencia para", t: "text", ph: "manejar el Dron Policial" },
+      { k: "motivo", l: "Motivo de los requisitos", t: "text", hint: "(opcional)", ph: "Al ser material policial sensible" },
+      { k: "requisitos", l: "Requisitos", t: "lines", ph: "Uno por línea" }, { k: "aclaracion", l: "Aclaración", t: "area" },
+      { k: "reaccion", l: "Pedir que reaccionen con el emoji «Sí» para postularse", t: "check" },
+      { k: "firma", l: "Firma", t: "agent", w: "half", hint: "(agente del roster o texto)" }, { k: "cargo", l: "Cargo", t: "text", w: "half" }, ...COMMON],
+    def: d => ({ titulo: d === "asd" ? "Licencia de Dron Policial" : "Licencia de Buceo Policial", habilita: d === "asd" ? "manejar el Dron Policial" : "utilizar el equipo de buceo policial",
+      motivo: "Al ser material policial sensible", requisitos: d === "asd" ? "Pertenecer al Pelotón C o D, o a la DB.\nTener al menos el rango de PO-III." : "Pertenecer a la Metropolitan Division.\nTener al menos el rango de PO-III.",
+      aclaracion: "Cumplir los requisitos no garantiza la aceptación de la candidatura; la coordinación se reserva el derecho de aceptar a los candidatos que considere más aptos.",
+      reaccion: "1", firma: d === "asd" ? "Sgto. I Clarkson" : "", cargo: `Subcoordinador de la ${INFO[d].n}`, rol: ROLE_LSPD, emoji: "1" }),
+    render: (d, v) => { const e = E(d, v), R = lines(v.requisitos); return join([
+      `# ${e ? e + " " : ""}${v.titulo || "[Título]"}${e ? " " + e : ""}`, "",
+      `Desde la **Coordinación de la ${INFO[d].ab}** abrimos el periodo de habilitación de licencia para ${v.habilita || "[uso]"}.${R.length ? ` ${v.motivo ? v.motivo + ", se" : "Se"} deberán cumplir los siguientes requisitos:` : ""}`, "",
+      ...R.map(x => `* ${x}`), R.length ? "" : false, v.aclaracion, "",
+      v.reaccion === "1" && "Todos aquellos que quieran postularse deben reaccionar con un <:Si:1316169901450199051>", v.reaccion === "1" && "",
+      (v.firma || v.cargo) && `*Att. ${[firmaDe(v.firma || ""), v.cargo].filter(Boolean).join(" — ")}*`, "", mention(v)]); } },
+  { k: "instancias", l: "Instancias / convocatoria", d: "Como las instancias de la promoción 004 de la ASD",
+    fields: [{ k: "promo", l: "Promoción", t: "text", w: "half", ph: "004" }, { k: "saludo", l: "Saludo", t: "text", w: "half" },
+      { k: "plazoF", l: "Plazo: día", t: "date", w: "half" }, { k: "plazoH", l: "Plazo: hora", t: "time", w: "half" },
+      { k: "form", l: "Link del formulario", t: "text", ph: "https://forms.gle/…" }, { k: "requisito", l: "Requisito de acceso", t: "text" },
+      { k: "lema", l: "Lema", t: "text", hint: "(opcional)" }, { k: "cargo", l: "Firma (cargo)", t: "text" }, ...COMMON],
+    def: d => ({ promo: "005", saludo: "Buenas noches:", form: "https://", requisito: d === "asd" ? "Para formar parte de la ASD es necesario pertenecer, como mínimo, al **PELOTÓN B** de la **METRO**." : "Para formar parte de la UDU es necesario pertenecer a la **METRO**.",
+      lema: d === "asd" ? "The mission is the same, only the vehicle has changed." : "", cargo: `Coordinador de la ${INFO[d].n} (${INFO[d].ab})`, rol: ROLE_LSPD, spoiler: "1", emoji: "1" }),
+    render: (d, v) => { const e = E(d, v), I = INFO[d], hh = v.plazoH ? v.plazoH + " h" : "[HH:MM] h"; return join([
+      `# **${e ? e + " " : ""}__INSTANCIAS - (${I.ab}) ${I.n.toUpperCase()} (PROMOCIÓN ${v.promo || "000"})__${e ? " " + e : ""}**`, "",
+      v.saludo, `Me complace informar la apertura de oposiciones para acceder a la división **${I.n}** (__${I.ab}__) de la LSPD.`, "",
+      "A todos los formularios **APTOS** se les informará en la fecha indicada para poder realizar las siguientes partes del proceso.",
+      `📅 El plazo máximo para realizar el cuestionario es el ${dmyShort(v.plazoF)} a las ${hh}.`, "",
+      `📄 [**__Formulario de Acceso__**](${v.form || "https://"})`, "",
+      v.requisito && `### __${v.requisito}__`, v.lema && "`" + v.lema.replace(/`/g, "") + "`",
+      "Atentamente,", v.cargo && `**${v.cargo}**`, "*Departamento de Policía de Los Santos*", "", mention(v)]); } },
+  { k: "documentacion", l: "Documentación", d: "Como el recordatorio de documentación de la ASD",
+    fields: [{ k: "docs", l: "Documentos", t: "lines", ph: "Título | por qué es obligatorio (uno por línea)" },
+      { k: "links", l: "Enlaces", t: "lines", ph: "Nombre | https://… (uno por línea)" }, { k: "aviso", l: "Aviso final ⚠️", t: "text", hint: "(opcional)" },
+      { k: "cargo", l: "Firma (cargo)", t: "text" }, ...COMMON],
+    def: d => ({ docs: d === "asd"
+        ? "Manual de la ASD | Es **obligatorio** tener pleno conocimiento del manual, ya que en él se establecen los procedimientos operativos, protocolos de actuación y normativas internas de la unidad.\nManual de uso de drones | Es **obligatorio** tener pleno conocimiento del manual, ya que en él se establecen los procedimientos operativos y protocolos de actuación.\nInforme de Daños | Se recalca que el informe de daños es un elemento **fundamental** en cada intervención. Debe completarse de forma precisa tras los operativos donde existan incidentes o daños materiales."
+        : "Manual de la UDU | Es **obligatorio** tener pleno conocimiento del manual, ya que en él se establecen los procedimientos operativos, protocolos de actuación y normativas internas de la unidad.",
+      links: d === "asd" ? "Manual de la ASD | https://elevenproject.eu/documents/nreem6gfyynkxcjx\nManual de drones | https://elevenproject.eu/documents/a8yk9zs92o36lgl1\nInforme de Daños | https://elevenproject.eu/forms/dmyz7phnpwiwnoyx" : "Manual de la UDU | https://",
+      aviso: "El incumplimiento de estos lineamientos podrá derivar en advertencias o sanciones según corresponda.", cargo: `Coordinación – ${INFO[d].n} (${INFO[d].ab})`,
+      rol: INFO[d].roles[INFO[d].roles.length - 1][0], spoiler: "1", emoji: "1" }),
+    render: (d, v) => { const e = E(d, v), I = INFO[d], L = pairs(v.links); return join([
+      `## ${e ? e + " " : ""}**DOCUMENTACIÓN – ${I.n.toUpperCase()} (${dots(I.ab)})**`, "",
+      `Desde la coordinación de la **${I.n}** se recuerda a todo el personal activo la importancia de manejar y conocer correctamente la documentación esencial de la división.`, "",
+      ...pairs(v.docs).flatMap(([t, x]) => [`### ${/informe|formulario/i.test(t) ? "📝" : "📘"} **${t}**`, x, ""]),
+      L.length ? "### 🔗 **Enlaces a la documentación:**" : false, ...L.map(([n, u]) => `> *([${n}](${u || "https://"}))*`), L.length ? "" : false,
+      v.aviso && `## ⚠️ ${v.aviso}`, v.aviso ? "" : false, "Atentamente,", v.cargo && `**${v.cargo}**`, "", mention(v)]); } },
+  { k: "libre", l: "Aviso libre", d: "Título, texto y firma a elección",
+    fields: [{ k: "titulo", l: "Título", t: "text" }, { k: "cuerpo", l: "Texto", t: "area" }, { k: "firma", l: "Firma", t: "agent", w: "half", hint: "(opcional)" }, { k: "cargo", l: "Cargo", t: "text", w: "half", hint: "(opcional)" }, ...COMMON],
+    def: d => ({ titulo: "[Título]", cuerpo: "[Texto del comunicado]", cargo: `Coordinación – ${INFO[d].n} (${INFO[d].ab})`, rol: ROLE_LSPD, emoji: "1" }),
+    render: (d, v) => { const e = E(d, v); return join([`# ${e ? e + " " : ""}${v.titulo}${e ? " " + e : ""}`, "", v.cuerpo, "",
+      (v.firma || v.cargo) && "Atentamente,", v.firma && `**${firmaDe(v.firma)}**`, v.cargo && (v.firma ? `*${v.cargo}*` : `**${v.cargo}**`), "", mention(v)]); } },
+];
+const tplOf = (k: string) => TPLS.find(t => t.k === k) || TPLS[TPLS.length - 1];
+const newForm = (d: CommDiv, k: string, me: string): Form => ({ tpl: k, v: tplOf(k).def(d, me) });
+const build = (d: CommDiv, f: Form) => tplOf(f.tpl).render(d, f.v);
+
+/* comunicados ya publicados, armados con sus plantillas (se pueden editar campo por campo) */
+const seed = (d: CommDiv, id: string, t: string, by: string, ts: number, tpl: string, v: Record<string, string>): Comm => { const f = { tpl, v: { ...tplOf(tpl).def(d, ""), ...v } }; return { id, t, by, ts, f, body: build(d, f) }; };
 const SEED: Record<CommDiv, Comm[]> = {
-  udu: [{ id: "udu-1", t: "Instrucción de persecución marítima y buceo", by: "Coordinación UDU", ts: Date.UTC(2026, 5, 3, 12), body:
-`# <:UDU:1511307840986550352> Instrucción de Persecución Marítima y Buceo <:UDU:1511307840986550352>
-
-Se informa que el día 03/06/26 a las <t:1780430400:t> se llevará a cabo una instrucción de persecución marítima y uso del equipo de buceo, realizada en conjunto con la SAED y su unidad marítima.
-
-Durante la práctica se efectuará la entrega de materiales y equipamiento a todos los oficiales interesados en formar parte de la división.
-
-Se solicita puntualidad a todos los participantes. Asimismo, deberán disponer de embarcaciones aptas para la actividad, las cuales pueden adquirirse en la sede de **METRO**.
-
-Los esperamos.
-
-<@&${ROLE_LSPD}>` }],
+  udu: [seed("udu", "udu-1", "Instrucción de persecución marítima y buceo", "Coordinación UDU", Date.UTC(2026, 5, 3, 12), "instruccion", { fecha: "2026-06-03", hora: "20:00", ts: "1780430400" })],
   asd: [
-    { id: "asd-1", t: "Documentación de la ASD", by: "Coordinación ASD", ts: Date.UTC(2026, 4, 20, 12), body:
-`## <:ASD:1316164563506434078> **DOCUMENTACIÓN – AIR SUPPORT DIVISION (A.S.D)**
-
-Desde la coordinación de la **Air Support Division** se recuerda a todo el personal activo la importancia de manejar y conocer correctamente la documentación esencial de la división.
-
-### 📘 **Manual de la ASD**
-Es **obligatorio** tener pleno conocimiento del manual, ya que en él se establecen los procedimientos operativos, protocolos de actuación y normativas internas de la unidad.
-
-### 📘 **Manual de uso de drones**
-Es **obligatorio** tener pleno conocimiento del manual, ya que en él se establecen los procedimientos operativos y protocolos de actuación.
-
-### 📝 **Informe de Daños**
-Se recalca que el informe de daños es un elemento **fundamental** en cada intervención. Debe completarse de forma precisa tras los operativos donde existan incidentes o daños materiales.
-
-### 🔗 **Enlaces a la documentación:**
-> *([Manual de la ASD](https://elevenproject.eu/documents/nreem6gfyynkxcjx))*
-> *([Manual de drones](https://elevenproject.eu/documents/a8yk9zs92o36lgl1))*
-> *([Informe de Daños](https://elevenproject.eu/forms/dmyz7phnpwiwnoyx))*
-
-## ⚠️ El incumplimiento de estos lineamientos podrá derivar en advertencias o sanciones según corresponda.
-
-Atentamente,
-**Coordinación – Air Support Division (ASD)**
-
-||<@&${ROLE_ASD}>||` },
-    { id: "asd-2", t: "Licencia de dron policial", by: "Sgto. I Clarkson", ts: Date.UTC(2026, 4, 2, 12), body:
-`# <:ASD:1316164563506434078> Licencia de Dron Policial <:ASD:1316164563506434078>
-
-Desde la **Coordinación de la ASD** abrimos el periodo de habilitación de licencia para manejar el Dron Policial. Al ser material policial sensible, se deberán cumplir los siguientes requisitos:
-
-* Pertenecer al Pelotón C o D, o a la DB.
-* Tener al menos el rango de PO-III.
-
-Cumplir los requisitos no garantiza la aceptación de la candidatura; la coordinación se reserva el derecho de aceptar a los candidatos que considere más aptos.
-
-Todos aquellos que quieran postularse deben reaccionar con un <:Si:1316169901450199051>
-
-*Att. Sgto. I Clarkson — Subcoordinador de la Air Support Division*
-
-<@&${ROLE_LSPD}>` },
-    { id: "asd-3", t: "Instancias · Promoción 004", by: "Coordinación ASD", ts: Date.UTC(2026, 3, 14, 12), body:
-`# **<:ASD:1316164563506434078> __INSTANCIAS - (ASD) AIR SUPPORT DIVISION (PROMOCIÓN 004)__ <:ASD:1316164563506434078>**
-
-Buenas noches:
-Me complace informar la apertura de oposiciones para acceder a la división **Air Support Division** (__ASD__) de la LSPD.
-
-A todos los formularios **APTOS** se les informará en la fecha indicada para poder realizar las siguientes partes del proceso.
-📅 El plazo máximo para realizar el cuestionario es el 21/04/26 a las 19:00 h.
-
-📄 [**__Formulario de Acceso__**](https://forms.gle/q7eB7XJgqLmTVfLN8)
-
-### __Para formar parte de la ASD es necesario pertenecer, como mínimo, al **PELOTÓN B** de la **METRO**.__
-\`The mission is the same, only the vehicle has changed.\`
-Atentamente,
-**Coordinador de la Air Support Division (ASD)**
-*Departamento de Policía de Los Santos*
-
-||<@&${ROLE_LSPD}>||` },
+    seed("asd", "asd-1", "Documentación de la ASD", "Coordinación ASD", Date.UTC(2026, 4, 20, 12), "documentacion", {}),
+    seed("asd", "asd-2", "Licencia de dron policial", "Sgto. I Clarkson", Date.UTC(2026, 4, 2, 12), "licencia", { rol: ROLE_LSPD }),
+    seed("asd", "asd-3", "Instancias · Promoción 004", "Coordinación ASD", Date.UTC(2026, 3, 14, 12), "instancias", { promo: "004", plazoF: "2026-04-21", plazoH: "19:00", form: "https://forms.gle/q7eB7XJgqLmTVfLN8" }),
   ],
 };
-
-/* ===================== asistente: todo personalizable ===================== */
-type Tipo = "evento" | "licencia" | "convocatoria" | "documentacion" | "resultados" | "cambio" | "recordatorio" | "libre";
-type Estilo = "clasico" | "destacado" | "compacto" | "sobrio";
-type Firma = "atentamente" | "att" | "oficial" | "ninguna";
-export type Form = {
-  tipo: Tipo; estilo: Estilo; titulo: string; saludo: string; intro: string; cuerpo: string;
-  fecha: string; fechaFmt: "F" | "f" | "D"; relativa: boolean; lugar: string;
-  lista: string; listaTit: string; enlaces: string; cita: string; reaccion: boolean; aviso: string;
-  autor: string; cargo: string; firma: Firma; rol: string; spoiler: boolean; emoji: boolean;
-};
-const TIPOS: [Tipo, string][] = [["evento", "Instrucción, práctica o evento"], ["licencia", "Habilitación o licencia"], ["convocatoria", "Convocatoria / instancias"],
-  ["documentacion", "Documentación"], ["resultados", "Resultados (aptos / no aptos)"], ["cambio", "Cambio o cancelación"], ["recordatorio", "Recordatorio de normas"], ["libre", "Aviso libre"]];
-const ESTILOS: [Estilo, string][] = [["clasico", "Clásico · título grande con emblemas"], ["destacado", "Destacado · MAYÚSCULAS subrayadas"], ["compacto", "Compacto · título mediano"], ["sobrio", "Sobrio · sin emojis decorativos"]];
-const FIRMAS: [Firma, string][] = [["atentamente", "«Atentamente,» + cargo"], ["att", "«Att.» en cursiva (una línea)"], ["oficial", "Cargo + Departamento de Policía"], ["ninguna", "Sin firma"]];
-
-const coordOf = (d: CommDiv) => `Coordinación – ${INFO[d].n} (${INFO[d].ab})`;
-function newForm(d: CommDiv, tipo: Tipo, me: string): Form {
-  const ag = findAgent(me), b: Form = { tipo, estilo: "clasico", titulo: "", saludo: "", intro: "", cuerpo: "", fecha: "", fechaFmt: "F", relativa: false, lugar: "",
-    lista: "", listaTit: "", enlaces: "", cita: "", reaccion: false, aviso: "", autor: ag ? me : "", cargo: coordOf(d), firma: "atentamente", rol: ROLE_LSPD, spoiler: false, emoji: true };
-  const I = INFO[d];
-  switch (tipo) {
-    case "evento": return { ...b, titulo: "Instrucción de [actividad]", intro: "Se informa que se llevará a cabo una instrucción de [actividad], en conjunto con [unidad o división].",
-      cuerpo: "Durante la práctica se efectuará la entrega de materiales y equipamiento a todos los oficiales interesados en formar parte de la división.\n\nSe solicita puntualidad a todos los participantes.", lugar: "Sede de METRO", cita: "", aviso: "", firma: "ninguna" };
-    case "licencia": return { ...b, titulo: "Licencia de [nombre]", intro: `Desde la **Coordinación de la ${I.ab}** abrimos el periodo de habilitación de licencia para [uso]. Al ser material policial sensible, se deberán cumplir los siguientes requisitos:`,
-      listaTit: "", lista: "Pertenecer al Pelotón C o D, o a la DB.\nTener al menos el rango de PO-III.", cuerpo: "Cumplir los requisitos no garantiza la aceptación de la candidatura; la coordinación se reserva el derecho de aceptar a los candidatos que considere más aptos.", reaccion: true, firma: "att", cargo: `Coordinación de la ${I.n}` };
-    case "convocatoria": return { ...b, estilo: "destacado", titulo: `Instancias - (${I.ab}) ${I.n} (Promoción [000])`, saludo: "Buenas noches:",
-      intro: `Me complace informar la apertura de oposiciones para acceder a la división **${I.n}** (__${I.ab}__) de la LSPD.`,
-      cuerpo: "A todos los formularios **APTOS** se les informará en la fecha indicada para poder realizar las siguientes partes del proceso.", enlaces: "Formulario de Acceso | https://", listaTit: "Requisito de acceso",
-      lista: "Pertenecer, como mínimo, al **PELOTÓN B** de la **METRO**.", cita: d === "asd" ? "The mission is the same, only the vehicle has changed." : "", firma: "oficial", spoiler: true, cargo: `Coordinador de la ${I.n} (${I.ab})` };
-    case "documentacion": return { ...b, estilo: "compacto", titulo: `Documentación – ${I.n} (${I.ab})`, intro: `Desde la coordinación de la **${I.n}** se recuerda a todo el personal activo la importancia de manejar y conocer correctamente la documentación esencial de la división.`,
-      listaTit: "Documentos obligatorios", lista: `Manual de la ${I.ab}: procedimientos operativos, protocolos de actuación y normativa interna.\nInforme de Daños: debe completarse tras cada intervención con incidentes o daños materiales.`,
-      enlaces: `Manual de la ${I.ab} | https://\nInforme de Daños | https://`, aviso: "El incumplimiento de estos lineamientos podrá derivar en advertencias o sanciones según corresponda.", spoiler: true, rol: I.roles[I.roles.length - 1][0] };
-    case "resultados": return { ...b, titulo: "Resultados de [proceso]", intro: "Se publican los resultados de [proceso]. Agradecemos a todos los participantes.", listaTit: "✅ Aptos", lista: "[Nombre Apellido]\n[Nombre Apellido]",
-      cuerpo: "Los oficiales **APTOS** serán contactados para coordinar la siguiente etapa. Quienes no hayan sido seleccionados podrán volver a presentarse en la próxima convocatoria." };
-    case "cambio": return { ...b, titulo: "Cambio en [actividad]", intro: "Se informa que la actividad prevista para el día [DD/MM] **queda [reprogramada / cancelada]** por [motivo].", cuerpo: "Disculpen las molestias. Ante cualquier duda, consulten con la coordinación.", firma: "att" };
-    case "recordatorio": return { ...b, estilo: "compacto", titulo: "Recordatorio importante", intro: "Desde la coordinación se recuerda a todo el personal:", lista: "[Norma o procedimiento 1]\n[Norma o procedimiento 2]",
-      aviso: "El incumplimiento podrá derivar en advertencias o sanciones según corresponda.", rol: I.roles[I.roles.length - 1][0] };
-    default: return { ...b, titulo: "[Título]", cuerpo: "[Texto del comunicado]" };
-  }
-}
-const ts = (s: string) => Math.floor(new Date(s).getTime() / 1000);
-const firmaAgent = (n: string) => { const a = findAgent(n); return a ? `${(RK_AB[a.r] || a.r).replace(/\./g, ". ").replace(/\s+/g, " ").trim()} ${a.n}` : n; };
-function build(d: CommDiv, f: Form) {
-  const E = f.emoji && f.estilo !== "sobrio" ? INFO[d].em : "", T = f.titulo.trim() || "[Título]", o: string[] = [];
-  const titulo = f.estilo === "destacado" ? `# **${E ? E + " " : ""}__${T.toUpperCase()}__${E ? " " + E : ""}**` : f.estilo === "compacto" ? `## ${E ? E + " " : ""}**${T.toUpperCase()}**`
-    : `# ${E ? E + " " : ""}${T}${E && f.estilo === "clasico" ? " " + E : ""}`;
-  o.push(titulo, "");
-  if (f.saludo.trim()) o.push(f.saludo.trim());
-  if (f.intro.trim()) o.push(f.intro.trim(), "");
-  if (f.fecha) { const t = ts(f.fecha); o.push(`📅 **Fecha:** <t:${t}:${f.fechaFmt}>${f.relativa ? ` (<t:${t}:R>)` : ""}`); }
-  if (f.lugar.trim()) o.push(`📍 **Lugar:** ${f.lugar.trim()}`);
-  if (f.fecha || f.lugar.trim()) o.push("");
-  const L = f.lista.split("\n").map(x => x.trim()).filter(Boolean);
-  if (L.length) { if (f.listaTit.trim()) o.push(`### ${f.listaTit.trim()}`); o.push(...L.map(x => `* ${x}`), ""); }
-  if (f.cuerpo.trim()) o.push(f.cuerpo.trim(), "");
-  const LK = f.enlaces.split("\n").map(x => x.split("|").map(y => y.trim())).filter(x => x[0]);
-  if (LK.length) { o.push(f.estilo === "sobrio" ? "**Enlaces:**" : "### 🔗 **Enlaces:**"); o.push(...LK.map(([n, u]) => (u ? `> 📄 [**__${n}__**](${u})` : `> ${n}`)), ""); }
-  if (f.reaccion) o.push("Todos aquellos que quieran postularse deben reaccionar con un <:Si:1316169901450199051>", "");
-  if (f.cita.trim()) o.push("`" + f.cita.trim().replace(/`/g, "") + "`");
-  if (f.aviso.trim()) o.push(`## ⚠️ ${f.aviso.trim()}`, "");
-  const autor = f.autor.trim() ? firmaAgent(f.autor.trim()) : "";
-  if (f.firma === "atentamente") o.push("Atentamente,", autor ? `**${autor}**` : "", f.cargo.trim() ? (autor ? `*${f.cargo.trim()}*` : `**${f.cargo.trim()}**`) : "");
-  else if (f.firma === "att") o.push(`*Att. ${[autor, f.cargo.trim()].filter(Boolean).join(" — ")}*`);
-  else if (f.firma === "oficial") o.push("Atentamente,", autor ? `**${autor}**` : "", f.cargo.trim() ? `**${f.cargo.trim()}**` : "", "*Departamento de Policía de Los Santos*");
-  const m = f.rol ? `<@&${f.rol}>` : "";
-  if (m) o.push("", f.spoiler ? `||${m}||` : m);
-  return o.filter((x, i, a) => !(x === "" && (i === 0 || a[i - 1] === ""))).join("\n").trim();
-}
 
 const fmt = (t: number) => new Date(t).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" });
 const firstLine = (b: string) => (b.split("\n").find(l => l.trim()) || "").replace(/<a?:\w+:\d+>/g, "").replace(/<t:\d+(:\w)?>/g, "").replace(/<@&?\d+>/g, "").replace(/[#*_|`>]/g, "").trim();
@@ -174,7 +134,7 @@ export function Comunicados({ div, canEdit }: { div: CommDiv; canEdit: boolean }
   const [sel, setSel] = useState<string>(""), [ed, setEd] = useState<Comm | null>(null);
   const cur = list.find(x => x.id === sel) || list[0];
   const save = (l: Comm[]) => setSaved(l);
-  const startNew = () => { const f = newForm(div, "evento", me.n); setEd({ id: "", t: "", body: build(div, f), ts: Date.now(), by: me.n, f }); };
+  const startNew = () => { const f = newForm(div, TPLS[0].k, me.n); setEd({ id: "", t: "", body: build(div, f), ts: Date.now(), by: me.n, f }); };
   return (
     <div className="grid gap-5 xl:grid-cols-[22rem_1fr]">
       <Card className="flex flex-col self-start overflow-hidden">
@@ -212,73 +172,52 @@ export function Comunicados({ div, canEdit }: { div: CommDiv; canEdit: boolean }
 
 function Editor({ div, init, onSave, onCancel }: { div: CommDiv; init: Comm; onSave: (c: Comm) => void; onCancel: () => void }) {
   const I = INFO[div], me = useMe(), { toast } = useFeedback();
-  /* con formulario → asistente; los comunicados viejos (sin formulario) abren en texto libre */
-  const [f, setF] = useState<Form | null>(init.f || null), [manual, setManual] = useState(!init.f), [body, setBody] = useState(init.body);
+  const [f, setF] = useState<Form | null>(init.f && init.f.tpl ? init.f : null), [manual, setManual] = useState(!(init.f && init.f.tpl)), [body, setBody] = useState(init.body);
   const [t, setT] = useState(init.t), [by, setBy] = useState(init.by);
   const text = f && !manual ? build(div, f) : body;
-  const up = <K extends keyof Form>(k: K, v: Form[K]) => setF(x => (x ? { ...x, [k]: v } : x));
+  const tp = f ? tplOf(f.tpl) : null;
+  const up = (k: string, v: string) => setF(x => (x ? { ...x, v: { ...x.v, [k]: v, ...(k === "fecha" || k === "hora" ? { ts: "" } : {}) } } : x));
   const names = useMemo(() => getRoster().map(a => a.n).sort((a, b) => a.localeCompare(b)), []);
-  const field = (k: keyof Form, label: string, ph = "", rows = 0, hint?: string) => <Field label={label} hint={hint}>
-    {rows ? <Textarea rows={rows} value={String(f![k])} placeholder={ph} onChange={e => up(k, e.target.value as never)} />
-      : <Input value={String(f![k])} placeholder={ph} onChange={e => up(k, e.target.value as never)} />}</Field>;
+  const input = (fd: Fd) => { const v = f!.v[fd.k] ?? "";
+    switch (fd.t) {
+      case "area": return <Textarea rows={3} value={v} placeholder={fd.ph} onChange={e => up(fd.k, e.target.value)} />;
+      case "lines": return <Textarea rows={4} value={v} placeholder={fd.ph} onChange={e => up(fd.k, e.target.value)} />;
+      case "date": return <Input type="date" value={v} onChange={e => up(fd.k, e.target.value)} />;
+      case "time": return <Input type="time" value={v} onChange={e => up(fd.k, e.target.value)} />;
+      case "agent": return <Input list="cm-names" value={v} placeholder={fd.ph || "Ej: Sgto. I Clarkson"} onChange={e => up(fd.k, e.target.value)} />;
+      case "role": return <Select value={v} onChange={e => up(fd.k, e.target.value)}>{I.roles.map(([id, l]) => <option key={id} value={id}>{l}</option>)}<option value="">Sin mención</option></Select>;
+      default: return <Input value={v} placeholder={fd.ph} onChange={e => up(fd.k, e.target.value)} />;
+    } };
   return (
     <div className="grid gap-5 min-[1800px]:grid-cols-2">
       <Card className="space-y-4 p-5">
         <div className="flex flex-wrap items-center gap-2"><Pencil className="size-4 text-brand-500" /><h3 className="font-semibold">{init.id ? "Editar comunicado" : "Nuevo comunicado"}</h3>
           <div className="ml-auto flex items-center gap-1">
-            {f && <Button size="sm" variant={manual ? "outline" : "ghost"} icon={manual ? <Wand2 /> : <Pencil />} onClick={() => { if (!manual) setBody(text); setManual(!manual); }}>{manual ? "Volver al asistente" : "Editar el texto a mano"}</Button>}
-            {!f && <Button size="sm" variant="outline" icon={<Wand2 />} onClick={() => { const nf = newForm(div, "libre", me.n); setF(nf); setManual(false); }}>Armar con el asistente</Button>}
+            {f && <Button size="sm" variant={manual ? "outline" : "ghost"} icon={manual ? <Wand2 /> : <Pencil />} onClick={() => { if (!manual) setBody(text); setManual(!manual); }}>{manual ? "Volver a la plantilla" : "Editar el texto a mano"}</Button>}
+            {!f && <Button size="sm" variant="outline" icon={<Wand2 />} onClick={() => { setF(newForm(div, "libre", me.n)); setManual(false); }}>Usar una plantilla</Button>}
             <button onClick={onCancel} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Cancelar"><X className="size-4" /></button></div></div>
-
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Título en el registro"><Input value={t} onChange={e => setT(e.target.value)} placeholder={f ? f.titulo : "Ej: Instrucción de buceo"} /></Field>
+          <Field label="Título en el registro"><Input value={t} onChange={e => setT(e.target.value)} placeholder={f?.v.titulo || "Ej: Instrucción de buceo"} /></Field>
           <Field label="Registrado por"><Input list="cm-names" value={by} onChange={e => setBy(e.target.value)} /></Field>
         </div>
-
-        {f && !manual ? <>
+        {f && tp && !manual ? <>
+          <Field label="Plantilla"><Select value={f.tpl} onChange={e => setF(newForm(div, e.target.value, me.n))}>{TPLS.map(x => <option key={x.k} value={x.k}>{x.l} — {x.d}</option>)}</Select></Field>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Tipo de comunicado" hint="(carga una base)"><Select value={f.tipo} onChange={e => { const nf = newForm(div, e.target.value as Tipo, me.n); setF({ ...nf, autor: f.autor, cargo: f.cargo === coordOf(div) ? nf.cargo : f.cargo }); }}>
-              {TIPOS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
-            <Field label="Variante de diseño"><Select value={f.estilo} onChange={e => up("estilo", e.target.value as Estilo)}>{ESTILOS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
-          </div>
-          {field("titulo", "Título del comunicado")}
-          <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">{field("saludo", "Saludo", "Ej: Buenas noches:", 0, "(opcional)")}{field("intro", "Introducción", "Primer párrafo", 0)}</div>
-          {field("cuerpo", "Cuerpo", "Detalle, instrucciones, aclaraciones…", 4)}
-          <div className="grid gap-3 sm:grid-cols-[1fr_9rem_auto]">
-            <Field label="Fecha y hora" hint="(opcional)"><Input type="datetime-local" value={f.fecha} onChange={e => up("fecha", e.target.value)} /></Field>
-            <Field label="Formato"><Select value={f.fechaFmt} onChange={e => up("fechaFmt", e.target.value as Form["fechaFmt"])}><option value="F">Día y hora completos</option><option value="f">Fecha y hora</option><option value="D">Solo la fecha</option></Select></Field>
-            <label className="flex items-end gap-2 pb-2.5 text-sm"><input type="checkbox" checked={f.relativa} onChange={e => up("relativa", e.target.checked)} />Cuenta regresiva</label>
-          </div>
-          {field("lugar", "Lugar", "Ej: Sede de METRO, helipuerto de Mission Row…", 0, "(opcional)")}
-          <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">{field("listaTit", "Título de la lista", "Ej: Requisitos", 0, "(opcional)")}{field("lista", "Lista con viñetas", "Un elemento por línea", 3)}</div>
-          {field("enlaces", "Enlaces", "Nombre | https://… (uno por línea)", 2, "(opcional)")}
-          <div className="grid gap-3 sm:grid-cols-2">{field("cita", "Lema o frase destacada", "Ej: The mission is the same…", 0, "(opcional)")}{field("aviso", "Aviso final ⚠️", "Ej: El incumplimiento podrá derivar en sanciones", 0, "(opcional)")}</div>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.reaccion} onChange={e => up("reaccion", e.target.checked)} />Pedir que reaccionen con el emoji «Sí» para postularse</label>
-          <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Firma y mención</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Quién firma" hint="(agente del roster o texto libre)"><Input list="cm-names" value={f.autor} placeholder="Ej: Kyle Clarkson" onChange={e => up("autor", e.target.value)} /></Field>
-              {field("cargo", "Cargo", "Ej: Subcoordinador de la ASD")}
-              <Field label="Formato de la firma"><Select value={f.firma} onChange={e => up("firma", e.target.value as Firma)}>{FIRMAS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
-              <Field label="Mención"><Select value={f.rol} onChange={e => up("rol", e.target.value)}>{I.roles.map(([id, l]) => <option key={id} value={id}>{l}</option>)}<option value="">Sin mención</option></Select></Field>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-4 text-sm">
-              <label className="flex items-center gap-2"><input type="checkbox" checked={f.spoiler} onChange={e => up("spoiler", e.target.checked)} />Mención oculta (spoiler)</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={f.emoji} onChange={e => up("emoji", e.target.checked)} />Emblema de la {I.ab} en el título</label>
-            </div>
+            {tp.fields.map(fd => fd.t === "check"
+              ? <label key={fd.k} className={cn("flex items-center gap-2 text-sm", fd.w !== "half" && "sm:col-span-2")}><input type="checkbox" checked={f.v[fd.k] === "1"} onChange={e => up(fd.k, e.target.checked ? "1" : "0")} />{fd.l}</label>
+              : <Field key={fd.k} label={fd.l} hint={fd.hint} className={fd.w === "half" ? "" : "sm:col-span-2"}>{input(fd)}</Field>)}
           </div>
         </> : <Field label="Texto en formato Discord" hint="Completá lo que está [entre corchetes]">
           <Textarea rows={18} className="font-mono text-[13px]" value={body} onChange={e => setBody(e.target.value)} /></Field>}
         <datalist id="cm-names">{names.map(n => <option key={n} value={n} />)}</datalist>
-
         <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
-          {f && manual && <Button variant="ghost" icon={<RefreshCw />} className="mr-auto" onClick={() => setBody(build(div, f))}>Regenerar desde el asistente</Button>}
+          {f && manual && <Button variant="ghost" icon={<RefreshCw />} className="mr-auto" onClick={() => setBody(build(div, f))}>Regenerar desde la plantilla</Button>}
           <Button variant="ghost" onClick={onCancel}>Cancelar</Button>
           <Button icon={<Save />} onClick={() => {
             if (!text.trim()) { toast("El comunicado está vacío", "err"); return; }
             const pend = (text.match(/\[[^\]\n]{2,60}\](?!\()/g) || []).filter(x => !/^\[\*\*/.test(x));
             if (pend.length) toast(`Ojo: quedan ${pend.length} campos [entre corchetes] sin completar`, "err");
-            onSave({ ...init, t: t.trim() || (f ? f.titulo.trim() : "") || firstLine(text), by: by.trim() || me.n, body: text, f: f || undefined, ts: init.id ? init.ts : Date.now() }); }}>Guardar</Button>
+            onSave({ ...init, t: t.trim() || f?.v.titulo?.trim() || firstLine(text), by: by.trim() || me.n, body: text, f: f || undefined, ts: init.id ? init.ts : Date.now() }); }}>Guardar</Button>
         </div>
       </Card>
       <DiscordOutput title="Vista previa" text={text} sticky={false} />

@@ -3,10 +3,12 @@ import { Users, Search, LayoutGrid, Rows3, UserPlus, BadgeCheck, Trophy, Shield,
   Pencil, Star, Plus, X, Camera, Move, Trash2, FileText, Award, StickyNote, Car, History, Check, UserMinus, ImagePlus } from "lucide-react";
 import { Button, Card, Empty, Field, Input, Select, Segmented, Textarea } from "@/components/ui";
 import { RankBadge } from "@/components/agents";
+import { Ribbon } from "@/components/ribbon";
+import { DECOR, decorOf, type Award as AwardT } from "@/lib/decor";
 import { Modal } from "@/components/modal";
 import { ImagePicker } from "@/components/imagepick";
 import { useFeedback } from "@/components/feedback";
-import { ALL_DIVS, DIVS, GROUPS, LEVEL, divAb, divEmblem, emailOf, findAgent, fotoOf, genderOf, getRoster, imgOpt, initials, insigniaUrl, lvl, norm, rankES, uid, type Agent } from "@/lib/domain";
+import { ALL_DIVS, DIVS, GROUPS, LEVEL, divAb, divEmblem, emailOf, findAgent, fotoOf, genderOf, getRoster, imgOpt, initials, insigniaUrl, lvl, norm, rankES, srcOf, uid, type Agent } from "@/lib/domain";
 import { ACC_LAST, LS, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { allProfiles, profFull, updateAgent, updateProf, type Profile } from "@/lib/profiles";
@@ -23,7 +25,7 @@ const RANKS = Object.keys(LEVEL).filter(r => LEVEL[r] > 0);
 type Ph = { x: number; y: number; z: number };
 const phOf = (p: Profile): Ph => p.ph || { x: 50, y: 22, z: 1 };
 const phStyle = (f: Ph) => ({ objectPosition: `${f.x}% ${f.y}%`, transform: `scale(${f.z})`, transformOrigin: `${f.x}% ${f.y}%` });
-const logoSrc = () => LS.get("lspdt.logo") || "/next/logo.svg";
+const logoSrc = () => srcOf(LS.get("lspdt.logo") || "") || "/next/logo.svg";
 export function mainDiv(p: Profile) {
   if (p.main && p.div.includes(p.main)) return p.main;
   const order = DIVS.map(d => d[0]);
@@ -48,15 +50,15 @@ function Stripes({ n }: { n: number }) {
   return <svg viewBox="0 0 24 24" className="size-full">{Array.from({ length: n }, (_, i) => { const x = 4 + i * w + w / 2; return <path key={i} d={`M${(x - 2.6).toFixed(1)} 18 L${(x + 2.6).toFixed(1)} 6`} stroke="#dfe5ee" strokeWidth="2" strokeLinecap="round" />; })}</svg>;
 }
 function Img({ src, w, className, style }: { src: string; w: number; className?: string; style?: React.CSSProperties }) {
-  const [s, setS] = useState(() => imgOpt(src, w));
-  return <img src={s} alt="" draggable={false} decoding="async" loading="lazy" className={className} style={style} onError={() => s !== src && setS(src)} />;
+  const [bad, setBad] = useState(""), opt = imgOpt(src, w), s = bad === src ? src : opt;
+  return <img src={s} alt="" draggable={false} decoding="async" loading="lazy" className={className} style={style} onError={() => s !== src && setBad(src)} />;
 }
 function PhotoBox({ a, p, ph, className, onClear }: { a: Agent; p: Profile; ph?: Ph; className?: string; onClear?: () => void }) {
   const f = fotoOf(a.n), ins = insigniaUrl(a.r);
   return (
     <div className={cn("relative aspect-[4/5] overflow-hidden bg-gradient-to-b from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900", className)}>
       {f ? <Img src={f} w={640} className="size-full object-cover" style={phStyle(ph || phOf(p))} /> : <Sil className="absolute inset-x-0 bottom-0 h-[85%]" />}
-      <img loading="lazy" decoding="async" src={logoSrc()} alt="" className="absolute left-2 top-2 h-7 w-auto drop-shadow" />
+      <img loading="lazy" decoding="async" src={logoSrc()} alt="" className="absolute left-2 top-2 h-7 w-auto max-w-[40%] object-contain drop-shadow" />
       <div className="absolute right-2 top-2 flex gap-1">
         {!!p.fr && <span title={`${p.fr} ${p.fr === 1 ? "franja" : "franjas"} de servicio`} className="grid size-7 place-items-center rounded-lg bg-slate-950/70 p-0.5 backdrop-blur"><Stripes n={p.fr} /></span>}
         {ins && <span title={rankES(a.r)} className="grid h-7 min-w-7 place-items-center rounded-lg bg-slate-950/70 px-1 backdrop-blur"><img loading="lazy" decoding="async" src={ins} alt="" className="max-h-5 w-auto" /></span>}
@@ -144,7 +146,7 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
   const [tab, setTab] = useState<Tab>("res"), [editDiv, setEditDiv] = useState(false), [divSel, setDivSel] = useState<string[]>([]);
   const [ph, setPh] = useState<Ph | null>(null), [cv, setCv] = useState<{ x: number; y: number } | null>(null);
   const [pick, setPick] = useState<"" | "foto" | "cover" | "divlogo">(""), [logoFor, setLogoFor] = useState("");
-  const [nota, setNota] = useState(""), [cdT, setCdT] = useState(""), [cdF, setCdF] = useState("");
+  const [nota, setNota] = useState(""), [cdT, setCdT] = useState(""), [cdF, setCdF] = useState(""), [cdK, setCdK] = useState(""), [cdM, setCdM] = useState("");
   const coverRef = useRef<HTMLDivElement>(null), phRef = useRef<HTMLDivElement>(null);
   const done = (fn: (p: Profile) => void, msg?: string) => { updateProf(n, fn); if (msg) toast(msg); };
   const order = ALL_DIVS, divs = p.div.slice().sort((x, y) => order.indexOf(x) - order.indexOf(y));
@@ -156,7 +158,7 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
     return t.sort((x, y) => +(y.d || 0) - +(x.d || 0));
   }, [a, p.movs]);
   const pats = PH.filter(h => h.rows.some(r => r.n === n)).map(h => ({ h, r: h.rows.find(r => r.n === n)! }));
-  const votes = VOTES.filter(v => v.ag.n === n).sort((x, y) => y.t - x.t), cond = (p.cond || []) as unknown as { id: string; t: string; f?: string }[], lic = (p.lic || {}) as Record<string, boolean>;
+  const votes = VOTES.filter(v => v.ag.n === n).sort((x, y) => y.t - x.t), cond = (p.cond || []) as unknown as AwardT[], lic = (p.lic || {}) as Record<string, boolean>;
   const notas = p.notas as unknown as { id: string; a: string; r: string; m: string; t: number }[];
   const last = Math.max(0, ...p.movs.map(m => m.t), ...notas.map(x => x.t), ...pats.map(x => x.h.t), ...votes.map(v => v.t), ACC_LAST[n] || 0);
   const tabs: [Tab, string, number | undefined, typeof FileText][] = [["res", "Resumen", undefined, FileText], ["his", "Historial", tl.length + votes.length, History], ["not", "Notas internas", notas.length, StickyNote], ["pat", "Controles de patrulla", pats.length, Car], ["con", "Condecoraciones", cond.length, Award]];
@@ -241,7 +243,7 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
                   <Input key={p.cs} defaultValue={p.cs} placeholder="Sin callsign" className="h-8 flex-1 text-right font-mono uppercase" onBlur={e => { const v = e.target.value.trim().toUpperCase(); if (v !== p.cs) done(x => { x.cs = v; }, "Callsign guardado"); }} onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()} /></div>
                 <div className="flex items-center gap-3 border-b border-slate-100 py-1.5 text-sm dark:border-slate-800"><BadgeCheck className="size-4 text-slate-400" /><span className="w-36 shrink-0 text-slate-500">Franjas de servicio</span>
                   <Select value={p.fr || 0} onChange={e => done(x => { x.fr = +e.target.value; }, "Franjas actualizadas")} className="h-8 flex-1 text-sm">{[0, 1, 2, 3, 4, 5, 6].map(k => <option key={k} value={k}>{k ? k + (k === 1 ? " franja" : " franjas") : "Sin franjas"}</option>)}</Select></div>
-                <Row i={Award} k="Condecoraciones">{cond.length}</Row><Row i={Clock} k="Fecha de ingreso">{dstr(pdate(a.c))}</Row><Row i={Clock} k="Antigüedad">{antig(a.c)}</Row>
+                <Row i={Award} k="Condecoraciones">{cond.length ? <span className="inline-flex flex-wrap gap-1 align-middle">{cond.slice(0, 8).map(c => { const d = decorOf(c.k); return d ? <Ribbon key={c.id} d={d} size="sm" /> : null; })}<span className="ml-1">{cond.length}</span></span> : 0}</Row><Row i={Clock} k="Fecha de ingreso">{dstr(pdate(a.c))}</Row><Row i={Clock} k="Antigüedad">{antig(a.c)}</Row>
                 <Row i={TrendingUp} k="Último ascenso">{dstr(pdate(a.a))}</Row><Row i={Clock} k="Tiempo en el rango">{antig(a.a || a.c)}</Row><Row i={Activity} k="Última actividad">{rel(last)}</Row>
                 <Row i={BadgeCheck} k="N° de placa">{a.p ? "#" + a.p : "—"}</Row><Row i={IdCard} k="State ID">{a.s || "—"}</Row><Row i={AtSign} k="Discord">{a.d || "—"}</Row>
                 <Row i={Mail} k="Correo">{emailOf(a.n)}</Row><Row i={Shield} k="Estado">{a.e || "—"}</Row>
@@ -310,14 +312,23 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
               </div>)) : <p className="py-6 text-center text-sm text-slate-400">Sin controles de patrulla guardados.</p>}
           </div>}
           {tab === "con" && <div className="space-y-4">
-            <div className="flex flex-wrap gap-2">{cond.length ? cond.map(c => (
-              <span key={c.id} className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/60 bg-amber-50 py-1 pl-3 pr-1 text-sm font-medium text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-                <Award className="size-3.5" />{c.t}{c.f && <small className="text-xs opacity-70">{dstr(pdate(c.f))}</small>}
-                <button aria-label={`Quitar ${c.t}`} onClick={() => done(x => { x.cond = (x.cond as unknown as { id: string }[]).filter(y => y.id !== c.id) as unknown as string[]; })} className="rounded-full p-0.5 hover:bg-amber-200/60 dark:hover:bg-amber-500/20"><X className="size-3.5" /></button></span>))
-              : <p className="text-sm text-slate-400">Sin condecoraciones ni cursos registrados.</p>}</div>
-            <div className="flex flex-wrap gap-2"><Input className="min-w-[14rem] flex-1" value={cdT} onChange={e => setCdT(e.target.value)} placeholder="Ej: Academia de vuelo, Medalla al Valor…" />
-              <Input type="date" className="w-44" value={cdF} onChange={e => setCdF(e.target.value)} />
-              <Button icon={<Plus />} onClick={() => { const t = cdT.trim(); if (!t) return; done(x => { x.cond = [...((x.cond || []) as unknown[]), { id: uid(), t, f: cdF }] as unknown as string[]; }, "Agregado"); setCdT(""); setCdF(""); }}>Agregar</Button></div>
+            {cond.length ? <div className="flex flex-wrap gap-1.5 rounded-xl bg-slate-900 p-3 dark:bg-black/40">{cond.map(c => { const d = decorOf(c.k); return d ? <Ribbon key={c.id} d={d} /> : null; })}</div> : null}
+            <div className="space-y-2">{cond.length ? cond.map(c => { const d = decorOf(c.k); return (
+              <div key={c.id} className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-800">
+                {d ? <Ribbon d={d} size="sm" /> : <Award className="size-4 text-amber-500" />}
+                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{c.t}</p>
+                  <p className="truncate text-xs text-slate-500">{c.f ? dstr(pdate(c.f)) : "Sin fecha"}{c.m ? ` · ${c.m}` : ""}{c.by ? ` · otorgada por ${c.by}` : ""}</p></div>
+                <button aria-label={`Quitar ${c.t}`} onClick={() => done(x => { x.cond = (x.cond as unknown as AwardT[]).filter(y => y.id !== c.id) as unknown as string[]; })} className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><X className="size-4" /></button>
+              </div>); }) : <p className="text-sm text-slate-400">Sin condecoraciones ni cursos registrados.</p>}</div>
+            <div className="grid gap-2 rounded-xl border border-slate-200 p-3 dark:border-slate-800 sm:grid-cols-[1fr_10rem]">
+              <Select value={cdK} onChange={e => setCdK(e.target.value)}><option value="">Otra (escribir a mano)…</option>
+                {DECOR_TABS.map(([tb, l]) => <optgroup key={tb} label={l}>{DECOR.filter(d => d.tab === tb).map(d => <option key={d.k} value={d.k}>{d.t}{d.tab === "cond" ? ` · ${d.g}` : ""}</option>)}</optgroup>)}</Select>
+              <Input type="date" value={cdF} onChange={e => setCdF(e.target.value)} />
+              {!cdK && <Input className="sm:col-span-2" value={cdT} onChange={e => setCdT(e.target.value)} placeholder="Ej: Academia de vuelo, curso de negociación…" />}
+              <Input className="sm:col-span-2" value={cdM} onChange={e => setCdM(e.target.value)} placeholder="Motivo (opcional)" />
+              <div className="flex justify-end sm:col-span-2"><Button icon={<Plus />} onClick={() => { const d = decorOf(cdK), t = d ? d.t : cdT.trim(); if (!t) return;
+                done(x => { x.cond = [...((x.cond || []) as unknown as AwardT[]), { id: uid(), t, k: d?.k, f: cdF, m: cdM.trim(), by: me.n }] as unknown as string[]; }, "Agregado"); setCdT(""); setCdF(""); setCdM(""); setCdK(""); }}>Otorgar</Button></div>
+            </div>
           </div>}
         </div>
       </div>
@@ -385,3 +396,5 @@ function RegModal({ n, myL, onClose, onCreated }: { n: string | null; myL: numbe
     </Modal>
   );
 }
+
+const DECOR_TABS: [string, string][] = [["med", "Medallas"], ["cond", "Condecoraciones"], ["fra", "Franjas de servicio"]];

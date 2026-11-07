@@ -13,7 +13,6 @@ import { focusRing } from "@/components/ui";
 export const APP_VERSION = "1.0";
 /* distintivo rojo intermitente de la versión nueva */
 export const VersionBadge = () => <span className="ver-new" title={`Versión ${APP_VERSION} · ya está disponible`}><i />v{APP_VERSION} NEW</span>;
-export const BUILD_ID = __BUILD__;
 /* nombre corto de la división para que la barra entre en una línea */
 const divShort = (l: string) => ({ "Administration Services Bureau": "Administration Services", "Air Support Division": "Air Support", "Detective Bureau": "Detective Bureau",
   "High Speed Interception Unit": "HSIU", "K-9 Division": "K-9", "Metropolitan Division": "Metropolitan", "Professional Standards Bureau": "PSB", "Recruitment and Training Division": "RTD" } as Record<string, string>)[l] || l;

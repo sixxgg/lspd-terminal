@@ -24,6 +24,7 @@ let net: NetState = "ok";
 const setNet = (s: NetState) => { if (net !== s) { net = s; bump(); } };
 export const getNet = () => net;
 
+const RO = new Map<string, [string, unknown]>();
 export const LS = {
   get(k: string): string | null {
     if (isLocal(k)) { try { return localStorage.getItem(k); } catch { return null; } }
@@ -39,6 +40,9 @@ export const LS = {
     if (!ONLINE || !has(CACHE, k)) return;
     delete CACHE[k]; bump(); Sync.push(k);
   },
+  /* lectura cacheada: solo vuelve a parsear si cambió el texto (no mutar lo que devuelve) */
+  ro<T>(k: string, d: T): T { const v = LS.get(k); if (!v) return d; const c = RO.get(k); if (c && c[0] === v) return c[1] as T;
+    try { const o = JSON.parse(v) as T; RO.set(k, [v, o]); return o; } catch { return d; } },
   json<T>(k: string, d: T): T { try { const v = LS.get(k); return v ? (JSON.parse(v) as T) : d; } catch { return d; } },
   setJSON(k: string, v: unknown) { LS.set(k, JSON.stringify(v)); },
   keys(prefix = ""): string[] { return Object.keys(CACHE).filter(k => k.startsWith(prefix)); },
@@ -122,7 +126,6 @@ export function goOffline() { ONLINE = false; clearTimeout(pollT); for (const k 
 /* hooks: el componente se vuelve a dibujar cuando cambia cualquier dato */
 const subscribe = (f: () => void) => { subs.add(f); return () => subs.delete(f); };
 export const useStoreVersion = () => useSyncExternalStore(subscribe, () => version);
-export function useKey(k: string): string | null { useStoreVersion(); return LS.get(k); }
 export function useJSON<T>(k: string, d: T): [T, (v: T) => void] {
   useStoreVersion();
   return [LS.json(k, d), (v: T) => LS.setJSON(k, v)];

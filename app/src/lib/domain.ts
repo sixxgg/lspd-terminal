@@ -30,7 +30,7 @@ export const GROUPS: Record<string, { l: string; r: string[] }> = {
   cap: { l: "Capitanía", r: ["Captain", "Lieutenant"] },
   sup: { l: "Supervisores", r: ["Sergeant II", "Sergeant I"] },
   det: { l: "Detectives", r: ["Detective III", "Detective II", "Detective I"] },
-  ofi: { l: "Oficiales", r: ["Police Officer III+", "Police Officer III", "Police Officer II", "Police Officer I"] },
+  ofi: { l: "Patrulleros", r: ["Police Officer III+", "Police Officer III", "Police Officer II", "Police Officer I"] },
 };
 const FEM = new Set(["Claire Robinson", "Madison Wells", "Vega Chambers", "Evelyn Molina", "Lara Calloway", "Madison Pierce", "Yooa Baek-Harrington",
   "Naia Bishop", "Haley Brenner-Scott", "Olivia Molina", "Morvanna Montenegro", "Madison Lopez", "Hailey Deacon", "Mía Johnson", "May-Lin Chen",
@@ -43,19 +43,28 @@ export const emailOf = (n: string) => norm(n).replace(/[^a-z0-9]/g, "") + "@sana
 export const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
 
 export function getRoster(): Agent[] {
-  const a = LS.json<Agent[] | null>("lspdt.roster", null);
+  const a = LS.ro<Agent[] | null>("lspdt.roster", null);
   return Array.isArray(a) && a.length ? a : DEF_ROSTER;
 }
 export const findAgent = (n: string) => getRoster().find(a => a.n === n) || null;
 
 type Prof = { g?: string; foto?: string; div?: string[]; main?: string; ph?: { x: number; y: number; z: number } | null };
-export const profOf = (n: string): Prof => (LS.json<Record<string, Prof>>("lspdt.profiles", {})[n] || {});
+export const profOf = (n: string): Prof => (LS.ro<Record<string, Prof>>("lspdt.profiles", {})[n] || {});
 export const genderOf = (n: string) => profOf(n).g || (FEM.has(n) ? "f" : "m");
 export const fotoOf = (n: string) =>
   LS.get("lspdt.foto." + n) || profOf(n).foto || LS.get("lspdt.img.avatar_" + genderOf(n)) || LS.get("lspdt.img.avatar") || "";
 
+/* imágenes guardadas en base64: se pasan a blob: una sola vez (el navegador las decodifica y cachea una vez, no por cada tarjeta) */
+const BLOB = new Map<string, string>();
+export function srcOf(u: string) {
+  if (!u || !u.startsWith("data:") || u.length < 4096) return u;
+  const h = u.length + ":" + u.slice(-64), hit = BLOB.get(h); if (hit) return hit;
+  try { const [m, b] = u.split(","), bin = atob(b), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([a], { type: m.slice(5).split(";")[0] })); if (BLOB.size > 400) BLOB.clear(); BLOB.set(h, url); return url; } catch { return u; }
+}
+
 /* imágenes externas: Vercel las entrega en el tamaño justo (si falla, se usa la original) */
-export const imgOpt = (u: string, w: number) =>
+export const imgOpt = (u: string, w: number) => u.startsWith("data:") ? srcOf(u) :
   location.protocol === "https:" && !/^(localhost|127\.)/.test(location.hostname) && /^https?:\/\//i.test(u)
     ? `/_vercel/image?url=${encodeURIComponent(u)}&w=${w}&q=75` : u;
 
@@ -99,7 +108,7 @@ export const DIV_INFO: Record<string, [string, string]> = {
   "Professional Standards Bureau": ["PSB", "#1e3a8a"], "K-9 Division": ["K-9", "#1f8f4a"] };
 export const divAb = (d: string) => DIV_INFO[d] || [d.split(/\s+/).map(w => w[0]).join("").slice(0, 4).toUpperCase(), "#334155"];
 const DIV_LOGO: Record<string, string> = { "Recruitment and Training Division": "rtd", "Underwater Dive Unit": "udu", "Metropolitan Division": "metro", "Major Crimes Division": "mcd", "High Tech Crime Unit": "htcu", "Gang and Narcotics Division": "gnd", "Air Support Division": "asd" };
-export const divEmblem = (d: string) => LS.get("lspdt.divlogo." + d) || (DIV_LOGO[d] ? `/div/${DIV_LOGO[d]}.webp?v=3` : "");
+export const divEmblem = (d: string) => srcOf(LS.get("lspdt.divlogo." + d) || "") || (DIV_LOGO[d] ? `/div/${DIV_LOGO[d]}.webp?v=3` : "");
 export const isoToDMY = (s?: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return m ? `${m[3]}/${m[2]}/${m[1]}` : ""; };
 export function dmyToISO(s: string) {
   const m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(String(s).trim()); if (!m) return null;
