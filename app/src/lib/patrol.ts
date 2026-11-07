@@ -1,20 +1,23 @@
-/* Revisión de patrullas: mismas claves que la versión clásica (lspdt.equip, lspdt.patrol, lspdt.patHist, lspdt.pfoto.*) */
+/* Revisión de patrullas: lspdt.equip2 (checklist del maletero), lspdt.patrol, lspdt.patHist, lspdt.pfoto.* */
 import { LS } from "./store";
 export const VEH: [string, string][] = [["stx", "Buffalo STX"], ["scout", "Scout"], ["mary", "Mary"], ["int", "Interceptor"]];
 export type EqItem = { n: string; q: number };
-export const EQ_DEF: EqItem[] = ([["Botiquín de primeros auxilios", 1], ["Extintor", 1], ["Conos de señalización", 4], ["Cinta de balizamiento", 1], ["Bengalas", 4], ["Chaleco reflectante", 2], ["Linterna", 1], ["Kit de alcoholemia y narcotest", 1], ["Esposas de repuesto", 2], ["Bolsas de evidencia", 5]] as [string, number][]).map(([n, q]) => ({ n, q }));
+export const EQ_DEF: EqItem[] = ([["Esposas", 2], ["Chalecos", 2], ["Radios", 2], ["Barreras", 10], ["Pinchos", 10], ["Conos", 10],
+  ["Escopeta reglamentaria + x8 cartuchos de escopeta", 1], ["Cartuchos de escopeta extra", 16], ["Pistola de bengalas + x1 cartucho de bengala", 1], ["Cartuchos de bengala extra", 2],
+  ["Cargadores de pistola de combate", 6], ["Bolsas de evidencias", 5], ["Alcoholímetro", 1], ["Kit de huellas", 1], ["Botiquín", 1], ["Kit IFAK", 1], ["GSR", 5]] as [string, number][]).map(([n, q]) => ({ n, q }));
+export const EQ_KEY = "lspdt.equip2";
 export const eqDef = () => Object.fromEntries(VEH.map(([k]) => [k, EQ_DEF.map(x => ({ ...x }))])) as Record<string, EqItem[]>;
 export function getEq(): Record<string, EqItem[]> {
-  const E = LS.json<Record<string, (EqItem | string)[]> | null>("lspdt.equip", null) || eqDef();
+  const E = LS.ro<Record<string, (EqItem | string)[]> | null>(EQ_KEY, null) || eqDef();
   return Object.fromEntries(VEH.map(([k]) => [k, (E[k] || []).map(x => (typeof x === "string" ? { n: x, q: 1 } : x))]));
 }
-export type Miss = { n: string; q: number; h: number } | string;
-export type Cell = { s: "" | "ok" | "no" | "na"; m?: Miss[]; o?: string; f?: string[] };
+export type Miss = { n: string; q: number; h: number; o?: string } | string;
+export type Cell = { s: "" | "ok" | "no" | "na"; m?: Miss[]; o?: string; f?: string[]; io?: Record<string, string>; ck?: boolean };
 export type PRow = { n: string; r: string; p?: string; v: Record<string, Cell> };
 export type Patrol = { fecha: string; rows: PRow[]; nota?: string };
 export type PHist = { id: string; fecha: string; t: number; por: { n: string; r: string }; nota: string; rows: PRow[] };
 export const VST: Record<string, string> = { "": "Sin revisar", ok: "Preparado", no: "No preparado", na: "No asignado" };
-export const missTxt = (m: Miss) => (typeof m === "string" ? m : `${m.n} (${m.h}/${m.q})`);
+export const missTxt = (m: Miss) => (typeof m === "string" ? m : `${m.n} (${m.h}/${m.q}, faltan ${m.q - m.h})${m.o ? ` [${m.o}]` : ""}`);
 export const missOf = (c: Cell) => [...(c.m || []).map(missTxt), ...(c.o ? [c.o] : [])];
 export const vcount = (rows: PRow[], s: string) => rows.reduce((n, r) => n + VEH.filter(([k]) => (r.v[k]?.s || "") === s).length, 0);
 export const pfoto = (id: string) => LS.get("lspdt.pfoto." + id) || "";

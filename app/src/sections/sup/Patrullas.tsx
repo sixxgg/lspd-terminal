@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Car, Package, CheckCheck, Trash2, Save, X, Camera, ClipboardList, Pencil, ImagePlus, FileText, Copy, ArrowRight, UserPlus } from "lucide-react";
+import { Car, Package, CheckCheck, Trash2, Save, X, Camera, ClipboardList, ListChecks, ImagePlus, FileText, Copy, ArrowRight, UserPlus } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Field, Input, Textarea } from "@/components/ui";
 import { AgentPicker, Avatar, RankBadge } from "@/components/agents";
 import { Lightbox, Modal } from "@/components/modal";
@@ -97,13 +97,12 @@ export function Patrullas() {
                   <td className="px-4 py-3"><div className="flex items-center gap-2.5"><Avatar n={r.n} size={30} /><div><p className="font-semibold">{r.n}</p><div className="mt-0.5 flex items-center gap-1.5"><RankBadge r={r.r} />{r.p && <span className="font-mono text-[11px] text-slate-400">#{r.p}</span>}</div></div></div></td>
                   {VEH.map(([k, vn]) => { const c = r.v[k] || { s: "" }, ms = missOf(c); return (
                     <td key={k} className="px-3 py-3">
-                      <select value={c.s} onChange={e => setCell(i, k, e.target.value as Cell["s"])} aria-label={`${vn} de ${r.n}`}
+                      <select value={c.s} style={{ maxWidth: "15rem" }} onChange={e => setCell(i, k, e.target.value as Cell["s"])} aria-label={`${vn} de ${r.n}`}
                         className={cn("h-8 w-full rounded-lg border px-2 text-xs font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-brand-500", ST_CLS[c.s])}>
                         {Object.entries(VST).map(([v, l]) => <option key={v} value={v} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100">{v ? l : "— Sin revisar"}</option>)}
                       </select>
-                      {c.s === "no" && <button onClick={() => setMiss({ i, k })} className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:underline dark:text-brand-300"><Pencil className="size-3" />Qué falta{ms.length ? ` (${ms.length})` : ""}</button>}
-                      {c.s === "ok" && <button onClick={() => setMiss({ i, k })} className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:underline dark:text-brand-300"><Camera className="size-3" />Fotos{c.f?.length ? ` (${c.f.length})` : ""}</button>}
-                      {ms.length > 0 && <p className="mt-1 text-[11px] leading-snug text-red-600 dark:text-red-400">{ms.join(" · ")}</p>}
+                      {c.s !== "na" && <button onClick={() => setMiss({ i, k })} className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:underline dark:text-brand-300"><ListChecks className="size-3" />{c.ck ? "Checklist" : "Hacer checklist"}{ms.length ? ` · ${ms.length} ${ms.length === 1 ? "ítem incompleto" : "ítems incompletos"}` : c.ck ? " ✓" : ""}{c.f?.length ? <><Camera className="ml-1 size-3" />{c.f.length}</> : null}</button>}
+                      {ms.length > 0 && <p title={ms.join("\n")} className="mt-1 line-clamp-3 max-w-[15rem] text-[11px] leading-snug text-red-600 dark:text-red-400">{ms.join(" · ")}</p>}
                       <Thumbs ids={c.f} cap={`${r.n} · ${vn}`} />
                     </td>); })}
                   <td className="py-3 pr-3"><button aria-label="Quitar de la revisión" onClick={() => { delPhotos([r]); save(p => { p.rows.splice(i, 1); }); }} className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><X className="size-4" /></button></td>
@@ -147,29 +146,45 @@ export function Patrullas() {
 
 function MissModal({ row, k, items, onClose, onSave }: { row: PRow; k: string; items: { n: string; q: number }[]; onClose: () => void; onSave: (c: Cell) => void }) {
   const c = row.v[k] || { s: "" }, vn = VEH.find(v => v[0] === k)![1];
-  const [h, setH] = useState<Record<string, number>>(() => Object.fromEntries(items.map(it => { const m = (c.m || []).find(x => typeof x !== "string" && x.n === it.n) as { h: number } | undefined; return [it.n, m ? m.h : it.q]; })));
+  /* cantidad inicial: lo que se cargó antes; si nunca se hizo el checklist, 0 (o completo si ya estaba marcado como preparado) */
+  const start = (it: { n: string; q: number }) => { const m = (c.m || []).find(x => typeof x !== "string" && x.n === it.n) as { h: number } | undefined;
+    return m ? m.h : c.ck || c.s === "ok" ? it.q : 0; };
+  const [h, setH] = useState<Record<string, number>>(() => Object.fromEntries(items.map(it => [it.n, start(it)])));
+  const [io, setIo] = useState<Record<string, string>>(() => ({ ...(c.io || {}) }));
   const [otro, setOtro] = useState(c.o || ""), [ph, setPh] = useState<{ id?: string; d: string }[]>(() => (c.f || []).filter(pfoto).map(id => ({ id, d: pfoto(id) })));
   const [lb, setLb] = useState<number | null>(null), [over, setOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const add = async (fs: FileList | File[]) => { const l = await Promise.all([...fs].filter(f => f.type.startsWith("image/")).map(f => readImg(f, 1600))); setPh(p => [...p, ...l.map(d => ({ d }))]); };
+  const okN = items.filter(it => (h[it.n] ?? 0) >= it.q).length, falt = items.reduce((a, it) => a + Math.max(0, it.q - (h[it.n] ?? 0)), 0);
   const ok = () => {
-    const m = items.map(it => ({ n: it.n, q: it.q, h: Math.max(0, h[it.n] ?? it.q) })).filter(x => x.h < x.q), o = otro.trim();
+    const m = items.map(it => ({ n: it.n, q: it.q, h: Math.max(0, h[it.n] ?? 0), ...(io[it.n]?.trim() ? { o: io[it.n].trim() } : {}) })).filter(x => x.h < x.q), o = otro.trim();
     const keep = new Set(ph.filter(p => p.id).map(p => p.id)); (c.f || []).forEach(id => { if (!keep.has(id)) LS.del("lspdt.pfoto." + id); });
     const f = ph.map(p => { if (p.id) return p.id; const id = uid(); LS.set("lspdt.pfoto." + id, p.d); return id; });
-    onSave(!m.length && !o ? { s: "ok", f } : { s: "no", m, o, f });
+    const notes = Object.fromEntries(Object.entries(io).map(([a, b]) => [a, b.trim()]).filter(([, b]) => b));
+    onSave(!m.length && !o ? { s: "ok", f, io: notes, ck: true } : { s: "no", m, o, f, io: notes, ck: true });
   };
   return (
-    <Modal open onClose={onClose} title={`Inventario · ${vn}`} desc={`${row.n} · indicá cuánto tiene de cada ítem`} icon={<Package />} size="lg"
-      footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon={<Save />} onClick={ok}>Guardar</Button></>}>
+    <Modal open onClose={onClose} title={`Checklist de equipamiento · ${vn}`} desc={`${row.n} · marcá lo que está completo o cargá la cantidad que hay`} icon={<ListChecks />} size="xl"
+      footer={<><span className="mr-auto text-xs text-slate-500"><b className="text-emerald-600 dark:text-emerald-400">{okN}</b>/{items.length} completos{falt ? <> · faltan <b className="text-red-600 dark:text-red-400">{falt}</b> unidades</> : ""}</span>
+        <Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon={<Save />} onClick={ok}>Guardar</Button></>}>
       <div className="space-y-4" onPaste={e => { const fs = [...e.clipboardData.items].filter(i => i.type.startsWith("image/")).map(i => i.getAsFile()!).filter(Boolean); if (fs.length) { e.preventDefault(); void add(fs); } }}>
-        <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
-          {items.length ? items.map(it => { const v = h[it.n] ?? it.q, bad = v < it.q; return (
-            <div key={it.n} className={cn("flex items-center gap-3 px-3 py-2", bad && "bg-red-500/[.06]")}>
-              <span className={cn("flex-1 text-sm", bad && "font-semibold text-red-700 dark:text-red-300")}>{it.n}</span>
-              <span className="text-xs text-slate-400">Requerido <b className="text-slate-600 dark:text-slate-300">{it.q}</b></span>
-              <Input type="number" min={0} value={v} onChange={e => setH({ ...h, [it.n]: Math.max(0, +e.target.value || 0) })} className={cn("h-8 w-20 text-center", bad && "border-red-400")} />
-            </div>); }) : <p className="p-4 text-center text-sm text-slate-400">No hay equipamiento cargado para este vehículo.</p>}
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" icon={<CheckCheck />} onClick={() => setH(Object.fromEntries(items.map(it => [it.n, it.q])))}>Todo completo</Button>
+          <Button size="sm" variant="ghost" icon={<X />} onClick={() => setH(Object.fromEntries(items.map(it => [it.n, 0])))}>Poner todo en 0</Button>
         </div>
+        {items.length ? <div className="scrollbar-thin overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800"><table className="w-full min-w-[40rem] text-sm">
+          <thead><tr className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+            <th className="w-12 px-3 py-2.5 text-center">OK</th><th className="px-3 text-left">Elemento</th><th className="w-20 text-center">Requerido</th><th className="w-24 text-center">Actual</th><th className="w-20 text-center">Faltante</th><th className="px-3 text-left">Observaciones</th></tr></thead>
+          <tbody>{items.map(it => { const v = h[it.n] ?? 0, miss = Math.max(0, it.q - v), full = miss === 0; return (
+            <tr key={it.n} className={cn("border-t border-slate-100 dark:border-slate-800", full ? "bg-emerald-500/[.05]" : v > 0 && "bg-amber-500/[.05]")}>
+              <td className="px-3 py-1.5 text-center"><input type="checkbox" checked={full} aria-label={`${it.n} completo`} onChange={e => setH({ ...h, [it.n]: e.target.checked ? it.q : 0 })} className="size-4 cursor-pointer accent-emerald-600" /></td>
+              <td className={cn("px-3", full ? "text-slate-500 dark:text-slate-400" : "font-medium")}>{it.n}</td>
+              <td className="text-center font-semibold tabular-nums text-brand-600 dark:text-brand-300">{it.q}</td>
+              <td className="text-center"><Input type="number" min={0} value={v} onFocus={e => e.target.select()} onChange={e => setH({ ...h, [it.n]: Math.max(0, +e.target.value || 0) })} className="mx-auto h-8 w-16 text-center" /></td>
+              <td className={cn("text-center font-bold tabular-nums", full ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>{full ? "✓" : miss}</td>
+              <td className="px-3 py-1.5"><Input value={io[it.n] || ""} onChange={e => setIo({ ...io, [it.n]: e.target.value })} placeholder="Observaciones…" className="h-8 text-xs" /></td>
+            </tr>); })}</tbody></table></div>
+          : <p className="rounded-xl border border-slate-200 p-4 text-center text-sm text-slate-400 dark:border-slate-800">No hay equipamiento cargado para este vehículo (lo define Capitanía).</p>}
         <Field label="Otro faltante o problema" hint="(opcional)"><Input value={otro} onChange={e => setOtro(e.target.value)} placeholder="Ej: rueda de auxilio pinchada" /></Field>
         <Field label="Fotos del maletero" hint="(arrastrá, pegá con Ctrl+V o elegí)">
           <div onDragOver={e => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={e => { e.preventDefault(); setOver(false); void add(e.dataTransfer.files); }}

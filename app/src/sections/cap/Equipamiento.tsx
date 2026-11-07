@@ -3,12 +3,12 @@ import { Package, Plus, X, Copy, RotateCcw } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Input } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
 import { LS, useStoreVersion } from "@/lib/store";
-import { VEH, eqDef, getEq, type EqItem } from "@/lib/patrol";
+import { EQ_KEY, VEH, eqDef, getEq, type EqItem } from "@/lib/patrol";
 
 export function Equipamiento() {
   useStoreVersion();
   const { toast, confirm } = useFeedback();
-  const EQ = getEq(), save = (e: Record<string, EqItem[]>) => LS.setJSON("lspdt.equip", e);
+  const EQ = getEq(), save = (e: Record<string, EqItem[]>) => LS.setJSON(EQ_KEY, e);
   const [nn, setNn] = useState<Record<string, string>>({}), [qq, setQq] = useState<Record<string, number>>({});
   const add = (k: string) => { const v = (nn[k] || "").trim(); if (!v) return; save({ ...EQ, [k]: [...EQ[k], { n: v, q: Math.max(1, qq[k] || 1) }] }); setNn({ ...nn, [k]: "" }); setQq({ ...qq, [k]: 1 }); };
   return (
