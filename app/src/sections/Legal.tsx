@@ -1,6 +1,6 @@
 /* Legal: leyes del servidor por capítulo, con buscador, gravedad y favoritos por agente */
 import { useMemo, useState, type ReactNode } from "react";
-import { BookOpen, Copy, Gavel, Search, Star, X } from "lucide-react";
+import { BookOpen, ChevronDown, Copy, Gavel, Search, Star, X } from "lucide-react";
 import { Card, Empty, Input, Segmented, Select } from "@/components/ui";
 import { useCopy } from "@/components/output";
 import { norm } from "@/lib/domain";
@@ -13,7 +13,10 @@ type Kind = "adm" | "cp";
 type Grav = "all" | "Leve" | "Grave" | "Muy grave" | "fav";
 const GRAV: { v: Exclude<Grav, "all" | "fav">; l: string }[] = [{ v: "Leve", l: "Leves" }, { v: "Grave", l: "Graves" }, { v: "Muy grave", l: "Muy graves" }];
 /* «Falta · Seguridad Vial (Ley 26/2024)» → «Ley 26/2024 - Seguridad Vial» */
-export function chapterName(c: string) { const m = /^Falta · (.+?) \((Ley [^)]+)\)$/.exec(c || ""); return m ? `${m[2]} - ${m[1]}` : c || "Sin capítulo"; }
+export const SEP = " › ";
+/* «TÍTULO VI. Delitos contra la libertad» → ["TÍTULO VI", "Delitos contra la libertad"] */
+export const splitTitle = (t: string) => { const m = /^(T[ÍI]TULO [IVXLC]+(?: bis)?)\.\s*(.+)$/.exec(t); return m ? [m[1], m[2]] : [t, ""]; };
+export function chapterName(c: string) { if ((c || "").includes(SEP)) { const [t, ch] = c.split(SEP), [n, nm] = splitTitle(t); return `${n} · ${nm}${SEP}${ch}`; } const m = /^Falta · (.+?) \((Ley [^)]+)\)$/.exec(c || ""); return m ? `${m[2]} - ${m[1]}` : c || "Sin capítulo"; }
 const lawNum = (c: string) => { const m = /Ley (\d+)\/(\d+)/.exec(c); return m ? +m[2] * 1000 + +m[1] : 1e9; };
 export const legalFavKey = (n: string) => "lspdt.legalFav." + norm(n).replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 const money = (n: number) => "$" + Number(n).toLocaleString("es-AR");
@@ -40,7 +43,11 @@ export function Legal() {
   }, [P, kind]); // eslint-disable-line react-hooks/exhaustive-deps
   const curCap = chapters.find(([c]) => c === cap[kind])?.[0] || chapters[0]?.[0] || "";
   const pickCap = (c: string) => { setCap({ ...cap, [kind]: c }); setGrav("all"); setQ(""); };
-  const capList = chapters.filter(([c]) => !qc || norm(chapterName(c)).includes(norm(qc)));
+  const [exp, setExp] = useState<Record<string, boolean>>({});
+  const qcn = norm(qc.trim());
+  const groups = useMemo(() => { const G: { t: string; items: [string, Art[]][] }[] = []; chapters.forEach(e => { const t = e[0].split(SEP)[0], g = G.find(x => x.t === t); g ? g.items.push(e) : G.push({ t, items: [e] }); }); return G; }, [chapters]);
+  const capGroups = groups.map(g => ({ ...g, items: g.items.filter(([c]) => !qcn || norm(chapterName(c)).includes(qcn)) })).filter(g => g.items.length);
+  const capList = capGroups.flatMap(g => g.items);
 
   const qn = norm(q.trim()), searching = !!qn;
   const scope = searching ? byKind(kind) : chapters.find(([c]) => c === curCap)?.[1] || [];
@@ -72,14 +79,22 @@ export function Legal() {
             <Input className="h-9 pl-9 text-sm" value={qc} onChange={e => setQc(e.target.value)} placeholder="Buscar título o capítulo…" /></div></div>
           <div className="p-3 lg:hidden"><Select value={curCap} onChange={e => pickCap(e.target.value)}>{chapters.map(([c, l]) => <option key={c} value={c}>{chapterName(c)} ({l.length})</option>)}</Select></div>
           <nav className="hidden max-h-[calc(100vh-17rem)] overflow-y-auto pb-2 lg:block">
-            {capList.map(([c, l]) => { const on = !searching && c === curCap, nf = l.filter(x => favs.has(x.a)).length; return (
-              <button key={c} onClick={() => pickCap(c)} className={cn("group relative block w-full border-b border-slate-100 px-4 py-3 text-left transition dark:border-slate-800/70",
-                on ? "bg-brand-500/10 dark:bg-brand-500/15" : "hover:bg-slate-50 dark:hover:bg-slate-800/40")}>
-                {on && <span className="absolute inset-y-0 left-0 w-[3px] bg-brand-500" />}
-                <span className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">{l.length} {kind === "adm" ? (l.length === 1 ? "infracción" : "infracciones") : l.length === 1 ? "delito" : "delitos"}
-                  {nf > 0 && <span className="inline-flex items-center gap-0.5 text-amber-600 dark:text-amber-400"><Star className="size-3 fill-current" />{nf}</span>}</span>
-                <span className={cn("font-display mt-0.5 block text-[15px] font-semibold leading-snug", on ? "text-brand-700 dark:text-brand-300" : "text-slate-800 dark:text-slate-100")}>{chapterName(c)}</span>
-              </button>); })}
+            {capGroups.map(g => {
+              const nested = g.items.length > 1 || g.items[0][0].includes(SEP);
+              if (!nested) { const [c, l] = g.items[0]; return <CapBtn key={c} on={!searching && c === curCap} n={l.length} nf={l.filter(x => favs.has(x.a)).length} kind={kind} label={chapterName(c)} onClick={() => pickCap(c)} />; }
+              const open = !!qcn || (exp[g.t] ?? curCap.startsWith(g.t + SEP)), [num, nm] = splitTitle(g.t), all = g.items.flatMap(([, l]) => l), inside = !searching && curCap.startsWith(g.t + SEP);
+              return <div key={g.t} className={cn("border-b border-slate-100 dark:border-slate-800/70", inside && "bg-brand-500/[.04]")}>
+                <button onClick={() => setExp({ ...exp, [g.t]: !open })} className="flex w-full items-start gap-2 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[11px] text-slate-500 dark:text-slate-400">{g.items.length} capítulos · {all.length} {kind === "adm" ? "infracciones" : "delitos"}</span>
+                    <span className={cn("font-display mt-0.5 block text-[15px] font-semibold leading-snug", inside ? "text-brand-700 dark:text-brand-300" : "text-slate-800 dark:text-slate-100")}>{num}</span>
+                    {nm && <span className="block text-[13px] leading-snug text-slate-500 dark:text-slate-400">{nm}</span>}
+                  </span>
+                  <ChevronDown className={cn("mt-1 size-4 shrink-0 text-slate-400 transition-transform", open && "rotate-180")} />
+                </button>
+                {open && <div className="pb-1">{g.items.map(([c, l]) => <CapBtn key={c} sub on={!searching && c === curCap} n={l.length} nf={l.filter(x => favs.has(x.a)).length} kind={kind} label={c.split(SEP)[1]} onClick={() => pickCap(c)} />)}</div>}
+              </div>;
+            })}
             {!capList.length && <p className="px-4 py-6 text-center text-sm text-slate-400">Ningún capítulo coincide.</p>}
           </nav>
         </aside>
@@ -104,6 +119,16 @@ export function Legal() {
       </div>
     </Card>
   );
+}
+
+function CapBtn({ on, n, nf, kind, label, sub, onClick }: { on: boolean; n: number; nf: number; kind: Kind; label: string; sub?: boolean; onClick: () => void }) {
+  return <button onClick={onClick} className={cn("group relative block w-full text-left transition", sub ? "py-2.5 pl-8 pr-4" : "border-b border-slate-100 px-4 py-3 dark:border-slate-800/70",
+    on ? "bg-brand-500/10 dark:bg-brand-500/15" : "hover:bg-slate-50 dark:hover:bg-slate-800/40")}>
+    {on && <span className={cn("absolute inset-y-0 w-[3px] bg-brand-500", sub ? "left-4 inset-y-1.5 rounded-full" : "left-0")} />}
+    <span className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">{n} {kind === "adm" ? (n === 1 ? "infracción" : "infracciones") : n === 1 ? "delito" : "delitos"}
+      {nf > 0 && <span className="inline-flex items-center gap-0.5 text-amber-600 dark:text-amber-400"><Star className="size-3 fill-current" />{nf}</span>}</span>
+    <span className={cn("font-display mt-0.5 block font-semibold leading-snug", sub ? "text-[14px]" : "text-[15px]", on ? "text-brand-700 dark:text-brand-300" : "text-slate-800 dark:text-slate-100")}>{label}</span>
+  </button>;
 }
 
 const Count = ({ n }: { n: number }) => <span className="rounded-md bg-slate-900/5 px-1.5 text-[11px] tabular-nums opacity-70 dark:bg-white/10">{n}</span>;
