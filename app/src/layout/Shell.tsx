@@ -35,11 +35,11 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
     <span className={cn("hidden items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium sm:inline-flex",
       net === "off" ? "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400" : net === "saving" ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400")}>
       {net === "off" ? <CloudOff className="size-3.5" /> : net === "saving" ? <Loader2 className="size-3.5 animate-spin" /> : <Cloud className="size-3.5" />}
-      <span className="hidden min-[1700px]:inline">{net === "off" ? "Sin conexión" : net === "saving" ? "Guardando…" : "Sincronizado"}</span>
+      <span className="hidden min-[1900px]:inline">{net === "off" ? "Sin conexión" : net === "saving" ? "Guardando…" : "Sincronizado"}</span>
     </span>);
   const tools = <>
     <a href="/clasica/" title="Versión clásica" className={cn("hidden items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 xl:inline-flex dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white", focusRing)}>
-      <span className="hidden min-[1800px]:inline">Versión clásica</span> <ExternalLink className="size-3.5" /></a>
+      <span className="hidden min-[2000px]:inline">Versión clásica</span> <ExternalLink className="size-3.5" /></a>
     <button onClick={() => setAp(true)} className={cn("rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white", focusRing)}
       aria-label="Apariencia: temas y efectos" title="Temas, colores y efectos"><Palette className="size-[18px]" /></button></>;
   const pageHead = area.k !== "div" && area.k !== "ini" && (
@@ -59,21 +59,22 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
         <div className="mx-auto flex h-16 max-w-[1760px] items-center gap-3 px-3 sm:px-5">
           <button onClick={() => go("ini", "home")} title="Inicio" className={cn("flex shrink-0 items-center gap-2.5 rounded-xl p-1 pr-2 text-left", focusRing)}>
             {logo}
-            <span className="hidden min-w-0 min-[1360px]:block"><span className="block truncate text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">{kicker}</span>
+            <span className="hidden min-w-0 min-[1500px]:block"><span className="block truncate text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">{kicker}</span>
               <span className="block truncate text-sm font-bold">{title}</span></span>
           </button>
           <VersionBadge />
-          <nav aria-label="Áreas" className="scrollbar-none flex min-w-0 flex-1 gap-0.5 overflow-x-auto min-[1700px]:gap-1 [&>*:first-child]:ml-auto [&>*:last-child]:mr-auto">
-            {areas.map(a => { const on = a.k === area.k; return (
+          <nav aria-label="Áreas" className="scrollbar-none flex min-w-0 flex-1 gap-0.5 overflow-x-auto [&>*:first-child]:ml-auto [&>*:last-child]:mr-auto">
+            {areas.map(a => { const on = a.k === area.k, red = a.k === "adm", AI = a.icon; return (
               <button key={a.k} onClick={() => goArea(a)} aria-current={on ? "page" : undefined}
-                className={cn("shrink-0 rounded-xl px-2.5 py-2 text-[13px] font-semibold transition min-[1700px]:px-3.5", focusRing,
-                  on ? "bg-brand-600 text-white shadow-sm shadow-brand-600/30 dark:bg-brand-500" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white")}>{a.l}</button>); })}
+                className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-xl px-2 py-2 text-[11.5px] font-semibold uppercase tracking-wide transition min-[1800px]:px-2.5 min-[1800px]:text-[12px]", focusRing,
+                  red ? (on ? "bg-red-600 text-white shadow-sm shadow-red-600/30" : "text-red-500 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300")
+                  : on ? "bg-brand-600 text-white shadow-sm shadow-brand-600/30 dark:bg-brand-500" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white")}>{AI && <AI className="size-[15px] shrink-0" />}{a.l}</button>); })}
           </nav>
           <div className="flex shrink-0 items-center gap-1">
             {sync}{tools}
             <button onClick={() => setAcc(true)} title="Mi cuenta" className={cn("flex items-center gap-2 rounded-xl p-1 transition hover:bg-slate-100 dark:hover:bg-slate-800/70 sm:pr-2.5", focusRing)}>
               <Avatar n={me.n} size={32} />
-              <span className="hidden text-left leading-tight min-[1750px]:block"><span className="block max-w-[10rem] truncate text-xs font-semibold">{me.n}</span><span className="block text-[11px] text-slate-500 dark:text-slate-400">{rankES(me.r)}</span></span>
+              <span className="hidden text-left leading-tight min-[1850px]:block"><span className="block max-w-[10rem] truncate text-xs font-semibold">{me.n}</span><span className="block text-[11px] text-slate-500 dark:text-slate-400">{rankES(me.r)}</span></span>
             </button>
             <button onClick={onLogout} title="Cerrar sesión" aria-label="Cerrar sesión" className={cn("rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400", focusRing)}><LogOut className="size-4" /></button>
           </div>
@@ -83,9 +84,9 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
             <nav aria-label="Secciones" className="scrollbar-none mx-auto flex max-w-[1760px] gap-0.5 overflow-x-auto px-3 py-2 sm:px-5 [&>*:first-child]:ml-auto [&>*:last-child]:mr-auto">
               {area.sec.map(s => { const on = s.k === sec.k, I = s.icon; return (
                 <button key={s.k} onClick={() => go(area.k, s.k)} title={s.d} aria-current={on ? "page" : undefined}
-                  className={cn("inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium transition", focusRing,
+                  className={cn("inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition min-[1800px]:px-2.5 min-[1800px]:text-[11.5px]", focusRing,
                     on ? "bg-brand-500/15 text-brand-700 ring-1 ring-inset ring-brand-500/40 dark:text-brand-200" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-white")}>
-                  <I className="hidden size-4 min-[1360px]:block" />{area.k === "div" ? <><span className="hidden min-[1700px]:inline">{s.l}</span><span className="min-[1700px]:hidden">{divShort(s.l)}</span></> : s.sl || s.l}</button>); })}
+                  <I className="size-3.5 shrink-0" />{area.k === "div" ? <><span className="hidden min-[1700px]:inline">{s.l}</span><span className="min-[1700px]:hidden">{divShort(s.l)}</span></> : s.sl || s.l}</button>); })}
             </nav>
           </div>)}
       </header>

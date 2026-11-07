@@ -78,14 +78,18 @@ html.neon.dark header.sticky { box-shadow: 0 1px 0 rgb(var(--b-500) / .2), 0 10p
 /* ===== efecto CRT (televisor viejo), leve para que se lea bien ===== */
 .crt{position:absolute;inset:0;z-index:120;pointer-events:none;border-radius:inherit;overflow:hidden;
   background:repeating-linear-gradient(180deg,rgba(0,0,0,.11) 0 1px,transparent 1px 3px),radial-gradient(ellipse at center,transparent 62%,rgba(0,0,0,.32) 100%);
-  opacity:calc(var(--ci,.7) * var(--fk));animation:crtFlick 5s infinite;will-change:opacity}
+  opacity:var(--ci,.7);animation:crtFlick 5s infinite;contain:strict}
 .crt::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,0,60,.022),rgba(0,255,140,.01) 50%,rgba(0,80,255,.022));
   box-shadow:inset 0 0 80px rgba(0,0,0,.28),inset 0 0 6px rgba(var(--acc-rgb,124,156,255),.12)}
 .crt::after{content:"";position:absolute;left:0;right:0;top:0;height:14%;background:linear-gradient(180deg,transparent,rgba(255,255,255,.03) 50%,transparent);
   transform:translateY(-110%);animation:crtRoll 8s linear infinite;will-change:transform}
 @keyframes crtRoll{to{transform:translateY(800%)}}
-@property --fk{syntax:"<number>";inherits:false;initial-value:1}
-@keyframes crtFlick{0%,100%{--fk:1}48%{--fk:1}50%{--fk:.88}52%{--fk:1}}
+/* parpadeo en el compositor (opacidad), sin recalcular estilos en cada cuadro */
+@keyframes crtFlick{0%,48%,52%,100%{opacity:var(--ci,.7)}50%{opacity:calc(var(--ci,.7) * .88)}}
+/* Liviano: líneas muy finas, sin animaciones ni capas extra */
+body.crt-lite .crt{background:repeating-linear-gradient(180deg,rgba(0,0,0,.07) 0 1px,transparent 1px 3px);animation:none}
+body.crt-lite .crt::before,body.crt-lite .crt::after{display:none}
+@media (prefers-reduced-motion:reduce){.crt,.crt::after{animation:none!important}}
 body.nocrt .crt{display:none}
 /* variantes */
 body.crt-clasico .crt{background:repeating-linear-gradient(180deg,rgba(0,0,0,.22) 0 1px,transparent 1px 2px),radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.55) 100%)}

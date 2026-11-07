@@ -20,6 +20,25 @@ export const SKINS: Record<string, Skin> = {
   ocean: { l: "Océano", dark: true, sw: ["#04141a", "#115e59", "#2dd4bf"], bg: "#04141a", card: "#0a1f27", soft: "#0f2a34", line: "#173a45", ink: "#e3f2f2", mut: "#8fb0b3", acc: "#2dd4bf" },
   graphite: { l: "Grafito", dark: true, sw: ["#111111", "#262626", "#e6c65a"], bg: "#0f0f10", card: "#1a1a1c", soft: "#222225", line: "#2c2c30", ink: "#ededed", mut: "#a3a3a3", acc: "#e6c65a" },
   dracula: { l: "Drácula", dark: true, sw: ["#282a36", "#44475a", "#ff79c6"], bg: "#21222c", card: "#282a36", soft: "#343746", line: "#44475a", ink: "#f8f8f2", mut: "#a4a8c4", acc: "#ff79c6" },
+  obsidian: { l: "Obsidiana", dark: true, sw: ["#050505", "#0e0e0f", "#f59e0b"], bg: "#050505", card: "#0e0e0f", soft: "#161618", line: "#232327", ink: "#f2f2f2", mut: "#9a9aa0", acc: "#f59e0b" },
+  navy: { l: "Azul marino", dark: true, sw: ["#07101f", "#0c1830", "#3b82f6"], bg: "#07101f", card: "#0c1830", soft: "#12213f", line: "#1d3157", ink: "#e6edf8", mut: "#8ea2c4", acc: "#3b82f6" },
+  slate: { l: "Pizarra", dark: true, sw: ["#0d1117", "#161b22", "#58a6ff"], bg: "#0d1117", card: "#161b22", soft: "#1c2330", line: "#2b3341", ink: "#e6edf3", mut: "#8b949e", acc: "#58a6ff" },
+  forest: { l: "Bosque", dark: true, sw: ["#07110a", "#0d1a11", "#4ade80"], bg: "#07110a", card: "#0d1a11", soft: "#132418", line: "#1e3524", ink: "#e5f2e8", mut: "#8fae97", acc: "#4ade80" },
+  copper: { l: "Cobre", dark: true, sw: ["#120c08", "#1c130d", "#f97316"], bg: "#120c08", card: "#1c130d", soft: "#261a12", line: "#3a2a1d", ink: "#f5ebe2", mut: "#b49c88", acc: "#f97316" },
+  crimson: { l: "Carmesí", dark: true, sw: ["#0d0507", "#170a0d", "#f43f5e"], bg: "#0d0507", card: "#170a0d", soft: "#210f13", line: "#33171d", ink: "#f6e8eb", mut: "#b8959c", acc: "#f43f5e" },
+  tokyo: { l: "Tokyo Night", dark: true, sw: ["#16161e", "#1a1b26", "#7aa2f7"], bg: "#16161e", card: "#1a1b26", soft: "#24283b", line: "#2f3549", ink: "#c0caf5", mut: "#7f87b0", acc: "#7aa2f7" },
+  mocha: { l: "Mocha", dark: true, sw: ["#11111b", "#1e1e2e", "#cba6f7"], bg: "#11111b", card: "#1e1e2e", soft: "#262637", line: "#313244", ink: "#cdd6f4", mut: "#9399b2", acc: "#cba6f7" },
+  gruvbox: { l: "Gruvbox", dark: true, sw: ["#1d2021", "#282828", "#fabd2f"], bg: "#1d2021", card: "#282828", soft: "#32302f", line: "#3c3836", ink: "#ebdbb2", mut: "#a89984", acc: "#fabd2f" },
+  solard: { l: "Solarized oscuro", dark: true, sw: ["#00212b", "#002b36", "#2aa198"], bg: "#00212b", card: "#002b36", soft: "#073642", line: "#0e4352", ink: "#eee8d5", mut: "#93a1a1", acc: "#2aa198" },
+  paper: { l: "Papel", dark: false, sw: ["#f7f5f0", "#ffffff", "#2563eb"], bg: "#f7f5f0", card: "#ffffff", soft: "#f2efe8", line: "#e3ded3", ink: "#22201c", mut: "#6f6a60", acc: "#2563eb" },
+  snow: { l: "Nieve", dark: false, sw: ["#f5f7fa", "#ffffff", "#4f46e5"], bg: "#f5f7fa", card: "#ffffff", soft: "#eef2f7", line: "#dde3ec", ink: "#111827", mut: "#5f6b7c", acc: "#4f46e5" },
+  pearl: { l: "Gris perla", dark: false, sw: ["#ececee", "#f8f8f9", "#334155"], bg: "#ececee", card: "#f8f8f9", soft: "#f1f1f3", line: "#d6d6db", ink: "#1c1c1f", mut: "#64646c", acc: "#334155" },
+  mint: { l: "Menta", dark: false, sw: ["#eef8f3", "#ffffff", "#10b981"], bg: "#eef8f3", card: "#ffffff", soft: "#f2faf6", line: "#cfe8dc", ink: "#0f3a2a", mut: "#4e7565", acc: "#10b981" },
+  lavender: { l: "Lavanda", dark: false, sw: ["#f4f1fb", "#ffffff", "#7c3aed"], bg: "#f4f1fb", card: "#ffffff", soft: "#f7f4fd", line: "#e1d9f3", ink: "#2a1f47", mut: "#6c6187", acc: "#7c3aed" },
+  peach: { l: "Durazno", dark: false, sw: ["#fbf2ec", "#ffffff", "#ea580c"], bg: "#fbf2ec", card: "#ffffff", soft: "#fdf6f1", line: "#efdccf", ink: "#3d2418", mut: "#86675a", acc: "#ea580c" },
+  rose: { l: "Rosa", dark: false, sw: ["#fbf0f3", "#ffffff", "#e11d48"], bg: "#fbf0f3", card: "#ffffff", soft: "#fdf5f7", line: "#f0d6de", ink: "#3d1622", mut: "#8a5f6d", acc: "#e11d48" },
+  latte: { l: "Latte", dark: false, sw: ["#eff1f5", "#ffffff", "#8839ef"], bg: "#eff1f5", card: "#ffffff", soft: "#e6e9ef", line: "#ccd0da", ink: "#4c4f69", mut: "#6c6f85", acc: "#8839ef" },
+  solarl: { l: "Solarized claro", dark: false, sw: ["#fdf6e3", "#fffbf0", "#268bd2"], bg: "#fdf6e3", card: "#fffbf0", soft: "#eee8d5", line: "#e2dbc6", ink: "#073642", mut: "#657b83", acc: "#268bd2" },
   nord: { l: "Nord", dark: true, sw: ["#2e3440", "#3b4252", "#88c0d0"], bg: "#2a2f3a", card: "#2e3440", soft: "#3b4252", line: "#434c5e", ink: "#eceff4", mut: "#a3adbf", acc: "#88c0d0" },
 };
 export const ACCENTS = ["#7c9cff", "#60a5fa", "#22d3ee", "#22c55e", "#facc15", "#f97316", "#ef4444", "#e879f9", "#e5e7eb", "#c9a227"];
@@ -34,12 +53,12 @@ export const HEADS: Record<string, { l: string; fam: string; g: string; w: numbe
   teko: { l: "Teko", fam: '"Teko"', g: "Teko:wght@400;500;600", w: 500, ls: ".02em" },
 };
 export const CRT_V: Record<string, [string, string]> = {
-  suave: ["Suave", "Líneas finas y viñeta leve"], clasico: ["Clásico", "Televisor de tubo: líneas marcadas y bordes oscuros"], retro: ["Monitor retro", "Pantalla curva con máscara de fósforo"],
+  lite: ["Liviano", "Solo líneas muy finas, sin movimiento. El más discreto y rápido"], suave: ["Suave", "Líneas finas y viñeta leve"], clasico: ["Clásico", "Televisor de tubo: líneas marcadas y bordes oscuros"], retro: ["Monitor retro", "Pantalla curva con máscara de fósforo"],
   fosforo: ["Fósforo verde", "Monitor policial verde"], ambar: ["Ámbar", "Monitor de terminal ámbar"], vhs: ["VHS", "Ruido, desfase de color y franjas"],
   vhsplay: ["VHS · cinta gastada", "Ruido fuerte, franja de tracking y temblor"], interf: ["Interferencia", "Estática y líneas que suben"], glitch: ["Glitch", "Cortes de señal con desfase de color"], "0": ["Desactivado", ""],
 };
 export const CURS: Record<string, { l: string; h?: [number, number] }> = {
-  sys: { l: "Del sistema" }, arrow: { l: "Flecha sólida", h: [3, 2] }, outline: { l: "Flecha clara", h: [3, 2] }, dark: { l: "Flecha oscura", h: [3, 2] },
+  sys: { l: "Del sistema" }, arrow: { l: "Flecha de color", h: [3, 2] }, outline: { l: "Flecha blanca", h: [3, 2] }, dark: { l: "Flecha negra", h: [3, 2] },
   cross: { l: "Mira táctica", h: [16, 16] }, dot: { l: "Punto", h: [16, 16] }, ring: { l: "Anillo", h: [16, 16] },
 };
 
@@ -55,7 +74,7 @@ export function pref(): Pref {
   const skin = s && SKINS[s] ? s : SKINS[deptUi.theme] ? deptUi.theme : old === "light" ? "nuevoc" : "nuevo";
   const c = lsGet("lspdt.crt"), i = parseInt(lsGet("lspdt.crtI") || "");
   const cu = lsGet("lspdt.cursor");
-  return { skin, skinOwn: !!(s && SKINS[s]), acc: lsGet("lspdt.accent") || "", crt: c === "0" ? "0" : c && CRT_V[c] ? c : "suave", crtI: isNaN(i) ? 70 : Math.max(0, Math.min(100, i)),
+  return { skin, skinOwn: !!(s && SKINS[s]), acc: lsGet("lspdt.accent") || "", crt: c === "0" ? "0" : c && CRT_V[c] ? c : "lite", crtI: isNaN(i) ? 70 : Math.max(0, Math.min(100, i)),
     frame: lsGet("lspdt.frame") !== "0", neon: lsGet("lspdt.next.neon") !== "0", font: lsGet("lspdt.next.font") || "inter", head: HEADS[lsGet("lspdt.next.head") || ""] ? lsGet("lspdt.next.head")! : "rajdhani",
     cur: cu && CURS[cu] ? cu : CURS[deptUi.cursor] ? deptUi.cursor : "sys", curOwn: !!(cu && CURS[cu]), nav: lsGet("lspdt.next.navmode") === "side" ? "side" : "top" };
 }
@@ -107,9 +126,10 @@ export function applyAppearance() {
 export function curSvg(k: string, c: string, pnt: boolean) {
   const A = "M3 2 L3 24 L9 18.3 L13.4 28 L17.2 26.4 L12.9 16.9 L21 16.9 Z";
   const s: Record<string, string> = {
-    arrow: `<path d="${A}" fill="${c}" stroke="#0b0f17" stroke-width="1.6" stroke-linejoin="round"/>${pnt ? `<circle cx="24" cy="24" r="4.2" fill="#fff" stroke="${c}" stroke-width="2"/>` : ""}`,
-    outline: `<path d="${A}" fill="#fff" stroke="#0b0f17" stroke-width="1.6" stroke-linejoin="round"/>${pnt ? `<circle cx="24" cy="24" r="4.2" fill="${c}" stroke="#0b0f17" stroke-width="1.4"/>` : ""}`,
-    dark: `<path d="${A}" fill="#0b0f17" stroke="${c}" stroke-width="1.8" stroke-linejoin="round"/>${pnt ? `<circle cx="24" cy="24" r="4.2" fill="${c}"/>` : ""}`,
+    /* flechas sólidas: solo la flecha, de un color, sin borde ni indicadores */
+    arrow: `<path d="${A}" fill="${c}"/>`,
+    outline: `<path d="${A}" fill="#ffffff"/>`,
+    dark: `<path d="${A}" fill="#0b0f17"/>`,
     cross: `<g fill="none" stroke="#0b0f17" stroke-width="4" opacity=".55"><circle cx="16" cy="16" r="${pnt ? 8 : 9}"/><path d="M16 2v8M16 22v8M2 16h8M22 16h8"/></g><g fill="none" stroke="${c}" stroke-width="2"><circle cx="16" cy="16" r="${pnt ? 8 : 9}"/><path d="M16 2v8M16 22v8M2 16h8M22 16h8"/></g><circle cx="16" cy="16" r="${pnt ? 2.6 : 1.8}" fill="${c}"/>`,
     dot: `<circle cx="16" cy="16" r="${pnt ? 7 : 5}" fill="${c}" stroke="#fff" stroke-width="2"/>`,
     ring: `<circle cx="16" cy="16" r="${pnt ? 10 : 8}" fill="none" stroke="#0b0f17" stroke-width="4" opacity=".5"/><circle cx="16" cy="16" r="${pnt ? 10 : 8}" fill="none" stroke="${c}" stroke-width="2.2"/><circle cx="16" cy="16" r="2" fill="${c}"/>`,
