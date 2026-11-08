@@ -14,6 +14,7 @@ const T1080 = lz(() => import("./sections/sup/T1080"), "T1080");
 const Alerta = lz(() => import("./sections/sup/Alerta"), "Alerta");
 const Bodycam = lz(() => import("./sections/sup/Bodycam"), "Bodycam");
 const Sargentos = lz(() => import("./sections/sgt/Sargentos"), "Sargentos");
+const Six = lz(() => import("./sections/six/Six"), "Six");
 const Timestamps = lz(() => import("./sections/Timestamps"), "Timestamps");
 const Novedades = lz(() => import("./sections/Novedades"), "Novedades");
 const Condecoraciones = lz(() => import("./sections/sup/Condecoraciones"), "Condecoraciones");
@@ -43,7 +44,7 @@ export const VIEWS: Record<string, () => ReactNode> = {
 import { AREAS, canArea, secsOf } from "./nav";
 import { api, authApi } from "./lib/api";
 import { BootScreen } from "./components/boot";
-import { LS, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
+import { LS, ME_ROLES, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
 import { findAgent, getRoster, rankES } from "./lib/domain";
 import { useFeedback } from "./components/feedback";
 
@@ -79,6 +80,7 @@ export default function App() {
   if (!me) return <Device brand={boot.brand}><UpdateBar /><Login pub={boot} onDone={r => enter((r as { data: Parameters<typeof loadStore>[0] }).data, true)} /></Device>;
 
   const ag = findAgent(me.n), user = { n: me.n, r: ag?.r || me.r, p: ag?.p };
+  if (nav.a === "six" && ME_ROLES.six) return <Device><MeCtx.Provider value={user}><Suspense fallback={<div className="min-h-[var(--app-h,100dvh)] bg-black" />}><Six onExit={() => { setNav({ a: "ini", s: "home" }); scrollTopApp(); }} /></Suspense></MeCtx.Provider></Device>;
   let area = AREAS.find(a => a.k === nav.a) || AREAS[0];
   if (!canArea(area, user.r)) area = AREAS[0];
   const SS = secsOf(area, user.r), sec = SS.find(s => s.k === nav.s) || SS[0];

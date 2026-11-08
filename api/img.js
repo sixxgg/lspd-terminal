@@ -1,12 +1,14 @@
 import { q } from "../lib/db.js";
-import { query, wrap, current, PUBLIC_KEYS } from "../lib/core.js";
+import { query, wrap, current, PUBLIC_KEYS, SIX_KEY, isSix } from "../lib/core.js";
 
 export default wrap(async (req, res) => {
   const { k } = query(req);
   const fail = (c) => { res.statusCode = c; res.setHeader("Cache-Control", "no-store"); res.end(); };
   if (typeof k !== "string" || !k.startsWith("lspdt.")) return fail(400);
   const pub = PUBLIC_KEYS.includes(k);
-  if (!pub && !(await current(req))) return fail(401);
+  const who = pub ? null : await current(req);
+  if (!pub && !who) return fail(401);
+  if (SIX_KEY.test(k) && !isSix(who)) return fail(404);
   const r = (await q("select v from kv where k=$1", [k])).rows[0];
   const v = r && r.v;
   const m = v && /^data:([\w/+.-]+)(;[^,]*)?,(.*)$/s.exec(v);

@@ -192,3 +192,14 @@ html:is([data-head="rajdhani"], [data-head="teko"]) h1.text-2xl { font-size: 1.7
 .boot-fpscan{top:20%;animation:bootFp 1s ease-in-out infinite alternate;will-change:transform}
 @keyframes bootFp{to{transform:translateY(3.6rem)}}
 @media (prefers-reduced-motion:reduce){.boot-radar,.boot-fpscan{animation:none}}
+
+/* SIX: apagado de pantalla y consola de acceso */
+.six-off { position: absolute; inset: 0; background: #fff; animation: six-off .9s cubic-bezier(.6,0,.4,1) forwards; }
+@keyframes six-off { 0% { transform: scale(1, 1); opacity: .9; filter: brightness(1.6); } 40% { transform: scale(1, .004); opacity: 1; } 75% { transform: scale(.2, .004); opacity: 1; } 100% { transform: scale(0, 0); opacity: 0; } }
+.six-con { background: radial-gradient(ellipse at 50% 40%, rgba(57,255,136,.07), transparent 65%), #000; text-shadow: 0 0 6px rgba(57,255,136,.45); animation: six-flick .25s steps(2) 3; }
+.six-con::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,.25) 0 1px, transparent 1px 3px); }
+.six-cur { animation: sec-dot 1s steps(2) infinite; }
+.six-granted { animation: six-glitch .6s steps(3) 2; }
+@keyframes six-flick { 50% { opacity: .4; } }
+@keyframes six-glitch { 0% { transform: translateX(-3px); text-shadow: 3px 0 #ff2a6d, -3px 0 #05d9e8; } 50% { transform: translateX(2px); } 100% { transform: none; text-shadow: 0 0 10px #fff; } }
+@media (prefers-reduced-motion: reduce) { .six-off, .six-con, .six-granted { animation: none !important; } }

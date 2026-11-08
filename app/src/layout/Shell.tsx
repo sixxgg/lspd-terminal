@@ -1,10 +1,10 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, Flame } from "lucide-react";
 import { AREAS, canArea, secsOf, type Area, type Sec } from "@/nav";
 import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
 import { rankES } from "@/lib/domain";
-import { LS, getNet, useStoreVersion } from "@/lib/store";
+import { LS, ME_ROLES, getNet, useStoreVersion } from "@/lib/store";
 import { AccountModal } from "@/components/account";
 import { AppearanceModal } from "@/components/appearance";
 import { usePref } from "@/lib/appearance";
@@ -23,6 +23,12 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
   me: { n: string; r: string; p?: string }; area: Area; sec: Sec; go: (a: string, s: string) => void; onLogout: () => void; children: ReactNode;
 }) {
   const [ap, setAp] = useState(false);
+  /* acceso oculto: 5 clics seguidos en el escudo (o Ctrl+Alt+6), solo para su dueño */
+  const taps = useRef<number[]>([]);
+  const logoClick = () => { const now = Date.now(); taps.current = [...taps.current.filter(t => now - t < 1600), now];
+    if (ME_ROLES.six && taps.current.length >= 5) { taps.current = []; go("six", "staff"); } else go("ini", "home"); };
+  useEffect(() => { if (!ME_ROLES.six) return; const h = (e: KeyboardEvent) => { if (e.ctrlKey && e.altKey && e.key === "6") { e.preventDefault(); go("six", "staff"); } };
+    window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h); }, [go]);
   const [open, setOpen] = useState(false), [acc, setAcc] = useState(false);
   useStoreVersion();
   const ui = LS.json<Record<string, string>>("lspdt.ui", {}), title = (ui.title || "").trim() || "Terminal de Mando", kicker = ((ui.kicker || "").trim() || "Los Santos Police Department").replace(/\bDept\.?$/i, "Department");
@@ -58,7 +64,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
       {modals}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/80">
         <div className="mx-auto flex h-16 max-w-[2100px] items-center gap-3 px-3 sm:px-5">
-          <button onClick={() => go("ini", "home")} title="Inicio" className={cn("flex shrink-0 items-center gap-2.5 rounded-xl p-1 pr-2 text-left", focusRing)}>
+          <button onClick={logoClick} title="Inicio" className={cn("flex shrink-0 items-center gap-2.5 rounded-xl p-1 pr-2 text-left", focusRing)}>
             {logo}
             <span className="hidden min-w-0 min-[2000px]:block"><span className="block truncate text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">{kicker}</span>
               <span className="block truncate text-sm font-bold">{title}</span></span>

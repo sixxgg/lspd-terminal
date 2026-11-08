@@ -1,5 +1,5 @@
 import { q, tx } from "../lib/db.js";
-import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY } from "../lib/core.js";
+import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, SIX_KEY, isSix } from "../lib/core.js";
 
 async function downloadImg(url) {
   const fail = m => Object.assign(new Error(m), { status: 400 });
@@ -33,10 +33,10 @@ export default wrap(async (req, res) => {
     const qs = query(req), since = Number(qs.since);
     if (qs.since !== undefined && qs.since !== "" && Number.isFinite(since) && since >= 0) {
       // cambios desde la última consulta (con margen, el cliente descarta lo que ya tiene)
-      const rows = (await q(SEL + " where t > $1 order by t", [since - 50])).rows;
+      const rows = (await q(SEL + " where t > $1 order by t", [since - 50])).rows.filter(r => !SIX_KEY.test(r.k) || isSix(u));
       const ch = rows.map(r => [r.k, r.img ? imgUrl(r.k, r.t) : r.v, +r.t]);
       const t = rows.length ? Math.max(since, ...rows.map(r => +r.t)) : since;
-      return send(res, 200, { ch, t, me: { admin: u.admin, owner: u.owner } });
+      return send(res, 200, { ch, t, me: { admin: u.admin, owner: u.owner, six: isSix(u) } });
     }
     if (qs.images) { // galería: todas las imágenes guardadas (solo administradores)
       if (!u.admin) return send(res, 403, { msg: "Solo administradores" });

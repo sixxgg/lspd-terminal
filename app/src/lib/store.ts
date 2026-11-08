@@ -104,8 +104,8 @@ async function poll() {
 }
 function schedule() { clearTimeout(pollT); pollT = window.setTimeout(async () => { if (!document.hidden) await poll(); schedule(); }, 5000); }
 
-export const ME_ROLES: { admin?: boolean; owner?: boolean } = {};
-export type Me = { n: string; r: string; admin: boolean; owner: boolean };
+export const ME_ROLES: { admin?: boolean; owner?: boolean; six?: boolean } = {};
+export type Me = { n: string; r: string; admin: boolean; owner: boolean; six?: boolean };
 export let DEF_ROSTER: Agent[] = [];
 export type Agent = { n: string; p?: string; r: string; e?: string; s?: string; i?: string; d?: string; a?: string; c?: string };
 
@@ -116,7 +116,7 @@ export function loadStore(d: { store: Dict; kt?: Record<string, number>; t?: num
   for (const k of Object.keys(BASE)) delete BASE[k];
   Object.assign(CACHE, d.store); Object.assign(BASE, d.store); Object.assign(KT, d.kt || {});
   SYNC_T = d.t || 0; DEF_ROSTER = d.defRoster || DEF_ROSTER; ONLINE = true;
-  Object.assign(ME_ROLES, { admin: !!d.me?.admin, owner: !!d.me?.owner });
+  Object.assign(ME_ROLES, { admin: !!d.me?.admin, owner: !!d.me?.owner, six: !!d.me?.six });
   bump(); schedule();
   document.addEventListener("visibilitychange", () => { if (!document.hidden) void poll(); });
   addEventListener("online", () => { void poll(); void Sync.run(); });
