@@ -7,7 +7,7 @@ import { useJSON } from "@/lib/store";
 import { discordHtml } from "@/lib/discord";
 import { uid } from "@/lib/domain";
 import { cn } from "@/lib/cn";
-import { ILIC_VARS, ilicText, type IlicForm } from "./ilicito";
+import { ILIC_VARS, consultaInteres, ilicText, type IlicForm } from "./ilicito";
 import { Loader, Rain, hex } from "./fx";
 
 type Staff = { id: string; n: string; rol: string; dc: string; notas: string };
@@ -149,6 +149,8 @@ function ComTab({ staff, users }: { staff: Staff[]; users: Record<string, string
         <Lbl t="título"><NIn value={cur.t} onChange={e => setCur({ ...cur, t: e.target.value })} placeholder="para encontrarlo después" /></Lbl>
         <div className="flex flex-wrap gap-1.5">{staff.filter(s => isId(s.dc)).map(s => <button key={s.id} onClick={() => ins(`<@${s.dc}>`)} className="rounded-full border border-[var(--c)]/30 px-2.5 py-0.5 text-xs text-[var(--c)]/90 transition hover:bg-[var(--c)]/10 hover:shadow-[0_0_10px_-2px_var(--c)]">@{s.n}</button>)}
           <button onClick={() => ins("@everyone")} className="rounded-full border border-white/10 px-2.5 py-0.5 text-xs text-slate-400 hover:bg-white/5">@everyone</button></div>
+        <div className="flex flex-wrap items-center gap-1.5"><span className="text-[10px] tracking-[0.2em] text-slate-500">plantillas</span>
+          <button onClick={() => setCur({ ...cur, t: cur.t || "Consulta de interés · banda", body: consultaInteres() })} className="rounded-lg border border-[var(--c)]/40 bg-[var(--c)]/5 px-2.5 py-1 text-xs text-[var(--c)] transition hover:bg-[var(--c)]/15 hover:shadow-[0_0_12px_-3px_var(--c)]">¿siguen interesados? (bandas)</button></div>
         <NTa ref={ta} rows={16} className="text-xs" value={cur.body} onChange={e => setCur({ ...cur, body: e.target.value })} placeholder="formato discord: **negrita**, # títulos, <@ID> para arrobar…" />
         <div className="flex justify-end"><NBtn icon={<Save />} onClick={save}>guardar</NBtn></div>
       </Panel>
@@ -160,7 +162,7 @@ function ComTab({ staff, users }: { staff: Staff[]; users: Record<string, string
 /* ---------- equipo de ilícitos: respuesta a postulaciones ---------- */
 function IlicTab({ users }: { users: Record<string, string> }) {
   const { toast } = useFeedback(), [sent, setSent] = useJSON<Sent[]>("lspdt.six.ilic", []);
-  const [f, setF] = useState<IlicForm>({ ids: "", banda: "", res: "aceptada", motivos: "", v: "std", saludo: "auto", firma: "Atte.: Equipo de Ilícitos :knife:" });
+  const [f, setF] = useState<IlicForm>({ ids: "", banda: "", res: "aceptada", motivos: "", v: "std", saludo: "auto", firma: "Atte.: Equipo de Ilícitos :knife:", seguir: false });
   const set = (p: Partial<IlicForm>) => setF({ ...f, ...p });
   const txt = ilicText(f), bad = f.ids.split(/[\s,;]+/).filter(Boolean).filter(x => !isId(x.replace(/[<@!>]/g, "")));
   return (
@@ -179,6 +181,9 @@ function IlicTab({ users }: { users: Record<string, string> }) {
           <Lbl t="variante"><NSel v={f.v} set={v => set({ v })} opts={ILIC_VARS} /></Lbl>
           <Lbl t="saludo"><NSel v={f.saludo} set={v => set({ saludo: v })} opts={[["auto", "según la hora"], ["dias", "buenos días"], ["tardes", "buenas tardes"], ["noches", "buenas noches"], ["hola", "¡hola!"]] as const} /></Lbl>
         </div>
+        <button type="button" onClick={() => set({ seguir: !f.seguir })} className={cn("flex w-full items-center gap-3 rounded-xl border p-3 text-left text-xs transition", f.seguir ? "border-[var(--c)] bg-[var(--c)]/10 text-[var(--c)] shadow-[0_0_18px_-6px_var(--c)]" : "border-white/10 text-slate-400 hover:bg-white/5")}>
+          <span className={cn("grid size-4 shrink-0 place-items-center rounded border", f.seguir ? "border-[var(--c)] bg-[var(--c)] text-black" : "border-white/20")}>{f.seguir && <Check className="size-3" />}</span>
+          <span><b className="tracking-[0.12em]">preguntar si siguen interesados</b><br /><span className="text-slate-500">{f.res === "aceptada" ? "piden confirmar que quieren seguir con el proyecto y entrar al discord de bandas" : "les ofrece avisar si quieren seguir con el proceso y volver a postularse"}</span></span></button>
         <Lbl t="firma"><NIn value={f.firma} onChange={e => set({ firma: e.target.value })} /></Lbl>
         <div className="flex justify-end"><NBtn icon={<Check />} disabled={!f.banda.trim()} onClick={() => { setSent([...sent, { id: uid(), ts: Date.now(), banda: f.banda.trim(), res: f.res, txt }].slice(-200)); void navigator.clipboard?.writeText(txt); toast("copiado y guardado en el historial"); }}>copiar y registrar</NBtn></div>
       </Panel>
