@@ -32,7 +32,12 @@ export async function fileText(f: File): Promise<string> {
 /* ---------- informe ---------- */
 export type Charge = { a: string; m: "" | "at" | "ag" };
 export type Suj = { n: string; id: string; cg: Charge[]; p?: string };
-export type Unid = { n: string; r: string; u?: string };
+export type Unid = { n: string; r: string; u?: string; ic?: boolean };
+/* el mando (Incident Commander) es una marca aparte del rol; los informes viejos lo tenían como rol */
+const IC_RE = /COMMANDER|Mando del operativo/i;
+export const ROLES = (INF_ROLES as string[]).filter(r => !IC_RE.test(r));
+export const isIC = (u: Unid) => !!u.ic || IC_RE.test(u.r);
+export const fixUnid = (u: Unid): Unid => (IC_RE.test(u.r) ? { ...u, ic: true, r: "Unidad inicial de intervención" } : u);
 export type Veh = { t: string; cat?: string; mk?: string; md?: string; mo: string; co: string; mat: string; u: string; est: string; d: string; s?: string; rel?: string; rob?: "" | "si" | "no" };
 export const VEH_REL = ["Propietario", "Conductor", "Propietario y conductor", "Ocupante"];
 /* indicativos de radio del LSPD */
@@ -66,7 +71,7 @@ export function infText(A: Inf, me: string, P = getPenal()) {
   const rdN = A.por || me;
   if (on("unid")) { sec("UNIDADES INTERVINIENTES");
     /* mismo orden que en el formulario (se reordena arrastrando) */
-    A.unid.filter(u => u.n || u.u).forEach(u => p(`- ${unitTag(u)} — ${u.r.replace(/\.$/, "")}${u.n && u.n === rdN ? " y agente redactor del informe" : ""}.`));
+    A.unid.map(fixUnid).filter(u => u.n || u.u).forEach(u => p(`- ${unitTag(u)} — ${u.r.replace(/\.$/, "")}${u.ic ? " · **Incident Commander**" : ""}${u.n && u.n === rdN ? " y agente redactor del informe" : ""}.`));
     if (rdN && !A.unid.some(u => u.n === rdN)) p(`- ${agTag(rdN)} — Agente redactor del informe.`); }
   if (on("suj")) { sec(plural(S.length, "SUJETO IMPLICADO", "SUJETOS IMPLICADOS"));
     if (!S.length) p("—");
@@ -95,12 +100,13 @@ export function infText(A: Inf, me: string, P = getPenal()) {
 function infProc(A: Inf, S: Suj[], tt: (a: string) => string) {
   const det = S.filter(s => s.n); if (!det.length) return "Sin detenidos.";
   const pl = det.length > 1, who = det.map(s => `${s.n}${s.id ? `, con ID ${s.id},` : ""}`);
-  const ic = A.unid.find(u => /COMMANDER|Mando/i.test(u.r) && (u.n || u.u)), rest = A.unid.filter(u => u !== ic && (u.n || u.u));
+  const U = A.unid.map(fixUnid).filter(u => u.n || u.u), ic = U.find(u => u.ic), rest = U.filter(u => u !== ic);
   let t = `${pl ? "Los sospechosos, identificados como" : "El sospechoso, identificado como"} ${joinY(who)} ${pl ? "son detenidos" : "es detenido"}${A.ux ? ` en las inmediaciones de ${A.ux}` : ""}${A.tipos.includes("Persecución policial") ? " tras una persecución policial" : ""}${A.ui ? ` iniciada en ${A.ui}` : ""}.`;
   const el = (u: Unid) => (u.n ? "el " + unitTag(u) : "la unidad " + u.u), ini = rest.filter(u => /inicial/i.test(u.r)), apo = rest.filter(u => !/inicial/i.test(u.r)), pz: string[] = [];
   if (ini.length) pz.push(`la intervención inicial d${joinY(ini.map(el))}`);
   if (apo.length) pz.push(`${ini.length ? "la posterior incorporación" : "la intervención"} de ${apo.length > 1 ? "las unidades de apoyo formadas por" : "la unidad de apoyo formada por"} ${joinY(apo.map(el))}`);
-  if (ic) t += `\n\nEl operativo estuvo bajo el mando ${ic.n ? "del " + unitTag(ic) : "de la unidad " + ic.u}${pz.length ? `, con ${joinY(pz)}` : ""}.`;
+  const icRol = !ic ? "" : /inicial/i.test(ic.r) ? ", que formó parte de la intervención inicial" : /apoyo/i.test(ic.r) ? ", que acudió como unidad de apoyo" : ic.r ? `, que actuó como ${ic.r.replace(/\s*\(.*\)$/, "").toLowerCase()}` : "";
+  if (ic) t += `\n\nEl operativo estuvo bajo el mando ${ic.n ? "del " + unitTag(ic) : "de la unidad " + ic.u}${icRol}${pz.length ? `, con ${joinY(pz)}` : ""}.`;
   else if (pz.length) t += `\n\nEl operativo contó con ${joinY(pz)}.`;
   const cg = det.flatMap(s => s.cg);
   t += `\n\n${pl ? "Una vez detenidos, fueron trasladados" : "Una vez detenido, fue trasladado"} a ${A.uf ? (/^(comisar|estaci|prisi|c[aá]rcel|central|jefatura)/i.test(A.uf) ? "la " : "") + A.uf : "la comisaría"}, donde ${pl ? "quedaron" : "quedó"} bajo custodia${cg.length ? ` y ${pl ? "fueron procesados" : "fue procesado"} por los siguientes artículos:` : "."}`;

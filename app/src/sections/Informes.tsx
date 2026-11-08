@@ -9,7 +9,7 @@ import { LUGARES, fmtDate, getRoster, norm, rankES, uid } from "@/lib/domain";
 import { LS, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { legalFavKey } from "./Legal";
-import { EV_T, INF_EST, INF_FZ, INF_ROLES, INF_SECS, INF_TIPOS, UNITS, VEH_EST, VEH_REL, VEH_T, agTag, dcParts, getPenal, infErrs, infNew, infText, penalOf, penalSearch, artCmp, type Art, type Inf, type Veh } from "@/lib/penal";
+import { EV_T, INF_EST, INF_FZ, ROLES, fixUnid, isIC, INF_SECS, INF_TIPOS, UNITS, VEH_EST, VEH_REL, VEH_T, agTag, dcParts, getPenal, infErrs, infNew, infText, penalOf, penalSearch, artCmp, type Art, type Inf, type Veh } from "@/lib/penal";
 import { cn } from "@/lib/cn";
 import { VehPick } from "@/components/vehpick";
 
@@ -40,7 +40,7 @@ export function Informes() {
 
 function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) => void }) {
   const me = useMe(), { toast, confirm } = useFeedback();
-  const [A, setA] = useState<Inf>(() => init ? structuredClone(init) : Object.assign(infNew(me.n), LS.json<Partial<Inf>>("lspdt.infDraft", {})));
+  const [A, setA] = useState<Inf>(() => { const a = init ? structuredClone(init) : Object.assign(infNew(me.n), LS.json<Partial<Inf>>("lspdt.infDraft", {})); a.unid = (a.unid || []).map(fixUnid); return a; });
   const [showErr, setShowErr] = useState(false), [otro, setOtro] = useState(""), [drag, setDrag] = useState<number | null>(null), [over, setOver] = useState<number | null>(null);
   const moveU = (from: number, to: number) => { if (from === to) return; up(x => { const [m] = x.unid.splice(from, 1); x.unid.splice(to, 0, m); }); };
   useEffect(() => { LS.setJSON("lspdt.infDraft", A); }, [A]);
@@ -168,7 +168,9 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
                 <Input list="rosterDL" value={u.n} onChange={e => up(x => { x.unid[i].n = e.target.value; })} placeholder="Agente (opcional si ponés la unidad)" />
                 <div className="relative w-44 shrink-0"><Radio className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
                   <Input list="unitDL" value={u.u || ""} onChange={e => up(x => { x.unid[i].u = e.target.value.toUpperCase(); })} placeholder="Unidad" className="pl-8 font-mono text-sm uppercase" /></div>
-                <Select value={u.r} onChange={e => up(x => { x.unid[i].r = e.target.value; })} className="max-w-[16rem] text-sm">{[...(INF_ROLES as string[]), ...((INF_ROLES as string[]).includes(u.r) ? [] : [u.r])].map(r => <option key={r}>{r}</option>)}</Select>
+                <Select value={u.r} onChange={e => up(x => { x.unid[i].r = e.target.value; })} className="max-w-[16rem] text-sm">{[...ROLES, ...(ROLES.includes(u.r) ? [] : [u.r])].map(r => <option key={r}>{r}</option>)}</Select>
+                <button type="button" onClick={() => up(x => { const on = !x.unid[i].ic; x.unid.forEach((y, j) => { y.ic = on && j === i; }); })} title="Incident Commander: quién estuvo al mando del operativo (solo uno)"
+                  className={cn("shrink-0 rounded-lg border px-2.5 text-[11px] font-bold tracking-wide transition", isIC(u) ? "border-brand-500 bg-brand-500 text-white" : "border-slate-200 text-slate-400 hover:border-brand-400 hover:text-brand-600 dark:border-slate-700")}>IC</button>
                 <Button variant="ghost" size="icon" aria-label="Quitar unidad" onClick={() => up(x => { x.unid.splice(i, 1); })}><X /></Button>
               </div>))}
             <div className="flex flex-wrap gap-2">

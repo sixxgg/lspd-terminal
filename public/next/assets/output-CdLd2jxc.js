@@ -1,4 +1,4 @@
-import{y as t,a as _,j as e,C as y,S as k,d as x,q as L}from"./index-DFgEVOwF.js";import{r,bn as j,e as T,F as A,az as P,a3 as z,av as S}from"./icons-DIKFpPy2.js";import{a as F,d as q}from"./discord-QAqqE4Kt.js";const R={l:"Anuncio de Alerta Táctica aprobada",vars:["tipo","nivel","plazo","inicio_fecha","inicio_hora","fin_fecha","fin_hora","fin_relativo","puntos","lugares","incidente","rol","emoji","nota"],t:`# {emoji} **ALERTA TÁCTICA {nivel}** {emoji}
+import{y as t,a as _,j as e,C as y,S as k,d as x,q as L}from"./index-BKonpPTg.js";import{r,bn as j,e as T,F as A,az as P,a3 as z,av as S}from"./icons-DIKFpPy2.js";import{a as F,d as q}from"./discord-FfxLR3Fr.js";const R={l:"Anuncio de Alerta Táctica aprobada",vars:["tipo","nivel","plazo","inicio_fecha","inicio_hora","fin_fecha","fin_hora","fin_relativo","puntos","lugares","incidente","rol","emoji","nota"],t:`# {emoji} **ALERTA TÁCTICA {nivel}** {emoji}
 
 Se activa la **Alerta Táctica {nivel}** durante un **plazo** de **{plazo}** —del {inicio_fecha} a las {inicio_hora} al {fin_fecha} a las {fin_hora}—; esta alerta entra en vigor desde la emisión de la presente notificación.
 
