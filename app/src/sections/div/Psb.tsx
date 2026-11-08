@@ -271,14 +271,15 @@ function Forms({ tab }: { tab: string }) {
         {tab === "vot" && <Card>
           <CardHeader icon={<Vote />} title="Votación" desc="Plantilla editable. Podés traer los datos de la elevación y armar las opciones a votar." />
           <CardBody>
+            <div className="flex gap-2.5 rounded-xl border border-brand-200 bg-brand-50/60 p-3 text-xs text-brand-900 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-100"><Info className="mt-0.5 size-4 shrink-0" />
+              <p><b>Cómo se arma:</b> en <b>Resumen</b> va qué pasó en pocas líneas · en <b>Constatado</b> lo que se comprobó en la investigación (un punto por línea) · en <b>Opciones</b> las medidas que se votan, cada una con su explicación (se numeran solas en Discord) · la <b>nota común</b> es lo que se aplica gane la opción que gane. Si ya armaste la elevación, traé los datos con un clic.</p></div>
             <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" icon={<FolderInput />} onClick={() => uv(v => { v.res = E.hechos; v.cons = E.const; v.concl = E.concl; })}>Traer de la elevación</Button></div>
             <Field label="Introducción" hint="(opcional)"><Input value={V.intro} onChange={e => uv(v => { v.intro = e.target.value; })} placeholder={`Compañeros de la ${p.dv}, se somete a votación la resolución del siguiente caso.`} /></Field>
             <Field label="📌 Resumen"><Textarea rows={3} value={V.res} onChange={e => uv(v => { v.res = e.target.value; })} placeholder="Una oficial imputó el **Art. 63.3** (…) en lugar del **Art. 138.37** (…)" /></Field>
             <Field label="🔎 Constatado" hint="(una línea por punto)"><Textarea rows={3} value={V.cons} onChange={e => uv(v => { v.cons = e.target.value; })} placeholder={"Error administrativo al elegir el artículo, sin intención.\nEs su **primera falta**.\n**Reconoció el error y demostró entenderlo** en la entrevista."} /></Field>
             <Field label="Conclusión del caso"><Segmented size="sm" value={V.concl} onChange={v => uv(x => { x.concl = v; })} options={PSB_CONCL.map(([k]) => ({ value: k, label: k }))} /></Field>
             <Field label="⚖️ Opciones a votar"><div className="space-y-2">{V.ops.map((o, i) => (
-              <div key={i} className="grid gap-2 rounded-xl border border-slate-200 p-2.5 dark:border-slate-800 sm:grid-cols-[2rem_1fr_auto]">
-                <span className="pt-2 text-center text-lg leading-none">{NUM[i]}</span>
+              <div key={i} className="grid gap-2 rounded-xl border border-slate-200 p-2.5 dark:border-slate-800 sm:grid-cols-[1fr_auto]">
                 <div className="space-y-2"><Input value={o.t} onChange={e => uv(v => { v.ops[i].t = e.target.value; })} placeholder="Título de la opción" className="font-semibold" />
                   <Textarea rows={2} value={o.d} onChange={e => uv(v => { v.ops[i].d = e.target.value; })} placeholder="Descripción" className="text-sm" /></div>
                 <Button variant="ghost" size="icon" aria-label="Quitar opción" onClick={() => uv(v => { v.ops.splice(i, 1); })}><X /></Button>

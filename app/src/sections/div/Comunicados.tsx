@@ -53,7 +53,7 @@ const TPLS: Tpl[] = [
         requisito: "deberán presentarse con el uniforme de vuelo reglamentario en el helipuerto de Mission Row.", cierre: "Los esperamos.", rol: ROLE_LSPD, emoji: "1" },
     render: (d, v) => { const e = E(d, v), t = Number(v.ts) || unix(v.fecha, v.hora); return join([
       `# ${e ? e + " " : ""}${v.titulo || "[Título]"}${e ? " " + e : ""}`, "",
-      `Se informa que el día ${dmyShort(v.fecha)} a las ${t ? `<t:${t}:t>` : "[HORA]"} se llevará a cabo ${v.actividad || "[actividad]"}${v.conjunto ? `, realizada en conjunto con ${v.conjunto}` : ""}.`, "",
+      `Se informa que el día ${t ? `<t:${t}:D>` : dmyShort(v.fecha)} a las ${t ? `<t:${t}:t>` : "[HORA]"} (${t ? `<t:${t}:R>` : "[cuándo]"}) se llevará a cabo ${v.actividad || "[actividad]"}${v.conjunto ? `, realizada en conjunto con ${v.conjunto}` : ""}.`, "",
       v.detalle, "", `Se solicita puntualidad a todos los participantes.${v.requisito ? " Asimismo, " + v.requisito : ""}`, "", v.cierre, "", mention(v)]); } },
   { k: "licencia", l: "Habilitación / licencia", d: "Como la licencia de dron policial de la ASD",
     fields: [{ k: "titulo", l: "Título", t: "text" }, { k: "habilita", l: "Licencia para", t: "text", ph: "manejar el Dron Policial" },
@@ -78,11 +78,11 @@ const TPLS: Tpl[] = [
       { k: "lema", l: "Lema", t: "text", hint: "(opcional)" }, { k: "cargo", l: "Firma (cargo)", t: "text" }, ...COMMON],
     def: d => ({ promo: "005", saludo: "Buenas noches:", form: "https://", requisito: d === "asd" ? "Para formar parte de la ASD es necesario pertenecer, como mínimo, al **PELOTÓN B** de la **METRO**." : "Para formar parte de la UDU es necesario pertenecer a la **METRO**.",
       lema: d === "asd" ? "The mission is the same, only the vehicle has changed." : "", cargo: `Coordinador de la ${INFO[d].n} (${INFO[d].ab})`, rol: ROLE_LSPD, spoiler: "1", emoji: "1" }),
-    render: (d, v) => { const e = E(d, v), I = INFO[d], hh = v.plazoH ? v.plazoH + " h" : "[HH:MM] h"; return join([
+    render: (d, v) => { const e = E(d, v), I = INFO[d], pt = unix(v.plazoF, v.plazoH); return join([
       `# **${e ? e + " " : ""}__INSTANCIAS - (${I.ab}) ${I.n.toUpperCase()} (PROMOCIÓN ${v.promo || "000"})__${e ? " " + e : ""}**`, "",
       v.saludo, `Me complace informar la apertura de oposiciones para acceder a la división **${I.n}** (__${I.ab}__) de la LSPD.`, "",
       "A todos los formularios **APTOS** se les informará en la fecha indicada para poder realizar las siguientes partes del proceso.",
-      `📅 El plazo máximo para realizar el cuestionario es el ${dmyShort(v.plazoF)} a las ${hh}.`, "",
+      `📅 El plazo máximo para realizar el cuestionario es el ${pt ? `<t:${pt}:D>` : "[DÍA]"} a las ${pt && v.plazoH ? `<t:${pt}:t>` : "[HH:MM]"}${pt && v.plazoH ? ` (<t:${pt}:R>)` : ""}.`, "",
       `📄 [**__Formulario de Acceso__**](${v.form || "https://"})`, "",
       v.requisito && `### __${v.requisito}__`, v.lema && "`" + v.lema.replace(/`/g, "") + "`",
       "Atentamente,", v.cargo && `**${v.cargo}**`, "*Departamento de Policía de Los Santos*", "", mention(v)]); } },

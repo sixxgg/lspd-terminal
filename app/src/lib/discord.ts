@@ -4,7 +4,11 @@ import { getRoster } from "./domain";
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 export type DcCtx = { users?: Record<string, string>; roles?: Record<string, string> };
 
-function ts(u: number, f: string) {
+export const TS_FMT: [string, string][] = [["t", "Hora corta"], ["T", "Hora con segundos"], ["d", "Fecha corta"], ["D", "Fecha larga"], ["f", "Fecha y hora"], ["F", "Día, fecha y hora"], ["R", "Relativo"]];
+/* marca de tiempo de Discord: <t:unix:formato>, se ve en la hora de cada lector */
+export const unixOf = (date: string, time = "00:00") => (date ? Math.floor(new Date(`${date}T${time || "00:00"}`).getTime() / 1000) : 0);
+export const dcTs = (u: number, f = "f") => (u ? `<t:${u}:${f}>` : "");
+export function ts(u: number, f: string) {
   const d = new Date(u * 1000); if (isNaN(+d)) return "";
   if (f === "R") {
     const s = Math.round((+d - Date.now()) / 1000), a = Math.abs(s), r = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
@@ -49,6 +53,6 @@ export function discordHtml(src: string, c: DcCtx = {}, bot = "LSPD Terminal", a
 }
 
 /* formato web: el mismo texto sin el formato de Discord, conservando los íconos */
-export const discordPlain = (s: string) => s.split("\n").map(l => l
+export const discordPlain = (s: string) => s.split("\n").map(l => l.replace(/<t:(\d+)(?::([tTdDfFR]))?>/g, (_m, u, f) => ts(+u, f || "f"))
   .replace(/^#{1,3}\s+/, "").replace(/^-#\s+/, "").replace(/^>\s?/, "").replace(/\*\*(.+?)\*\*/g, "$1")
   .replace(/(^|\s)\*(\S[^*]*?)\*(?=\s|$)/g, "$1$2").replace(/`([^`]*)`/g, "$1").replace(/\|\|(.+?)\|\|/g, "$1")).join("\n");

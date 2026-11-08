@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, ScrollText } from "lucide-react";
+import { Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, Flame } from "lucide-react";
 import { AREAS, canArea, secsOf, type Area, type Sec } from "@/nav";
 import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
@@ -9,13 +9,12 @@ import { AccountModal } from "@/components/account";
 import { AppearanceModal } from "@/components/appearance";
 import { usePref } from "@/lib/appearance";
 import { focusRing } from "@/components/ui";
-import { APP_VERSION, hasNews } from "@/sections/Novedades";
+import { APP_VERSION } from "@/sections/Novedades";
 
 /* versión actual: con fuego y NEW mientras haya novedades sin ver; abre el registro de cambios */
-const VersionBadge = ({ go }: { go: (a: string, s: string) => void }) => { const nw = hasNews(); return (
-  <button onClick={() => go("ini", "nov")} title={nw ? `Versión ${APP_VERSION}: hay novedades · ver el registro de cambios` : `Versión ${APP_VERSION} · registro de cambios`}
-    className={cn("inline-flex shrink-0 items-center gap-1.5", focusRing, "rounded-full", nw ? "ver-new" : "rounded-full border border-slate-200 px-2 py-0.5 font-mono text-[10.5px] font-bold text-slate-500 hover:text-brand-600 dark:border-slate-700 dark:text-slate-400")}>
-    <ScrollText className="size-3" />v{APP_VERSION}{nw && <b className="ver-flame">NEW</b>}</button>); };
+const VersionBadge = ({ go }: { go: (a: string, s: string) => void }) => (
+  <button onClick={() => go("ini", "nov")} title={`Versión ${APP_VERSION} · ver novedades`} className={cn("ver-new", focusRing)}>
+    <span className="ver-flame" aria-hidden><Flame className="size-3" /></span>v{APP_VERSION}<b>NEW</b></button>);
 /* nombre corto de la división para que la barra entre en una línea */
 const divShort = (l: string) => ({ "Administration Services Bureau": "Administration Services", "Air Support Division": "Air Support", "Detective Bureau": "Detective Bureau",
   "High Speed Interception Unit": "HSIU", "K-9 Division": "K-9", "Metropolitan Division": "Metropolitan", "Professional Standards Bureau": "PSB", "Recruitment and Training Division": "RTD" } as Record<string, string>)[l] || l;
@@ -26,7 +25,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
   const [ap, setAp] = useState(false);
   const [open, setOpen] = useState(false), [acc, setAcc] = useState(false);
   useStoreVersion();
-  const ui = LS.json<Record<string, string>>("lspdt.ui", {}), title = (ui.title || "").trim() || "Terminal de Mando", kicker = (ui.kicker || "").trim() || "Los Santos Police Dept.";
+  const ui = LS.json<Record<string, string>>("lspdt.ui", {}), title = (ui.title || "").trim() || "Terminal de Mando", kicker = ((ui.kicker || "").trim() || "Los Santos Police Department").replace(/\bDept\.?$/i, "Department");
   useEffect(() => { document.title = title + " · LSPD"; }, [title]);
   const net = getNet();
   useEffect(() => setOpen(false), [area.k, sec.k]);
@@ -38,7 +37,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
     <span role="status" title={net === "off" ? "Sin conexión: los cambios se guardan al volver" : net === "saving" ? "Guardando cambios…" : "Todo sincronizado con el servidor"}
       className={cn("sync-pill hidden sm:inline-flex", net === "off" ? "is-off" : net === "saving" ? "is-saving" : "is-ok")}>
       {net === "off" ? <CloudOff className="size-3.5" /> : <span className="sync-dot" />}
-      <span className="hidden min-[2400px]:inline">{net === "off" ? "Sin conexión" : net === "saving" ? "Guardando" : "Sincronizado"}</span>
+      <span className="sr-only">{net === "off" ? "Sin conexión" : net === "saving" ? "Guardando" : "Sincronizado"}</span>
       <i className="sync-bar" />
     </span>);
   const tools = <>
@@ -58,10 +57,10 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
     <div className="flex min-h-[var(--app-h,100dvh)] flex-col bg-slate-50 dark:bg-slate-950">
       {modals}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/80">
-        <div className="mx-auto flex h-16 max-w-[1760px] items-center gap-3 px-3 sm:px-5">
+        <div className="mx-auto flex h-16 max-w-[2100px] items-center gap-3 px-3 sm:px-5">
           <button onClick={() => go("ini", "home")} title="Inicio" className={cn("flex shrink-0 items-center gap-2.5 rounded-xl p-1 pr-2 text-left", focusRing)}>
             {logo}
-            <span className="hidden min-w-0 min-[1700px]:block"><span className="block truncate text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">{kicker}</span>
+            <span className="hidden min-w-0 min-[2000px]:block"><span className="block truncate text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">{kicker}</span>
               <span className="block truncate text-sm font-bold">{title}</span></span>
           </button>
           <VersionBadge go={go} />
