@@ -1,6 +1,6 @@
 import { Comunicados } from "./Comunicados";
 import { useMemo, useState } from "react";
-import { Megaphone, Users, Pencil, Check, Plus, X, Plane, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio } from "lucide-react";
+import { Megaphone, Users, Pencil, Check, Plus, X, Plane, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input, Segmented, Select } from "@/components/ui";
 import { AgentPicker, Avatar } from "@/components/agents";
 import { DiscordOutput, useCopy } from "@/components/output";
@@ -50,7 +50,7 @@ function asdXText(n: string, X: XRec) {
   return `**Oficial:** ${n}${a && a.p ? ` | ${a.p}` : ""}\n**Estado:** ${l.join(" · ") || "—"}${X._n ? `\n**Nota:** ${X._n}` : ""}`;
 }
 
-const PSB_TABS: [string, string, typeof Bell][] = [["not", "Notificación", Bell], ["ele", "Elevación de caso", ArrowUpRight], ["jus", "Sanción a Justicia", Gavel], ["res", "Resolución", FileCheck2], ["cat", "Catálogo de faltas", BookMarked], ["cit", "Citación 10-80", Radio]];
+const PSB_TABS: [string, string, typeof Bell][] = [["not", "Notificación", Bell], ["ele", "Elevación de caso", ArrowUpRight], ["jus", "Sanción a Justicia", Gavel], ["res", "Resolución", FileCheck2], ["vot", "Votaciones", Vote], ["his", "Historial", History], ["cat", "Catálogo de faltas", BookMarked], ["cit", "Citación 10-80", Radio]];
 
 export function Unit({ k }: { k: UnitKey }) {
   useStoreVersion();

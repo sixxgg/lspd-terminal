@@ -1,5 +1,5 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { FolderOpen, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Search, Plus, X, Pencil, Trash2, Save, RotateCcw, Lock, Info, Mail } from "lucide-react";
+import { FolderOpen, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Search, Plus, X, Pencil, Trash2, Save, RotateCcw, Lock, Info, Mail, Vote, History, Copy, FolderInput, ChevronDown } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Checkbox, Field, Input, Segmented, Select, Textarea } from "@/components/ui";
 import { AgentPicker } from "@/components/agents";
 import { DiscordOutput } from "@/components/output";
@@ -28,7 +28,7 @@ export const dcIdOf = (n: string) => { const o = { ...PSB_IDS_DEF, ...LS.json<Re
 const psbRank = (n: string) => { const r = uMap("psb")[n]; return Array.isArray(r) ? uTop("psb", r)[1] : ""; };
 const psbDivs = (n: string) => (uMap("psb")[n] || []).filter(x => PSB_ROLE_DIV[x]).map(x => PSB_ROLE_DIV[x]);
 const PSB_CONCL: [string, string][] = [["Sustained", "Ocurrió y violó las normas del SAPD"], ["Not Sustained", "Sin evidencia suficiente para confirmar ni desmentir"], ["Exonerated", "Ocurrió pero dentro del protocolo"], ["Unfounded", "La conducta no ocurrió"]];
-const PSB_NIV: [string, string][] = [["0", "Notice to Correct Deficiencies (medida correctiva no disciplinaria)"], ["1", "Nivel 1, amonestación escrita"], ["2", "Nivel 2, formación obligatoria"], ["3", "Nivel 3, suspensión temporal sin sueldo"], ["4", "Nivel 4, degradación de rango"], ["5", "Nivel 5, expulsión del SAPD"], ["6", "Nivel 6, derivación a Fiscalía"]];
+const PSB_NIV: [string, string][] = [["0", "Notice to Correct Deficiencies"], ["1", "Nivel 1, amonestación escrita"], ["2", "Nivel 2, formación obligatoria"], ["3", "Nivel 3, suspensión temporal sin sueldo"], ["4", "Nivel 4, degradación de rango"], ["5", "Nivel 5, expulsión del SAPD"], ["6", "Nivel 6, derivación a Fiscalía"]];
 const psbEfecto = (n: string, g: string) => ({ "0": "no es una sanción disciplinaria: sin pérdida de sueldo ni rango y no bloquea ascensos; queda constancia en el expediente",
   "1": ({ leve: "sin pérdida de sueldo ni rango, vigencia de 30 meses, no bloquea ascensos", grave: "sin pérdida de sueldo ni rango, vigencia de 60 meses, bloquea ascensos", "muy grave": "sin pérdida de sueldo ni rango, vigencia de 120 meses, bloquea ascensos y traslados a unidades especiales" } as Record<string, string>)[g],
   "2": "programa de formación específica del PSB con evaluación final; funciones habituales posiblemente restringidas; vigencia de 30 meses",
@@ -36,6 +36,18 @@ const psbEfecto = (n: string, g: string) => ({ "0": "no es una sanción discipli
   "4": "descenso de uno o más rangos con reducción salarial y salida de cargos de supervisión; requiere aprobación del Chief of Police; vigencia permanente; admite Board of Rights",
   "5": "baja definitiva del SAPD; requiere aprobación del Chief of Police y notificación a la Police Commission; irreversible; admite Board of Rights",
   "6": "el caso pasa a la Fiscalía de San Andreas con toda la documentación; habitualmente con expulsión inmediata" } as Record<string, string | undefined>)[n];
+/* descripción de cada medida (sale en la elevación y en las opciones de la votación) */
+const NIV_D: Record<string, string> = {
+  "0": "Medida correctiva **no disciplinaria**. Es el criterio aplicado hasta ahora en casos similares de primera vez. Queda constancia en el expediente.",
+  "1": "Sanción **disciplinaria** leve, encuadrada como falta grave con consideración de leve por las atenuantes. Sin pérdida de sueldo ni rango, vigencia de 30 meses y no bloquea ascensos.",
+  "2": "Programa de formación específica del PSB con evaluación final. Funciones habituales posiblemente restringidas; vigencia de 30 meses.",
+  "3": "Apartado del servicio activo sin salario, con arma y credenciales retenidas (entre 3 y 30 días). Vigencia de 60 meses; admite Board of Rights.",
+  "4": "Descenso de uno o más rangos con reducción salarial. Requiere aprobación del Chief of Police; vigencia permanente; admite Board of Rights.",
+  "5": "Baja definitiva del SAPD. Requiere aprobación del Chief of Police; irreversible; admite Board of Rights.",
+  "6": "El caso pasa a la Fiscalía de San Andreas con toda la documentación.",
+};
+const NIV_T: Record<string, string> = { "0": "Notice to Correct Deficiencies", "1": "Amonestación escrita (Nivel 1)", "2": "Formación obligatoria (Nivel 2)", "3": "Suspensión temporal sin sueldo (Nivel 3)", "4": "Degradación de rango (Nivel 4)", "5": "Expulsión del SAPD (Nivel 5)", "6": "Derivación a Fiscalía (Nivel 6)" };
+const NUM = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"];
 const NTCD = "Notice to Correct Deficiencies: medida correctiva no disciplinaria. Queda constancia en el expediente.";
 const PSB_CONS = [NTCD, "Amonestación escrita", "Formación obligatoria", "Suspensión temporal sin sueldo", "Degradación de rango", "Expulsión del SAPD", "Derivación a Fiscalía"];
 const JUS_ROLE = "1565491805166895224";
@@ -43,10 +55,14 @@ const JUS_ROLE = "1565491805166895224";
 /* estado compartido entre las pestañas (como en la versión clásica, vive mientras la terminal esté abierta) */
 type PXT = { cA: string; cB: string; ag: string; para: string; dv: string; hecho: string; fl: string[]; firma: boolean; _dv?: boolean;
   ele: { para: string; hechos: string; const: string; concl: string; grav: string; enc: string; niv: string; det: string; efe: string; arch: boolean; pend: string };
-  jus: { s: { t: string; p: string }[]; falta: string; fq: string; cons: string[]; consx: string }; res: { modo: string; extra: string } };
+  jus: { s: { t: string; p: string }[]; falta: string; fq: string; cons: string[]; consx: string }; res: { modo: string; extra: string };
+  vot: { intro: string; res: string; cons: string; concl: string; ops: { t: string; d: string }[]; nota: string; conf: boolean } };
 let PX: PXT = { cA: "", cB: "", ag: "", para: "", dv: "IAD", hecho: "", fl: [], firma: true,
-  ele: { para: "", hechos: "", const: "", concl: "Sustained", grav: "leve", enc: "", niv: "1", det: "", efe: "", arch: true, pend: "" },
-  jus: { s: [{ t: "", p: "" }], falta: "", fq: "", cons: [], consx: "" }, res: { modo: "ambas", extra: "" } };
+  ele: { para: "", hechos: "", const: "", concl: "Sustained", grav: "leve", enc: "", niv: "0", det: "", efe: "", arch: true, pend: "" },
+  jus: { s: [{ t: "", p: "" }], falta: "", fq: "", cons: [], consx: "" }, res: { modo: "ambas", extra: "" },
+  vot: { intro: "", res: "", cons: "", concl: "Sustained", ops: [{ t: NIV_T["0"], d: NIV_D["0"] }, { t: NIV_T["1"], d: NIV_D["1"] }], nota: "", conf: true } };
+const blankPX = () => structuredClone(PX0);
+const PX0: PXT = structuredClone(PX);
 const subs = new Set<() => void>();
 const usePX = (): [PXT, (fn: (x: PXT) => void) => void] => {
   const px = useSyncExternalStore(f => { subs.add(f); return () => { subs.delete(f); }; }, () => PX);
@@ -61,6 +77,7 @@ export function Psb({ tab }: { tab: string }) {
   if (!p._dv) { const d = psbDivs(me.n); setTimeout(() => up(x => { x._dv = true; if (d.length) x.dv = d[0]; }), 0); }
   if (tab === "not") return <Notif />;
   if (tab === "cat") return <Catalog />;
+  if (tab === "his") return <Historial />;
   return <Forms tab={tab} />;
 }
 
@@ -93,6 +110,7 @@ function CaseInput() {
 }
 
 function Notif() {
+  const { toast: toastN } = useFeedback();
   const me = useMe(), [p, up] = usePX(), F = getFaltas();
   const [g, setG] = useState("all"), [q, setQ] = useState("");
   const [cargo, setCargo] = useState(() => LS.get("lspdt.psbCargo") || psbRank(me.n) || "Junior Investigator");
@@ -165,14 +183,15 @@ function Notif() {
               <dt className="text-slate-400">Asunto</dt><dd className="font-medium">PSB · Notificación de apertura de expediente — {caso}</dd></dl></div>
           <p className={cn("mt-3 rounded-lg px-3 py-1.5 text-xs font-semibold", miss.length ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300")}>{miss.length ? "Falta: " + miss.join(", ") : "✓ Listo"}</p>
         </Card>
-        <DiscordOutput sticky={false} title="Notificación de investigación" tag="Discord" text={text} errors={miss} />
+        <DiscordOutput sticky={false} title="Notificación de investigación" tag="Discord" text={text} errors={miss}
+          extra={<Button size="sm" variant="outline" icon={<History />} onClick={() => { const r = saveDoc("not", text, me.n); toastN(r.msg, r.ok ? undefined : "err"); }}>Guardar en historial</Button>} />
       </Col>
     </Split>
   );
 }
 
 function Forms({ tab }: { tab: string }) {
-  const me = useMe(), [p, up] = usePX(), F = getFaltas(), E = p.ele, J = p.jus, Rs = p.res;
+  const me = useMe(), { toast } = useFeedback(), [p, up] = usePX(), F = getFaltas(), E = p.ele, J = p.jus, Rs = p.res;
   const cf = p.cA || p.cB ? casoTxt(p) : "CF-XX-XXXXXX", firma = `**${me.n}** · ${psbRank(me.n) || "Investigator"} · ${PSB_DIVS_EN[p.dv]}`;
   const text = useMemo(() => {
     if (tab === "ele") {
@@ -184,11 +203,19 @@ function Forms({ tab }: { tab: string }) {
         ...(E.const.trim() ? E.const.trim().split("\n").map(x => x.trim()).filter(Boolean).map(x => "- " + x.replace(/^[-•]\s*/, "")) : ["- [Lo constatado en la investigación]"]), "",
         "**⚖️ Propuesta**", `- **Conclusión:** ${E.concl}.`];
       if (E.enc.trim()) L.push(`- **Encuadre:** ${E.enc.trim().replace(/\.$/, "")}.`);
-      if (E.concl === "Sustained") { const nv = (PSB_NIV.find(x => x[0] === E.niv) || PSB_NIV[0])[1]; L.push(`- **Sanción:** ${nv}${E.det.trim() ? " " + E.det.trim().replace(/\.$/, "") : ""}.`);
-        const ef = E.efe.trim() || psbEfecto(E.niv, E.grav); if (ef) L.push(`- **Efecto:** ${ef.replace(/\.$/, "")}.`); }
+      if (E.concl === "Sustained") { const nv = (PSB_NIV.find(x => x[0] === E.niv) || PSB_NIV[0])[1];
+        if (E.niv === "0") L.push(`- **Medida:** ${nv}${E.det.trim() ? " " + E.det.trim().replace(/\.$/, "") : ""}. ${NIV_D["0"]}`);
+        else { L.push(`- **Sanción:** ${nv}${E.det.trim() ? " " + E.det.trim().replace(/\.$/, "") : ""}.`); const ef = E.efe.trim() || psbEfecto(E.niv, E.grav); if (ef) L.push(`- **Efecto:** ${ef.replace(/\.$/, "")}.`); } }
       if (E.arch) L.push(E.concl === "Sustained" ? "- Una vez firmada, **se archiva el expediente**." : "- Con esta conclusión, **se archiva el expediente**.");
       if (E.pend.trim()) L.push("", "**⚠️ Pendiente**", E.pend.trim());
       L.push("", "Quedo a la espera de su decisión para proceder."); return L.join("\n");
+    }
+    if (tab === "vot") {
+      const V = p.vot, cl = V.cons.trim().split("\n").map(x => x.trim().replace(/^[-•]\s*/, "")).filter(Boolean), ops = V.ops.filter(o => o.t.trim());
+      return [`## 🗳️ Votación ${p.dv} | Expediente ${cf}`, "", V.intro.trim() || `Compañeros de la ${p.dv}, se somete a votación la resolución del siguiente caso.`, "",
+        "**📌 Resumen**", V.res.trim() || "[Resumen del caso]", "", "**🔎 Constatado**", ...(cl.length ? cl.map(x => "- " + x) : ["- [Lo constatado]"]), `- Conclusión del caso: **${V.concl}**.`, "",
+        "**⚖️ Opciones**", "", ...(ops.length ? ops.flatMap((o, i) => [`${NUM[i] || i + 1 + "."} **${o.t.trim()}**`, ...(o.d.trim() ? [o.d.trim()] : []), ""]) : ["[Opciones]", ""]),
+        ...(V.nota.trim() ? [V.nota.trim(), ""] : []), ...(V.conf ? [`🔒 *Recuerden que la información de este expediente es confidencial y no debe comentarse fuera de la ${p.dv}.*`] : [])].join("\n").trim();
     }
     if (tab === "jus") {
       const a = p.ag ? findAgent(p.ag) : null, f = F.find(x => x.id === J.falta), S = J.s.filter(x => x.t.trim() || x.p.trim());
@@ -210,7 +237,9 @@ function Forms({ tab }: { tab: string }) {
   const co = Object.keys(uMap("psb")).filter(n => n !== me.n).sort((a, b) => UNITS.psb.R.indexOf(uTop("psb", uMap("psb")[a])) - UNITS.psb.R.indexOf(uTop("psb", uMap("psb")[b])));
   const fq = norm(J.fq), FL = F.filter(x => !fq || norm(x.n + " " + x.d + " " + x.g).includes(fq)).slice(0, 60);
   const ue = (fn: (e: PXT["ele"]) => void) => up(x => fn(x.ele)), uj = (fn: (j: PXT["jus"]) => void) => up(x => fn(x.jus));
-  const title = { ele: "Elevación de caso", jus: "Sanción a Justicia", res: "Notificación de resolución" }[tab] || "";
+  const title = { ele: "Elevación de caso", jus: "Sanción a Justicia", res: "Notificación de resolución", vot: "Votación" }[tab] || "";
+  const uv = (fn: (v: PXT["vot"]) => void) => up(x => fn(x.vot)), V = p.vot;
+  const saveCase = () => { const r = saveDoc(tab, text, me.n, tab === "vot" ? V.concl : tab === "ele" ? E.concl : ""); toast(r.msg, r.ok ? undefined : "err"); };
   const pill = (on: boolean) => cn("rounded-full border px-3 py-1 text-xs font-medium transition", on ? "border-brand-500 bg-brand-600 text-white dark:bg-brand-500" : "border-slate-200 bg-white text-slate-600 hover:border-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300");
   return (
     <Split>
@@ -227,15 +256,38 @@ function Forms({ tab }: { tab: string }) {
                 <b className="text-sm">{k}</b><small className="block text-xs text-slate-500">{d}</small></button>))}</div></Field>
             <Field label="Encuadre" hint="(opcional)"><Input value={E.enc} onChange={e => ue(x => { x.enc = e.target.value; })} placeholder="Ej: acción tipificada como grave con consideración de leve, por las atenuantes indicadas" /></Field>
             {E.concl === "Sustained" && <>
-              <div className="grid gap-4 sm:grid-cols-[1fr_10rem]">
-                <Field label="Sanción"><Select value={E.niv} onChange={e => ue(x => { x.niv = e.target.value; x.efe = ""; })} className="text-sm">{PSB_NIV.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></Field>
-                <Field label="Gravedad"><Select value={E.grav} onChange={e => ue(x => { x.grav = e.target.value; x.efe = ""; })} className="text-sm">{["leve", "grave", "muy grave"].map(g => <option key={g}>{g}</option>)}</Select></Field>
-              </div>
+              <Field label="Propuesta (medida o sanción)"><div className="grid gap-2 sm:grid-cols-2">{PSB_NIV.map(([k]) => (
+                <button key={k} onClick={() => ue(x => { x.niv = k; x.efe = ""; })} className={cn("rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500", E.niv === k ? "border-brand-500 bg-brand-50 dark:border-brand-400 dark:bg-brand-500/10" : "border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50", k === "0" && "sm:col-span-2")}>
+                  <b className="text-sm">{NIV_T[k]}</b>{k === "0" && <span className="ml-2 rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[10.5px] font-semibold text-emerald-700 dark:text-emerald-300">no disciplinaria</span>}
+                  <small className="mt-0.5 block text-xs leading-snug text-slate-500">{NIV_D[k].replace(/\*\*/g, "")}</small></button>))}</div></Field>
+              {E.niv !== "0" && <Field label="Gravedad"><Select value={E.grav} onChange={e => ue(x => { x.grav = e.target.value; x.efe = ""; })} className="w-auto text-sm">{["leve", "grave", "muy grave"].map(g => <option key={g}>{g}</option>)}</Select></Field>}
               <Field label="Detalle de la sanción" hint="(opcional)"><Input value={E.det} onChange={e => ue(x => { x.det = e.target.value; })} placeholder="Ej: con acción correctiva (repaso de los artículos de tránsito)" /></Field>
-              <Field label="Efecto" hint="(se completa según el nivel; podés cambiarlo)"><Input value={E.efe} onChange={e => ue(x => { x.efe = e.target.value; })} placeholder={psbEfecto(E.niv, E.grav) || ""} /></Field>
+              {E.niv !== "0" && <Field label="Efecto" hint="(se completa según el nivel; podés cambiarlo)"><Input value={E.efe} onChange={e => ue(x => { x.efe = e.target.value; })} placeholder={psbEfecto(E.niv, E.grav) || ""} /></Field>}
             </>}
             <Checkbox checked={E.arch} onChange={v => ue(x => { x.arch = v; })} label="Indicar que se archiva el expediente" />
             <Field label="⚠️ Pendiente" hint="(opcional)"><Input value={E.pend} onChange={e => ue(x => { x.pend = e.target.value; })} placeholder="Ej: verificar que la sanción al ciudadano se haya corregido" /></Field>
+          </CardBody>
+        </Card>}
+        {tab === "vot" && <Card>
+          <CardHeader icon={<Vote />} title="Votación" desc="Plantilla editable. Podés traer los datos de la elevación y armar las opciones a votar." />
+          <CardBody>
+            <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" icon={<FolderInput />} onClick={() => uv(v => { v.res = E.hechos; v.cons = E.const; v.concl = E.concl; })}>Traer de la elevación</Button></div>
+            <Field label="Introducción" hint="(opcional)"><Input value={V.intro} onChange={e => uv(v => { v.intro = e.target.value; })} placeholder={`Compañeros de la ${p.dv}, se somete a votación la resolución del siguiente caso.`} /></Field>
+            <Field label="📌 Resumen"><Textarea rows={3} value={V.res} onChange={e => uv(v => { v.res = e.target.value; })} placeholder="Una oficial imputó el **Art. 63.3** (…) en lugar del **Art. 138.37** (…)" /></Field>
+            <Field label="🔎 Constatado" hint="(una línea por punto)"><Textarea rows={3} value={V.cons} onChange={e => uv(v => { v.cons = e.target.value; })} placeholder={"Error administrativo al elegir el artículo, sin intención.\nEs su **primera falta**.\n**Reconoció el error y demostró entenderlo** en la entrevista."} /></Field>
+            <Field label="Conclusión del caso"><Segmented size="sm" value={V.concl} onChange={v => uv(x => { x.concl = v; })} options={PSB_CONCL.map(([k]) => ({ value: k, label: k }))} /></Field>
+            <Field label="⚖️ Opciones a votar"><div className="space-y-2">{V.ops.map((o, i) => (
+              <div key={i} className="grid gap-2 rounded-xl border border-slate-200 p-2.5 dark:border-slate-800 sm:grid-cols-[2rem_1fr_auto]">
+                <span className="pt-2 text-center text-lg leading-none">{NUM[i]}</span>
+                <div className="space-y-2"><Input value={o.t} onChange={e => uv(v => { v.ops[i].t = e.target.value; })} placeholder="Título de la opción" className="font-semibold" />
+                  <Textarea rows={2} value={o.d} onChange={e => uv(v => { v.ops[i].d = e.target.value; })} placeholder="Descripción" className="text-sm" /></div>
+                <Button variant="ghost" size="icon" aria-label="Quitar opción" onClick={() => uv(v => { v.ops.splice(i, 1); })}><X /></Button>
+              </div>))}
+              <div className="flex flex-wrap items-center gap-1.5"><span className="text-xs text-slate-500">Agregar:</span>
+                {PSB_NIV.map(([k]) => <button key={k} onClick={() => uv(v => { v.ops.push({ t: NIV_T[k], d: NIV_D[k] }); })} className={pill(V.ops.some(o => o.t === NIV_T[k]))}>{NIV_T[k]}</button>)}
+                <button onClick={() => uv(v => { v.ops.push({ t: "", d: "" }); })} className={pill(false)}>+ Libre</button></div></div></Field>
+            <Field label="Nota común a todas las opciones" hint="(opcional)"><Input value={V.nota} onChange={e => uv(v => { v.nota = e.target.value; })} placeholder="En ambos casos, la oficial realizará una evaluación sobre los artículos de tránsito antes de archivar el expediente." /></Field>
+            <Checkbox checked={V.conf} onChange={v => uv(x => { x.conf = v; })} label="Recordatorio de confidencialidad al final" />
           </CardBody>
         </Card>}
         {tab === "jus" && <Card>
@@ -270,7 +322,8 @@ function Forms({ tab }: { tab: string }) {
         </Card>}
       </Col>
       <DiscordOutput title={title} tag="Discord" text={text} ctx={{ users: Object.fromEntries(co.map(n => [dcIdOf(n), n]).filter(([i]) => i)) }}
-        errors={tab === "jus" && !J.falta ? ["la falta del catálogo para la publicación"] : undefined} />
+        errors={tab === "jus" && !J.falta ? ["la falta del catálogo para la publicación"] : undefined}
+        extra={<Button size="sm" variant="outline" icon={<History />} onClick={saveCase}>Guardar en historial</Button>} />
     </Split>
   );
 }
@@ -314,5 +367,67 @@ function Catalog() {
           </div>))}</div>
       </CardBody>
     </Card>
+  );
+}
+
+/* ---------- historial de expedientes y comunicados ---------- */
+type PsbDoc = { t: string; txt: string; ts: number; by: string };
+type PsbCase = { id: string; cf: string; ag: string; dv: string; by: string; ts: number; upd: number; concl: string; docs: PsbDoc[]; px: PXT };
+const K_CASES = "lspdt.psbCases";
+const getCases = () => LS.json<PsbCase[]>(K_CASES, []);
+function saveDoc(t: string, txt: string, by: string, concl = "") {
+  const p = PX; if (!p.cA && !p.cB) return { ok: false, msg: "Poné el número de expediente (CF) para guardarlo" };
+  const cf = casoTxt(p), L = getCases(), i = L.findIndex(c => c.cf === cf), now = Date.now();
+  const c: PsbCase = i >= 0 ? { ...L[i] } : { id: uid(), cf, ag: p.ag, dv: p.dv, by, ts: now, upd: now, concl: "", docs: [], px: p };
+  c.ag = p.ag || c.ag; c.dv = p.dv; c.upd = now; c.px = structuredClone(p); if (concl) c.concl = concl;
+  c.docs = [...c.docs.filter(d => !(d.t === t && d.txt === txt)), { t, txt, ts: now, by }];
+  LS.setJSON(K_CASES, i >= 0 ? L.map((x, j) => (j === i ? c : x)) : [...L, c]);
+  return { ok: true, msg: `Guardado en el historial · ${cf} (${c.docs.length} ${c.docs.length === 1 ? "comunicado" : "comunicados"})` };
+}
+const DOC_T: Record<string, string> = { not: "Notificación", ele: "Elevación de caso", jus: "Sanción a Justicia", res: "Resolución", vot: "Votación" };
+const fdt = (t: number) => new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
+
+function Historial() {
+  useStoreVersion();
+  const { toast, confirm } = useFeedback(), [, up] = usePX();
+  const [q, setQ] = useState(""), [dv, setDv] = useState("all"), [open, setOpen] = useState(""), [doc, setDoc] = useState<string>("");
+  const qn = norm(q.trim());
+  const L = getCases().filter(c => (dv === "all" || c.dv === dv) && (!qn || norm(`${c.cf} ${c.ag} ${c.by} ${c.concl} ${c.docs.map(d => d.txt).join(" ")}`).includes(qn))).sort((a, b) => b.upd - a.upd);
+  const del = async (c: PsbCase) => { if (await confirm(`¿Eliminar el expediente ${c.cf} y sus ${c.docs.length} comunicados del historial?`, { danger: true })) { LS.setJSON(K_CASES, getCases().filter(x => x.id !== c.id)); toast("Eliminado"); } };
+  const delDoc = (c: PsbCase, d: PsbDoc) => LS.setJSON(K_CASES, getCases().map(x => (x.id === c.id ? { ...x, docs: x.docs.filter(y => y !== d && !(y.ts === d.ts && y.t === d.t)) } : x)));
+  return (
+    <div className="space-y-4">
+      <Card className="flex flex-wrap items-center gap-3 p-3">
+        <div className="relative min-w-[14rem] flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Input className="h-9 pl-9 text-sm" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar por expediente, agente o texto de los comunicados…" /></div>
+        <Segmented size="sm" value={dv} onChange={setDv} options={[["all", "Todas"], ["IAD", "IAD"], ["FID", "FID"], ["SOD", "SOD"]].map(([v, l]) => ({ value: v, label: l }))} />
+      </Card>
+      {!L.length && <Card className="p-8 text-center text-sm text-slate-500"><History className="mx-auto mb-2 size-6 text-slate-400" />Todavía no hay expedientes guardados. En cada comunicado (notificación, elevación, votación…) usá <b>Guardar en historial</b>.</Card>}
+      {L.map(c => { const on = open === c.id; return (
+        <Card key={c.id} className="overflow-hidden">
+          <button onClick={() => { setOpen(on ? "" : c.id); setDoc(""); }} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/40">
+            <FolderOpen className="size-5 shrink-0 text-brand-500" />
+            <div className="min-w-0 flex-1"><p className="truncate font-mono text-sm font-semibold">{c.cf} <span className="font-sans font-normal text-slate-500">· {c.ag || "sin agente"} · {c.dv}</span></p>
+              <p className="truncate text-xs text-slate-500">{c.docs.length} {c.docs.length === 1 ? "comunicado" : "comunicados"} · última modificación {fdt(c.upd)} · abrió {c.by}</p></div>
+            {c.concl && <span className={cn("rounded-md px-2 py-0.5 text-[11px] font-bold", c.concl === "Sustained" ? "bg-red-500/10 text-red-600 dark:text-red-300" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300")}>{c.concl}</span>}
+            <ChevronDown className={cn("size-4 text-slate-400 transition", on && "rotate-180")} />
+          </button>
+          {on && <div className="space-y-2 border-t border-slate-100 p-3 dark:border-slate-800">
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" icon={<FolderInput />} onClick={() => { up(x => { Object.assign(x, structuredClone({ ...blankPX(), ...c.px })); }); toast(`Expediente ${c.cf} cargado en los formularios`); }}>Abrir en los formularios</Button>
+              <Button size="sm" variant="ghost" icon={<Trash2 />} onClick={() => del(c)}>Eliminar expediente</Button>
+            </div>
+            {[...c.docs].sort((a, b) => b.ts - a.ts).map(d => { const k = c.id + d.ts + d.t, sh = doc === k; return (
+              <div key={k} className="rounded-xl border border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-2 px-3 py-2">
+                  <button onClick={() => setDoc(sh ? "" : k)} className="min-w-0 flex-1 text-left text-sm"><b>{DOC_T[d.t] || d.t}</b> <span className="text-xs text-slate-500">· {fdt(d.ts)} · {d.by}</span></button>
+                  <Button size="sm" variant="ghost" icon={<Copy />} onClick={() => { navigator.clipboard?.writeText(d.txt); toast("Copiado"); }}>Copiar</Button>
+                  <button aria-label="Quitar comunicado" onClick={() => delDoc(c, d)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><X className="size-4" /></button>
+                </div>
+                {sh && <pre className="scrollbar-thin max-h-80 overflow-auto whitespace-pre-wrap border-t border-slate-100 bg-slate-50 p-3 font-mono text-xs leading-relaxed dark:border-slate-800 dark:bg-slate-900/60">{d.txt}</pre>}
+              </div>); })}
+          </div>}
+        </Card>); })}
+    </div>
   );
 }
