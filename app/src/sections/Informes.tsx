@@ -30,7 +30,7 @@ export function Informes() {
   const [tab, setTab] = useState<"new" | "list">("new"), [edit, setEdit] = useState<Inf | null>(null), [open, setOpen] = useState<string | null>(null);
   return (
     <div className="space-y-5">
-      <Segmented value={tab} onChange={setTab} options={[{ value: "new", label: "Nuevo informe", icon: <FilePlus2 /> }, { value: "list", label: `Registrados (${INFS.length})`, icon: <FileText /> }]} />
+      <Segmented value={tab} onChange={setTab} options={[{ value: "new", label: "Nuevo informe", icon: <FilePlus2 /> }, { value: "list", label: `Historial (${INFS.length})`, icon: <FileText /> }]} />
       {tab === "new" ? <InfForm key={edit?.id || "new"} init={edit} onSaved={id => { setEdit(null); setOpen(id); setTab("list"); }} />
         
         : <InfList open={open} setOpen={setOpen} onEdit={r => { setEdit(r); setTab("new"); scrollTopApp(); }} />}
@@ -54,7 +54,7 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
   const save = async () => {
     if (errs.length) { setShowErr(true); toast("Falta completar: " + errs.join(", "), "err"); return; }
     const INFS = LS.json<Inf[]>("lspdt.informes", []);
-    const r: Inf = { ...structuredClone(A), por: A.por || me.n, t: Date.now() }; r.texto = infText(r, me.n, P);
+    const r: Inf = { ...structuredClone(A), por: A.por || me.n, t: A.id && A.t ? A.t : Date.now(), ...(A.id ? { edit: me.n, et: Date.now() } : {}) }; // al editar se conserva la fecha de registro r.texto = infText(r, me.n, P);
     let L: Inf[];
     if (A.id) { const i = INFS.findIndex(x => x.id === A.id); L = i >= 0 ? INFS.map((x, j) => (j === i ? { ...x, ...r, edit: me.n } : x)) : [...INFS, r]; }
     else { r.id = uid(); L = [...INFS, r]; }
@@ -270,23 +270,31 @@ function ChargeSearch({ P, onPick }: { P: Art[]; onPick: (a: string) => void }) 
 function InfList({ open, setOpen, onEdit }: { open: string | null; setOpen: (id: string | null) => void; onEdit: (r: Inf) => void }) {
   const me = useMe(), { confirm } = useFeedback(), copy = useCopy();
   const [INFS, setINFS] = useJSON<Inf[]>("lspdt.informes", []);
-  const [q, setQ] = useState(""); const s = norm(q);
-  const L = INFS.slice().sort((a, b) => (b.t || 0) - (a.t || 0)).filter(r => !s || norm(r.texto).includes(s));
+  const [q, setQ] = useState(""), [ag, setAg] = useState(""), [desde, setDesde] = useState(""), [hasta, setHasta] = useState(""); const s = norm(q);
+  const AGS = useMemo(() => [...new Set(INFS.map(r => r.por || "").filter(Boolean))].sort((a, b) => a.localeCompare(b, "es")), [INFS]);
+  const day = (t?: number) => { if (!t) return ""; const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  const L = INFS.slice().sort((a, b) => (b.t || 0) - (a.t || 0)).filter(r => (!s || norm(r.texto).includes(s)) && (!ag || r.por === ag) && (!desde || day(r.t) >= desde) && (!hasta || day(r.t) <= hasta));
+  const dayLbl = (t?: number) => t ? new Date(t).toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }) : "Sin fecha de registro";
   return (
     <Card>
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 p-4 dark:border-slate-800">
-        <div className="relative min-w-[16rem] flex-1 sm:max-w-md"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input className="pl-9" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar por sujeto, ID, artículo, agente o lugar…" /></div>
-        <span className="text-xs text-slate-400">{L.length} de {INFS.length} informes</span>
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-4 dark:border-slate-800">
+        <div className="relative min-w-[14rem] flex-1 sm:max-w-sm"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input className="pl-9" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar por sujeto, ID, artículo o lugar…" /></div>
+        <Select value={ag} onChange={e => setAg(e.target.value)} className="w-auto text-sm" title="Agente que redactó el informe"><option value="">Todos los agentes</option><option value={me.n}>Mis informes</option>{AGS.filter(a => a !== me.n).map(a => <option key={a}>{a}</option>)}</Select>
+        <Input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="w-auto text-sm" title="Desde" />
+        <Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-auto text-sm" title="Hasta" />
+        {(q || ag || desde || hasta) && <Button variant="ghost" size="sm" icon={<X />} onClick={() => { setQ(""); setAg(""); setDesde(""); setHasta(""); }}>Limpiar</Button>}
+        <span className="ml-auto text-xs text-slate-400">{L.length} de {INFS.length} informes</span>
       </div>
       {!L.length ? <Empty icon={<FileText />} title={INFS.length ? "Ningún informe coincide" : "Todavía no hay informes registrados"} />
-        : <div className="divide-y divide-slate-100 dark:divide-slate-800">{L.map(r => { const S = (r.suj || []).filter(x => x.n), isO = open === r.id, can = r.por === me.n || me.l >= 8 || me.admin, parts = dcParts(r.texto || ""); return (
+        : <div className="divide-y divide-slate-100 dark:divide-slate-800">{L.map((r, ix) => { const S = (r.suj || []).filter(x => x.n), isO = open === r.id, can = r.por === me.n || me.l >= 8 || me.admin, parts = dcParts(r.texto || ""), newDay = ix === 0 || day(L[ix - 1].t) !== day(r.t); return (
           <div key={r.id}>
+            {newDay && <p className="sticky top-0 z-[1] bg-slate-50/95 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 backdrop-blur dark:bg-slate-900/95">{dayLbl(r.t)}</p>}
             <button onClick={() => setOpen(isO ? null : r.id)} className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/40">
               <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300"><FileText className="size-4" /></span>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{(r.tipos || []).join(" · ") || "Informe"}</p>
                 <p className="truncate text-xs text-slate-500">{r.fecha} {r.hora} · {r.ui}{r.uf && ` → ${r.uf}`}</p>
-                <p className="truncate text-xs text-slate-400">{S.length > 0 && S.map(x => x.n + (x.id ? ` (${x.id})` : "")).join(", ") + " · "}redactado por {agTag(r.por || "")}{r.t ? ` · ${fmtDate(r.t)}` : ""}</p>
+                <p className="truncate text-xs text-slate-400">{S.length > 0 && S.map(x => x.n + (x.id ? ` (${x.id})` : "")).join(", ") + " · "}registrado por {agTag(r.por || "")}{r.t ? ` el ${fmtDate(r.t)}` : ""}{r.edit ? ` · editado por ${agTag(r.edit)}${r.et ? ` el ${fmtDate(r.et)}` : ""}` : ""}</p>
               </div>
               <span className={cn("shrink-0 rounded-md px-1.5 py-0.5 text-[10.5px] font-bold uppercase", r.est === "Incidente finalizado" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-amber-400/15 text-amber-700 dark:text-amber-300")}>{r.est}</span>
               <ChevronDown className={cn("mt-1 size-4 shrink-0 text-slate-400 transition-transform", isO && "rotate-180")} />

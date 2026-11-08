@@ -43,7 +43,7 @@ export const VEH_EST = ["Sin daños", "Daños leves", "Daños graves", "Siniestr
 /* secciones que se pueden sacar del informe */
 export const INF_SECS: [string, string][] = [["motivo", "Motivo"], ["hechos", "Hechos"], ["unid", "Unidades"], ["suj", "Sujetos"], ["veh", "Vehículos"], ["fz", "Uso de la fuerza"], ["ev", "Evidencia"], ["cg", "Cargos"], ["proc", "Detención y procesamiento"]];
 export type Ev = { s: string; t: string; cat?: string; mk?: string; md?: string; mo?: string; co?: string; mat?: string; d?: string };
-export type Inf = { fecha: string; hora: string; ui: string; ux: string; uf: string; tipos: string[]; est: string; motivo: string; hechos: string; unid: Unid[]; suj: Suj[]; fz: string; fzd: string; ev: Ev[]; veh?: Veh[]; off?: string[]; extra: string; id: string; por?: string; t?: number; texto?: string; edit?: string };
+export type Inf = { fecha: string; hora: string; ui: string; ux: string; uf: string; tipos: string[]; est: string; motivo: string; hechos: string; unid: Unid[]; suj: Suj[]; fz: string; fzd: string; ev: Ev[]; veh?: Veh[]; off?: string[]; extra: string; id: string; por?: string; t?: number; texto?: string; edit?: string; et?: number };
 export const SEP = "━━━━━━━━━━━━━━━━━━━━━━━";
 const rkAb = (r: string) => RK_AB[r] || rankES(r);
 export const agTag = (n: string) => { const a = findAgent(n); return a ? `${rkAb(a.r)} ${a.n}${a.p ? ` [${a.p}]` : ""}` : n; };
