@@ -1,6 +1,6 @@
 import { scrollTopApp, setDeptUi } from "@/lib/appearance";
 import { Device } from "./components/device";
-import { Breach } from "./sections/six/fx";
+import { ErrorScreen, readCfg } from "./sections/six/fx";
 import { UpdateBar } from "./components/update";
 import { lazy, Suspense, useCallback, useEffect, useState, type ComponentType } from "react";
 import { Loader2 } from "lucide-react";
@@ -86,7 +86,7 @@ export default function App() {
   let area = AREAS.find(a => a.k === nav.a) || AREAS[0];
   if (!canArea(area, user.r)) area = AREAS[0];
   const SS = secsOf(area, user.r), sec = SS.find(s => s.k === nav.s) || SS[0];
-  const go = (a: string, s: string) => { if (a === "six") { if (ME_ROLES.six) { void import("./sections/six/Six"); setBreach(true); } return; } setNav({ a, s }); scrollTopApp(); };
+  const go = (a: string, s: string) => { if (a === "six") { if (ME_ROLES.six) { void import("./sections/six/Six"); if (readCfg().error) setBreach(true); else endBreach(); } return; } setNav({ a, s }); scrollTopApp(); };
   const logout = async () => { await authApi({ a: "logout" }); goOffline(); setMe(null); const r = await api("/api/auth"); setBoot(r as unknown as Boot); };
 
   let view;
@@ -95,5 +95,5 @@ export default function App() {
   else if (area.k === "div") view = <Division d={sec.l} />;
   else if (VIEWS[`${area.k}/${sec.k}`]) view = VIEWS[`${area.k}/${sec.k}`]();
   else view = null;
-  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in"><Suspense fallback={<div className="grid min-h-[40vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{view}</Suspense></div></Shell><UpdateBar /></MeCtx.Provider>{fx && <BootScreen name={me.n} rank={rankES(user.r)} badge={user.p} agents={getRoster().length} short={fx === "short"} onDone={() => setFx("")} />}{breach && <Breach onDone={endBreach} />}</Device>;
+  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in"><Suspense fallback={<div className="grid min-h-[40vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{view}</Suspense></div></Shell><UpdateBar /></MeCtx.Provider>{fx && <BootScreen name={me.n} rank={rankES(user.r)} badge={user.p} agents={getRoster().length} short={fx === "short"} onDone={() => setFx("")} />}{breach && <ErrorScreen onDone={endBreach} />}</Device>;
 }

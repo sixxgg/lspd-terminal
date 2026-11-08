@@ -1,12 +1,21 @@
-/* six · efectos visuales: lluvia de caracteres, quiebre de pantalla y carga de entrada */
+/* six · efectos: ajustes propios, lluvia de caracteres, error de entrada y consola de arranque */
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { LS } from "@/lib/store";
+
+/* ---------- ajustes (independientes de la MDT; viajan con la cuenta de six) ---------- */
+export type SixCfg = { tema: string; lluvia: 0 | 1 | 2 | 3; scan: boolean; grid: boolean; glow: 0 | 1 | 2; flicker: boolean; intro: "completa" | "corta" | "no"; error: boolean };
+export const CFG_KEY = "lspdt.six.cfg";
+export const CFG0: SixCfg = { tema: "verde", lluvia: 1, scan: true, grid: true, glow: 1, flicker: true, intro: "completa", error: true };
+export const THEMES: [string, string, string][] = [["verde", "Verde", "#39ff88"], ["cian", "Cian", "#00e5ff"], ["rojo", "Rojo", "#ff2b4a"], ["ambar", "Ámbar", "#ffb000"], ["violeta", "Violeta", "#b46cff"], ["blanco", "Blanco", "#e8eef7"]];
+export const colorOf = (t: string) => (THEMES.find(x => x[0] === t) || THEMES[0])[2];
+export const readCfg = (): SixCfg => ({ ...CFG0, ...LS.json<Partial<SixCfg>>(CFG_KEY, {}) });
 
 const rnd = (n: number) => Math.floor(Math.random() * n);
 export const hex = (n = 4) => Array.from({ length: n }, () => "0123456789abcdef"[rnd(16)]).join("");
 
 /* lluvia de caracteres en canvas (~24 fps, se pausa con la pestaña oculta) */
-export function Rain({ color = "#39ff88", opacity = 0.14 }: { color?: string; opacity?: number }) {
+export function Rain({ color, opacity = 0.14, speed = 42 }: { color: string; opacity?: number; speed?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const c = ref.current; if (!c) return; const ctx = c.getContext("2d"); if (!ctx) return;
@@ -14,68 +23,82 @@ export function Rain({ color = "#39ff88", opacity = 0.14 }: { color?: string; op
     const fit = () => { w = c.width = c.offsetWidth; h = c.height = c.offsetHeight; cols = Array.from({ length: Math.ceil(w / 14) }, () => rnd(Math.max(1, h / 14))); };
     fit(); window.addEventListener("resize", fit);
     const CH = "01アイウエオカキクケコサシスセソ0123456789abcdef";
-    const draw = (t: number) => { raf = requestAnimationFrame(draw); if (document.hidden || t - last < 42) return; last = t;
+    const draw = (t: number) => { raf = requestAnimationFrame(draw); if (document.hidden || t - last < speed) return; last = t;
       ctx.fillStyle = "rgba(0,0,0,.09)"; ctx.fillRect(0, 0, w, h); ctx.fillStyle = color; ctx.font = "13px JetBrains Mono, monospace";
       cols.forEach((y, i) => { ctx.fillText(CH[rnd(CH.length)], i * 14, y * 14); cols[i] = y * 14 > h && Math.random() > 0.975 ? 0 : y + 1; }); };
     raf = requestAnimationFrame(draw);
     return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", fit); };
-  }, [color]);
+  }, [color, speed]);
   return <canvas ref={ref} aria-hidden className="pointer-events-none absolute inset-0 h-full w-full" style={{ opacity }} />;
 }
 
-/* quiebre: la MDT tiembla, se agrieta y se cae (dura ~2 s) */
-export function Breach({ onDone }: { onDone: () => void }) {
+/* error de entrada: pantallazo rojo de neón sobre la MDT (~1,8 s) y después entra a six */
+export function ErrorScreen({ onDone }: { onDone: () => void }) {
   const cb = useRef(onDone); cb.current = onDone;
-  useEffect(() => { document.documentElement.classList.add("six-breaking"); const t = setTimeout(() => cb.current(), 2100);
-    return () => { clearTimeout(t); document.documentElement.classList.remove("six-breaking"); }; }, []);
+  const [code] = useState(() => `0x${hex(8).toUpperCase()}`);
+  useEffect(() => { const t = setTimeout(() => cb.current(), 1900); return () => clearTimeout(t); }, []);
   return createPortal(
-    <div className="six-breach pointer-events-none fixed inset-0 z-[95]" aria-hidden>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
-        {["M52 48 L38 20 L30 0", "M52 48 L70 30 L88 8 L100 4", "M52 48 L80 55 L100 62", "M52 48 L62 78 L58 100", "M52 48 L28 64 L6 86 L0 92", "M52 48 L20 44 L0 40", "M38 20 L22 26", "M70 30 L74 14", "M62 78 L78 88", "M28 64 L30 80"].map((d, i) =>
-          <path key={i} d={d} pathLength={1} className="six-crack" style={{ animationDelay: `${i * 0.035}s` }} />)}
-      </svg>
-      <div className="six-flash absolute inset-0" />
+    <div className="six-err fixed inset-0 z-[95] grid place-items-center overflow-hidden bg-black font-mono" role="alert">
+      <div className="six-err-scan absolute inset-0" aria-hidden />
+      <div className="relative px-6 text-center">
+        <p className="six-err-big text-[clamp(4rem,16vw,12rem)] font-black leading-none" data-t="ERROR">ERROR</p>
+        <p className="mt-4 text-lg font-bold tracking-[0.4em] text-[#ff2b4a]">FALLA CRÍTICA DEL SISTEMA</p>
+        <p className="mt-2 text-xs tracking-[0.3em] text-[#ff2b4a]/70">CÓDIGO {code} · REINICIANDO EN MODO PRIVADO…</p>
+      </div>
     </div>, document.body);
 }
 
-/* carga de entrada: ~12 s, con etapas, anillos, núcleo y registro */
-const STAGES = ["iniciando núcleo six", "verificando identidad", "abriendo canal privado", "descifrando almacenamiento", "sincronizando datos del staff", "cargando comunicados", "preparando equipo de ilícitos", "aplicando tema neón"];
-const LOG = ["kernel six 6.6.6 · ok", "módulo cripto · aes-256-gcm", "identidad: six", "canal privado · estable", "almacenamiento · 3 volúmenes", "staff · sincronizado", "comunicados · indexados", "ilícitos · plantillas listas", "interfaz · neón", "todo listo"];
-export function Loader({ onDone, ms = 12000 }: { onDone: () => void; ms?: number }) {
-  const [t, setT] = useState(0), [dump, setDump] = useState<string[]>([]), cb = useRef(onDone); cb.current = onDone;
-  useEffect(() => { const s = performance.now(); let raf = 0;
-    const f = () => { const e = performance.now() - s; setT(Math.min(1, e / ms)); if (e < ms + 900) raf = requestAnimationFrame(f); else cb.current(); };
-    raf = requestAnimationFrame(f); const d = setInterval(() => setDump(Array.from({ length: 22 }, () => `${hex(4)}  ${hex(2)} ${hex(2)} ${hex(2)} ${hex(2)}  ${hex(2)} ${hex(2)} ${hex(2)} ${hex(2)}`)), 110);
-    return () => { cancelAnimationFrame(raf); clearInterval(d); }; }, [ms]);
-  useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === "Escape") cb.current(); }; window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, []);
-  const pct = Math.round(t * 100), st = Math.min(STAGES.length - 1, Math.floor(t * STAGES.length)), done = t >= 1;
+/* arranque: la pantalla se apaga y aparece la consola con la calavera */
+const SKULL = String.raw`        _____________
+     .-'             '-.
+   .'                   '.
+  /    _____     _____    \
+ |    /     \   /     \    |
+ |   |   ●   | |   ●   |   |
+ |    \_____/   \_____/    |
+  \          /\           /
+   '.       /__\        .'
+     |  |\_________/|  |
+     |  | |_|_|_|_| |  |
+      \  \_|_|_|_|_/  /
+       '-.___________.-'`;
+const LINES = [
+  "[ OK ] Cerrando la sesión de la MDT…", "[ OK ] Sesión de la MDT suspendida", "[ .. ] Montando volumen privado /dev/six0",
+  "[ OK ] Clave AES-256-GCM aceptada", "[ .. ] Abriendo canal seguro", "[ OK ] Canal establecido (latencia: 18 ms)",
+  "[ .. ] Verificando la huella del operador", "[ OK ] Operador reconocido: six", "[ .. ] Sincronizando datos privados",
+  "[ OK ] Módulos cargados: administración · equipo de ilícitos", "[ OK ] Aplicando tema y efectos",
+];
+export function Boot({ short, onDone }: { short?: boolean; onDone: () => void }) {
+  const cb = useRef(onDone); cb.current = onDone;
+  const [ph, setPh] = useState<"off" | "con">("off"), [n, setN] = useState(0), [dump, setDump] = useState<string[]>([]);
+  const step = short ? 240 : 720, total = LINES.length + (short ? 4 : 3);
+  useEffect(() => { const t = setTimeout(() => setPh("con"), 900); return () => clearTimeout(t); }, []);
+  useEffect(() => { if (ph !== "con") return;
+    const i = setInterval(() => setN(x => x + 1), step), h = setInterval(() => setDump(Array.from({ length: 16 }, () => Array.from({ length: 6 }, () => hex(4)).join(" "))), 90);
+    return () => { clearInterval(i); clearInterval(h); }; }, [ph, step]);
+  useEffect(() => { if (n >= total) cb.current(); }, [n, total]);
+  useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === "Escape" || e.key === "Enter") cb.current(); }; window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, []);
+  const pct = Math.min(100, Math.round((n / (LINES.length + 1)) * 100)), ok = n > LINES.length;
   return (
-    <div className="six-load fixed inset-0 z-[96] overflow-hidden bg-black font-mono text-[#39ff88]">
-      <Rain opacity={0.22} />
-      <div className="six-scan absolute inset-0" aria-hidden />
-      <div className="relative grid h-full grid-cols-1 gap-6 p-6 sm:p-10 lg:grid-cols-[1fr_minmax(20rem,28rem)_1fr]">
-        <div className="hidden flex-col justify-end gap-1 text-[11px] text-[#39ff88]/70 lg:flex">
-          {LOG.slice(0, Math.ceil(t * LOG.length)).map((l, i) => <p key={i} className="six-type"><span className="text-[#00f0ff]">[{String(i).padStart(2, "0")}]</span> {l}</p>)}
-        </div>
-        <div className="flex flex-col items-center justify-center gap-8">
-          <div className="relative grid size-64 place-items-center">
-            <span className="six-ring absolute inset-0 rounded-full border border-[#00f0ff]/40" />
-            <span className="six-ring rev absolute inset-4 rounded-full border-2 border-dashed border-[#ff2bd6]/50" />
-            <span className="six-ring slow absolute inset-10 rounded-full border border-[#39ff88]/50" />
-            <svg viewBox="0 0 100 100" className="absolute inset-0 -rotate-90"><circle cx="50" cy="50" r="47" fill="none" stroke="#39ff88" strokeWidth="1.2" strokeDasharray={`${t * 295} 295`} style={{ filter: "drop-shadow(0 0 4px #39ff88)" }} /></svg>
-            <span className={cn6("six-logo text-6xl font-black", done && "on")} data-t="six">six</span>
+    <div className="fixed inset-0 z-[96] cursor-pointer bg-black" onClick={() => cb.current()} title="Clic para saltar">
+      {ph === "off" ? <div className="six-off" /> : (
+        <div className="six-con relative grid h-full grid-rows-[auto_1fr_auto] gap-5 p-6 font-mono text-[13px] text-[var(--c)] sm:p-10">
+          <div className="flex items-end gap-6">
+            <pre className={`six-skull text-[10px] leading-[1.15] sm:text-[14px] ${ok ? "on" : ""}`}>{SKULL}</pre>
+            <p className="hidden pb-2 text-xs text-[var(--c)]/70 sm:block">six@terminal:~# ./acceso --privado</p>
           </div>
-          <div className="w-full max-w-md space-y-2">
-            <div className="flex justify-between text-xs"><span className="text-[#00f0ff]">{done ? "acceso concedido" : STAGES[st] + "…"}</span><span>{pct}%</span></div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-[#39ff88]/10"><div className="six-bar h-full rounded-full" style={{ width: pct + "%" }} /></div>
-            <div className="flex gap-1">{STAGES.map((_, i) => <span key={i} className={cn6("h-1 flex-1 rounded-full", i < st || done ? "bg-[#ff2bd6] shadow-[0_0_6px_#ff2bd6]" : i === st ? "bg-[#ff2bd6]/50" : "bg-white/10")} />)}</div>
+          <div className="grid min-h-0 gap-6 md:grid-cols-[1fr_20rem]">
+            <div className="space-y-1 overflow-hidden">
+              {LINES.slice(0, n).map((l, i) => <p key={i} className={l.startsWith("[ ..") ? "opacity-60" : ""}>{l}</p>)}
+              {ok && <p className="six-granted mt-4 text-xl font-bold tracking-[0.3em] text-white">ACCESO CONCEDIDO</p>}
+              <span className="six-cur">█</span>
+            </div>
+            <div className="hidden overflow-hidden text-[10px] leading-relaxed text-[var(--c)]/30 md:block">{dump.map((d, i) => <p key={i}>{d}</p>)}</div>
           </div>
-          {done && <p className="six-granted text-sm tracking-[0.5em] text-white">bienvenido, six</p>}
+          <div><div className="h-1 overflow-hidden rounded bg-[var(--c)]/15"><div className="h-full bg-[var(--c)] shadow-[0_0_10px_var(--c)] transition-all duration-300" style={{ width: pct + "%" }} /></div>
+            <p className="mt-2 flex justify-between text-[11px] text-[var(--c)]/60"><span>DESCIFRANDO… {pct}%</span><span>ESC para saltar</span></p></div>
         </div>
-        <div className="hidden overflow-hidden text-right text-[10px] leading-relaxed text-[#39ff88]/30 lg:block">{dump.map((l, i) => <p key={i}>{l}</p>)}</div>
-      </div>
-      <button onClick={onDone} className="absolute bottom-4 right-5 text-[11px] text-[#39ff88]/50 hover:text-[#39ff88]">esc · saltar</button>
+      )}
     </div>
   );
 }
-const cn6 = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ");

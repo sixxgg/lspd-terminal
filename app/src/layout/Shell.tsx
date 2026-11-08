@@ -23,10 +23,10 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
   me: { n: string; r: string; p?: string }; area: Area; sec: Sec; go: (a: string, s: string) => void; onLogout: () => void; children: ReactNode;
 }) {
   const [ap, setAp] = useState(false);
-  /* acceso oculto: 5 clics seguidos en el escudo (o Ctrl+Alt+6), solo para su dueño */
+  /* acceso oculto: 3 clics seguidos en el escudo (o Ctrl+Alt+6), solo para su dueño */
   const taps = useRef<number[]>([]);
   const logoClick = () => { const now = Date.now(); taps.current = [...taps.current.filter(t => now - t < 1600), now];
-    if (ME_ROLES.six && taps.current.length >= 5) { taps.current = []; go("six", "staff"); } else go("ini", "home"); };
+    if (ME_ROLES.six && taps.current.length >= 3) { taps.current = []; go("six", "staff"); } else go("ini", "home"); };
   useEffect(() => { if (!ME_ROLES.six) return; const h = (e: KeyboardEvent) => { if (e.ctrlKey && e.altKey && e.key === "6") { e.preventDefault(); go("six", "staff"); } };
     window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h); }, [go]);
   const [open, setOpen] = useState(false), [acc, setAcc] = useState(false);

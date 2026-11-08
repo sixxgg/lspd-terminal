@@ -1,5 +1,7 @@
 /* Respuesta del equipo de ilícitos a una postulación de banda (formato Discord), con variantes y saludo según la hora */
-export type IlicForm = { ids: string; banda: string; res: "aceptada" | "rechazada"; motivos: string; v: "std" | "formal" | "breve"; saludo: "auto" | "dias" | "tardes" | "noches" | "hola"; firma: string; seguir?: boolean };
+export type IlicForm = { ids: string; banda: string; res: "aceptada" | "rechazada"; motivos: string; v: "std" | "formal" | "breve"; saludo: "auto" | "dias" | "tardes" | "noches" | "hola"; firma: string; seguir?: boolean; norma?: boolean };
+export const FIRMAS = ["💀🔪", "💀", "🔪"] as const;
+export const firmaDe = (ic: string) => `Atte.: Equipo de Ilícitos ${ic || FIRMAS[0]}`;
 export const ILIC_VARS: [IlicForm["v"], string][] = [["std", "Estándar"], ["formal", "Formal"], ["breve", "Breve"]];
 
 const saludoDe = (s: IlicForm["saludo"]) => {
@@ -18,6 +20,15 @@ const seguirTxt = (v: IlicForm["v"], ok: boolean) => ok
     : v === "breve" ? "Si siguen con ganas de continuar con el proyecto, avísennos por acá y les pasamos los pasos."
     : "Si todavía tienen ganas de seguir participando del proceso del proyecto de banda, avísennos respondiendo a este mensaje y les explicamos cómo volver a postularse.");
 
+/* recordatorio de la normativa de ilícitos (1.8 · exposed y chetos): grabar siempre y entregar POV si se pide; si no, baneo */
+const normaTxt = (v: IlicForm["v"]) => v === "breve"
+  ? ["⚠️ **Recordatorio:** si algún integrante tiene un exposed (por hacks u otro motivo), debe grabar todo su rol y entregar los POV cuando se le pidan. Si no los tiene, se lo banea al instante."]
+  : ["⚠️ **Recordatorio de la normativa de ilícitos (1.8 · Exposed y chetos)**",
+    v === "formal" ? "- El líder es responsable de las personas que incorpora a la banda." : "- El líder es responsable de a quién mete en la banda.",
+    "- Si algún integrante tiene un exposed (por hacks o por cualquier otro motivo), es **obligatorio que grabe** todo su rol.",
+    "- Cuando se le soliciten los **POV**, está obligado a entregarlos.",
+    "- En caso contrario, se aplica un **baneo inmediato** al usuario, con posible disband de la banda."];
+
 export function ilicText(f: IlicForm) {
   const M = mentions(f.ids), who = M.length ? M.join(" ") : "<@ID>", ok = f.res === "aceptada";
   const banda = f.banda.trim() ? `**${f.banda.trim()}**` : "**[nombre de la banda]**";
@@ -34,7 +45,7 @@ export function ilicText(f: IlicForm) {
     L.push("", ok ? "En los próximos días se gestionarán los canales correspondientes y el acceso al Discord de bandas. Les solicitamos un poco de paciencia durante el proceso."
       : "Esta resolución no impide una nueva postulación: los invitamos a trabajar los puntos señalados y a presentarse nuevamente.", "", ok ? "¡Enhorabuena y bienvenidos!" : "Quedamos a disposición para cualquier consulta.");
   } else {
-    L.push(`Desde el equipo encargado de ilícitos queremos comunicarte que la postulación de ${banda} ha sido ${est}.`);
+    L.push(`Desde el equipo encargado de ilícitos queremos comunicarles que la postulación de ${banda} ha sido ${est}.`);
     if (mot.length) L.push("", "**Por los siguientes motivos:**", ...mot);
     L.push("", ok ? "Vamos a ir gestionando los canales y el acceso al Discord de bandas; les pedimos un poco de paciencia. ¡Gracias!"
       : "Esto no quiere decir que se desanimen; al contrario, pueden volver con más motivación y postularse de nuevo. ¡Los esperamos nuevamente!");
@@ -45,7 +56,8 @@ export function ilicText(f: IlicForm) {
     .replace(/^En los próximos días se gestionarán/, "Recibida la confirmación, en los próximos días se gestionarán")
     .replace(/^En breve les habilitamos/, "Con su confirmación, les habilitamos");
   if (f.seguir) { const i = L.length - (ok ? (f.v === "breve" ? 2 : 4) : f.v === "formal" ? 2 : 0); L.splice(i, 0, "", seguirTxt(f.v, ok)); }
-  L.push("", f.firma.trim() || "Atte.: Equipo de Ilícitos :knife:");
+  if (f.norma && ok) L.push("", ...normaTxt(f.v));
+  L.push("", firmaDe(f.firma));
   return L.join("\n");
 }
 
@@ -57,5 +69,5 @@ export const consultaInteres = (who = "<@ID>", banda = "[nombre de la banda]") =
   "- Si la respuesta es **sí**, respondan a este mensaje y seguimos con los próximos pasos.",
   "- Si ya **no** les interesa, avísennos igual así damos de baja la postulación.", "",
   "-# Si no tenemos respuesta en las próximas 72 horas, vamos a dar la postulación por cerrada.", "",
-  "Atte.: Equipo de Ilícitos :knife:",
+  firmaDe(FIRMAS[0]),
 ].join("\n");
