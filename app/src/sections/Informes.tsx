@@ -9,7 +9,7 @@ import { LUGARES, fmtDate, getRoster, norm, rankES, uid } from "@/lib/domain";
 import { LS, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { legalFavKey } from "./Legal";
-import { EV_T, INF_EST, INF_FZ, INF_ROLES, INF_SECS, INF_TIPOS, UNITS, VEH_EST, VEH_T, agTag, dcParts, getPenal, infErrs, infNew, infText, penalOf, penalSearch, artCmp, type Art, type Inf } from "@/lib/penal";
+import { EV_T, INF_EST, INF_FZ, INF_ROLES, INF_SECS, INF_TIPOS, UNITS, VEH_EST, VEH_REL, VEH_T, agTag, dcParts, getPenal, infErrs, infNew, infText, penalOf, penalSearch, artCmp, type Art, type Inf, type Veh } from "@/lib/penal";
 import { cn } from "@/lib/cn";
 import { VehPick } from "@/components/vehpick";
 
@@ -186,13 +186,19 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
                 <Select value={v.t} onChange={e => up(x => { x.veh![i].t = e.target.value; if (e.target.value === "Policial" && !x.veh![i].mo) x.veh![i].cat = "Policial"; })} className="text-sm">{VEH_T.map(t => <option key={t}>{t}</option>)}</Select>
                 <VehPick v={v} police={v.t === "Policial"} onChange={p => up(x => { Object.assign(x.veh![i], p); })} />
                 <Button variant="ghost" size="icon" aria-label="Quitar vehículo" onClick={() => up(x => { x.veh!.splice(i, 1); })}><X /></Button>
-                <div className="grid grid-cols-2 gap-2 sm:col-span-3">
+                <div className={cn("grid grid-cols-2 gap-2 sm:col-span-3", v.t !== "Policial" && "sm:grid-cols-[1fr_1fr_11rem]")}>
                   <Input value={v.co} onChange={e => up(x => { x.veh![i].co = e.target.value; })} placeholder="Color" />
                   <Input value={v.mat} onChange={e => up(x => { x.veh![i].mat = e.target.value.toUpperCase(); })} placeholder="Matrícula" className="font-mono uppercase" />
+                  {v.t !== "Policial" && <Select value={v.rob || ""} onChange={e => up(x => { x.veh![i].rob = e.target.value as Veh["rob"]; })} title="Obligatorio: indicar si el vehículo es robado"
+                    className={cn("col-span-2 text-sm sm:col-span-1", !v.rob && (v.mo || v.mat) && "border-amber-400 dark:border-amber-500", v.rob === "si" && "text-red-600 dark:text-red-400")}>
+                    <option value="">¿Robado?</option><option value="no">No robado</option><option value="si">Robado</option></Select>}
                 </div>
-                <div className="grid gap-2 sm:col-span-3 sm:grid-cols-[8.5rem_12rem_1fr]">
-                  {v.t === "Policial" ? <Input list="unitDL" value={v.u} onChange={e => up(x => { x.veh![i].u = e.target.value.toUpperCase(); })} placeholder="Unidad" className="font-mono text-sm uppercase" />
-                    : <Select value={v.s || ""} onChange={e => up(x => { x.veh![i].s = e.target.value; })} className="text-sm" title="Sujeto vinculado (conductor o propietario)"><option value="">Sin sujeto</option>{A.suj.filter(z => z.n).map(z => <option key={z.n}>{z.n}</option>)}</Select>}
+                {v.t !== "Policial" && <div className="grid gap-2 sm:col-span-3 sm:grid-cols-2">
+                  <Select value={v.s || ""} onChange={e => up(x => { x.veh![i].s = e.target.value; })} className="text-sm" title="Sujeto relacionado con el vehículo (no hace falta que sea el dueño)"><option value="">Sin sujeto relacionado</option>{A.suj.filter(z => z.n).map(z => <option key={z.n}>{z.n}</option>)}</Select>
+                  <Select value={v.rel || ""} disabled={!v.s} onChange={e => up(x => { x.veh![i].rel = e.target.value; })} className="text-sm" title="Qué relación tiene el sujeto con el vehículo"><option value="">Relación con el vehículo…</option>{VEH_REL.map(r => <option key={r}>{r}</option>)}</Select>
+                </div>}
+                <div className={cn("grid gap-2 sm:col-span-3", v.t === "Policial" ? "sm:grid-cols-[8.5rem_12rem_1fr]" : "sm:grid-cols-[12rem_1fr]")}>
+                  {v.t === "Policial" && <Input list="unitDL" value={v.u} onChange={e => up(x => { x.veh![i].u = e.target.value.toUpperCase(); })} placeholder="Unidad" className="font-mono text-sm uppercase" />}
                   <Select value={v.est} onChange={e => up(x => { x.veh![i].est = e.target.value; })} className="text-sm"><option value="">Estado…</option>{VEH_EST.map(t => <option key={t}>{t}</option>)}</Select>
                   <Input value={v.d} onChange={e => up(x => { x.veh![i].d = e.target.value; })} placeholder="Nota (opcional, ej: impacto en el lateral durante la persecución)" />
                 </div>
