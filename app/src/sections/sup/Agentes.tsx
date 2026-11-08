@@ -81,17 +81,15 @@ export function Agentes() {
   const me = useMe(), { toast, confirm } = useFeedback();
   const R = getRoster(), P = allProfiles(), nVac = R.filter(x => x.e === "Vacaciones").length;
   const [q, setQ] = useState(""), [g, setG] = useState(""), [d, setD] = useState("");
-  const [ord, setOrd] = useState<"az" | "rk">(() => (LS.get("lspdt.agOrd") === "rk" ? "rk" : "az"));
   const [view, setView] = useState<"grid" | "list">(() => (LS.get("lspdt.agView") === "list" ? "list" : "grid"));
   const [cur, setCur] = useState<string | null>(null), [reg, setReg] = useState<string | null | false>(false);
   const s = norm(q.trim());
   const list = R.filter(a => { if (g && !GROUPS[g].r.includes(a.r)) return false; if (d) { const dv = profFull(a.n, P).div; if (d === "-" ? dv.length : !dv.includes(d)) return false; }
-    return !s || norm(a.n).includes(s) || String(a.p).includes(s) || norm(a.s || "").includes(s); }).sort((x, y) => (ord === "az" ? 0 : lvl(y.r) - lvl(x.r)) || x.n.localeCompare(y.n, "es"));
+    return !s || norm(a.n).includes(s) || String(a.p).includes(s) || norm(a.s || "").includes(s); }).sort((x, y) => lvl(y.r) - lvl(x.r) || x.n.localeCompare(y.n, "es"));
   return (
     <div className="space-y-5">
       <Card className="flex flex-wrap items-center gap-2 p-3">
         <div className="relative min-w-[14rem] flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input className="pl-9" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar por nombre, placa o State ID…" /></div>
-        <Segmented size="sm" value={ord} onChange={v => { setOrd(v); LS.set("lspdt.agOrd", v); }} options={[{ value: "az", label: "A-Z" }, { value: "rk", label: "Por rango" }]} />
         <Select className="w-auto text-sm" value={g} onChange={e => setG(e.target.value)}><option value="">LSPD · Todos</option>{Object.entries(GROUPS).filter(([, x]) => R.some(a => x.r.includes(a.r))).map(([k, x]) => <option key={k} value={k}>{x.l}</option>)}</Select>
         <Select className="w-auto max-w-[16rem] text-sm" value={d} onChange={e => setD(e.target.value)}><option value="">Todas las divisiones</option><option value="-">Sin división</option>{ALL_DIVS.map(x => <option key={x} value={x}>{SUBDIVS.has(x) ? "— " : ""}{x}</option>)}</Select>
         <Segmented size="sm" value={view} onChange={v => { setView(v); LS.set("lspdt.agView", v); }} options={[{ value: "grid", label: <LayoutGrid className="size-4" aria-label="Tarjetas" /> }, { value: "list", label: <Rows3 className="size-4" aria-label="Lista" /> }]} />
@@ -102,10 +100,10 @@ export function Agentes() {
       </Card>
       <p className="text-xs text-slate-400">Planilla del departamento · {list.length} de {R.length} agentes</p>
       {!list.length ? <Card><Empty icon={<Users />} title="Sin agentes para ese filtro" /></Card>
-        : view === "grid" ? (ord === "az" ? [["az", { l: "De la A a la Z", r: [...new Set(list.map(a => a.r))] }] as [string, { l: string; r: string[] }]] : Object.entries(GROUPS)).map(([k, gr]) => { const l = list.filter(a => gr.r.includes(a.r)); return l.length ? (
+        : view === "grid" ? Object.entries(GROUPS).map(([k, gr]) => { const l = list.filter(a => gr.r.includes(a.r)); return l.length ? (
           <section key={k}>
             <h3 className="mb-3 mt-2 flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300">{gr.l}<span className="rounded-md bg-slate-100 px-1.5 text-xs text-slate-500 dark:bg-slate-800">{l.length}</span></h3>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+            <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {l.map(a => { const p = profFull(a.n, P), md = mainDiv(p); return (
                 <button key={a.n} onClick={() => setCur(a.n)} title={p.div.join(" · ") || "Sin división"}
                   className="group overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-800 dark:bg-slate-900/60">
@@ -118,6 +116,10 @@ export function Agentes() {
                       <p className="flex items-center gap-1.5"><Trophy className="size-3.5 shrink-0" />{rankES(a.r)}</p>
                       <p className="flex items-center gap-1.5 truncate"><Shield className="size-3.5 shrink-0" /><span className="truncate">{md || "Sin división"}</span></p>
                     </div>
+                    {(() => { const cd = ((p.cond || []) as unknown as AwardT[]).map(x => decorOf(x.k)).filter(Boolean) as NonNullable<ReturnType<typeof decorOf>>[]; return cd.length ? (
+                      <div className="mt-2 flex flex-wrap gap-0.5 border-t border-slate-100 pt-2 dark:border-slate-800" title={cd.map(d => d.t).join(" · ")}>
+                        {cd.slice(0, 8).map((d, i) => <Ribbon key={d.k + i} d={d} size="sm" className="!h-[12px] !w-[30px]" />)}{cd.length > 8 && <span className="text-[10px] text-slate-400">+{cd.length - 8}</span>}
+                      </div>) : null; })()}
                   </div>
                 </button>); })}
             </div>

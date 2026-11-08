@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
-  Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, Award, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, Star, Landmark,
+  Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, Award, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Star, Landmark,
 } from "lucide-react";
 import { ME_ROLES } from "./lib/store";
 import { Helicopter } from "./components/icons";
@@ -10,10 +10,11 @@ import { lvl } from "./lib/domain";
 export type Sec = { k: string; l: string; sl?: string; d: string; icon: LucideIcon; ready?: boolean; min?: number };
 export type Area = { k: string; l: string; icon?: LucideIcon; min: number; req?: string; admin?: boolean; sec: Sec[] };
 
-/* misma estructura que la versión clásica; ready = ya migrada a la versión nueva */
+/* áreas y secciones de la terminal */
 const RAW_AREAS: Area[] = [
   { k: "ini", l: "Inicio", icon: Home, min: 0, sec: [{ k: "home", l: "Inicio", d: "Resumen del departamento", icon: Home, ready: true },
-    { k: "prof", l: "Agentes", d: "Planilla del departamento, de la A a la Z", icon: Users, ready: true, min: 6 }] },
+    { k: "nov", l: "Novedades", d: "Registro de cambios por versión y la primera versión de la terminal", icon: ScrollText, ready: true }] },
+  { k: "age", l: "Agentes", icon: Users, min: 6, req: "Sargento I", sec: [{ k: "prof", l: "Agentes", d: "Planilla del departamento por rango: Jefatura, Capitanía, Supervisores, Detectives y Patrulleros", icon: Users, ready: true }] },
   { k: "inf", l: "Informes", icon: FileText, min: 0, sec: [{ k: "inf", l: "Informes policiales", d: "Redactar, registrar y buscar informes", icon: FileText, ready: true }] },
   { k: "leg", l: "Legal", icon: Scale, min: 0, sec: [{ k: "ley", l: "Leyes", d: "Infracciones administrativas y delitos por capítulo, con favoritos", icon: Scale, ready: true }] },
   { k: "sup", l: "Supervisión", icon: ClipboardList, min: 6, req: "Sargento I", sec: [
@@ -70,7 +71,3 @@ export const canArea = (a: Area, r?: string) => (a.admin ? !!ME_ROLES.admin : lv
 /* secciones que ve cada uno dentro de un área (algunas piden más rango que el área) */
 export const secsOf = (a: Area, r?: string) => a.sec.filter(s => !s.min || lvl(r) >= s.min || !!ME_ROLES.admin);
 
-/* abre la misma sección en la versión clásica */
-export function openClassic(area: string, sec: string) {
-  location.href = `/clasica/#go=${area}/${sec}`;
-}

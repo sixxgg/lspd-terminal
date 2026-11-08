@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Lock, LogOut, Menu, Palette, X, Cloud, CloudOff, Loader2, ExternalLink, ChevronRight } from "lucide-react";
+import { Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, ScrollText } from "lucide-react";
 import { AREAS, canArea, secsOf, type Area, type Sec } from "@/nav";
 import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
@@ -9,10 +9,13 @@ import { AccountModal } from "@/components/account";
 import { AppearanceModal } from "@/components/appearance";
 import { usePref } from "@/lib/appearance";
 import { focusRing } from "@/components/ui";
+import { APP_VERSION, hasNews } from "@/sections/Novedades";
 
-export const APP_VERSION = "1.0";
-/* distintivo rojo intermitente de la versión nueva */
-export const VersionBadge = () => <span className="ver-new" title={`Versión ${APP_VERSION} · ya está disponible`}><i />v{APP_VERSION} NEW</span>;
+/* versión actual: con fuego y NEW mientras haya novedades sin ver; abre el registro de cambios */
+const VersionBadge = ({ go }: { go: (a: string, s: string) => void }) => { const nw = hasNews(); return (
+  <button onClick={() => go("ini", "nov")} title={nw ? `Versión ${APP_VERSION}: hay novedades · ver el registro de cambios` : `Versión ${APP_VERSION} · registro de cambios`}
+    className={cn("inline-flex shrink-0 items-center gap-1.5", focusRing, "rounded-full", nw ? "ver-new" : "rounded-full border border-slate-200 px-2 py-0.5 font-mono text-[10.5px] font-bold text-slate-500 hover:text-brand-600 dark:border-slate-700 dark:text-slate-400")}>
+    <ScrollText className="size-3" />v{APP_VERSION}{nw && <b className="ver-flame">NEW</b>}</button>); };
 /* nombre corto de la división para que la barra entre en una línea */
 const divShort = (l: string) => ({ "Administration Services Bureau": "Administration Services", "Air Support Division": "Air Support", "Detective Bureau": "Detective Bureau",
   "High Speed Interception Unit": "HSIU", "K-9 Division": "K-9", "Metropolitan Division": "Metropolitan", "Professional Standards Bureau": "PSB", "Recruitment and Training Division": "RTD" } as Record<string, string>)[l] || l;
@@ -30,15 +33,15 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
   useEffect(() => { LS.set("lspdt.sec." + area.k, sec.k); }, [area.k, sec.k]);
   const { nav: mode } = usePref();
   const logo = <img decoding="async" src={LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className="h-9 w-9 object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />;
+  /* estado de sincronización: barra que recorre el indicador cada pocos segundos (guardando: barra continua; sin conexión: rojo) */
   const sync = (
-    <span className={cn("hidden items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium sm:inline-flex",
-      net === "off" ? "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400" : net === "saving" ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400")}>
-      {net === "off" ? <CloudOff className="size-3.5" /> : net === "saving" ? <Loader2 className="size-3.5 animate-spin" /> : <Cloud className="size-3.5" />}
-      <span className="hidden min-[1900px]:inline">{net === "off" ? "Sin conexión" : net === "saving" ? "Guardando…" : "Sincronizado"}</span>
+    <span role="status" title={net === "off" ? "Sin conexión: los cambios se guardan al volver" : net === "saving" ? "Guardando cambios…" : "Todo sincronizado con el servidor"}
+      className={cn("sync-pill hidden sm:inline-flex", net === "off" ? "is-off" : net === "saving" ? "is-saving" : "is-ok")}>
+      {net === "off" ? <CloudOff className="size-3.5" /> : <span className="sync-dot" />}
+      <span className="hidden min-[2400px]:inline">{net === "off" ? "Sin conexión" : net === "saving" ? "Guardando" : "Sincronizado"}</span>
+      <i className="sync-bar" />
     </span>);
   const tools = <>
-    <a href="/clasica/" title="Versión clásica" className={cn("hidden items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 xl:inline-flex dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white", focusRing)}>
-      <span className="hidden min-[2000px]:inline">Versión clásica</span> <ExternalLink className="size-3.5" /></a>
     <button onClick={() => setAp(true)} className={cn("rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white", focusRing)}
       aria-label="Apariencia: temas y efectos" title="Temas, colores y efectos"><Palette className="size-[18px]" /></button></>;
   const pageHead = area.k !== "div" && area.k !== "ini" && (
@@ -58,16 +61,16 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
         <div className="mx-auto flex h-16 max-w-[1760px] items-center gap-3 px-3 sm:px-5">
           <button onClick={() => go("ini", "home")} title="Inicio" className={cn("flex shrink-0 items-center gap-2.5 rounded-xl p-1 pr-2 text-left", focusRing)}>
             {logo}
-            <span className="hidden min-w-0 min-[1500px]:block"><span className="block truncate text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">{kicker}</span>
+            <span className="hidden min-w-0 min-[1700px]:block"><span className="block truncate text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">{kicker}</span>
               <span className="block truncate text-sm font-bold">{title}</span></span>
           </button>
-          <VersionBadge />
+          <VersionBadge go={go} />
           <nav aria-label="Áreas" className="scrollbar-none flex min-w-0 flex-1 gap-0.5 overflow-x-auto [&>*:first-child]:ml-auto [&>*:last-child]:mr-auto">
             {areas.map(a => { const on = a.k === area.k, red = a.k === "adm", AI = a.icon; return (
               <button key={a.k} onClick={() => goArea(a)} aria-current={on ? "page" : undefined}
-                className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-xl px-2 py-2 text-[11.5px] font-semibold uppercase tracking-wide transition min-[1800px]:px-2.5 min-[1800px]:text-[12px]", focusRing,
+                className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-xl px-1.5 py-2 text-[11px] min-[1450px]:px-2 min-[1450px]:text-[11.5px] font-semibold uppercase tracking-wide transition min-[1800px]:px-2.5 min-[1800px]:text-[12px]", focusRing,
                   red ? (on ? "bg-red-600 text-white shadow-sm shadow-red-600/30" : "text-red-500 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300")
-                  : on ? "bg-brand-600 text-white shadow-sm shadow-brand-600/30 dark:bg-brand-500" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white")}>{AI && <AI className="size-[15px] shrink-0" />}{a.l}</button>); })}
+                  : on ? "bg-brand-600 text-white shadow-sm shadow-brand-600/30 dark:bg-brand-500" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white")}>{AI && <AI className={cn("size-[15px] shrink-0", !on && "hidden min-[1450px]:block")} />}{a.l}</button>); })}
           </nav>
           <div className="flex shrink-0 items-center gap-1">
             {sync}{tools}
@@ -139,7 +142,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
           <img decoding="async" src={LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className="h-9 w-9 object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">{kicker}</p>
-            <p className="truncate text-sm font-bold">{title} <span className="ml-1"><VersionBadge /></span></p>
+            <p className="truncate text-sm font-bold">{title} <span className="ml-1"><VersionBadge go={go} /></span></p>
           </div>
           <button onClick={() => setOpen(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 lg:hidden dark:hover:bg-slate-800" aria-label="Cerrar menú"><X className="size-5" /></button>
         </div>

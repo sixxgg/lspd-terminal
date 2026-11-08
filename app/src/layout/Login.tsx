@@ -33,7 +33,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
     e.preventDefault(); setMsg(null);
     if (!picked) return setMsg({ kind: "err", text: "Escribí el nombre de tu personaje y elegilo de la lista." });
     if (reg.has(picked.n)) return setMsg({ kind: "err", text: "Ese agente ya tiene cuenta. Iniciá sesión." });
-    if (pw.length < 6) return setMsg({ kind: "err", text: "La contraseña tiene que tener al menos 6 caracteres." });
+    if (pw.length < 8) return setMsg({ kind: "err", text: "La contraseña tiene que tener al menos 8 caracteres." });
     if (pw !== pw2) return setMsg({ kind: "err", text: "Las contraseñas no coinciden." });
     if (pub.needCode && !code.trim()) return setMsg({ kind: "err", text: "Ingresá el código de registro que te pasó Capitanía." });
     setBusy(true);
@@ -103,7 +103,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
             </form>
           )}
         </div>
-        <p className="mt-5 text-center text-xs text-slate-400">Mission Row 10 · Uso interno · <a href="/clasica/" className="font-medium text-brand-600 hover:underline dark:text-brand-300">Versión clásica</a></p>
+        <p className="mt-5 text-center text-xs text-slate-400">Mission Row 10 · Uso interno</p>
       </div>
     </div>
   );

@@ -36,7 +36,7 @@ Estamos a la espera de su respuesta.`;
             <div className="flex min-h-9 flex-wrap gap-1.5">
               {ags.length ? ags.map((x, i) => (
                 <span key={x.n} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white py-0.5 pl-1 pr-1 text-xs font-semibold dark:border-slate-700 dark:bg-slate-800">
-                  <button className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300" onClick={() => setAgs(ags.map((y, j) => (j === i ? { ...y, art: y.art === "la" ? "el" : "la" } : y)))}>{x.art === "la" ? "de la" : "del"}</button>
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500 dark:bg-slate-700 dark:text-slate-300">{x.art === "la" ? "de la" : "del"}</span>
                   {x.n}<button aria-label="Quitar" onClick={() => setAgs(ags.filter((_, j) => j !== i))} className="rounded-full p-0.5 text-slate-400 hover:text-red-500"><X className="size-3.5" /></button>
                 </span>
               )) : <span className="text-sm text-slate-400">Todavía no elegiste oficiales.</span>}

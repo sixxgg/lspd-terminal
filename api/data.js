@@ -3,10 +3,18 @@ import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, AD
 
 async function downloadImg(url) {
   const fail = m => Object.assign(new Error(m), { status: 400 });
-  let u; try { u = new URL(url); } catch { throw fail("La URL no es válida"); }
-  if (u.protocol !== "https:" || /^(localhost|127\.|10\.|192\.168\.|169\.254\.|0\.)/.test(u.hostname)) throw fail("Solo se aceptan URLs públicas con https");
+  /* solo https públicas; cada redirección se vuelve a validar (evita que un enlace lleve a la red interna) */
+  const check = s => { let u; try { u = new URL(s); } catch { throw fail("La URL no es válida"); }
+    const h = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+    const priv = /^(localhost|.*\.local|.*\.internal|127\.|10\.|192\.168\.|169\.254\.|0\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|::1?$|f[cd][0-9a-f]{2}:|fe80:|::ffff:)/.test(h);
+    if (u.protocol !== "https:" || priv || u.username || u.password) throw fail("Solo se aceptan URLs públicas con https"); return u; };
   const ctl = AbortSignal.timeout(10000);
-  const r = await fetch(u, { signal: ctl, redirect: "follow", headers: { "User-Agent": "LSPD-Terminal" } }).catch(() => { throw fail("No se pudo descargar la imagen"); });
+  let u = check(url), r;
+  for (let i = 0; ; i++) {
+    r = await fetch(u, { signal: ctl, redirect: "manual", headers: { "User-Agent": "LSPD-Terminal" } }).catch(() => { throw fail("No se pudo descargar la imagen"); });
+    if (r.status >= 300 && r.status < 400 && r.headers.get("location")) { if (i >= 3) throw fail("Demasiadas redirecciones"); u = check(new URL(r.headers.get("location"), u).href); continue; }
+    break;
+  }
   if (!r.ok) throw fail(`El sitio respondió ${r.status}. Si es un enlace de Discord, puede haber vencido: subí la imagen desde tu PC.`);
   const type = (r.headers.get("content-type") || "").split(";")[0].trim();
   if (!/^image\/(png|jpe?g|gif|webp|svg\+xml|avif)$/.test(type)) throw fail("El enlace no es una imagen");

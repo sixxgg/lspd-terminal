@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Radio, Lock } from "lucide-react";
-import { Card, CardBody, CardHeader, Chip, Field, Input, Segmented } from "@/components/ui";
+import { Card, CardBody, CardHeader, Chip, Field, Input } from "@/components/ui";
 import { AgentPicker } from "@/components/agents";
 import { CopyLine } from "@/components/output";
 import { Note } from "@/components/layout";
@@ -43,7 +43,6 @@ export function T1080({ psbOnly }: { psbOnly?: boolean }) {
             <p className="pt-1 text-xs text-slate-500 dark:text-slate-400">{s.h}</p>
           </Field>
           {esc === "otro" && <Input value={otro} onChange={e => setOtro(e.target.value)} placeholder="a la sala de reuniones…" autoFocus />}
-          <Field label="Tratamiento" hint="(se pone solo según el agente; cambialo si hace falta)"><Segmented value={art} onChange={setArt} options={[{ value: "el", label: "el" }, { value: "la", label: "la" }]} /></Field>
         </CardBody>
       </Card>
       <CopyLine tag="/rlspd" label="Mensaje de radio" text={txt} errors={errs} />

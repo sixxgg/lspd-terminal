@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { TrendingUp, TrendingDown, Megaphone, UserRound, ClipboardCheck } from "lucide-react";
+import { TrendingUp, TrendingDown, Megaphone, UserRound, ClipboardCheck, Pencil } from "lucide-react";
+import { TplEditor } from "@/components/tpleditor";
 import { Button, Card, CardBody, CardHeader, Checkbox, Field, Input, Segmented, Select } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
 import { addMov, takePreset, updateAgent } from "@/lib/profiles";
@@ -45,6 +46,7 @@ export function Ascensos() {
   const eligible = (x: Agent) => eligibleFor(x, mode, me.l);
   const opts = a ? rankOptions(a, mode, me.l) : [];
   const nr = a && opts.includes(nuevo) ? nuevo : opts[0] || "";
+  const canTpl = me.admin || me.l >= 8, [tplEd, setTplEd] = useState<TplKey | null>(null);
   const pick = (n: string) => { const x = findAgent(n); setAg(n); setArt(genderOf(n) === "f" ? "la" : "el"); setDcId(dcIdOfAgent(x)); setNuevo(""); };
   const top = LADDER.filter(r => lvl(r) < me.l).pop();
 
@@ -79,7 +81,6 @@ export function Ascensos() {
               <Field label={mode === "asc" ? "Nuevo rango" : "Rango tras el descenso"}>
                 <Select value={nr} disabled={!a} onChange={e => setNuevo(e.target.value)}>{a ? opts.map(r => <option key={r} value={r}>{rankES(r)}</option>) : <option>Elegí un agente</option>}</Select>
               </Field>
-              <Field label="Tratamiento"><Segmented value={art} onChange={setArt} options={[{ value: "el", label: "del" }, { value: "la", label: "de la" }]} /></Field>
             </div>
             {a && nr && (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
@@ -96,7 +97,7 @@ export function Ascensos() {
           </CardBody>
         </Card>
         <Card>
-          <CardHeader icon={<Megaphone />} title="Anuncio de Discord" desc="Plantilla editable por Capitanía y administradores en la versión clásica." />
+          <CardHeader icon={<Megaphone />} title="Anuncio de Discord" desc={canTpl ? "Capitanía y los administradores pueden editar la plantilla." : undefined} action={canTpl ? <Button size="sm" variant="ghost" icon={<Pencil />} onClick={() => setTplEd(key)}>Editar plantilla</Button> : undefined} />
           <CardBody>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Fecha"><Input type="date" value={fecha} onChange={e => setFecha(e.target.value)} /></Field>
@@ -113,6 +114,7 @@ export function Ascensos() {
         <CopyLine tag="/do" label={mode === "asc" ? "Contrato de ascenso" : "Resolución de descenso"} text={doTxt} errors={errs} />
         <DiscordOutput sticky={false} title={mode === "asc" ? "Anuncio de ascenso" : "Anuncio de descenso"} text={dc} errors={dcErrs} ctx={{ users: a && dcId ? { [dcId]: a.n } : {} }} web={false} />
       </Col>
+      {tplEd && <TplEditor k={tplEd} onClose={() => setTplEd(null)} />}
     </Split>
   );
 }
