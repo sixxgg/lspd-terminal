@@ -195,7 +195,11 @@ html:is([data-head="rajdhani"], [data-head="teko"]) h1.text-2xl { font-size: 1.7
 
 /* SIX: apagado de pantalla y consola de acceso */
 /* six · temas propios (un solo color sólido por tema: --c; intensidad del brillo: --gl) */
-.six-root { --c: #39ff88; --gl: 1; }
+.six-root { --c: #39ff88; --six: 57 255 136; --gl: 1; }
+/* bordes: color del tema · neutros · sin bordes */
+.six-root[data-bd="neutro"] [class*="border-six"]:not(:focus), .six-root[data-bd="neutro"] .six-panel { border-color: rgba(255,255,255,.08) !important; }
+.six-root[data-bd="no"] [class*="border-six"]:not(:focus), .six-root[data-bd="no"] .six-panel { border-color: transparent !important; }
+.six-root[data-bd="no"] .six-corner { display: none; }
 .six-grid { background-image: linear-gradient(color-mix(in srgb, var(--c) 6%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--c) 6%, transparent) 1px, transparent 1px); background-size: 44px 44px; mask-image: radial-gradient(ellipse at 50% 30%, #000 30%, transparent 80%); }
 .six-vignette { background: radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--c) 14%, transparent), transparent 55%), radial-gradient(ellipse at 50% 120%, rgba(0,0,0,.8), transparent 60%); }
 .six-scan { background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px); }

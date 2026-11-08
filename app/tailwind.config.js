@@ -9,6 +9,7 @@ export default {
         mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
       colors: {
+        six: "rgb(var(--six, 57 255 136) / <alpha-value>)", /* acento del apartado six (lo fija su tema) */
         /* colores por variables: los cambia el tema elegido (ver src/lib/appearance.ts) */
         brand: Object.fromEntries([50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map(k => [k, `rgb(var(--b-${k}) / <alpha-value>)`])),
         slate: Object.fromEntries([50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map(k => [k, `rgb(var(--n-${k}) / <alpha-value>)`])),

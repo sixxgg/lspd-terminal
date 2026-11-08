@@ -4,11 +4,13 @@ import { createPortal } from "react-dom";
 import { LS } from "@/lib/store";
 
 /* ---------- ajustes (independientes de la MDT; viajan con la cuenta de six) ---------- */
-export type SixCfg = { tema: string; lluvia: 0 | 1 | 2 | 3; scan: boolean; grid: boolean; glow: 0 | 1 | 2; flicker: boolean; intro: "completa" | "corta" | "no"; error: boolean };
+export type SixCfg = { tema: string; lluvia: 0 | 1 | 2 | 3; scan: boolean; grid: boolean; glow: 0 | 1 | 2; flicker: boolean; intro: "completa" | "corta" | "no"; error: boolean; bd: "tema" | "neutro" | "no" };
 export const CFG_KEY = "lspdt.six.cfg";
-export const CFG0: SixCfg = { tema: "verde", lluvia: 1, scan: true, grid: true, glow: 1, flicker: true, intro: "completa", error: true };
+export const CFG0: SixCfg = { tema: "verde", lluvia: 1, scan: true, grid: true, glow: 1, flicker: true, intro: "completa", error: true, bd: "tema" };
 export const THEMES: [string, string, string][] = [["verde", "Verde", "#39ff88"], ["cian", "Cian", "#00e5ff"], ["rojo", "Rojo", "#ff2b4a"], ["ambar", "Ámbar", "#ffb000"], ["violeta", "Violeta", "#b46cff"], ["blanco", "Blanco", "#e8eef7"]];
 export const colorOf = (t: string) => (THEMES.find(x => x[0] === t) || THEMES[0])[2];
+/* variables CSS de un color: --c (hex, para sombras) y --six (canales RGB, para las clases bg-six/NN, border-six/NN…) */
+export const vars = (col: string) => ({ ["--c" as string]: col, ["--six" as string]: [1, 3, 5].map(i => parseInt(col.slice(i, i + 2), 16)).join(" ") });
 export const readCfg = (): SixCfg => ({ ...CFG0, ...LS.json<Partial<SixCfg>>(CFG_KEY, {}) });
 
 const rnd = (n: number) => Math.floor(Math.random() * n);
@@ -82,10 +84,10 @@ export function Boot({ short, onDone }: { short?: boolean; onDone: () => void })
   return (
     <div className="fixed inset-0 z-[96] cursor-pointer bg-black" onClick={() => cb.current()} title="Clic para saltar">
       {ph === "off" ? <div className="six-off" /> : (
-        <div className="six-con relative grid h-full grid-rows-[auto_1fr_auto] gap-5 p-6 font-mono text-[13px] text-[var(--c)] sm:p-10">
+        <div className="six-con relative grid h-full grid-rows-[auto_1fr_auto] gap-5 p-6 font-mono text-[13px] text-six sm:p-10">
           <div className="flex items-end gap-6">
             <pre className={`six-skull text-[10px] leading-[1.15] sm:text-[14px] ${ok ? "on" : ""}`}>{SKULL}</pre>
-            <p className="hidden pb-2 text-xs text-[var(--c)]/70 sm:block">six@terminal:~# ./acceso --privado</p>
+            <p className="hidden pb-2 text-xs text-six/70 sm:block">six@terminal:~# ./acceso --privado</p>
           </div>
           <div className="grid min-h-0 gap-6 md:grid-cols-[1fr_20rem]">
             <div className="space-y-1 overflow-hidden">
@@ -93,10 +95,10 @@ export function Boot({ short, onDone }: { short?: boolean; onDone: () => void })
               {ok && <p className="six-granted mt-4 text-xl font-bold tracking-[0.3em] text-white">ACCESO CONCEDIDO</p>}
               <span className="six-cur">█</span>
             </div>
-            <div className="hidden overflow-hidden text-[10px] leading-relaxed text-[var(--c)]/30 md:block">{dump.map((d, i) => <p key={i}>{d}</p>)}</div>
+            <div className="hidden overflow-hidden text-[10px] leading-relaxed text-six/30 md:block">{dump.map((d, i) => <p key={i}>{d}</p>)}</div>
           </div>
-          <div><div className="h-1 overflow-hidden rounded bg-[var(--c)]/15"><div className="h-full bg-[var(--c)] shadow-[0_0_10px_var(--c)] transition-all duration-300" style={{ width: pct + "%" }} /></div>
-            <p className="mt-2 flex justify-between text-[11px] text-[var(--c)]/60"><span>DESCIFRANDO… {pct}%</span><span>ESC para saltar</span></p></div>
+          <div><div className="h-1 overflow-hidden rounded bg-six/15"><div className="h-full bg-six shadow-[0_0_10px_var(--c)] transition-all duration-300" style={{ width: pct + "%" }} /></div>
+            <p className="mt-2 flex justify-between text-[11px] text-six/60"><span>DESCIFRANDO… {pct}%</span><span>ESC para saltar</span></p></div>
         </div>
       )}
     </div>

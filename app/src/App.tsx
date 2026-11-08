@@ -54,7 +54,7 @@ type Boot = { me: string | null; names: string[]; needCode: boolean; brand?: Rec
 export default function App() {
   const [boot, setBoot] = useState<Boot | null>(null);
   const [me, setMe] = useState<Me | null>(null);
-  const [nav, setNav] = useState(() => { try { return JSON.parse(localStorage.getItem("lspdt.next.nav") || "") as { a: string; s: string }; } catch { return { a: "ini", s: "home" }; } });
+  const [nav, setNav] = useState(() => { try { const n = JSON.parse(localStorage.getItem("lspdt.next.nav") || "") as { a: string; s: string }; return n.a === "six" ? { a: "ini", s: "home" } : n; } catch { return { a: "ini", s: "home" }; } });
   const { toast } = useFeedback();
   useStoreVersion();
 
@@ -71,7 +71,7 @@ export default function App() {
     void api("/api/auth?full=1").then(r => { const b = r as unknown as Boot; setBoot(b); if (b.me && b.data) enter(b.data); });
   }, [enter]);
   useEffect(() => { const f = (e: Event) => { setNav((e as CustomEvent<{ a: string; s: string }>).detail); scrollTopApp(); }; window.addEventListener("lspd:go", f); return () => window.removeEventListener("lspd:go", f); }, []);
-  useEffect(() => { try { localStorage.setItem("lspdt.next.nav", JSON.stringify(nav)); } catch { /* */ } }, [nav]);
+  useEffect(() => { if (nav.a !== "six") try { localStorage.setItem("lspdt.next.nav", JSON.stringify(nav)); } catch { /* */ } }, [nav]); /* six nunca queda como página de inicio */
 
   useEffect(() => { if (!me) return; const t = setTimeout(() => { void import("./sections/Informes"); void import("./sections/Legal"); }, 2500); return () => clearTimeout(t); }, [me]);
   useEffect(() => { /* favicon editable desde Administración → Marca e imágenes */
