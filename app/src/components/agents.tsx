@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
-import { ChevronDown, Search, Users, Check } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Search, Users, Check, X } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { fotoOf, getRoster, imgOpt, initials, insigniaUrl, lvl, norm, rankES, RANK_COLOR, GROUPS, profOf } from "@/lib/domain";
+import { fotoOf, getRoster, imgOpt, initials, insigniaUrl, lvl, norm, rankES, RANK_COLOR, profOf } from "@/lib/domain";
 import { useStoreVersion, type Agent } from "@/lib/store";
 import { Badge } from "./ui";
 
@@ -29,64 +29,69 @@ export function RankBadge({ r }: { r: string }) {
   );
 }
 
-/* Selector de agentes agrupado por rango, con búsqueda por nombre o placa */
-export function AgentPicker({ value, onChange, filter, multiple, max = 220, empty = "Sin resultados" }: {
-  value: string | string[]; onChange: (n: string) => void; filter?: (a: Agent) => boolean; multiple?: boolean; max?: number; empty?: string;
+/* Buscador de agentes: escribís y aparecen los que coinciden (nombre, placa o rango), ordenados de la A a la Z.
+   Con ↑ ↓ y Enter se elige sin mouse. Si hay uno elegido se muestra como ficha, con ✕ para cambiarlo. */
+export function AgentCombo({ value, onChange, names, filter, placeholder = "Buscar agente por nombre, placa o rango…", sub, chosen = [], empty = "Sin resultados", clearable = true, className }: {
+  value: string; onChange: (n: string) => void; names?: string[]; filter?: (a: Agent) => boolean; placeholder?: string;
+  sub?: (n: string) => string; chosen?: string[]; empty?: string; clearable?: boolean; className?: string;
 }) {
   useStoreVersion();
-  const [q, setQ] = useState(""), [grp, setGrp] = useState(""), [open, setOpen] = useState<Set<string>>(new Set());
-  const sel = Array.isArray(value) ? value : value ? [value] : [];
-  const list = useMemo(() => {
-    const s = norm(q.trim());
-    return getRoster().filter(a => lvl(a.r) > 0 && (!filter || filter(a)))
-      .filter(a => !grp || GROUPS[grp].r.includes(a.r))
-      .filter(a => !s || norm(a.n).includes(s) || String(a.p || "").includes(s))
-      .sort((a, b) => lvl(b.r) - lvl(a.r) || a.n.localeCompare(b.n));
-  }, [q, grp, filter]);
-  const ranks = [...new Set(list.map(a => a.r))];
-  const showAll = !!q.trim() || list.length <= 8 || ranks.length < 2;
-  const toggle = (r: string) => setOpen(o => { const n = new Set(o); n.has(r) ? n.delete(r) : n.add(r); return n; });
+  const [q, setQ] = useState(""), [open, setOpen] = useState(false), [hi, setHi] = useState(0), [edit, setEdit] = useState(false);
+  const box = useRef<HTMLDivElement>(null), inp = useRef<HTMLInputElement>(null), listRef = useRef<HTMLDivElement>(null);
+  const R = getRoster(), byN = useMemo(() => new Map(R.map(a => [a.n, a])), [R]);
+  const pool = useMemo(() => (names ? names.map(n => byN.get(n) || ({ n, r: "", p: "" } as Agent)) : R.filter(a => lvl(a.r) > 0 && (!filter || filter(a))))
+    .slice().sort((a, b) => a.n.localeCompare(b.n, "es")), [names, R, byN, filter]);
+  const list = useMemo(() => { const s = norm(q.trim()); if (!s) return pool;
+    const hit = pool.filter(a => norm(`${a.n} ${a.p || ""} ${rankES(a.r)} ${sub ? sub(a.n) : ""}`).includes(s));
+    return hit.sort((a, b) => +!norm(a.n).startsWith(s) - +!norm(b.n).startsWith(s) || a.n.localeCompare(b.n, "es")); }, [q, pool, sub]);
+  useEffect(() => { setHi(0); }, [q]);
+  useEffect(() => { const h = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) { setOpen(false); setEdit(false); } }; document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h); }, []);
+  useEffect(() => { listRef.current?.querySelector<HTMLElement>(`[data-i="${hi}"]`)?.scrollIntoView({ block: "nearest" }); }, [hi]);
+  const pick = (n: string) => { onChange(n); setQ(""); setOpen(false); setEdit(false); inp.current?.blur(); };
+  const cur = value ? byN.get(value) : undefined, showChip = !!value && !edit;
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-      <div className="flex gap-2 border-b border-slate-100 p-2 dark:border-slate-800">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar por nombre o placa…"
-            className="h-9 w-full rounded-lg bg-slate-50 pl-9 pr-3 text-sm outline-none ring-brand-500/20 placeholder:text-slate-400 focus:ring-4 dark:bg-slate-800/60" />
+    <div ref={box} className={cn("relative", className)}>
+      {showChip ? (
+        <div className="flex h-11 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-2.5 dark:border-slate-700 dark:bg-slate-900/70">
+          <button type="button" onClick={() => { setEdit(true); setOpen(true); setTimeout(() => inp.current?.focus(), 0); }} className="flex min-w-0 flex-1 items-center gap-2.5 text-left" title="Cambiar">
+            <Avatar n={value} size={28} /><span className="truncate text-sm font-semibold">{value}</span>
+            {cur?.r && <RankBadge r={cur.r} />}{cur?.p && <span className="font-mono text-xs text-slate-400">#{cur.p}</span>}
+            {sub && sub(value) && <span className="truncate text-xs text-slate-400">· {sub(value)}</span>}
+          </button>
+          {clearable && <button type="button" aria-label="Quitar" onClick={() => onChange("")} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"><X className="size-4" /></button>}
         </div>
-        <select value={grp} onChange={e => setGrp(e.target.value)} className="h-9 rounded-lg bg-slate-50 px-2 text-xs font-medium text-slate-600 outline-none focus:ring-4 focus:ring-brand-500/20 dark:bg-slate-800/60 dark:text-slate-300">
-          <option value="">Todos</option>{Object.entries(GROUPS).map(([k, g]) => <option key={k} value={k}>{g.l}</option>)}
-        </select>
-      </div>
-      <div className="scrollbar-thin overflow-y-auto" style={{ maxHeight: max }}>
-        {!list.length && <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-400"><Users className="size-4" />{empty}</div>}
-        {ranks.map(r => {
-          const l = list.filter(a => a.r === r), isOpen = showAll || open.has(r) || l.some(a => sel.includes(a.n));
-          return (
-            <div key={r}>
-              <button type="button" onClick={() => toggle(r)} className="flex w-full items-center gap-2 border-b border-slate-100 bg-slate-50/70 px-3 py-1.5 text-left hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/30 dark:hover:bg-slate-800/60">
-                <RankBadge r={r} /><span className="text-[11px] text-slate-400">{l.length} {l.length === 1 ? "agente" : "agentes"}</span>
-                <ChevronDown className={cn("ml-auto size-4 text-slate-400 transition-transform", isOpen && "rotate-180")} />
-              </button>
-              {isOpen && l.map(a => {
-                const on = sel.includes(a.n);
-                return (
-                  <button key={a.n} type="button" onClick={() => onChange(a.n)}
-                    className={cn("flex w-full items-center gap-2.5 border-b border-slate-100 px-3 py-2 text-left text-sm transition last:border-0 focus-visible:bg-brand-50 focus-visible:outline-none dark:border-slate-800/70 dark:focus-visible:bg-brand-500/10",
-                      on ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-200" : "hover:bg-slate-50 dark:hover:bg-slate-800/50")}>
-                    <Avatar n={a.n} size={24} />
-                    <span className="flex-1 truncate font-medium">{a.n}</span>
-                    {a.e && a.e !== "Activo" && <Badge>{a.e}</Badge>}
-                    <span className="font-mono text-xs text-slate-400">{a.p ? "#" + a.p : "—"}</span>
-                    {multiple && on && <Check className="size-4 text-brand-500" />}
-                  </button>
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
-      <div className="border-t border-slate-100 px-3 py-1.5 text-[11px] text-slate-400 dark:border-slate-800">{list.length} agentes{sel.length ? ` · ${multiple ? "Elegidos" : "Elegido"}: ${sel.join(", ")}` : ""}</div>
+      ) : (
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <input ref={inp} value={q} onChange={e => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} placeholder={placeholder} role="combobox" aria-expanded={open} aria-autocomplete="list"
+            onKeyDown={e => { if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); setHi(h => Math.min(list.length - 1, h + 1)); }
+              else if (e.key === "ArrowUp") { e.preventDefault(); setHi(h => Math.max(0, h - 1)); }
+              else if (e.key === "Enter") { e.preventDefault(); if (list[hi]) pick(list[hi].n); }
+              else if (e.key === "Escape") { setOpen(false); setEdit(false); } }}
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none ring-brand-500/20 placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 dark:border-slate-700 dark:bg-slate-900/70" />
+        </div>
+      )}
+      {open && !showChip && (
+        <div ref={listRef} role="listbox" className="scrollbar-thin absolute inset-x-0 top-full z-40 mt-1 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+          {!list.length && <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-400"><Users className="size-4" />{empty}</div>}
+          {list.slice(0, 80).map((a, i) => { const on = a.n === value || chosen.includes(a.n); return (
+            <button key={a.n} type="button" role="option" aria-selected={i === hi} data-i={i} onMouseEnter={() => setHi(i)} onMouseDown={e => e.preventDefault()} onClick={() => pick(a.n)}
+              className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm", i === hi ? "bg-brand-50 dark:bg-brand-500/15" : "", on && "text-brand-700 dark:text-brand-200")}>
+              <Avatar n={a.n} size={24} /><span className="min-w-0 flex-1 truncate font-medium">{a.n}{sub && sub(a.n) ? <span className="ml-1.5 text-xs font-normal text-slate-400">{sub(a.n)}</span> : null}</span>
+              {a.e && a.e !== "Activo" && <Badge>{a.e}</Badge>}{a.r && <RankBadge r={a.r} />}
+              <span className="w-12 text-right font-mono text-xs text-slate-400">{a.p ? "#" + a.p : ""}</span>{on && <Check className="size-4 text-brand-500" />}
+            </button>); })}
+          {list.length > 80 && <p className="px-2.5 py-1.5 text-[11px] text-slate-400">Seguí escribiendo para acotar ({list.length} coinciden)</p>}
+        </div>
+      )}
     </div>
   );
+}
+
+/* Compatibilidad: el selector anterior ahora es el buscador (en modo múltiple marca los ya elegidos y no muestra ficha) */
+export function AgentPicker({ value, onChange, filter, multiple, empty = "Sin resultados" }: {
+  value: string | string[]; onChange: (n: string) => void; filter?: (a: Agent) => boolean; multiple?: boolean; max?: number; empty?: string;
+}) {
+  const sel = Array.isArray(value) ? value : value ? [value] : [];
+  return <AgentCombo value={multiple ? "" : sel[0] || ""} chosen={multiple ? sel : []} onChange={onChange} filter={filter} empty={empty} clearable={!multiple} />;
 }

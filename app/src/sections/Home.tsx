@@ -1,6 +1,6 @@
 import { Users, UserCheck, Vote, FileText, ArrowUpRight } from "lucide-react";
 import { Card, CardBody } from "@/components/ui";
-import { AREAS, canArea } from "@/nav";
+import { AREAS, canArea, secsOf } from "@/nav";
 import { getRoster, rankES } from "@/lib/domain";
 import { LS, useStoreVersion } from "@/lib/store";
 import { cn } from "@/lib/cn";
@@ -38,11 +38,11 @@ export function Home({ me, go }: { me: { n: string; r: string }; go: (a: string,
         ))}
       </div>
 
-      {AREAS.filter(a => a.k !== "ini" && canArea(a, me.r)).map(a => (
+      {AREAS.filter(a => canArea(a, me.r) && secsOf(a, me.r).some(s => s.k !== "home")).map(a => (
         <section key={a.k}>
           <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{a.l}</h3>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {a.sec.map(s => (
+            {secsOf(a, me.r).filter(s => s.k !== "home").map(s => (
               <button key={s.k} onClick={() => go(a.k, s.k)}
                 className="group flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-brand-500/50">
                 <div className={cn("grid size-10 shrink-0 place-items-center rounded-xl transition", s.ready ? "bg-brand-50 text-brand-600 group-hover:bg-brand-600 group-hover:text-white dark:bg-brand-500/10 dark:text-brand-300" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400")}><s.icon className="size-5" /></div>

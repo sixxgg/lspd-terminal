@@ -1,7 +1,7 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { FolderOpen, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Search, Plus, X, Pencil, Trash2, Save, RotateCcw, Lock, Info, Mail, Vote, History, Copy, FolderInput, ChevronDown } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Checkbox, Field, Input, Segmented, Select, Textarea } from "@/components/ui";
-import { AgentPicker } from "@/components/agents";
+import { AgentCombo, AgentPicker } from "@/components/agents";
 import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { Col, Split } from "@/components/layout";
@@ -16,7 +16,7 @@ import { cn } from "@/lib/cn";
 type Falta = { id: string; g: string; n: string; d: string };
 const FALTAS_DEF: Falta[] = (FALTAS_RAW as [string, string, string][]).map((f, i) => ({ id: "d" + i, g: f[0], n: f[1], d: f[2] }));
 const GORD: Record<string, number> = { leve: 0, grave: 1, "muy grave": 2 };
-export const getFaltas = () => (LS.json<Falta[] | null>("lspdt.faltas", null) || FALTAS_DEF.map(f => ({ ...f }))).slice().sort((a, b) => GORD[a.g] - GORD[b.g]);
+export const getFaltas = () => (LS.json<Falta[] | null>("lspdt.faltas", null) || FALTAS_DEF.map(f => ({ ...f }))).slice().sort((a, b) => GORD[a.g] - GORD[b.g] || a.n.localeCompare(b.n, "es"));
 const G_CLS: Record<string, string> = { leve: "bg-sky-500/10 text-sky-700 dark:text-sky-300", grave: "bg-amber-500/15 text-amber-700 dark:text-amber-300", "muy grave": "bg-red-500/10 text-red-700 dark:text-red-300" };
 const GL: Record<string, string> = { leve: "leves", grave: "graves", "muy grave": "muy graves" };
 const PSB_DIVS: Record<string, string> = { IAD: "División de Asuntos Internos (IAD)", FID: "División de Investigación del Uso de la Fuerza (FID)", SOD: "División de Operaciones Especiales (SOD)" };
@@ -90,7 +90,7 @@ function CaseCard() {
       <CardBody>
         <div className="grid gap-4 sm:grid-cols-[auto_1fr]">
           <Field label="N° de caso"><CaseInput /></Field>
-          <Field label="Agente investigado"><Select value={p.ag} onChange={e => up(x => { x.ag = e.target.value; })} className="text-sm"><option value="">Elegí al agente…</option>{R.map(a => <option key={a.n} value={a.n}>{a.n} · {rankES(a.r)}{a.p ? " #" + a.p : ""}</option>)}</Select></Field>
+          <Field label="Agente investigado"><AgentCombo value={p.ag} onChange={n => up(x => { x.ag = n; })} names={R.map(a => a.n)} placeholder="Buscar al agente investigado…" /></Field>
         </div>
         <Field label="División"><Segmented size="sm" value={p.dv} onChange={v => up(x => { x.dv = v; })} options={["IAD", "FID", "SOD"].map(v => ({ value: v, label: v }))} /></Field>
       </CardBody>
@@ -248,7 +248,7 @@ function Forms({ tab }: { tab: string }) {
         {tab === "ele" && <Card>
           <CardHeader icon={<ArrowUpRight />} title="Elevación" />
           <CardBody>
-            <Field label="Para" hint="(mando que decide)"><Select value={E.para} onChange={e => ue(x => { x.para = e.target.value; })} className="text-sm"><option value="">Elegí al destinatario…</option>{co.map(n => <option key={n} value={n}>{n} · {psbRank(n)}{dcIdOf(n) ? "" : " · sin Discord ID"}</option>)}</Select></Field>
+            <Field label="Para" hint="(mando que decide)"><AgentCombo value={E.para} onChange={n => ue(x => { x.para = n; })} names={co} sub={n => psbRank(n) + (dcIdOf(n) ? "" : " · sin Discord ID")} placeholder="Buscar al mando que decide…" /></Field>
             <Field label="📌 Hechos"><Textarea rows={3} value={E.hechos} onChange={e => ue(x => { x.hechos = e.target.value; })} placeholder="Qué pasó y cómo llegó el caso a la PSB." /></Field>
             <Field label="🔎 Constatado" hint="(una línea por punto)"><Textarea rows={3} value={E.const} onChange={e => ue(x => { x.const = e.target.value; })} placeholder={"El error existió…\nEs su primera falta de este tipo…"} /></Field>
             <Field label="⚖️ Conclusión"><div className="grid gap-2 sm:grid-cols-2">{PSB_CONCL.map(([k, d]) => (

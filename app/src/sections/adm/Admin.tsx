@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { UserCheck, Crown, ShieldPlus, ImagePlus, Type, Save, Trash2, Check, X, Upload, Download, FileSpreadsheet, RotateCcw, GraduationCap, Shield, Database } from "lucide-react";
-import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Select } from "@/components/ui";
-import { Avatar } from "@/components/agents";
+import { Button, Card, CardBody, CardHeader, Empty, Field, Input } from "@/components/ui";
+import { AgentCombo, Avatar } from "@/components/agents";
 import { ImagePicker, imgSpec } from "@/components/imagepick";
 import { useFeedback } from "@/components/feedback";
 import { ALL_DIVS, findAgent, fmtDate, getRoster, lvl, norm, rankES } from "@/lib/domain";
@@ -54,7 +54,7 @@ export function AdmAccesos() {
             {adm.owners.map(n => <Row key={n} n={n}><span className="rounded-md bg-amber-400/15 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">Dueño</span></Row>)}
             {adm.admins.map(n => <Row key={n} n={n}><span className="rounded-md bg-brand-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-brand-700 dark:text-brand-300">Administrador</span>{adm.canGrant && <Button size="sm" variant="ghost" className="text-red-600" onClick={() => setAdmin(n, false)}>Quitar</Button>}</Row>)}
           </div>
-          {adm.canGrant && <CardBody><div className="flex gap-2"><Select value={sel} onChange={e => setSel(e.target.value)} className="text-sm"><option value="">{cand.length ? "Elegí una cuenta…" : "No hay más cuentas registradas"}</option>{cand.map(n => <option key={n} value={n}>{n}{findAgent(n) ? " · " + rankES(findAgent(n)!.r) : ""}</option>)}</Select>
+          {adm.canGrant && <CardBody><div className="flex gap-2"><AgentCombo className="flex-1" value={sel} onChange={setSel} names={cand} empty="No hay más cuentas registradas" placeholder="Buscar cuenta…" />
             <Button icon={<ShieldPlus />} disabled={!sel} onClick={() => setAdmin(sel, true)}>Dar administrador</Button></div></CardBody>}
         </>}
       </Card>
@@ -74,7 +74,7 @@ function UnitAccess() {
       <CardHeader icon={icon} title={t} desc={`${L.length} con acceso`} />
       <div className="scrollbar-thin max-h-80 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">{L.length ? L.map(n => <Row key={n} n={n}><span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{tag}</span><Button size="sm" variant="ghost" className="text-red-600" icon={<Trash2 />} aria-label="Quitar" onClick={() => del(n)} /></Row>)
         : <p className="p-4 text-sm text-slate-400">Nadie tiene acceso.</p>}</div>
-      <CardBody><div className="flex gap-2"><Select value={sel} onChange={e => setSel(e.target.value)} className="text-sm"><option value="">Elegí un agente…</option>{R.filter(a => !L.includes(a.n)).map(a => <option key={a.n} value={a.n}>{a.n} · {rankES(a.r)}</option>)}</Select><Button onClick={add}>Agregar</Button></div></CardBody>
+      <CardBody><div className="flex gap-2"><AgentCombo className="flex-1" value={sel} onChange={setSel} names={R.filter(a => !L.includes(a.n)).map(a => a.n)} /><Button onClick={add}>Agregar</Button></div></CardBody>
     </Card>);
   return <>
     <Box t="Acceso a la RTD" icon={<GraduationCap />} tag="RTD" L={rtd} sel={sr} setSel={setSr} add={() => { if (!sr) { toast("Elegí un agente", "err"); return; } setRtd([...rtd, sr]); toast(sr + " ahora tiene acceso a la RTD"); setSr(""); }}

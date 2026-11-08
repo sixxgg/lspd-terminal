@@ -36,10 +36,10 @@ const Equipamiento = lz(() => import("./sections/cap/Equipamiento"), "Equipamien
 import type { ReactNode } from "react";
 
 export const VIEWS: Record<string, () => ReactNode> = {
-  "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/cond": () => <Condecoraciones />, "sgt/exa": () => <Sargentos tab="exa" />, "sgt/ent": () => <Sargentos tab="ent" />, "sgt/list": () => <Sargentos tab="list" />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "sup/fbk": () => <Feedback />, "cap/vot": () => <Votaciones />, "sup/pat": () => <Patrullas />, "sup/prof": () => <Agentes />, "inf/inf": () => <Informes />, "leg/ley": () => <Legal />, "sup/preg": () => <RegistroPatrullas />, "cap/equ": () => <Equipamiento />, "cap/perm": () => <Permisos />, "jef/ros": () => <EstadoRoster />, "jef/his": () => <HistorialVotaciones />,
+  "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/cond": () => <Condecoraciones />, "sgt/exa": () => <Sargentos tab="exa" />, "sgt/ent": () => <Sargentos tab="ent" />, "sgt/list": () => <Sargentos tab="list" />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "sup/fbk": () => <Feedback />, "cap/vot": () => <Votaciones />, "sup/pat": () => <Patrullas />, "sup/prof": () => <Agentes />, "ini/prof": () => <Agentes />, "inf/inf": () => <Informes />, "leg/ley": () => <Legal />, "sup/preg": () => <RegistroPatrullas />, "cap/equ": () => <Equipamiento />, "cap/perm": () => <Permisos />, "jef/ros": () => <EstadoRoster />, "jef/his": () => <HistorialVotaciones />,
   "adm/acc": () => <AdmAccesos />, "adm/brand": () => <AdmMarca />, "adm/data": () => <AdmDatos />,
 };
-import { AREAS, canArea } from "./nav";
+import { AREAS, canArea, secsOf } from "./nav";
 import { api, authApi } from "./lib/api";
 import { BootScreen } from "./components/boot";
 import { LS, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
@@ -80,7 +80,7 @@ export default function App() {
   const ag = findAgent(me.n), user = { n: me.n, r: ag?.r || me.r, p: ag?.p };
   let area = AREAS.find(a => a.k === nav.a) || AREAS[0];
   if (!canArea(area, user.r)) area = AREAS[0];
-  const sec = area.sec.find(s => s.k === nav.s) || area.sec[0];
+  const SS = secsOf(area, user.r), sec = SS.find(s => s.k === nav.s) || SS[0];
   const go = (a: string, s: string) => { setNav({ a, s }); scrollTopApp(); };
   const logout = async () => { await authApi({ a: "logout" }); goOffline(); setMe(null); const r = await api("/api/auth"); setBoot(r as unknown as Boot); };
 

@@ -59,7 +59,12 @@ export function Entrevistas() {
       </div>
       <Card>
         <CardHeader icon={<MessagesSquare />} title="Preguntas de la entrevista" />
-        <CardBody><ol className="list-decimal space-y-1.5 pl-5 text-sm text-slate-700 dark:text-slate-300">{ENT_Q.map(([x, n]) => <li key={x}>{x}{n && <span className="block text-xs text-amber-600 dark:text-amber-400">{n}</span>}</li>)}</ol>
+        <CardBody><ol className="grid gap-2 lg:grid-cols-2">{ENT_Q.map(([x, n], i) => (
+          <li key={x} className="flex gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-800/30">
+            <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-brand-600 text-xs font-bold text-white dark:bg-brand-500">{i + 1}</span>
+            <div className="min-w-0 text-sm leading-relaxed text-slate-700 dark:text-slate-200">{x}
+              {n && <p className="mt-1.5 flex gap-1.5 rounded-lg bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300"><span aria-hidden>⚠</span>{n}</p>}</div>
+          </li>))}</ol>
           <div className="flex justify-end"><Button size="sm" variant="outline" icon={<Copy />} onClick={() => copy(ENT_Q.map(([x, n], i) => `${i + 1}. ${x}${n ? `\n   (${n})` : ""}`).join("\n"))}>Copiar</Button></div></CardBody>
       </Card>
       <Card>

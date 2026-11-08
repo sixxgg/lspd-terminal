@@ -10,6 +10,7 @@ import { useFeedback } from "@/components/feedback";
 import { findAgent, getRoster, rankES, uid } from "@/lib/domain";
 import { useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
+import { AgentCombo } from "@/components/agents";
 import { cn } from "@/lib/cn";
 
 /* ---------- datos ---------- */
@@ -103,7 +104,7 @@ function Head({ cand, setCand, rango, fecha, setFecha, extra }: { cand: string; 
   const names = useMemo(CANDS, []);
   return (
     <Card className="grid gap-3 p-4 sm:grid-cols-[1fr_12rem_10rem_auto]">
-      <Field label="Candidato"><Input list="sg-c" value={cand} onChange={e => setCand(e.target.value)} placeholder="Nombre del agente" /><datalist id="sg-c">{names.map(n => <option key={n} value={n} />)}</datalist></Field>
+      <Field label="Candidato"><AgentCombo value={cand} onChange={setCand} names={names} placeholder="Buscar candidato…" /></Field>
       <Field label="Rango actual"><Input value={rango} readOnly placeholder="Se completa solo" /></Field>
       <Field label="Fecha"><Input type="date" value={fecha} onChange={e => setFecha(e.target.value)} /></Field>
       {extra}
@@ -267,7 +268,7 @@ function Elegibles({ evals: _ }: { evals: Eval[] }) {
         <tbody>{c.rows.map(r => { const s = score(r); return (
           <tr key={r.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
             <td className="px-3 py-1.5"><Input list="sg-el" className="h-8 min-w-[11rem] text-sm font-semibold" value={r.cand} onChange={e => { const a = findAgent(e.target.value); upd(r.id, { cand: e.target.value, ...(a ? { rango: rankES(a.r) } : {}) }); }} /></td>
-            <td><Input className="h-8 w-32 text-sm" value={r.rango} onChange={e => upd(r.id, { rango: e.target.value })} /></td>
+            <td>{findAgent(r.cand) && r.rango ? <span className="whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{r.rango}</span> : <Input className="h-8 w-32 text-sm" value={r.rango} placeholder="Rango" onChange={e => upd(r.id, { rango: e.target.value })} />}</td>
             <td className="text-right"><Input className={cell} inputMode="decimal" defaultValue={f2(r.exa)} onBlur={e => upd(r.id, { exa: num(e.target.value) })} /></td>
             <td className="text-right"><Input className={cell} inputMode="decimal" defaultValue={f2(r.media)} onBlur={e => upd(r.id, { media: num(e.target.value) })} /></td>
             <td className="text-right tabular-nums">{r.media == null ? <span className="text-slate-400">—</span> : f2(s.ent)}</td>

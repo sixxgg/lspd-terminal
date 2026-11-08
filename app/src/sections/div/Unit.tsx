@@ -1,12 +1,13 @@
 import { Comunicados } from "./Comunicados";
 import { useMemo, useState } from "react";
-import { Megaphone, Users, Pencil, Check, Plus, X, Plane, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History } from "lucide-react";
+import { Megaphone, Users, Pencil, Check, Plus, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input, Segmented, Select } from "@/components/ui";
-import { AgentPicker, Avatar } from "@/components/agents";
+import { AgentCombo, AgentPicker, Avatar } from "@/components/agents";
+import { Helicopter } from "@/components/icons";
 import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { Col, Split } from "@/components/layout";
-import { LUGARES, fmtDate, findAgent, getRoster, lvl, norm, rankES, uid } from "@/lib/domain";
+import { LUGARES, fmtDate, findAgent, lvl, norm, rankES, uid } from "@/lib/domain";
 import { LS, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { K9_PL, UNITS, isUCoord, uMap, uRole, uSaveMap, uTop, type UnitKey } from "@/lib/units";
@@ -55,8 +56,10 @@ const PSB_TABS: [string, string, typeof Bell][] = [["not", "Notificación", Bell
 export function Unit({ k }: { k: UnitKey }) {
   useStoreVersion();
   const me = useMe(), u = UNITS[k], co = isUCoord(k, me.n), pal = unitPalette(k);
-  const tabs: [string, string, typeof Bell][] = k === "psb" ? [["ros", "Roster", Users], ...PSB_TABS]
+  const tabs0: [string, string, typeof Bell][] = k === "psb" ? [["ros", "Roster", Users], ...PSB_TABS]
     : [["ros", "Roster", Users], ["reg", u.reg!, ClipboardPen], ["log", `${u.regs} (${uLog(k).length})`, ListChecks], ...(k === "asd" ? [["com", "Comunicados", Megaphone] as [string, string, typeof Bell]] : []), ...(k === "asd" && co ? [["exa", "Exámenes", GraduationCap] as [string, string, typeof Bell]] : [])];
+  /* Roster siempre primero; el resto de la A a la Z */
+  const tabs = [tabs0[0], ...tabs0.slice(1).sort((a, b) => a[1].localeCompare(b[1], "es", { numeric: true }))];
   const [tab, setTab] = useState(() => LS.get(`lspdt.next.utab.${k}`) || "ros");
   const t = tabs.some(x => x[0] === tab) ? tab : "ros";
   const go = (v: string) => { setTab(v); LS.set(`lspdt.next.utab.${k}`, v); };
@@ -90,13 +93,13 @@ function Roster({ k, pal }: { k: UnitKey; pal: Record<string, string> }) {
       </div>
       {edit && (
         <Card className="flex flex-wrap gap-2 p-3">
-          <Select value={nw} onChange={e => setNw(e.target.value)} className="min-w-[14rem] flex-1 text-sm"><option value="">Agregar agente a la {u.ab}…</option>{getRoster().filter(a => !m[a.n] && lvl(a.r) > 0).sort((a, b) => a.n.localeCompare(b.n)).map(a => <option key={a.n}>{a.n}</option>)}</Select>
+          <AgentCombo className="min-w-[14rem] flex-1" value={nw} onChange={setNw} filter={a => !m[a.n]} placeholder={`Agregar agente a la ${u.ab}…`} />
           <Select value={nwR} onChange={e => setNwR(e.target.value)} className="w-auto text-sm">{u.R.map(([kk, l]) => <option key={kk} value={kk}>{l}</option>)}</Select>
           <Button icon={<Plus />} onClick={() => { if (!nw) return; save(x => { x[nw] = [nwR]; }); toast(`${nw} agregado como ${uRole(k, nwR)[1]}`); setNw(""); }}>Agregar</Button>
         </Card>)}
       <Card className="overflow-hidden">
         {u.R.map(([kk, l]) => {
-          const L = mem.filter(([, r]) => uTop(k, r)[0] === kk).sort((a, b) => lvl(uAg(b[0]).r) - lvl(uAg(a[0]).r) || a[0].localeCompare(b[0]));
+          const L = mem.filter(([, r]) => uTop(k, r)[0] === kk).sort((a, b) => a[0].localeCompare(b[0], "es"));
           if (!L.length && !edit) return null;
           return (
             <div key={kk}>
@@ -156,11 +159,11 @@ function RegForm({ k, onSaved }: { k: UnitKey; onSaved: () => void }) {
           </CardBody>
         </Card>
         <Card>
-          <CardHeader icon={u.veh ? <Plane /> : <ClipboardPen />} title={`Datos del ${u.one}`} />
+          <CardHeader icon={u.veh ? <Helicopter /> : <ClipboardPen />} title={`Datos del ${u.one}`} />
           <CardBody>
             {u.veh && <Field label={u.veh.l}><div className="grid grid-cols-3 gap-2">{u.veh.o.map(([v, n, s]) => (
               <button key={v} onClick={() => up({ veh: v })} className={cn("flex flex-col items-center gap-1 rounded-xl border p-3 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500", F.veh === v ? "border-brand-500 bg-brand-50 dark:border-brand-400 dark:bg-brand-500/10" : "border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50")}>
-                <Plane className="size-5 text-slate-500" /><b className="text-sm">{n}</b><small className="text-[11px] text-slate-500">{s}</small></button>))}</div></Field>}
+                <Helicopter className="size-5 text-slate-500" /><b className="text-sm">{n}</b><small className="text-[11px] text-slate-500">{s}</small></button>))}</div></Field>}
             <div className="grid gap-4 sm:grid-cols-2">
               {u.mat && <Field label="Matrícula" hint="(opcional)"><Input value={F.mat} onChange={e => up({ mat: e.target.value.toUpperCase() })} placeholder="N704NX" className="font-mono uppercase" /></Field>}
               {u.dog && <Field label="K-9 asignado"><Input list="uDogDL" value={F.dog} onChange={e => up({ dog: e.target.value })} placeholder="Nombre del perro" /><datalist id="uDogDL">{dogs.map(x => <option key={x} value={x} />)}</datalist></Field>}
@@ -170,8 +173,8 @@ function RegForm({ k, onSaved }: { k: UnitKey; onSaved: () => void }) {
               <button key={x} onClick={() => up({ mo: x })} className={cn("rounded-full border px-3 py-1 text-xs font-medium transition", F.mo === x ? "border-brand-500 bg-brand-600 text-white dark:bg-brand-500" : "border-slate-200 bg-white text-slate-600 hover:border-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300")}>{x}</button>))}</div>
               <Input className="mt-2" value={F.mox} onChange={e => up({ mox: e.target.value })} placeholder={F.mo === "Otro" ? "Escribí el motivo" : "Detalle (opcional)"} /></Field>
             <Field label="Permiso" hint={`(opcional${u.veh ? ", si se autoriza una aeronave distinta" : ""})`}>
-              <div className="flex gap-2"><Input value={F.perm} onChange={e => up({ perm: e.target.value })} placeholder={u.veh ? "Ej: Uso de MH60S autorizado" : "Ej: Salida autorizada fuera de turno"} />
-                <Select value={F.por} onChange={e => up({ por: e.target.value })} className="max-w-[13rem] text-sm"><option value="">Autorizado por…</option>{auth.map(n => <option key={n}>{n}</option>)}</Select></div></Field>
+              <div className="flex gap-2"><Input value={F.perm} onChange={e => up({ perm: e.target.value })} placeholder={u.veh ? "Ej: Uso del MH-60S Blackhawk autorizado" : "Ej: Salida autorizada fuera de turno"} />
+                <AgentCombo className="w-60" value={F.por} onChange={n => up({ por: n })} names={auth} placeholder="Autorizado por…" /></div></Field>
           </CardBody>
         </Card>
       </Col>
@@ -218,7 +221,7 @@ function Exams({ pal }: { pal: Record<string, string> }) {
   const [X, setX] = useState<{ n: string; st: Record<string, string>; nota: string }>({ n: "", st: {}, nota: "" });
   const load = (n: string) => { const R = ASDX[n] || {}; setX({ n, st: Object.fromEntries(EXAMS.filter(([x]) => R[x]).map(([x]) => [x, (R[x] as { st: string }).st])), nota: (R._n as string) || "" }); };
   const ri = (n: string) => RR.indexOf(uTop(k, m[n]));
-  const mem = Object.keys(m).filter(n => findAgent(n)).sort((a, b) => ri(a) - ri(b) || lvl(findAgent(b)!.r) - lvl(findAgent(a)!.r) || a.localeCompare(b));
+  const mem = Object.keys(m).filter(n => findAgent(n)).sort((a, b) => ri(a) - ri(b) || a.localeCompare(b, "es"));
   const grp = RR.map(r => [r, mem.filter(n => uTop(k, m[n]) === r)] as const).filter(([, l]) => l.length);
   const save = () => {
     const n = X.n; if (!n) { toast("Elegí un oficial", "err"); return; }
@@ -234,7 +237,7 @@ function Exams({ pal }: { pal: Record<string, string> }) {
         <Card>
           <CardHeader icon={<GraduationCap />} title="Registrar examen" />
           <CardBody>
-            <Field label="Oficial"><Select value={X.n} onChange={e => load(e.target.value)} className="text-sm"><option value="">Elegí un integrante…</option>{grp.map(([r, l]) => <optgroup key={r[0]} label={r[1]}>{l.map(n => <option key={n}>{n}</option>)}</optgroup>)}</Select></Field>
+            <Field label="Oficial"><AgentCombo value={X.n} onChange={load} names={grp.flatMap(([, l]) => l)} sub={n => grp.find(([, l]) => l.includes(n))?.[0][1] || ""} placeholder="Buscar integrante…" /></Field>
             {EXAMS.map(([c, , d]) => (
               <div key={c} className="space-y-2 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
                 <div><b className="font-mono text-xs">{c}</b><p className="text-xs text-slate-500">{d}</p></div>

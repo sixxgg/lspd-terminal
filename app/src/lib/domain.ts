@@ -50,7 +50,12 @@ export const findAgent = (n: string) => getRoster().find(a => a.n === n) || null
 
 type Prof = { g?: string; foto?: string; div?: string[]; main?: string; ph?: { x: number; y: number; z: number } | null };
 export const profOf = (n: string): Prof => (LS.ro<Record<string, Prof>>("lspdt.profiles", {})[n] || {});
-export const genderOf = (n: string) => profOf(n).g || (FEM.has(n) ? "f" : "m");
+/* nombres de pila femeninos habituales: para agentes nuevos que todavía no están en la lista */
+const FEM_FIRST = new Set(["ana", "maria", "sofia", "lucia", "laura", "julia", "elena", "valentina", "camila", "isabella", "isabel", "emma", "olivia", "mia", "chloe", "emily", "sarah", "sara",
+  "jessica", "jennifer", "ashley", "amanda", "hannah", "abigail", "madison", "hailey", "haley", "evelyn", "lara", "claire", "violet", "alessia", "naia", "vega", "morvanna", "yooa", "may-lin",
+  "jia", "natalia", "paula", "carla", "andrea", "daniela", "gabriela", "victoria", "alice", "alicia", "grace", "lily", "zoe", "ava", "amelia", "charlotte", "scarlett", "nora", "lena",
+  "rose", "rachel", "rebecca", "megan", "lauren", "nicole", "samantha", "stephanie", "vanessa", "veronica", "monica", "karen", "linda", "susan", "kate", "katherine", "kim", "luna", "aria", "ella"]);
+export const genderOf = (n: string) => profOf(n).g || (FEM.has(n) || FEM_FIRST.has(norm(n.split(/\s+/)[0])) ? "f" : "m");
 export const fotoOf = (n: string) =>
   LS.get("lspdt.foto." + n) || profOf(n).foto || LS.get("lspdt.img.avatar_" + genderOf(n)) || LS.get("lspdt.img.avatar") || "";
 

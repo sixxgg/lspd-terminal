@@ -21,7 +21,7 @@ export const UNITS: Record<"asd" | "k9" | "psb", Unit> = {
   asd: { d: "Air Support Division", ab: "A.S.D", rk: "lspdt.asdRoster", lk: "lspdt.asdVuelos", def: ASD_DEF, acc: "#e2c66a",
     R: [["coord", "Coordinación A.S.D", "#e2c66a", "Coord."], ["sup", "Supervisor Aéreo", "#2fa4d6", "Sup."], ["tfo", "Tactical Flight Officer", "#e05a52", "TFO"], ["pexp", "Piloto experimentado", "#9fd3ea", "P. exp."], ["piloto", "Piloto", "#5b93b8", "Piloto"], ["asp", "Aspirante A.S.D", "#8a8f97", "Asp."]],
     reg: "Registro de vuelo", regs: "Vuelos registrados", one: "vuelo", ones: "vuelos", crew: "Tripulación", save: "Guardar vuelo",
-    veh: { l: "Aeronave", o: [["polmav", "polmav", "Helicóptero de patrullaje"], ["as332", "AS332", "Rescue"], ["mh60s", "MH60S", "Blackhawk"]] }, mat: true,
+    veh: { l: "Aeronave", o: [["polmav", "Polmav", "Normal · patrullaje"], ["as332", "AS332 Super Puma", "Rescate"], ["mh60s", "MH-60S Blackhawk", "Blackhawk"]] }, mat: true,
     mo: ["Patrullaje Ordinario", "Prácticas METRO", "Ammunation", "Rescate SAR", "Apoyo a persecución", "Traslado", "Formación / examen", "Operativo táctico", "Otro"] },
   k9: { d: "K-9 Division", ab: "K-9", rk: "lspdt.k9Roster", lk: "lspdt.k9Reg", def: K9_DEF, acc: "#e6c65a", seedV: 2,
     R: [["coord", "Coordinación K-9", "#e6c65a", "Coord."], ["subcoord", "Sub Coordinación K-9", "#f3dc95", "Sub coord."], ["inst", "Instructor", "#2fbf68", "Instr."], ["senior", "Senior handler", "#a3d94e", "Senior"], ["handler", "Handler K9", "#3fae8c", "Handler"], ["prac", "Handler en prácticas", "#8fd9a8", "Prác."], ["asp", "Aspirante", "#8a8f97", "Asp."]],

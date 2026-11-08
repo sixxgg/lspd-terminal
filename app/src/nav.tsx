@@ -1,28 +1,29 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
-  Gavel, Package, KeyRound, BarChart3, History, Plane, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, Award, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, Star, Landmark,
+  Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, Award, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, Star, Landmark,
 } from "lucide-react";
 import { ME_ROLES } from "./lib/store";
+import { Helicopter } from "./components/icons";
 import { lvl } from "./lib/domain";
 
-export type Sec = { k: string; l: string; sl?: string; d: string; icon: LucideIcon; ready?: boolean };
+export type Sec = { k: string; l: string; sl?: string; d: string; icon: LucideIcon; ready?: boolean; min?: number };
 export type Area = { k: string; l: string; icon?: LucideIcon; min: number; req?: string; admin?: boolean; sec: Sec[] };
 
 /* misma estructura que la versión clásica; ready = ya migrada a la versión nueva */
 const RAW_AREAS: Area[] = [
-  { k: "ini", l: "Inicio", icon: Home, min: 0, sec: [{ k: "home", l: "Inicio", d: "Resumen del departamento", icon: Home, ready: true }] },
+  { k: "ini", l: "Inicio", icon: Home, min: 0, sec: [{ k: "home", l: "Inicio", d: "Resumen del departamento", icon: Home, ready: true },
+    { k: "prof", l: "Agentes", d: "Planilla del departamento, de la A a la Z", icon: Users, ready: true, min: 6 }] },
   { k: "inf", l: "Informes", icon: FileText, min: 0, sec: [{ k: "inf", l: "Informes policiales", d: "Redactar, registrar y buscar informes", icon: FileText, ready: true }] },
   { k: "leg", l: "Legal", icon: Scale, min: 0, sec: [{ k: "ley", l: "Leyes", d: "Infracciones administrativas y delitos por capítulo, con favoritos", icon: Scale, ready: true }] },
   { k: "sup", l: "Supervisión", icon: ClipboardList, min: 6, req: "Sargento I", sec: [
-    { k: "prof", l: "Agentes", d: "Planilla del departamento", icon: Users, ready: true },
     { k: "asc", l: "Ascensos / Descensos", sl: "Ascensos", d: "Contratos y resoluciones con /me y /do", icon: TrendingUp, ready: true },
     { k: "t1080", l: "10-80", d: "Citación por radio con vestimenta Clase A", icon: Radio, ready: true },
     { k: "alt", l: "Alerta Táctica", d: "Solicitud de elevación o ampliación de la alerta", icon: Siren, ready: true },
     { k: "cond", l: "Condecoraciones", sl: "Condecoraciones", d: "Medallas, franjas de servicio y condecoraciones de los agentes", icon: Medal, ready: true },
     { k: "bod", l: "Bodycam", d: "Pedido de la grabación de un oficial", icon: Video, ready: true },
-    { k: "pat", l: "Revisión de patrullas", sl: "Rev. patrullas", d: "Control del equipamiento del maletero", icon: Car, ready: true },
-    { k: "preg", l: "Registro de patrullas", sl: "Reg. patrullas", d: "Revisiones guardadas y su detalle", icon: ClipboardList, ready: true },
+    { k: "pat", l: "Revisión de patrullas", d: "Control del equipamiento del maletero", icon: Car, ready: true },
+    { k: "preg", l: "Registro de patrullas", d: "Revisiones guardadas y su detalle", icon: ClipboardList, ready: true },
     { k: "ent", l: "Entrevistas", d: "Preguntas y seguimiento de los agentes", icon: MessagesSquare, ready: true },
     { k: "vot", l: "Votaciones", d: "Propuestas de ascenso y descenso con debate", icon: Vote, ready: true },
     { k: "fbk", l: "Feedback (incidentes)", sl: "Feedback", d: "Feedback y acciones disciplinarias sobre la actuación de un agente", icon: MessageSquareWarning, ready: true },
@@ -44,7 +45,7 @@ const RAW_AREAS: Area[] = [
   ] },
   { k: "div", l: "Divisiones", icon: Landmark, min: 0, sec: [
     { k: "dv_asb", l: "Administration Services Bureau", d: "Próximamente", icon: Building2, ready: true },
-    { k: "dv_asd", l: "Air Support Division", d: "Roster, vuelos y exámenes", icon: Plane, ready: true },
+    { k: "dv_asd", l: "Air Support Division", d: "Roster, vuelos y exámenes", icon: Helicopter, ready: true },
     { k: "dv_db", l: "Detective Bureau", d: "Próximamente", icon: Search, ready: true },
     { k: "dv_hsiu", l: "High Speed Interception Unit", d: "Próximamente", icon: Gauge, ready: true },
     { k: "dv_kd", l: "K-9 Division", d: "Roster y patrullajes", icon: Dog, ready: true },
@@ -66,6 +67,8 @@ export const AREAS: Area[] = RAW_AREAS
   .sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
 
 export const canArea = (a: Area, r?: string) => (a.admin ? !!ME_ROLES.admin : lvl(r) >= a.min);
+/* secciones que ve cada uno dentro de un área (algunas piden más rango que el área) */
+export const secsOf = (a: Area, r?: string) => a.sec.filter(s => !s.min || lvl(r) >= s.min || !!ME_ROLES.admin);
 
 /* abre la misma sección en la versión clásica */
 export function openClassic(area: string, sec: string) {

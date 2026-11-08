@@ -1,12 +1,13 @@
 /* Condecoraciones: catálogo de medallas, franjas de servicio y condecoraciones; otorgar y quitar a los agentes */
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Award as AwardI, Medal, Plus, Ribbon as RibbonI, Search, Trash2, X } from "lucide-react";
 import { Button, Card, Empty, Field, Input, Segmented, Select } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { useFeedback } from "@/components/feedback";
 import { Ribbon } from "@/components/ribbon";
+import { AgentCombo } from "@/components/agents";
 import { DECOR, type Award, type Decor, type Tab } from "@/lib/decor";
-import { findAgent, getRoster, norm, rankES, uid } from "@/lib/domain";
+import { findAgent, norm, rankES, uid } from "@/lib/domain";
 import { useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { allProfiles, updateProf } from "@/lib/profiles";
@@ -63,7 +64,6 @@ function DecorModal({ d, onClose }: { d: Decor; onClose: () => void }) {
   const me = useMe(), { toast, confirm } = useFeedback();
   const list = (holders().get(d.k) || []).sort((a, b) => (b.a.f || "").localeCompare(a.a.f || ""));
   const [ag, setAg] = useState(""), [f, setF] = useState(today()), [m, setM] = useState("");
-  const names = useMemo(() => getRoster().map(a => a.n).sort((a, b) => a.localeCompare(b)), []);
   const give = async () => {
     const a = findAgent(ag.trim()); if (!a) { toast("Elegí un agente del roster", "err"); return; }
     if (list.some(x => x.n === a.n) && d.c !== "Acumulativa" && !(await confirm(`${a.n} ya tiene «${d.t}». ¿Otorgarla otra vez?`))) return;
@@ -76,12 +76,11 @@ function DecorModal({ d, onClose }: { d: Decor; onClose: () => void }) {
       <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Otorgar</p>
         <div className="grid gap-3 sm:grid-cols-[1fr_10rem]">
-          <Field label="Agente"><Input list="dc-names" value={ag} onChange={e => setAg(e.target.value)} placeholder="Nombre del agente" /></Field>
+          <Field label="Agente"><AgentCombo value={ag} onChange={setAg} /></Field>
           <Field label="Fecha"><Input type="date" value={f} onChange={e => setF(e.target.value)} /></Field>
         </div>
         <Field label="Motivo" hint="(opcional)" className="mt-3"><Input value={m} onChange={e => setM(e.target.value)} placeholder="Ej: rescate de rehenes en el Pacific Bank" /></Field>
         <div className="mt-3 flex justify-end"><Button icon={<Plus />} onClick={give}>Otorgar</Button></div>
-        <datalist id="dc-names">{names.map(n => <option key={n} value={n} />)}</datalist>
       </div>
       <div className="space-y-2">
         {list.map(({ n, a }) => { const ag2 = findAgent(n); return (

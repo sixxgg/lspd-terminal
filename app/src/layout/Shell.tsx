@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Lock, LogOut, Menu, Palette, X, Cloud, CloudOff, Loader2, ExternalLink, ChevronRight } from "lucide-react";
-import { AREAS, canArea, type Area, type Sec } from "@/nav";
+import { AREAS, canArea, secsOf, type Area, type Sec } from "@/nav";
 import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
 import { rankES } from "@/lib/domain";
@@ -48,7 +48,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
     </div>);
   const modals = <><AccountModal me={me} open={acc} onClose={() => setAcc(false)} /><AppearanceModal open={ap} onClose={() => setAp(false)} /></>;
   const areas = AREAS.filter(a => canArea(a, me.r));
-  const goArea = (a: Area) => { const l = LS.get("lspdt.sec." + a.k); go(a.k, a.sec.some(s => s.k === l) ? l! : a.sec[0].k); };
+  const goArea = (a: Area) => { const l = LS.get("lspdt.sec." + a.k); const S = secsOf(a, me.r); go(a.k, S.some(s => s.k === l) ? l! : S[0].k); };
 
   /* menú arriba, por áreas (como la versión clásica) */
   if (mode === "top") return (
@@ -78,10 +78,10 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
             <button onClick={onLogout} title="Cerrar sesión" aria-label="Cerrar sesión" className={cn("rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400", focusRing)}><LogOut className="size-4" /></button>
           </div>
         </div>
-        {area.k !== "ini" && (
+        {(area.k !== "ini" || secsOf(area, me.r).length > 1) && (
           <div className="border-t border-slate-200/70 dark:border-slate-800/70">
             <nav aria-label="Secciones" className="scrollbar-none mx-auto flex max-w-[1760px] gap-0.5 overflow-x-auto px-3 py-2 sm:px-5 [&>*:first-child]:ml-auto [&>*:last-child]:mr-auto">
-              {area.sec.map(s => { const on = s.k === sec.k, I = s.icon; return (
+              {secsOf(area, me.r).map(s => { const on = s.k === sec.k, I = s.icon; return (
                 <button key={s.k} onClick={() => go(area.k, s.k)} title={s.d} aria-current={on ? "page" : undefined}
                   className={cn("inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition min-[1800px]:px-2.5 min-[1800px]:text-[11.5px]", focusRing,
                     on ? "bg-brand-500/15 text-brand-700 ring-1 ring-inset ring-brand-500/40 dark:text-brand-200" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-white")}>
@@ -107,7 +107,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
             </p>
             {ok ? (
               <ul className="space-y-0.5">
-                {a.sec.map(s => {
+                {secsOf(a, me.r).map(s => {
                   const on = a.k === area.k && s.k === sec.k, I = s.icon;
                   return (
                     <li key={s.k}>
