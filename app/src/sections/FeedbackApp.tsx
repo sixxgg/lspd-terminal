@@ -67,7 +67,7 @@ export function FeedbackApp() {
               className={cn("fb-rich relative min-h-[14rem] max-h-[60vh] overflow-y-auto px-4 py-3 text-sm leading-relaxed outline-none", empty && "fb-empty", over && "bg-brand-50/60 dark:bg-brand-500/5")} />
           </div>
           <input ref={file} type="file" accept="image/*" multiple hidden onChange={e => { if (e.target.files) void addImgs(e.target.files); e.target.value = ""; }} />
-          <div className="flex items-center gap-3"><p className="mr-auto text-xs text-slate-500">Hasta 8 fotos. Vas a ver en qué quedó en la campanita de arriba.</p>
+          <div className="flex items-center gap-3"><p className="mr-auto text-xs text-slate-500">Hasta 8 fotos. Cuando cambie de estado te avisa la campanita de arriba.</p>
             <Button icon={<Send />} loading={busy} disabled={empty} onClick={send}>Enviar</Button></div>
         </CardBody>
       </Card>

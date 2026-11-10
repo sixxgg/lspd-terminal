@@ -1,12 +1,12 @@
-/* six · efectos: ajustes propios, lluvia de caracteres y error de entrada */
+/* six · efectos: ajustes propios, lluvia de caracteres, error de entrada y consola de arranque */
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { LS } from "@/lib/store";
 
 /* ---------- ajustes (independientes de la MDT; viajan con la cuenta de six) ---------- */
-export type SixCfg = { tema: string; lluvia: 0 | 1 | 2 | 3; scan: boolean; grid: boolean; glow: 0 | 1 | 2; flicker: boolean; error: boolean; bd: "tema" | "neutro" | "no" };
+export type SixCfg = { tema: string; lluvia: 0 | 1 | 2 | 3; scan: boolean; grid: boolean; glow: 0 | 1 | 2; flicker: boolean; intro: "completa" | "corta" | "no"; error: boolean; bd: "tema" | "neutro" | "no" };
 export const CFG_KEY = "lspdt.six.cfg";
-export const CFG0: SixCfg = { tema: "verde", lluvia: 1, scan: true, grid: true, glow: 1, flicker: true, error: true, bd: "tema" };
+export const CFG0: SixCfg = { tema: "verde", lluvia: 1, scan: true, grid: true, glow: 1, flicker: true, intro: "completa", error: true, bd: "tema" };
 export const THEMES: [string, string, string][] = [["verde", "Verde", "#39ff88"], ["cian", "Cian", "#00e5ff"], ["rojo", "Rojo", "#ff2b4a"], ["ambar", "Ámbar", "#ffb000"], ["violeta", "Violeta", "#b46cff"], ["blanco", "Blanco", "#e8eef7"]];
 export const colorOf = (t: string) => (THEMES.find(x => x[0] === t) || THEMES[0])[2];
 /* variables CSS de un color: --c (hex, para sombras) y --six (canales RGB, para las clases bg-six/NN, border-six/NN…) */
@@ -48,4 +48,59 @@ export function ErrorScreen({ onDone }: { onDone: () => void }) {
         <p className="mt-2 text-xs tracking-[0.3em] text-[#ff2b4a]/70">CÓDIGO {code} · REINICIANDO EN MODO PRIVADO…</p>
       </div>
     </div>, document.body);
+}
+
+/* arranque: la pantalla se apaga y aparece la consola con la calavera */
+const SKULL = String.raw`        _____________
+     .-'             '-.
+   .'                   '.
+  /    _____     _____    \
+ |    /     \   /     \    |
+ |   |   ●   | |   ●   |   |
+ |    \_____/   \_____/    |
+  \          /\           /
+   '.       /__\        .'
+     |  |\_________/|  |
+     |  | |_|_|_|_| |  |
+      \  \_|_|_|_|_/  /
+       '-.___________.-'`;
+const LINES = [
+  "[ OK ] Cerrando la sesión de la MDT…", "[ OK ] Sesión de la MDT suspendida", "[ .. ] Montando volumen privado /dev/six0",
+  "[ OK ] Clave AES-256-GCM aceptada", "[ .. ] Abriendo canal seguro", "[ OK ] Canal establecido (latencia: 18 ms)",
+  "[ .. ] Verificando la huella del operador", "[ OK ] Operador reconocido: six", "[ .. ] Sincronizando datos privados",
+  "[ OK ] Módulos cargados: administración · equipo de ilícitos", "[ OK ] Aplicando tema y efectos",
+];
+export function Boot({ short, onDone }: { short?: boolean; onDone: () => void }) {
+  const cb = useRef(onDone); cb.current = onDone;
+  const [ph, setPh] = useState<"off" | "con">("off"), [n, setN] = useState(0), [dump, setDump] = useState<string[]>([]);
+  const step = short ? 240 : 720, total = LINES.length + (short ? 4 : 3);
+  useEffect(() => { const t = setTimeout(() => setPh("con"), 900); return () => clearTimeout(t); }, []);
+  useEffect(() => { if (ph !== "con") return;
+    const i = setInterval(() => setN(x => x + 1), step), h = setInterval(() => setDump(Array.from({ length: 16 }, () => Array.from({ length: 6 }, () => hex(4)).join(" "))), 90);
+    return () => { clearInterval(i); clearInterval(h); }; }, [ph, step]);
+  useEffect(() => { if (n >= total) cb.current(); }, [n, total]);
+  useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === "Escape" || e.key === "Enter") cb.current(); }; window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, []);
+  const pct = Math.min(100, Math.round((n / (LINES.length + 1)) * 100)), ok = n > LINES.length;
+  return (
+    <div className="fixed inset-0 z-[96] cursor-pointer bg-black" onClick={() => cb.current()} title="Clic para saltar">
+      {ph === "off" ? <div className="six-off" /> : (
+        <div className="six-con relative grid h-full grid-rows-[auto_1fr_auto] gap-5 p-6 font-mono text-[13px] text-six sm:p-10">
+          <div className="flex items-end gap-6">
+            <pre className={`six-skull text-[10px] leading-[1.15] sm:text-[14px] ${ok ? "on" : ""}`}>{SKULL}</pre>
+            <p className="hidden pb-2 text-xs text-six/70 sm:block">six@terminal:~# ./acceso --privado</p>
+          </div>
+          <div className="grid min-h-0 gap-6 md:grid-cols-[1fr_20rem]">
+            <div className="space-y-1 overflow-hidden">
+              {LINES.slice(0, n).map((l, i) => <p key={i} className={l.startsWith("[ ..") ? "opacity-60" : ""}>{l}</p>)}
+              {ok && <p className="six-granted mt-4 text-xl font-bold tracking-[0.3em] text-white">ACCESO CONCEDIDO</p>}
+              <span className="six-cur">█</span>
+            </div>
+            <div className="hidden overflow-hidden text-[10px] leading-relaxed text-six/30 md:block">{dump.map((d, i) => <p key={i}>{d}</p>)}</div>
+          </div>
+          <div><div className="h-1 overflow-hidden rounded bg-six/15"><div className="h-full bg-six shadow-[0_0_10px_var(--c)] transition-all duration-300" style={{ width: pct + "%" }} /></div>
+            <p className="mt-2 flex justify-between text-[11px] text-six/60"><span>DESCIFRANDO… {pct}%</span><span>ESC para saltar</span></p></div>
+        </div>
+      )}
+    </div>
+  );
 }

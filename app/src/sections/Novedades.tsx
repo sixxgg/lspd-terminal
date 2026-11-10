@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.6";
+export const APP_VERSION = "1.7";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,11 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "1.7", f: "09/11/2026", t: "Notificaciones y patrullas con su marca", items: [
+    "Campanita de notificaciones (desplegable): el estado de tus feedback y su respuesta, cambios de rango, expedientes nuevos o resueltos de la PSB (para sus miembros) y versiones nuevas.",
+    "Patrullas ONX con su marca: Bravado Buffalo, Vapid Scout, Vapid Monarch, Declasse Granger, etc.",
+    "Feedback: las fotos se resumen como [📷 N fotos].",
+  ] },
   { v: "1.6", f: "09/11/2026", t: "Feedback, huellas y patrullas ONX", items: [
     "Nueva área Feedback: cualquiera puede mandar errores o ideas con negrita, subrayado, tachado, texto oculto, colores y fotos (se pueden pegar con Ctrl+V). En la campanita de arriba ves en qué quedó cada uno: pendiente, en curso, añadido, arreglado, rechazado o descartado.",
     "Supervisión · Registro de huellas: nuevos registros y coincidencias por agente; se cargan pegando las filas del laboratorio o a mano, con filtros y conteo por agente.",

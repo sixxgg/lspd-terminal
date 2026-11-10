@@ -1,7 +1,6 @@
-/* Estados del feedback y las notificaciones de cada usuario (campanita): ve sus feedback y en qué quedaron, desde cualquier dispositivo. */
+/* Estados del feedback y «mis feedback» de cada usuario (los trae del servidor; la campanita está en components/notifs.tsx). */
 import { useCallback, useEffect, useState } from "react";
-import { Ban, Bell, Clock, Hammer, Heart, PackagePlus, Trash2, Wrench, XCircle, type LucideIcon } from "lucide-react";
-import { Modal } from "@/components/modal";
+import { Ban, Clock, Hammer, PackagePlus, Trash2, Wrench, XCircle, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/api";
 import { fmtDate } from "@/lib/domain";
 import { cn } from "@/lib/cn";
@@ -18,6 +17,9 @@ export function FbBadge({ s, className }: { s?: string; className?: string }) {
   return <span className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-semibold", className)} style={{ color: x.c, borderColor: x.c + "66", background: x.c + "1a" }}><x.I className="size-3" />{x.l}</span>;
 }
 
+/* los resúmenes viejos traían «[foto]» por cada imagen */
+export const fbX = (x?: string) => { const s = x || "", n = (s.match(/\[foto\]/g) || []).length; if (!n) return s || "(solo fotos)";
+  const t = s.replace(/\[foto\]/g, " ").replace(/\s+/g, " ").trim(); return `[📷 ${n} ${n === 1 ? "foto" : "fotos"}]${t ? " " + t : ""}`; };
 export type MyFb = { id: string; t: number; u: number; st: string; x: string; nota?: string };
 const SEEN = "lspdt.next.fbSeen";
 const getSeen = () => { try { return Number(localStorage.getItem(SEEN) || 0); } catch { return 0; } };
@@ -39,19 +41,7 @@ export function FbList({ list }: { list: MyFb[] }) {
   return <div className="space-y-2">{list.map(x => (
     <div key={x.id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
       <div className="mb-1 flex items-center gap-2"><FbBadge s={x.st} /><span className="ml-auto text-[11px] text-slate-400">{x.u !== x.t ? `Actualizado ${fmtDate(x.u)}` : fmtDate(x.t)}</span></div>
-      <p className={cn("line-clamp-3 text-sm", fbSt(x.st) === "elim" && "text-slate-400 line-through")}>{x.x || "(solo fotos)"}</p>
+      <p className={cn("line-clamp-3 text-sm", fbSt(x.st) === "elim" && "text-slate-400 line-through")}>{fbX(x.x)}</p>
       {x.nota && <p className="mt-1.5 rounded-lg bg-slate-50 px-2 py-1 text-xs text-slate-600 dark:bg-slate-800/60 dark:text-slate-300"><b>Respuesta:</b> {x.nota}</p>}
     </div>))}</div>;
-}
-
-/* campanita del encabezado: solo aparece si la persona mandó algún feedback */
-export function FbBell() {
-  const { list, news, markSeen } = useMyFeedback(), [open, setOpen] = useState(false);
-  if (!list.length) return null;
-  return <>
-    <button onClick={() => { setOpen(true); markSeen(); }} title="Mis feedback" aria-label={`Mis feedback${news ? ` (${news} novedades)` : ""}`}
-      className="relative rounded-lg p-2 text-slate-400 transition hover:bg-pink-500/10 hover:text-pink-500">
-      <Bell className="size-4" />{news > 0 && <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-pink-500 px-1 text-[10px] font-bold text-white">{news}</span>}</button>
-    <Modal open={open} onClose={() => setOpen(false)} title="Mis feedback" desc="En qué quedó cada cosa que mandaste." icon={<Heart />}><FbList list={list} /></Modal>
-  </>;
 }

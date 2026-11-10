@@ -18,7 +18,7 @@ export function CarPicker({ open, onClose, have, top, who, onAdd }: { open: bool
       className={cn("group relative flex items-center gap-3 rounded-xl border p-3 text-left transition", ya ? "cursor-default border-slate-200 opacity-50 dark:border-slate-800"
         : on ? "border-brand-500 bg-brand-50 shadow-sm ring-1 ring-brand-500 dark:bg-brand-500/10" : "border-slate-200 hover:border-brand-300 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50")}>
       <span className={cn("grid size-10 shrink-0 place-items-center rounded-lg", on ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400")}>{on || ya ? <Check className="size-5" /> : <Car className="size-5" />}</span>
-      <span className="min-w-0"><b className="block truncate text-sm">{n.replace(/^Police /, "")}</b><span className="block truncate text-[11px] text-slate-400">{carType(k, n)} · <span className="font-mono">{k}</span>{ya ? " · ya agregado" : ""}</span></span>
+      <span className="min-w-0"><b className="block truncate text-sm">{n}</b><span className="block truncate text-[11px] text-slate-400">{carType(k, n)} · <span className="font-mono">{k}</span>{ya ? " · ya agregado" : ""}</span></span>
     </button>); };
   return (
     <Modal open={open} onClose={close} title="Agregar patrullas" desc={`Elegí uno o varios patrullas revisados a ${who}.`} icon={<Car />} size="xl"

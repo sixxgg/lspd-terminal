@@ -3,7 +3,7 @@ import { LS } from "./store";
 import { PATROL_CARS } from "./onx";
 /* VEH: los 4 vehículos fijos de antes (siguen sirviendo para leer revisiones viejas y la planilla de Google).
    Ahora cada agente lleva los patrullas ONX que se le revisaron: r.v = { [spawn]: Cell } */
-export const VEH: [string, string][] = [["stx", "Buffalo STX"], ["scout", "Scout"], ["mary", "Mary"], ["int", "Interceptor"]];
+export const VEH: [string, string][] = [["stx", "Bravado Buffalo STX"], ["scout", "Vapid Scout"], ["mary", "Mary"], ["int", "Interceptor"]];
 export { PATROL_CARS };
 export const vName = (k: string) => VEH.find(v => v[0] === k)?.[1] || PATROL_CARS.find(v => v[0] === k)?.[1] || k;
 export const vehOf = (r: PRow) => Object.keys(r.v);

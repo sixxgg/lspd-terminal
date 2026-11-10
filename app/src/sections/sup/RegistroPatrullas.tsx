@@ -20,7 +20,7 @@ function CarCard({ k, c, cap }: { k: string; c: Cell; cap: string }) {
   return (
     <div className={cn("w-[16rem] rounded-xl border p-2.5", c.s === "no" ? "border-red-300/60 bg-red-500/[.04] dark:border-red-500/30" : c.s === "ok" ? "border-emerald-300/60 bg-emerald-500/[.04] dark:border-emerald-500/25" : "border-slate-200 dark:border-slate-800")}>
       <div className="flex items-center gap-2"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800"><Car className="size-4" /></span>
-        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold" title={k}>{n.replace(/^Police /, "")}</p><p className="text-[10.5px] text-slate-400">{carType(k, n)}</p></div><StatusPill s={c.s} /></div>
+        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold" title={k}>{n}</p><p className="text-[10.5px] text-slate-400">{carType(k, n)}</p></div><StatusPill s={c.s} /></div>
       {ms.length > 0 && <p className="mt-2 text-[11.5px] leading-snug text-red-600 dark:text-red-400"><b>Falta:</b> {ms.join(" · ")}</p>}
       {c.by && <p className="mt-1.5 text-[10.5px] text-slate-400">Inspeccionó: {c.by}</p>}
       <Thumbs ids={c.f} cap={cap} />
@@ -72,7 +72,7 @@ export function RegistroPatrullas() {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">{dmy(h.fecha)} · {h.rows.length} {h.rows.length === 1 ? "agente" : "agentes"}</p>
                   <p className="mt-0.5 text-xs text-slate-500">Por {rankES(h.por.r)} {h.por.n} · guardada {fmtDate(h.t)} · <span className="text-emerald-600 dark:text-emerald-400">{okN} preparados</span>{noN > 0 && <> · <span className="text-red-600 dark:text-red-400">{noN} no preparados</span></>}</p>
-                  <div className="mt-1.5 flex flex-wrap gap-1">{[...new Set(h.rows.flatMap(vehOf))].slice(0, 8).map(k => <span key={k} className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10.5px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{vName(k).replace(/^Police /, "")}</span>)}</div>
+                  <div className="mt-1.5 flex flex-wrap gap-1">{[...new Set(h.rows.flatMap(vehOf))].slice(0, 8).map(k => <span key={k} className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10.5px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{vName(k)}</span>)}</div>
                 </div>
                 <ChevronDown className={cn("size-4 text-slate-400 transition-transform", isO && "rotate-180")} />
               </button>
@@ -98,7 +98,7 @@ export function RegistroPatrullas() {
           : <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">{byCar.map(([k, v]) => { const tot = v.ok + v.no, top = Object.entries(v.miss).sort((a, b) => b[1] - a[1]).slice(0, 3); return (
             <div key={k} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
               <div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800"><Car className="size-4" /></span>
-                <div className="min-w-0 flex-1"><p className="truncate font-semibold">{vName(k).replace(/^Police /, "")}</p><p className="text-[11px] text-slate-400">{carType(k, vName(k))} · última {dmy(v.last)}</p></div></div>
+                <div className="min-w-0 flex-1"><p className="truncate font-semibold">{vName(k)}</p><p className="text-[11px] text-slate-400">{carType(k, vName(k))} · última {dmy(v.last)}</p></div></div>
               <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-red-500/20"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${(v.ok * 100) / tot}%` }} /></div>
               <p className="mt-1.5 text-xs text-slate-500">{tot} {tot === 1 ? "revisión" : "revisiones"} · <span className="text-emerald-600 dark:text-emerald-400">{v.ok} preparados</span> · <span className="text-red-600 dark:text-red-400">{v.no} no</span></p>
               {top.length > 0 && <p className="mt-1 text-[11px] text-slate-400">Suele faltar: {top.map(([n, c]) => `${n} (${c})`).join(", ")}</p>}

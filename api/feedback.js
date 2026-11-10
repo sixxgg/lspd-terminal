@@ -12,6 +12,9 @@ const IMG_RE = /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/;
 const plain = h => String(h).replace(/<br\s*\/?>/gi, "\n").replace(/<\/(div|p|li)>/gi, "\n").replace(/<span[^>]*data-sp[^>]*>(.*?)<\/span>/gi, "||$1||")
   .replace(/<img[^>]*>/gi, "[foto]").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&")
   .replace(/\n{3,}/g, "\n\n").trim();
+/* resumen corto: «[📷 2 fotos] texto…» */
+const excerpt = h => { const n = (String(h).match(/<img[^>]*>/gi) || []).length, t = plain(String(h).replace(/<img[^>]*>/gi, "")).replace(/\s+/g, " ").trim();
+  return `${n ? `[📷 ${n} ${n === 1 ? "foto" : "fotos"}]${t ? " " : ""}` : ""}${t}`.slice(0, 160); };
 /* quién lo manda, en OOC: six o «Usuario N° X» (orden en que se creó la cuenta) */
 async function whoOf(u) {
   if (isSix(u)) return { who: "six", no: 0 };
@@ -23,7 +26,7 @@ const clean = h => String(h).replace(/<(script|style|iframe|object|embed|link|me
 
 async function notify(t) {
   const tok = (process.env.DISCORD_BOT_TOKEN || "").trim().replace(/^Bot\s+/i, ""); if (!tok) return "falta la variable DISCORD_BOT_TOKEN en Vercel (y un Redeploy después de crearla)";
-  const txt = plain(t.html), head = `<@${PING}> 💗 **Nuevo feedback** de **${t.who}**${t.who !== t.by ? ` · ${t.by}` : ""}`;
+  const nI = (String(t.html).match(/<img[^>]*>/gi) || []).length, txt = `${nI ? `[📷 ${nI} ${nI === 1 ? "foto" : "fotos"}]\n` : ""}${plain(String(t.html).replace(/<img[^>]*>/gi, ""))}`, head = `<@${PING}> 💗 **Nuevo feedback** de **${t.who}**${t.who !== t.by ? ` · ${t.by}` : ""}`;
   const content = `${head}\n>>> ${txt.length > 1700 ? txt.slice(0, 1700) + "…" : txt || "(sin texto)"}`;
   const fd = new FormData();
   fd.append("payload_json", JSON.stringify({ content, allowed_mentions: { users: [PING] } }));
@@ -46,7 +49,7 @@ export default wrap(async (req, res) => {
   if (req.method === "GET") { // los feedback propios y su estado (para las notificaciones de cada usuario)
     const rows = (await q("select v from kv where k like 'lspdt.six.fb.%' and v is not null")).rows, list = [];
     for (const r of rows) { let t; try { t = JSON.parse(r.v); } catch { continue; }
-      if (t && t.by === u.n) list.push({ id: t.id, t: t.t, u: t.u || t.t, st: t.st, x: t.x || plain(t.html || "").slice(0, 160), nota: String(t.nota || "").slice(0, 300) }); }
+      if (t && t.by === u.n) list.push({ id: t.id, t: t.t, u: t.u || t.t, st: t.st, x: t.x || excerpt(t.html || ""), nota: String(t.nota || "").slice(0, 300) }); }
     list.sort((a, b) => b.u - a.u);
     return send(res, 200, { list });
   }
@@ -69,7 +72,7 @@ export default wrap(async (req, res) => {
   const id = now.toString(36) + crypto.randomBytes(3).toString("hex"), keys = [];
   for (let i = 0; i < imgs.length; i++) { const k = `lspdt.six.fbi.${id}.${i}`; keys.push(k);
     await q("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do nothing", [k, imgs[i], u.n, now]); }
-  const t = { id, by: u.n, ...(await whoOf(u)), t: now, u: now, html, x: plain(html).slice(0, 160), imgs: keys, st: "pend" };
+  const t = { id, by: u.n, ...(await whoOf(u)), t: now, u: now, html, x: excerpt(html), imgs: keys, st: "pend" };
   await q("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do nothing", [`lspdt.six.fb.${id}`, JSON.stringify(t), u.n, now]);
   const dc = await notify({ ...t, raw: imgs });
   if (dc) console.warn("feedback: aviso a Discord no enviado:", dc);

@@ -1,23 +1,23 @@
 /* six: apartado privado (solo su dueño), con interfaz y temas propios, sin nada de la MDT.
-   Pestañas (A-Z): Administración · Comunicados · Equipo de ilícitos · Gestión de staff. Los datos van en lspdt.six.* (el servidor no se los muestra a nadie más). */
+   Pestañas: Inicio y, de la A a la Z, Administración · Comunicados · Equipo de ilícitos · Gestión de staff · Notificaciones. Los datos van en lspdt.six.* (el servidor no se los muestra a nadie más). */
 import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
-import { AtSign, Bell, Check, Copy, FileText, Lock, Megaphone, Plus, Power, RotateCcw, Save, Settings2, Skull, Trash2, Users, X } from "lucide-react";
+import { AtSign, Bell, Check, ChevronRight, Copy, FileText, Home, Lock, Megaphone, Plus, Power, RotateCcw, Save, Settings2, Skull, Trash2, Users, X } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
-import { useJSON } from "@/lib/store";
 import { api } from "@/lib/api";
 import { discordHtml } from "@/lib/discord";
 import { uid } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 import { FIRMAS, ILIC_VARS, consultaInteres, ilicText, type IlicForm } from "./ilicito";
 import { NotifTab, fbList, FB_SEEN } from "./Notif";
-import { LS } from "@/lib/store";
-import { CFG0, CFG_KEY, Rain, THEMES, colorOf, hex, vars, type SixCfg } from "./fx";
+import { LS, useJSON } from "@/lib/store";
+import { FB_ST, fbSt, fbX } from "@/components/fbnotif";
+import { Boot, CFG0, CFG_KEY, Rain, THEMES, colorOf, hex, vars, type SixCfg } from "./fx";
 
 type Staff = { id: string; n: string; rol: string; dc: string; notas: string };
 type Com = { id: string; t: string; body: string; ts: number };
 type Sent = { id: string; ts: number; banda: string; res: IlicForm["res"]; txt: string };
 const ROLES = ["Owner", "Administración", "Moderación", "Soporte", "Ilícitos", "Desarrollo", "Otro"];
-const TABS = [["adm", "ADMINISTRACIÓN", Settings2], ["com", "COMUNICADOS", Megaphone], ["ilic", "EQUIPO DE ILÍCITOS", Skull], ["staff", "GESTIÓN DE STAFF", Users], ["not", "NOTIFICACIONES", Bell]] as const;
+const TABS = [["ini", "INICIO", Home], ["adm", "ADMINISTRACIÓN", Settings2], ["com", "COMUNICADOS", Megaphone], ["ilic", "EQUIPO DE ILÍCITOS", Skull], ["staff", "GESTIÓN DE STAFF", Users], ["not", "NOTIFICACIONES", Bell]] as const;
 type Tab = (typeof TABS)[number][0];
 const LOCKED: Tab[] = ["com", "staff"]; // próximamente
 const isId = (s: string) => /^\d{17,20}$/.test(s.trim());
@@ -67,7 +67,7 @@ function Preview({ title, text, users }: { title: string; text: string; users: R
 /* ---------- panel ---------- */
 export function Six({ onExit }: { onExit: () => void }) {
   const [cfg, setCfg] = useJSON<SixCfg>(CFG_KEY, CFG0), c = { ...CFG0, ...cfg };
-  const [tab, setTab] = useState<Tab>("ilic"), [out, setOut] = useState(false);
+  const [tab, setTab] = useState<Tab>("ini"), [out, setOut] = useState(false), [booted, setBooted] = useState(c.intro === "no"), [replay, setReplay] = useState(0);
   const [staff, setStaff] = useJSON<Staff[]>("lspdt.six.staff", []);
   const unread = fbList().filter(x => x.t > Number(LS.get(FB_SEEN) || 0)).length;
   const users = useMemo(() => Object.fromEntries(staff.filter(s => isId(s.dc)).map(s => [s.dc.trim(), s.n])), [staff]);
@@ -79,6 +79,7 @@ export function Six({ onExit }: { onExit: () => void }) {
   return (
     <div className={cn("six-root relative min-h-[100dvh] overflow-hidden bg-[#030407] font-mono text-slate-300", out && "six-out", c.flicker && "six-flk")}
       data-bd={c.bd} style={{ ...vars(color), ["--gl" as string]: [0.35, 1, 1.8][c.glow] }}>
+      {!booted && <Boot key={replay} short={c.intro === "corta"} onDone={() => setBooted(true)} />}
       {c.grid && <div className="six-grid pointer-events-none fixed inset-0" aria-hidden />}
       {c.lluvia > 0 && <div className="pointer-events-none fixed inset-0" aria-hidden><Rain color={color} opacity={[0, 0.06, 0.11, 0.18][c.lluvia]} /></div>}
       <div className="six-vignette pointer-events-none fixed inset-0" aria-hidden />
@@ -89,8 +90,8 @@ export function Six({ onExit }: { onExit: () => void }) {
           <span className="six-logo text-3xl font-black" data-t="six">six</span>
           <div className="hidden text-[10px] leading-tight text-slate-500 md:block"><p>SESIÓN PRIVADA · <span className="text-six">CIFRADA</span></p><p>FIRMA {sig.toUpperCase()}</p></div>
           <nav className="mx-auto flex gap-1 rounded-xl border border-six/10 bg-black/40 p-1">{TABS.map(([k, l, I]) => (
-            <button key={k} onClick={() => setTab(k)} title={l} className={cn("six-tab inline-flex items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold tracking-[0.14em] transition",
-              tab === k ? "on text-six" : "text-slate-500 hover:text-six")}><I className="size-4" /><span className="hidden lg:inline">{l}</span>{LOCKED.includes(k) && <Lock className="size-3 opacity-60" />}{k === "not" && unread > 0 && <span className="rounded-full bg-six px-1.5 text-[10px] font-black text-black">{unread}</span>}</button>))}</nav>
+            <button key={k} onClick={() => setTab(k)} title={l} className={cn("six-tab inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-[11px] font-bold tracking-[0.14em] transition",
+              tab === k ? "on text-six" : "text-slate-500 hover:text-six")}><I className="size-4 shrink-0" /><span className={tab === k ? "hidden sm:inline" : "hidden min-[1700px]:inline"}>{l}</span>{LOCKED.includes(k) && <Lock className="size-3 opacity-60" />}{k === "not" && unread > 0 && <span className="rounded-full bg-six px-1.5 text-[10px] font-black text-black">{unread}</span>}</button>))}</nav>
           <span className="hidden tabular-nums text-sm text-six six-txt xl:inline">{clock}</span>
           <NBtn ghost icon={<Power />} onClick={exit} title="Volver a la MDT"><span className="hidden sm:inline">SALIR</span></NBtn>
         </div>
@@ -99,8 +100,9 @@ export function Six({ onExit }: { onExit: () => void }) {
 
       <main key={tab} className="six-in relative mx-auto max-w-[1600px] px-4 py-6">
         {LOCKED.includes(tab) ? <Soon t={TABS.find(x => x[0] === tab)![1]} />
+          : tab === "ini" ? <HomeTab go={setTab} unread={unread} staff={staff.length} />
           : tab === "not" ? <NotifTab />
-          : tab === "adm" ? <AdmTab c={c} set={set} />
+          : tab === "adm" ? <AdmTab c={c} set={set} replay={() => { setReplay(x => x + 1); setBooted(false); }} />
           : tab === "staff" ? <StaffTab staff={staff} setStaff={setStaff} />
           : tab === "com" ? <ComTab staff={staff} users={users} />
           : <IlicTab users={users} />}
@@ -118,7 +120,38 @@ const Soon = ({ t }: { t: string }) => (
   </Panel>);
 
 /* ---------- administración: temas y efectos de six ---------- */
-function AdmTab({ c, set }: { c: SixCfg; set: (p: Partial<SixCfg>) => void }) {
+/* ---------- inicio: resumen de todo lo de six ---------- */
+function HomeTab({ go, unread, staff }: { go: (t: Tab) => void; unread: number; staff: number }) {
+  const fb = fbList(), sent = LS.ro<Sent[]>("lspdt.six.ilic", []), com = LS.ro<Com[]>("lspdt.six.com", []);
+  const abiertos = fb.filter(x => ["pend", "curso"].includes(fbSt(x.st))).length, h = new Date().getHours();
+  const saludo = h >= 6 && h < 13 ? "Buenos días" : h >= 13 && h < 20 ? "Buenas tardes" : "Buenas noches";
+  const cards: [Tab, string, typeof Bell, string, string][] = [
+    ["not", "Notificaciones", Bell, unread ? `${unread} sin leer` : "Todo leído", `${abiertos} abiertos · ${fb.length} en total`],
+    ["ilic", "Equipo de ilícitos", Skull, `${sent.length} respuestas`, sent.length ? `Última: ${sent[sent.length - 1].banda}` : "Sin respuestas todavía"],
+    ["staff", "Gestión de staff", Users, `${staff} en el equipo`, "Próximamente"],
+    ["com", "Comunicados", Megaphone, `${com.length} guardados`, "Próximamente"],
+    ["adm", "Administración", Settings2, "Tema, efectos e intro", "Avisos de Discord"],
+  ];
+  return (
+    <div className="space-y-5">
+      <Panel><p className="font-sans text-sm text-slate-500">{new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}</p>
+        <h1 className="six-h mt-1 font-sans text-2xl font-bold">{saludo}, six.</h1>
+        <p className="mt-1 font-sans text-sm text-slate-400">{abiertos ? `Tenés ${abiertos} feedback ${abiertos === 1 ? "abierto" : "abiertos"} por revisar.` : "No hay feedback pendiente."}</p></Panel>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{cards.map(([k, l, I, a, b]) => (
+        <button key={k} onClick={() => go(k)} className="six-panel group relative flex items-center gap-4 rounded-2xl p-4 text-left transition hover:-translate-y-0.5">
+          <span className="grid size-11 place-items-center rounded-xl border border-six/40 bg-six/10 text-six six-ico"><I className="size-5" /></span>
+          <span className="min-w-0 flex-1 font-sans"><b className="block text-white">{l}{LOCKED.includes(k) && <Lock className="ml-1.5 inline size-3 opacity-50" />}</b><span className="block text-sm text-six">{a}</span><span className="block truncate text-xs text-slate-500">{b}</span></span>
+          <ChevronRight className="size-4 text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-six" /></button>))}</div>
+      {fb.length > 0 && <Panel t="Últimos feedback" icon={<Bell />}>
+        <div className="space-y-1.5">{fb.slice(0, 5).map(x => { const S = FB_ST[fbSt(x.st)]; return (
+          <button key={x.id} onClick={() => go("not")} className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left font-sans text-sm transition hover:bg-six/5">
+            <S.I className="size-4 shrink-0" style={{ color: S.c }} /><span className="w-28 shrink-0 truncate font-semibold text-white">{x.who || x.by}</span>
+            <span className="min-w-0 flex-1 truncate text-slate-400">{fbX(x.x)}</span></button>); })}</div></Panel>}
+    </div>
+  );
+}
+
+function AdmTab({ c, set, replay }: { c: SixCfg; set: (p: Partial<SixCfg>) => void; replay: () => void }) {
   return (
     <div className="grid items-start gap-5 lg:grid-cols-2">
       <Panel t="Tema" icon={<Settings2 />} d="Color de toda la interfaz de six. No toca nada de la MDT." className="space-y-4">
@@ -134,12 +167,14 @@ function AdmTab({ c, set }: { c: SixCfg; set: (p: Partial<SixCfg>) => void }) {
           <Toggle on={c.grid} set={v => set({ grid: v })} t="Cuadrícula" d="Grilla de fondo" />
           <Toggle on={c.scan} set={v => set({ scan: v })} t="Líneas de escaneo" d="Efecto de monitor CRT" />
           <Toggle on={c.flicker} set={v => set({ flicker: v })} t="Parpadeo" d="Titileo leve del neón" />
-          <Toggle on={c.error} set={v => set({ error: v })} t="Error al entrar" d="Pantallazo rojo al abrir six" />
+          <Toggle on={c.error} set={v => set({ error: v })} t="Error al entrar" d="Pantallazo rojo antes de la intro" />
         </div>
       </Panel>
-      <Panel t="Avisos de Discord" icon={<Bell />} d="Cada feedback nuevo llega a NOTIFICACIONES y al canal de Discord con mención." className="space-y-3 lg:col-span-2">
-        <div className="flex flex-wrap items-center gap-2"><DcTest /><NBtn ghost className="ml-auto" icon={<RotateCcw />} onClick={() => set({ ...CFG0 })}>RESTABLECER TEMA Y EFECTOS</NBtn></div>
+      <Panel t="Intro" icon={<Power />} d="La consola que aparece al abrir six." className="space-y-3">
+        <Seg v={c.intro} set={v => set({ intro: v })} opts={[["completa", "Completa (~10 s)"], ["corta", "Corta (~4 s)"], ["no", "Sin intro"]] as const} />
+        <div className="flex flex-wrap gap-2"><NBtn icon={<Power />} onClick={replay}>VER LA INTRO</NBtn><NBtn ghost icon={<RotateCcw />} onClick={() => set({ ...CFG0 })}>RESTABLECER TODO</NBtn></div>
       </Panel>
+      <Panel t="Avisos de Discord" icon={<Bell />} d="Cada feedback nuevo llega a NOTIFICACIONES y al canal de Discord con mención." className="space-y-3"><DcTest /></Panel>
     </div>
   );
 }
