@@ -8,7 +8,7 @@ import { ALL_DIVS, findAgent, fmtDate, getRoster, lvl, norm, rankES } from "@/li
 import { authApi } from "@/lib/api";
 import { DEF_ROSTER, LS, syncIdle, useStoreVersion } from "@/lib/store";
 import { uMap, uSaveMap, rtdMem } from "@/lib/units";
-import { parseCSV } from "@/lib/patrol";
+import { parseCSV } from "@/lib/csv";
 import { DivLogo } from "@/sections/sup/Agentes";
 import { CursorGrid, SkinGrid } from "@/components/appearance";
 import { SKINS } from "@/lib/appearance";

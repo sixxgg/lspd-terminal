@@ -73,7 +73,7 @@ export default function App() {
   const fbKnown = useRef<Set<string> | null>(null);
   useEffect(() => { if (!me || !ME_ROLES.six) return; const ks = LS.keys("lspdt.six.fb.");
     if (!fbKnown.current) { fbKnown.current = new Set(ks); return; }
-    for (const k of ks) if (!fbKnown.current.has(k)) { fbKnown.current.add(k); const t = LS.ro<{ by: string } | null>(k, null); if (t) toast(`📬 Nuevo feedback de ${t.by} · six → Notificaciones`); } });
+    for (const k of ks) if (!fbKnown.current.has(k)) { fbKnown.current.add(k); const t = LS.ro<{ by: string; who?: string } | null>(k, null); if (t) toast(`💗 Nuevo feedback de ${t.who || t.by} · six → Notificaciones`); } });
   useEffect(() => {
     void api("/api/auth?full=1").then(r => { const b = r as unknown as Boot; setBoot(b); if (b.me && b.data) enter(b.data); });
   }, [enter]);

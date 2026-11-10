@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
-  Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, Award, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, MessageSquareHeart, Fingerprint,
+  Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, Award, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint,
 } from "lucide-react";
 import { ME_ROLES } from "./lib/store";
 import { Helicopter } from "./components/icons";
@@ -17,7 +17,7 @@ const RAW_AREAS: Area[] = [
     { k: "nov", l: "Novedades", d: "Registro de cambios por versión y la primera versión de la terminal", icon: ScrollText, ready: true }] },
   { k: "age", l: "Agentes", icon: Users, min: 6, req: "Sargento I", sec: [{ k: "prof", l: "Agentes", d: "Planilla del departamento por rango: Jefatura, Capitanía, Supervisores, Detectives y Patrulleros", icon: Users, ready: true }] },
   { k: "inf", l: "Informes", icon: FileText, min: 0, sec: [{ k: "inf", l: "Informes policiales", d: "Redactar, registrar y buscar informes", icon: FileText, ready: true }] },
-  { k: "fb", l: "Feedback", icon: MessageSquareHeart, min: 0, sec: [{ k: "env", l: "Enviar feedback", d: "Errores, ideas o mejoras para la terminal: escribilo como quieras y sumá fotos", icon: MessageSquareHeart, ready: true }] },
+  { k: "fb", l: "Feedback", icon: Heart, min: 0, sec: [{ k: "env", l: "Feedback", d: "Errores, ideas o mejoras: escribilo como quieras y sumá fotos si ayudan", icon: Heart, ready: true }] },
   { k: "leg", l: "Legal", icon: Scale, min: 0, sec: [{ k: "ley", l: "Leyes", d: "Infracciones administrativas y delitos por capítulo, con favoritos", icon: Scale, ready: true }] },
   { k: "sup", l: "Supervisión", icon: ClipboardList, min: 6, req: "Sargento I", sec: [
     { k: "asc", l: "Ascensos / Descensos", sl: "Ascensos", d: "Contratos y resoluciones con /me y /do", icon: TrendingUp, ready: true },

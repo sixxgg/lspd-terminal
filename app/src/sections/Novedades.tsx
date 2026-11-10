@@ -14,9 +14,10 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
   { v: "1.6", f: "09/11/2026", t: "Feedback, huellas y patrullas ONX", items: [
-    "Nueva área Feedback: cualquiera puede mandar errores o ideas con negrita, subrayado, tachado, texto oculto, colores y fotos (se pueden pegar con Ctrl+V).",
+    "Nueva área Feedback: cualquiera puede mandar errores o ideas con negrita, subrayado, tachado, texto oculto, colores y fotos (se pueden pegar con Ctrl+V). En la campanita de arriba ves en qué quedó cada uno: pendiente, en curso, añadido, arreglado, rechazado o descartado.",
     "Supervisión · Registro de huellas: nuevos registros y coincidencias por agente; se cargan pegando las filas del laboratorio o a mano, con filtros y conteo por agente.",
-    "Revisión de patrullas: cada agente lleva los patrullas ONX que se le revisaron (lista desplegable, sin helicópteros), con quién lo inspeccionó y qué faltaba. El equipamiento es una sola lista para todos.",
+    "Revisión de patrullas: cada agente lleva los patrullas ONX que se le revisaron (selector con buscador y tipos, sin helicópteros), con quién lo inspeccionó y qué faltaba. El equipamiento es una sola lista para todos.",
+    "Registro de patrullas armado solo con las revisiones de la terminal (sin la planilla de Google): por revisión, por agente y por patrulla, con lo que suele faltar en cada modelo.",
     "PSB · Resolución: si se comunica por este medio o en persona, se agrega el bloque resolutivo tomado de la elevación del mismo expediente.",
     "Informes: vehículo robado o no (obligatorio), relación del sujeto con el vehículo, Incident Commander como marca aparte e historial por agente y fechas.",
   ] },

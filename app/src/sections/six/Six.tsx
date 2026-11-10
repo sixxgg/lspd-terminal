@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 import { FIRMAS, ILIC_VARS, consultaInteres, ilicText, type IlicForm } from "./ilicito";
 import { NotifTab, fbList, FB_SEEN } from "./Notif";
 import { LS } from "@/lib/store";
-import { Boot, CFG0, CFG_KEY, Rain, THEMES, colorOf, hex, vars, type SixCfg } from "./fx";
+import { CFG0, CFG_KEY, Rain, THEMES, colorOf, hex, vars, type SixCfg } from "./fx";
 
 type Staff = { id: string; n: string; rol: string; dc: string; notas: string };
 type Com = { id: string; t: string; body: string; ts: number };
@@ -67,7 +67,7 @@ function Preview({ title, text, users }: { title: string; text: string; users: R
 /* ---------- panel ---------- */
 export function Six({ onExit }: { onExit: () => void }) {
   const [cfg, setCfg] = useJSON<SixCfg>(CFG_KEY, CFG0), c = { ...CFG0, ...cfg };
-  const [booted, setBooted] = useState(c.intro === "no"), [replay, setReplay] = useState(0), [tab, setTab] = useState<Tab>("ilic"), [out, setOut] = useState(false);
+  const [tab, setTab] = useState<Tab>("ilic"), [out, setOut] = useState(false);
   const [staff, setStaff] = useJSON<Staff[]>("lspdt.six.staff", []);
   const unread = fbList().filter(x => x.t > Number(LS.get(FB_SEEN) || 0)).length;
   const users = useMemo(() => Object.fromEntries(staff.filter(s => isId(s.dc)).map(s => [s.dc.trim(), s.n])), [staff]);
@@ -79,7 +79,6 @@ export function Six({ onExit }: { onExit: () => void }) {
   return (
     <div className={cn("six-root relative min-h-[100dvh] overflow-hidden bg-[#030407] font-mono text-slate-300", out && "six-out", c.flicker && "six-flk")}
       data-bd={c.bd} style={{ ...vars(color), ["--gl" as string]: [0.35, 1, 1.8][c.glow] }}>
-      {!booted && <Boot key={replay} short={c.intro === "corta"} onDone={() => setBooted(true)} />}
       {c.grid && <div className="six-grid pointer-events-none fixed inset-0" aria-hidden />}
       {c.lluvia > 0 && <div className="pointer-events-none fixed inset-0" aria-hidden><Rain color={color} opacity={[0, 0.06, 0.11, 0.18][c.lluvia]} /></div>}
       <div className="six-vignette pointer-events-none fixed inset-0" aria-hidden />
@@ -101,7 +100,7 @@ export function Six({ onExit }: { onExit: () => void }) {
       <main key={tab} className="six-in relative mx-auto max-w-[1600px] px-4 py-6">
         {LOCKED.includes(tab) ? <Soon t={TABS.find(x => x[0] === tab)![1]} />
           : tab === "not" ? <NotifTab />
-          : tab === "adm" ? <AdmTab c={c} set={set} replay={() => { setReplay(x => x + 1); setBooted(false); }} />
+          : tab === "adm" ? <AdmTab c={c} set={set} />
           : tab === "staff" ? <StaffTab staff={staff} setStaff={setStaff} />
           : tab === "com" ? <ComTab staff={staff} users={users} />
           : <IlicTab users={users} />}
@@ -119,7 +118,7 @@ const Soon = ({ t }: { t: string }) => (
   </Panel>);
 
 /* ---------- administración: temas y efectos de six ---------- */
-function AdmTab({ c, set, replay }: { c: SixCfg; set: (p: Partial<SixCfg>) => void; replay: () => void }) {
+function AdmTab({ c, set }: { c: SixCfg; set: (p: Partial<SixCfg>) => void }) {
   return (
     <div className="grid items-start gap-5 lg:grid-cols-2">
       <Panel t="Tema" icon={<Settings2 />} d="Color de toda la interfaz de six. No toca nada de la MDT." className="space-y-4">
@@ -135,16 +134,11 @@ function AdmTab({ c, set, replay }: { c: SixCfg; set: (p: Partial<SixCfg>) => vo
           <Toggle on={c.grid} set={v => set({ grid: v })} t="Cuadrícula" d="Grilla de fondo" />
           <Toggle on={c.scan} set={v => set({ scan: v })} t="Líneas de escaneo" d="Efecto de monitor CRT" />
           <Toggle on={c.flicker} set={v => set({ flicker: v })} t="Parpadeo" d="Titileo leve del neón" />
-          <Toggle on={c.error} set={v => set({ error: v })} t="Error al entrar" d="Pantallazo rojo antes de la intro" />
+          <Toggle on={c.error} set={v => set({ error: v })} t="Error al entrar" d="Pantallazo rojo al abrir six" />
         </div>
       </Panel>
-      <Panel t="Intro" icon={<Power />} d="La consola que aparece al entrar." className="space-y-3 lg:col-span-2">
-        <Seg v={c.intro} set={v => set({ intro: v })} opts={[["completa", "Completa (~10 s)"], ["corta", "Corta (~4 s)"], ["no", "Sin intro"]] as const} />
-        <div className="flex flex-wrap gap-2"><NBtn icon={<Power />} onClick={replay}>VER LA INTRO</NBtn>
-          <NBtn ghost icon={<RotateCcw />} onClick={() => set({ ...CFG0 })}>RESTABLECER TODO</NBtn></div>
-      </Panel>
       <Panel t="Avisos de Discord" icon={<Bell />} d="Cada feedback nuevo llega a NOTIFICACIONES y al canal de Discord con mención." className="space-y-3 lg:col-span-2">
-        <DcTest />
+        <div className="flex flex-wrap items-center gap-2"><DcTest /><NBtn ghost className="ml-auto" icon={<RotateCcw />} onClick={() => set({ ...CFG0 })}>RESTABLECER TEMA Y EFECTOS</NBtn></div>
       </Panel>
     </div>
   );

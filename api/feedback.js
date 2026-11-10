@@ -12,12 +12,18 @@ const IMG_RE = /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/;
 const plain = h => String(h).replace(/<br\s*\/?>/gi, "\n").replace(/<\/(div|p|li)>/gi, "\n").replace(/<span[^>]*data-sp[^>]*>(.*?)<\/span>/gi, "||$1||")
   .replace(/<img[^>]*>/gi, "[foto]").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&")
   .replace(/\n{3,}/g, "\n\n").trim();
+/* quién lo manda, en OOC: six o «Usuario N° X» (orden en que se creó la cuenta) */
+async function whoOf(u) {
+  if (isSix(u)) return { who: "six", no: 0 };
+  const no = +((await q("select count(*) as n from accounts where created <= (select created from accounts where name=$1)", [u.n])).rows[0]?.n || 0);
+  return { who: no ? `Usuario N° ${no}` : "Usuario", no };
+}
 /* limpieza básica en el servidor (al mostrarlo, la terminal vuelve a filtrar todo con una lista blanca) */
 const clean = h => String(h).replace(/<(script|style|iframe|object|embed|link|meta)[\s\S]*?(<\/\1>|$)/gi, "").replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "").replace(/javascript:/gi, "");
 
 async function notify(t) {
   const tok = (process.env.DISCORD_BOT_TOKEN || "").trim().replace(/^Bot\s+/i, ""); if (!tok) return "falta la variable DISCORD_BOT_TOKEN en Vercel (y un Redeploy después de crearla)";
-  const txt = plain(t.html), head = `<@${PING}> 📬 **Nuevo feedback** de **${t.by}**${t.r ? ` (${t.r})` : ""}`;
+  const txt = plain(t.html), head = `<@${PING}> 💗 **Nuevo feedback** de **${t.who}**${t.who !== t.by ? ` · ${t.by}` : ""}`;
   const content = `${head}\n>>> ${txt.length > 1700 ? txt.slice(0, 1700) + "…" : txt || "(sin texto)"}`;
   const fd = new FormData();
   fd.append("payload_json", JSON.stringify({ content, allowed_mentions: { users: [PING] } }));
@@ -37,11 +43,18 @@ async function notify(t) {
 
 export default wrap(async (req, res) => {
   const u = await requireUser(req, res); if (!u) return;
+  if (req.method === "GET") { // los feedback propios y su estado (para las notificaciones de cada usuario)
+    const rows = (await q("select v from kv where k like 'lspdt.six.fb.%' and v is not null")).rows, list = [];
+    for (const r of rows) { let t; try { t = JSON.parse(r.v); } catch { continue; }
+      if (t && t.by === u.n) list.push({ id: t.id, t: t.t, u: t.u || t.t, st: t.st, x: t.x || plain(t.html || "").slice(0, 160), nota: String(t.nota || "").slice(0, 300) }); }
+    list.sort((a, b) => b.u - a.u);
+    return send(res, 200, { list });
+  }
   if (req.method !== "POST") return send(res, 405, { error: "method" });
   const b = await body(req);
   if (b.test) { // prueba del aviso (solo six)
     if (!isSix(u)) return send(res, 403, { msg: "Solo six" });
-    const dc = await notify({ by: u.n, r: u.r || "", html: "✅ Prueba del aviso de feedback de la terminal.", raw: [] });
+    const dc = await notify({ by: u.n, who: "six", html: "✅ Prueba del aviso de feedback de la terminal.", raw: [] });
     return send(res, 200, dc ? { ok: false, msg: dc } : { ok: true });
   }
   const html = clean(typeof b.html === "string" ? b.html : "").slice(0, 30000), imgs = Array.isArray(b.imgs) ? b.imgs : [];
@@ -56,7 +69,7 @@ export default wrap(async (req, res) => {
   const id = now.toString(36) + crypto.randomBytes(3).toString("hex"), keys = [];
   for (let i = 0; i < imgs.length; i++) { const k = `lspdt.six.fbi.${id}.${i}`; keys.push(k);
     await q("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do nothing", [k, imgs[i], u.n, now]); }
-  const t = { id, by: u.n, r: u.r || "", t: now, html, imgs: keys, st: "pend" };
+  const t = { id, by: u.n, ...(await whoOf(u)), t: now, u: now, html, x: plain(html).slice(0, 160), imgs: keys, st: "pend" };
   await q("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do nothing", [`lspdt.six.fb.${id}`, JSON.stringify(t), u.n, now]);
   const dc = await notify({ ...t, raw: imgs });
   if (dc) console.warn("feedback: aviso a Discord no enviado:", dc);
