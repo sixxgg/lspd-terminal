@@ -12,7 +12,7 @@ import { ALL_DIVS, DIVS, GROUPS, LEVEL, divAb, divEmblem, emailOf, findAgent, fo
 import { ACC_LAST, LS, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { allProfiles, profFull, updateAgent, updateProf, type Profile } from "@/lib/profiles";
-import { VEH, dmy, missOf, type PHist } from "@/lib/patrol";
+import { dmy, missOf, vName, vehOf, type PHist } from "@/lib/patrol";
 import { cn } from "@/lib/cn";
 import { StatusPill, Thumbs } from "./Patrullas";
 import { EstadoBadge, TipoBadge, tally, type Prop } from "./Votaciones";
@@ -310,8 +310,8 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
             {pats.length ? pats.map(({ h, r }) => (
               <div key={h.id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
                 <p className="text-xs text-slate-500"><b className="text-slate-700 dark:text-slate-200">{dmy(h.fecha)}</b> · revisado por {rankES(h.por.r)} {h.por.n}</p>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2">{VEH.map(([k, vn]) => { const c = r.v[k] || { s: "" }; if (c.s === "na") return null; const ms = missOf(c); return (
-                  <div key={k} className="text-sm"><span className="mr-2 text-slate-500">{vn}</span><StatusPill s={c.s} />{ms.length > 0 && <p className="mt-0.5 text-xs text-red-600 dark:text-red-400">Falta: {ms.join(", ")}</p>}<Thumbs ids={c.f} cap={`${n} · ${vn} · ${dmy(h.fecha)}`} /></div>); })}</div>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">{vehOf(r).map(k => { const c = r.v[k] || { s: "" }, vn = vName(k); if (c.s === "na") return null; const ms = missOf(c); return (
+                  <div key={k} className="text-sm"><span className="mr-2 text-slate-500">{vn}</span><StatusPill s={c.s} />{ms.length > 0 && <p className="mt-0.5 text-xs text-red-600 dark:text-red-400">Falta: {ms.join(", ")}</p>}{c.by && <p className="text-[11px] text-slate-400">Inspeccionó: {c.by}</p>}<Thumbs ids={c.f} cap={`${n} · ${vn} · ${dmy(h.fecha)}`} /></div>); })}</div>
                 {h.nota && <p className="mt-2 text-xs text-slate-500">Notas: {h.nota}</p>}
               </div>)) : <p className="py-6 text-center text-sm text-slate-400">Sin controles de patrulla guardados.</p>}
           </div>}

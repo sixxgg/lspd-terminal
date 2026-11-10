@@ -7,7 +7,7 @@ import { useFeedback } from "@/components/feedback";
 import { fmtDate, norm, rankES } from "@/lib/domain";
 import { useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { VEH, delPhotos, dmy, missOf, patReport, vcount, type PHist } from "@/lib/patrol";
+import { delPhotos, vName, vehOf, dmy, missOf, patReport, vcount, type PHist } from "@/lib/patrol";
 import { cn } from "@/lib/cn";
 import { StatusPill, Thumbs } from "./Patrullas";
 import { SheetPanel } from "./SheetPanel";
@@ -47,13 +47,14 @@ export function RegistroPatrullas() {
               </button>
               {isO && (
                 <div className="border-t border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/30">
-                  <div className="scrollbar-thin overflow-x-auto"><table className="w-full min-w-[56rem] text-sm">
-                    <thead><tr className="text-left text-[11px] uppercase tracking-wide text-slate-400"><th className="px-4 py-2.5 font-semibold">Agente</th>{VEH.map(([k, n]) => <th key={k} className="px-3 py-2.5 font-semibold">{n}</th>)}</tr></thead>
+                  <div className="scrollbar-thin overflow-x-auto"><table className="w-full min-w-[40rem] text-sm">
+                    <thead><tr className="text-left text-[11px] uppercase tracking-wide text-slate-400"><th className="w-56 px-4 py-2.5 font-semibold">Agente</th><th className="px-3 py-2.5 font-semibold">Patrullas revisados</th></tr></thead>
                     <tbody>{h.rows.map(r => (
                       <tr key={r.n} className="border-t border-slate-100 align-top dark:border-slate-800/70">
                         <td className="px-4 py-2.5"><div className="flex items-center gap-2"><Avatar n={r.n} size={26} /><div><p className="font-semibold">{r.n}</p><div className="flex items-center gap-1.5"><RankBadge r={r.r} />{r.p && <span className="font-mono text-[11px] text-slate-400">#{r.p}</span>}</div></div></div></td>
-                        {VEH.map(([k, vn]) => { const c = r.v[k] || { s: "" }, ms = missOf(c); return (
-                          <td key={k} className="px-3 py-2.5"><StatusPill s={c.s} />{ms.length > 0 && <p className="mt-1 text-[11px] text-red-600 dark:text-red-400">{ms.join(", ")}</p>}<Thumbs ids={c.f} cap={`${r.n} · ${vn} · ${dmy(h.fecha)}`} /></td>); })}
+                        <td className="px-3 py-2.5"><div className="flex flex-wrap gap-2">{vehOf(r).length ? vehOf(r).map(k => { const c = r.v[k] || { s: "" }, ms = missOf(c), vn = vName(k); return (
+                          <div key={k} className="w-[15rem] rounded-lg border border-slate-200 p-2 dark:border-slate-800"><p className="mb-1 text-xs font-semibold">{vn}</p><StatusPill s={c.s} />{ms.length > 0 && <p className="mt-1 text-[11px] text-red-600 dark:text-red-400">Falta: {ms.join(", ")}</p>}
+                            {c.by && <p className="mt-1 text-[10.5px] text-slate-400">Inspeccionó: {c.by}</p>}<Thumbs ids={c.f} cap={`${r.n} · ${vn} · ${dmy(h.fecha)}`} /></div>); }) : <span className="text-xs text-slate-400">Sin patrullas</span>}</div></td>
                       </tr>))}</tbody>
                   </table></div>
                   {h.nota && <p className="mx-4 mt-3 rounded-xl border border-amber-300/50 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200"><b>Notas internas:</b> {h.nota}</p>}

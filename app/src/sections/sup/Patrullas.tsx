@@ -9,7 +9,7 @@ import { findAgent as getAgent, lvl, rankES, uid } from "@/lib/domain";
 import { LS, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { goTo } from "@/lib/profiles";
-import { VEH, VST, delPhotos, dmy, getEq, missOf, patReport, pfoto, readImg, vcount, type Cell, type PHist, type Patrol, type PRow } from "@/lib/patrol";
+import { PATROL_CARS, VST, delPhotos, dmy, eqAll, eqFor, missOf, vName, vehOf, patReport, pfoto, readImg, vcount, type Cell, type PHist, type Patrol, type PRow } from "@/lib/patrol";
 import { cn } from "@/lib/cn";
 
 const newPat = (): Patrol => ({ fecha: new Date().toISOString().slice(0, 10), rows: [] });
@@ -41,12 +41,13 @@ export function Patrullas() {
   const [PAT, setPAT] = useJSON<Patrol>("lspdt.patrol", newPat());
   const [HIST, setHIST] = useJSON<PHist[]>("lspdt.patHist", []);
   const [nota, setNota] = useState(""), [eqOpen, setEqOpen] = useState(false), [miss, setMiss] = useState<{ i: number; k: string } | null>(null);
-  const EQ = getEq();
   const save = (fn: (p: Patrol) => void) => { const x = structuredClone(PAT); fn(x); setPAT(x); };
   const cnt = (s: string) => vcount(PAT.rows, s);
   const by = `${rankES(me.r)} ${me.n}`;
   const report = useMemo(() => (PAT.rows.length ? patReport({ ...PAT, nota: nota.trim() }, `${me.r} ${me.n}`) : ""), [PAT, nota, me.r, me.n]);
-  const setCell = (i: number, k: string, s: Cell["s"]) => { save(p => { p.rows[i].v[k] = { ...(p.rows[i].v[k] || {}), s }; }); if (s === "no") setMiss({ i, k }); };
+  const setCell = (i: number, k: string, s: Cell["s"]) => { save(p => { p.rows[i].v[k] = { ...(p.rows[i].v[k] || {}), s, by: me.n }; }); if (s === "no") setMiss({ i, k }); };
+  const addVeh = (i: number, k: string) => { if (k) save(p => { p.rows[i].v[k] = { s: "" }; }); };
+  const delVeh = (i: number, k: string) => { (PAT.rows[i].v[k]?.f || []).forEach(id => LS.del("lspdt.pfoto." + id)); save(p => { delete p.rows[i].v[k]; }); };
   const discard = async () => { if (PAT.rows.length && !(await confirm("¿Descartar la revisión en curso sin guardarla?", { danger: true, ok: "Descartar" }))) return; delPhotos(PAT.rows); setPAT(newPat()); setNota(""); };
   const store = async () => {
     if (!PAT.rows.length) { toast("Agregá al menos un agente a la revisión", "err"); return; }
@@ -78,7 +79,7 @@ export function Patrullas() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" icon={<Package />} onClick={() => setEqOpen(true)}>Equipamiento requerido</Button>
-              <Button variant="outline" size="sm" icon={<CheckCheck />} disabled={!cnt("")} onClick={() => { save(p => p.rows.forEach(r => VEH.forEach(([k]) => { if ((r.v[k]?.s || "") === "") r.v[k] = { s: "ok" }; }))); toast("Los vehículos sin revisar quedaron como preparados"); }}>Marcar todo como preparado</Button>
+              <Button variant="outline" size="sm" icon={<CheckCheck />} disabled={!cnt("")} onClick={() => { save(p => p.rows.forEach(r => vehOf(r).forEach(k => { if ((r.v[k]?.s || "") === "") r.v[k] = { ...r.v[k], s: "ok", by: me.n }; }))); toast("Los patrullas sin revisar quedaron como preparados"); }}>Marcar todo como preparado</Button>
               <Button variant="ghost" size="sm" icon={<Trash2 />} disabled={!PAT.rows.length} onClick={discard}>Descartar</Button>
             </div>
             <Field label="Notas internas" hint="(opcional)"><Textarea rows={2} value={nota} onChange={e => setNota(e.target.value)} placeholder="Observaciones generales del control…" /></Field>
@@ -89,22 +90,31 @@ export function Patrullas() {
       <Card className="overflow-hidden">
         {!PAT.rows.length ? <p className="px-6 py-12 text-center text-sm text-slate-400">Todavía no agregaste agentes. Elegilos de la lista de arriba.</p> : (
           <div className="scrollbar-thin overflow-x-auto">
-            <table className="w-full min-w-[60rem] text-sm">
+            <table className="w-full min-w-[44rem] text-sm">
               <thead><tr className="border-b border-slate-100 text-left text-[11px] uppercase tracking-wide text-slate-400 dark:border-slate-800">
-                <th className="px-4 py-3 font-semibold">Agente</th>{VEH.map(([k, n]) => <th key={k} className="px-3 py-3 font-semibold">{n}</th>)}<th className="w-10" /></tr></thead>
+                <th className="w-56 px-4 py-3 font-semibold">Agente</th><th className="px-3 py-3 font-semibold">Patrullas revisados</th><th className="w-10" /></tr></thead>
               <tbody>{PAT.rows.map((r, i) => (
                 <tr key={r.n} className="border-b border-slate-100 align-top last:border-0 dark:border-slate-800/70">
                   <td className="px-4 py-3"><div className="flex items-center gap-2.5"><Avatar n={r.n} size={30} /><div><p className="font-semibold">{r.n}</p><div className="mt-0.5 flex items-center gap-1.5"><RankBadge r={r.r} />{r.p && <span className="font-mono text-[11px] text-slate-400">#{r.p}</span>}</div></div></div></td>
-                  {VEH.map(([k, vn]) => { const c = r.v[k] || { s: "" }, ms = missOf(c); return (
-                    <td key={k} className="px-3 py-3">
-                      <select value={c.s} style={{ maxWidth: "15rem" }} onChange={e => setCell(i, k, e.target.value as Cell["s"])} aria-label={`${vn} de ${r.n}`}
-                        className={cn("h-8 w-full rounded-lg border px-2 text-xs font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-brand-500", ST_CLS[c.s])}>
-                        {Object.entries(VST).map(([v, l]) => <option key={v} value={v} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100">{v ? l : "— Sin revisar"}</option>)}
-                      </select>
-                      {c.s !== "na" && <button onClick={() => setMiss({ i, k })} className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:underline dark:text-brand-300"><ListChecks className="size-3" />{c.ck ? "Checklist" : "Hacer checklist"}{ms.length ? ` · ${ms.length} ${ms.length === 1 ? "ítem incompleto" : "ítems incompletos"}` : c.ck ? " ✓" : ""}{c.f?.length ? <><Camera className="ml-1 size-3" />{c.f.length}</> : null}</button>}
-                      {ms.length > 0 && <p title={ms.join("\n")} className="mt-1 line-clamp-3 max-w-[15rem] text-[11px] leading-snug text-red-600 dark:text-red-400">{ms.join(" · ")}</p>}
-                      <Thumbs ids={c.f} cap={`${r.n} · ${vn}`} />
-                    </td>); })}
+                  <td className="px-3 py-3"><div className="flex flex-wrap items-start gap-2">
+                    {vehOf(r).map(k => { const c = r.v[k] || { s: "" }, ms = missOf(c), vn = vName(k); return (
+                      <div key={k} className="w-[15.5rem] rounded-xl border border-slate-200 p-2 dark:border-slate-800">
+                        <div className="mb-1.5 flex items-start gap-1"><p className="flex-1 text-xs font-semibold leading-tight" title={k}>{vn}</p>
+                          <button aria-label={`Quitar ${vn}`} onClick={() => delVeh(i, k)} className="rounded p-0.5 text-slate-400 hover:text-red-600"><X className="size-3.5" /></button></div>
+                        <select value={c.s} onChange={e => setCell(i, k, e.target.value as Cell["s"])} aria-label={`${vn} de ${r.n}`}
+                          className={cn("h-8 w-full rounded-lg border px-2 text-xs font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-brand-500", ST_CLS[c.s])}>
+                          {Object.entries(VST).map(([v, l]) => <option key={v} value={v} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100">{v ? l : "— Sin revisar"}</option>)}
+                        </select>
+                        {c.s !== "na" && <button onClick={() => setMiss({ i, k })} className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:underline dark:text-brand-300"><ListChecks className="size-3" />{c.ck ? "Checklist" : "Hacer checklist"}{ms.length ? ` · ${ms.length} ${ms.length === 1 ? "ítem incompleto" : "ítems incompletos"}` : c.ck ? " ✓" : ""}{c.f?.length ? <><Camera className="ml-1 size-3" />{c.f.length}</> : null}</button>}
+                        {ms.length > 0 && <p title={ms.join("\n")} className="mt-1 line-clamp-3 text-[11px] leading-snug text-red-600 dark:text-red-400">Falta: {ms.join(" · ")}</p>}
+                        {c.by && c.s && <p className="mt-1 text-[10.5px] text-slate-400">Inspeccionó: {c.by}</p>}
+                        <Thumbs ids={c.f} cap={`${r.n} · ${vn}`} />
+                      </div>); })}
+                    <select value="" onChange={e => addVeh(i, e.target.value)} aria-label={`Agregar patrulla a ${r.n}`}
+                      className="h-9 w-[15.5rem] rounded-xl border border-dashed border-slate-300 bg-transparent px-2 text-xs font-semibold text-slate-500 outline-none hover:border-brand-400 focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-700">
+                      <option value="">+ Agregar patrulla…</option>{PATROL_CARS.filter(([k]) => !r.v[k]).map(([k, n]) => <option key={k} value={k} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100">{n}</option>)}
+                    </select>
+                  </div></td>
                   <td className="py-3 pr-3"><button aria-label="Quitar de la revisión" onClick={() => { delPhotos([r]); save(p => { p.rows.splice(i, 1); }); }} className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><X className="size-4" /></button></td>
                 </tr>))}</tbody>
             </table>
@@ -133,19 +143,18 @@ export function Patrullas() {
       </div>
 
       <Modal open={eqOpen} onClose={() => setEqOpen(false)} title="Equipamiento requerido" icon={<Package />} size="lg" desc="Lo define Capitanía en «Equipamiento de patrullas».">
-        <div className="grid gap-3 sm:grid-cols-2">{VEH.map(([k, n]) => (
-          <div key={k} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><p className="mb-2 font-semibold">{n}</p>
-            {EQ[k].length ? EQ[k].map(x => <div key={x.n} className="flex justify-between border-t border-slate-100 py-1.5 text-sm first:border-0 dark:border-slate-800"><span>{x.n}</span><span className="font-mono text-slate-400">×{x.q}</span></div>) : <p className="text-xs text-slate-400">Sin ítems</p>}</div>))}</div>
+        <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><p className="mb-2 font-semibold">Todos los patrullas</p>
+          {eqAll().length ? eqAll().map(x => <div key={x.n} className="flex justify-between border-t border-slate-100 py-1.5 text-sm first:border-0 dark:border-slate-800"><span>{x.n}</span><span className="font-mono text-slate-400">×{x.q}</span></div>) : <p className="text-xs text-slate-400">Sin ítems</p>}</div>
       </Modal>
-      {miss && <MissModal key={`${miss.i}${miss.k}`} row={PAT.rows[miss.i]} k={miss.k} items={EQ[miss.k]} onClose={() => setMiss(null)}
-        onSave={c => { const was = PAT.rows[miss.i].v[miss.k]?.s; save(p => { p.rows[miss.i].v[miss.k] = c; }); setMiss(null);
+      {miss && <MissModal key={`${miss.i}${miss.k}`} row={PAT.rows[miss.i]} k={miss.k} items={eqFor(miss.k)} onClose={() => setMiss(null)}
+        onSave={c => { const was = PAT.rows[miss.i].v[miss.k]?.s; save(p => { p.rows[miss.i].v[miss.k] = { ...c, by: me.n }; }); setMiss(null);
           if (c.s === "ok") toast(was === "ok" ? (c.f?.length ? "Fotos guardadas" : "Cambios guardados") : "No falta nada: el vehículo quedó como preparado"); }} />}
     </div>
   );
 }
 
 function MissModal({ row, k, items, onClose, onSave }: { row: PRow; k: string; items: { n: string; q: number }[]; onClose: () => void; onSave: (c: Cell) => void }) {
-  const c = row.v[k] || { s: "" }, vn = VEH.find(v => v[0] === k)![1];
+  const c = row.v[k] || { s: "" }, vn = vName(k);
   /* cantidad inicial: lo que se cargó antes; si nunca se hizo el checklist, 0 (o completo si ya estaba marcado como preparado) */
   const start = (it: { n: string; q: number }) => { const m = (c.m || []).find(x => typeof x !== "string" && x.n === it.n) as { h: number } | undefined;
     return m ? m.h : c.ck || c.s === "ok" ? it.q : 0; };
@@ -161,7 +170,7 @@ function MissModal({ row, k, items, onClose, onSave }: { row: PRow; k: string; i
     const keep = new Set(ph.filter(p => p.id).map(p => p.id)); (c.f || []).forEach(id => { if (!keep.has(id)) LS.del("lspdt.pfoto." + id); });
     const f = ph.map(p => { if (p.id) return p.id; const id = uid(); LS.set("lspdt.pfoto." + id, p.d); return id; });
     const notes = Object.fromEntries(Object.entries(io).map(([a, b]) => [a, b.trim()]).filter(([, b]) => b));
-    onSave(!m.length && !o ? { s: "ok", f, io: notes, ck: true } : { s: "no", m, o, f, io: notes, ck: true });
+    onSave(!m.length && !o ? { s: "ok", f, io: notes, ck: true, by: c.by } : { s: "no", m, o, f, io: notes, ck: true, by: c.by });
   };
   return (
     <Modal open onClose={onClose} title={`Checklist de equipamiento · ${vn}`} desc={`${row.n} · marcá lo que está completo o cargá la cantidad que hay`} icon={<ListChecks />} size="xl"

@@ -1,34 +1,41 @@
 /* Revisión de patrullas: lspdt.equip2 (checklist del maletero), lspdt.patrol, lspdt.patHist, lspdt.pfoto.* */
 import { LS } from "./store";
+import { PATROL_CARS } from "./onx";
+/* VEH: los 4 vehículos fijos de antes (siguen sirviendo para leer revisiones viejas y la planilla de Google).
+   Ahora cada agente lleva los patrullas ONX que se le revisaron: r.v = { [spawn]: Cell } */
 export const VEH: [string, string][] = [["stx", "Buffalo STX"], ["scout", "Scout"], ["mary", "Mary"], ["int", "Interceptor"]];
+export { PATROL_CARS };
+export const vName = (k: string) => VEH.find(v => v[0] === k)?.[1] || PATROL_CARS.find(v => v[0] === k)?.[1] || k;
+export const vehOf = (r: PRow) => Object.keys(r.v);
 export type EqItem = { n: string; q: number };
 export const EQ_DEF: EqItem[] = ([["Esposas", 2], ["Chalecos", 2], ["Radios", 2], ["Barreras", 10], ["Pinchos", 10], ["Conos", 10],
   ["Escopeta reglamentaria + x8 cartuchos de escopeta", 1], ["Cartuchos de escopeta extra", 16], ["Pistola de bengalas + x1 cartucho de bengala", 1], ["Cartuchos de bengala extra", 2],
   ["Cargadores de pistola de combate", 6], ["Bolsas de evidencias", 5], ["Alcoholímetro", 1], ["Kit de huellas", 1], ["Botiquín", 1], ["Kit IFAK", 1], ["GSR", 5]] as [string, number][]).map(([n, q]) => ({ n, q }));
 export const EQ_KEY = "lspdt.equip2";
-export const eqDef = () => Object.fromEntries(VEH.map(([k]) => [k, EQ_DEF.map(x => ({ ...x }))])) as Record<string, EqItem[]>;
-export function getEq(): Record<string, EqItem[]> {
-  const E = LS.ro<Record<string, (EqItem | string)[]> | null>(EQ_KEY, null) || eqDef();
-  return Object.fromEntries(VEH.map(([k]) => [k, (E[k] || []).map(x => (typeof x === "string" ? { n: x, q: 1 } : x))]));
-}
+/* el equipamiento es uno solo para todos los patrullas (clave "*"); las listas viejas por vehículo se respetan si existían */
+export const eqDef = () => ({ "*": EQ_DEF.map(x => ({ ...x })) }) as Record<string, EqItem[]>;
+const fixEq = (l?: (EqItem | string)[]) => (l || []).map(x => (typeof x === "string" ? { n: x, q: 1 } : x));
+export function eqAll(): EqItem[] { const E = LS.ro<Record<string, (EqItem | string)[]> | null>(EQ_KEY, null); return E ? fixEq(E["*"] || E.stx) : EQ_DEF.map(x => ({ ...x })); }
+export function eqFor(k: string): EqItem[] { const E = LS.ro<Record<string, (EqItem | string)[]> | null>(EQ_KEY, null); return E && E[k] && !E["*"] ? fixEq(E[k]) : eqAll(); }
 export type Miss = { n: string; q: number; h: number; o?: string } | string;
-export type Cell = { s: "" | "ok" | "no" | "na"; m?: Miss[]; o?: string; f?: string[]; io?: Record<string, string>; ck?: boolean };
+export type Cell = { s: "" | "ok" | "no" | "na"; m?: Miss[]; o?: string; f?: string[]; io?: Record<string, string>; ck?: boolean; by?: string };
 export type PRow = { n: string; r: string; p?: string; v: Record<string, Cell> };
 export type Patrol = { fecha: string; rows: PRow[]; nota?: string };
 export type PHist = { id: string; fecha: string; t: number; por: { n: string; r: string }; nota: string; rows: PRow[] };
 export const VST: Record<string, string> = { "": "Sin revisar", ok: "Preparado", no: "No preparado", na: "No asignado" };
 export const missTxt = (m: Miss) => (typeof m === "string" ? m : `${m.n} (${m.h}/${m.q}, faltan ${m.q - m.h})${m.o ? ` [${m.o}]` : ""}`);
 export const missOf = (c: Cell) => [...(c.m || []).map(missTxt), ...(c.o ? [c.o] : [])];
-export const vcount = (rows: PRow[], s: string) => rows.reduce((n, r) => n + VEH.filter(([k]) => (r.v[k]?.s || "") === s).length, 0);
+export const vcount = (rows: PRow[], s: string) => rows.reduce((n, r) => n + vehOf(r).filter(k => (r.v[k]?.s || "") === s).length, 0);
 export const pfoto = (id: string) => LS.get("lspdt.pfoto." + id) || "";
-export const delPhotos = (rows: PRow[]) => rows.forEach(r => VEH.forEach(([k]) => (r.v[k]?.f || []).forEach(id => LS.del("lspdt.pfoto." + id))));
+export const delPhotos = (rows: PRow[]) => rows.forEach(r => vehOf(r).forEach(k => (r.v[k]?.f || []).forEach(id => LS.del("lspdt.pfoto." + id))));
 export const dmy = (iso?: string) => (iso ? iso.split("-").reverse().join("/") : "");
 export function patReport(rec: { fecha: string; rows: PRow[]; nota?: string }, by: string) {
   let t = `REVISIÓN DE PATRULLAS — ${dmy(rec.fecha)}\nRevisado por: ${by || ""}\n`;
   for (const r of rec.rows) {
     t += `\n• ${r.r} ${r.n}${r.p ? " (#" + r.p + ")" : ""}\n`;
-    for (const [k, n] of VEH) {
-      const c = r.v[k] || { s: "" }; if (c.s === "na") continue;
+    if (!vehOf(r).length) t += "   - Sin vehículos revisados\n";
+    for (const k of vehOf(r)) {
+      const c = r.v[k] || { s: "" }, n = vName(k); if (c.s === "na") continue;
       const miss = missOf(c), nf = (c.f || []).length;
       t += `   - ${n}: ${c.s === "ok" ? "Preparado" : c.s === "no" ? "No preparado" + (miss.length ? " — falta: " + miss.join(", ") : "") : "Sin revisar"}${nf ? ` (${nf} ${nf === 1 ? "foto" : "fotos"})` : ""}\n`;
     }

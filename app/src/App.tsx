@@ -2,7 +2,7 @@ import { scrollTopApp, setDeptUi } from "@/lib/appearance";
 import { Device } from "./components/device";
 import { ErrorScreen, readCfg } from "./sections/six/fx";
 import { UpdateBar } from "./components/update";
-import { lazy, Suspense, useCallback, useEffect, useState, type ComponentType } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import { Loader2 } from "lucide-react";
 import { Login, type PubInfo } from "./layout/Login";
 import { Shell } from "./layout/Shell";
@@ -33,13 +33,15 @@ const AdmAccesos = lz(() => import("./sections/adm/Admin"), "AdmAccesos");
 const AdmDatos = lz(() => import("./sections/adm/Admin"), "AdmDatos");
 const AdmMarca = lz(() => import("./sections/adm/Admin"), "AdmMarca");
 const Patrullas = lz(() => import("./sections/sup/Patrullas"), "Patrullas");
+const FeedbackApp = lz(() => import("./sections/FeedbackApp"), "FeedbackApp");
+const Huellas = lz(() => import("./sections/sup/Huellas"), "Huellas");
 const RegistroPatrullas = lz(() => import("./sections/sup/RegistroPatrullas"), "RegistroPatrullas");
 const Equipamiento = lz(() => import("./sections/cap/Equipamiento"), "Equipamiento");
 
 import type { ReactNode } from "react";
 
 export const VIEWS: Record<string, () => ReactNode> = {
-  "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/cond": () => <Condecoraciones />, "sgt/exa": () => <Sargentos tab="exa" />, "sgt/ent": () => <Sargentos tab="ent" />, "sgt/list": () => <Sargentos tab="list" />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "sup/fbk": () => <Feedback />, "cap/vot": () => <Votaciones />, "sup/pat": () => <Patrullas />, "sup/prof": () => <Agentes />, "age/prof": () => <Agentes />, "ini/nov": () => <Novedades />, "ini/ts": () => <Timestamps />, "inf/inf": () => <Informes />, "leg/ley": () => <Legal />, "sup/preg": () => <RegistroPatrullas />, "cap/equ": () => <Equipamiento />, "cap/perm": () => <Permisos />, "jef/ros": () => <EstadoRoster />, "jef/his": () => <HistorialVotaciones />,
+  "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/cond": () => <Condecoraciones />, "sgt/exa": () => <Sargentos tab="exa" />, "sgt/ent": () => <Sargentos tab="ent" />, "sgt/list": () => <Sargentos tab="list" />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "sup/fbk": () => <Feedback />, "cap/vot": () => <Votaciones />, "sup/pat": () => <Patrullas />, "sup/prof": () => <Agentes />, "age/prof": () => <Agentes />, "ini/nov": () => <Novedades />, "ini/ts": () => <Timestamps />, "inf/inf": () => <Informes />, "leg/ley": () => <Legal />, "sup/preg": () => <RegistroPatrullas />, "fb/env": () => <FeedbackApp />, "sup/hue": () => <Huellas />, "cap/equ": () => <Equipamiento />, "cap/perm": () => <Permisos />, "jef/ros": () => <EstadoRoster />, "jef/his": () => <HistorialVotaciones />,
   "adm/acc": () => <AdmAccesos />, "adm/brand": () => <AdmMarca />, "adm/data": () => <AdmDatos />,
 };
 import { AREAS, canArea, secsOf } from "./nav";
@@ -67,6 +69,11 @@ export default function App() {
     if (LS.get("lspdt.penal") != null) LS.del("lspdt.penal"); }, []);
   const lost = useCallback(() => { goOffline(); setMe(null); toast("La sesión se cerró. Volvé a ingresar.", "err"); void api("/api/auth").then(r => setBoot(r as unknown as Boot)); }, [toast]);
   useEffect(() => { storeHooks(toast, lost); }, [toast, lost]);
+  /* six: aviso cuando llega un feedback nuevo (lo trae la sincronización cada 5 s) */
+  const fbKnown = useRef<Set<string> | null>(null);
+  useEffect(() => { if (!me || !ME_ROLES.six) return; const ks = LS.keys("lspdt.six.fb.");
+    if (!fbKnown.current) { fbKnown.current = new Set(ks); return; }
+    for (const k of ks) if (!fbKnown.current.has(k)) { fbKnown.current.add(k); const t = LS.ro<{ by: string } | null>(k, null); if (t) toast(`📬 Nuevo feedback de ${t.by} · six → Notificaciones`); } });
   useEffect(() => {
     void api("/api/auth?full=1").then(r => { const b = r as unknown as Boot; setBoot(b); if (b.me && b.data) enter(b.data); });
   }, [enter]);

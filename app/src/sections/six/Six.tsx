@@ -1,20 +1,23 @@
 /* six: apartado privado (solo su dueño), con interfaz y temas propios, sin nada de la MDT.
    Pestañas (A-Z): Administración · Comunicados · Equipo de ilícitos · Gestión de staff. Los datos van en lspdt.six.* (el servidor no se los muestra a nadie más). */
 import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
-import { AtSign, Check, Copy, FileText, Lock, Megaphone, Plus, Power, RotateCcw, Save, Settings2, Skull, Trash2, Users, X } from "lucide-react";
+import { AtSign, Bell, Check, Copy, FileText, Lock, Megaphone, Plus, Power, RotateCcw, Save, Settings2, Skull, Trash2, Users, X } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
 import { useJSON } from "@/lib/store";
+import { api } from "@/lib/api";
 import { discordHtml } from "@/lib/discord";
 import { uid } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 import { FIRMAS, ILIC_VARS, consultaInteres, ilicText, type IlicForm } from "./ilicito";
+import { NotifTab, fbList, FB_SEEN } from "./Notif";
+import { LS } from "@/lib/store";
 import { Boot, CFG0, CFG_KEY, Rain, THEMES, colorOf, hex, vars, type SixCfg } from "./fx";
 
 type Staff = { id: string; n: string; rol: string; dc: string; notas: string };
 type Com = { id: string; t: string; body: string; ts: number };
 type Sent = { id: string; ts: number; banda: string; res: IlicForm["res"]; txt: string };
 const ROLES = ["Owner", "Administración", "Moderación", "Soporte", "Ilícitos", "Desarrollo", "Otro"];
-const TABS = [["adm", "ADMINISTRACIÓN", Settings2], ["com", "COMUNICADOS", Megaphone], ["ilic", "EQUIPO DE ILÍCITOS", Skull], ["staff", "GESTIÓN DE STAFF", Users]] as const;
+const TABS = [["adm", "ADMINISTRACIÓN", Settings2], ["com", "COMUNICADOS", Megaphone], ["ilic", "EQUIPO DE ILÍCITOS", Skull], ["staff", "GESTIÓN DE STAFF", Users], ["not", "NOTIFICACIONES", Bell]] as const;
 type Tab = (typeof TABS)[number][0];
 const LOCKED: Tab[] = ["com", "staff"]; // próximamente
 const isId = (s: string) => /^\d{17,20}$/.test(s.trim());
@@ -66,6 +69,7 @@ export function Six({ onExit }: { onExit: () => void }) {
   const [cfg, setCfg] = useJSON<SixCfg>(CFG_KEY, CFG0), c = { ...CFG0, ...cfg };
   const [booted, setBooted] = useState(c.intro === "no"), [replay, setReplay] = useState(0), [tab, setTab] = useState<Tab>("ilic"), [out, setOut] = useState(false);
   const [staff, setStaff] = useJSON<Staff[]>("lspdt.six.staff", []);
+  const unread = fbList().filter(x => x.t > Number(LS.get(FB_SEEN) || 0)).length;
   const users = useMemo(() => Object.fromEntries(staff.filter(s => isId(s.dc)).map(s => [s.dc.trim(), s.n])), [staff]);
   const [clock, setClock] = useState(""), [sig, setSig] = useState(hex(8));
   useEffect(() => { const f = () => { setClock(new Date().toLocaleTimeString("es-AR", { hour12: false })); setSig(hex(8)); }; f(); const i = setInterval(f, 1000); return () => clearInterval(i); }, []);
@@ -87,7 +91,7 @@ export function Six({ onExit }: { onExit: () => void }) {
           <div className="hidden text-[10px] leading-tight text-slate-500 md:block"><p>SESIÓN PRIVADA · <span className="text-six">CIFRADA</span></p><p>FIRMA {sig.toUpperCase()}</p></div>
           <nav className="mx-auto flex gap-1 rounded-xl border border-six/10 bg-black/40 p-1">{TABS.map(([k, l, I]) => (
             <button key={k} onClick={() => setTab(k)} title={l} className={cn("six-tab inline-flex items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold tracking-[0.14em] transition",
-              tab === k ? "on text-six" : "text-slate-500 hover:text-six")}><I className="size-4" /><span className="hidden lg:inline">{l}</span>{LOCKED.includes(k) && <Lock className="size-3 opacity-60" />}</button>))}</nav>
+              tab === k ? "on text-six" : "text-slate-500 hover:text-six")}><I className="size-4" /><span className="hidden lg:inline">{l}</span>{LOCKED.includes(k) && <Lock className="size-3 opacity-60" />}{k === "not" && unread > 0 && <span className="rounded-full bg-six px-1.5 text-[10px] font-black text-black">{unread}</span>}</button>))}</nav>
           <span className="hidden tabular-nums text-sm text-six six-txt xl:inline">{clock}</span>
           <NBtn ghost icon={<Power />} onClick={exit} title="Volver a la MDT"><span className="hidden sm:inline">SALIR</span></NBtn>
         </div>
@@ -96,6 +100,7 @@ export function Six({ onExit }: { onExit: () => void }) {
 
       <main key={tab} className="six-in relative mx-auto max-w-[1600px] px-4 py-6">
         {LOCKED.includes(tab) ? <Soon t={TABS.find(x => x[0] === tab)![1]} />
+          : tab === "not" ? <NotifTab />
           : tab === "adm" ? <AdmTab c={c} set={set} replay={() => { setReplay(x => x + 1); setBooted(false); }} />
           : tab === "staff" ? <StaffTab staff={staff} setStaff={setStaff} />
           : tab === "com" ? <ComTab staff={staff} users={users} />
@@ -138,8 +143,17 @@ function AdmTab({ c, set, replay }: { c: SixCfg; set: (p: Partial<SixCfg>) => vo
         <div className="flex flex-wrap gap-2"><NBtn icon={<Power />} onClick={replay}>VER LA INTRO</NBtn>
           <NBtn ghost icon={<RotateCcw />} onClick={() => set({ ...CFG0 })}>RESTABLECER TODO</NBtn></div>
       </Panel>
+      <Panel t="Avisos de Discord" icon={<Bell />} d="Cada feedback nuevo llega a NOTIFICACIONES y al canal de Discord con mención." className="space-y-3 lg:col-span-2">
+        <DcTest />
+      </Panel>
     </div>
   );
+}
+
+function DcTest() {
+  const [st, setSt] = useState(""), [busy, setBusy] = useState(false);
+  return <div className="flex flex-wrap items-center gap-3"><NBtn icon={<Bell />} disabled={busy} onClick={async () => { setBusy(true); const r = await api("/api/feedback", { test: true }); setBusy(false); setSt(r.ok ? "✓ Mensaje de prueba enviado al canal." : r.msg || "No se pudo enviar"); }}>PROBAR AVISO</NBtn>
+    {st && <span className={cn("font-sans text-xs", st.startsWith("✓") ? "text-six" : "text-[#ff2b4a]")}>{st}</span>}</div>;
 }
 
 /* ---------- gestión de staff (bloqueado por ahora) ---------- */

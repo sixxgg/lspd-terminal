@@ -54,8 +54,8 @@ const JUS_ROLE = "1565491805166895224";
 
 /* estado compartido entre las pestañas (como en la versión clásica, vive mientras la terminal esté abierta) */
 type PXT = { cA: string; cB: string; ag: string; para: string; dv: string; hecho: string; fl: string[]; firma: boolean; _dv?: boolean;
-  ele: { para: string; hechos: string; const: string; concl: string; grav: string; enc: string; niv: string; det: string; efe: string; arch: boolean; pend: string };
-  jus: { s: { t: string; p: string }[]; falta: string; fq: string; cons: string[]; consx: string }; res: { modo: string; extra: string };
+  ele: { cf?: string; para: string; hechos: string; const: string; concl: string; grav: string; enc: string; niv: string; det: string; efe: string; arch: boolean; pend: string };
+  jus: { s: { t: string; p: string }[]; falta: string; fq: string; cons: string[]; consx: string }; res: { modo: string; extra: string; bloque?: boolean };
   vot: { intro: string; res: string; cons: string; concl: string; ops: { t: string; d: string }[]; nota: string; conf: boolean } };
 let PX: PXT = { cA: "", cB: "", ag: "", para: "", dv: "IAD", hecho: "", fl: [], firma: true,
   ele: { para: "", hechos: "", const: "", concl: "Sustained", grav: "leve", enc: "", niv: "0", det: "", efe: "", arch: true, pend: "" },
@@ -190,6 +190,19 @@ function Notif() {
   );
 }
 
+/* conclusión, encuadre, sanción/medida y efecto de la elevación (se usa en la elevación y en el bloque resolutivo de la resolución) */
+function medidaLines(E: PXT["ele"], firme: boolean) {
+  const L = [`- **Conclusión:** ${E.concl}.`];
+  if (E.enc.trim()) L.push(`- **Encuadre:** ${E.enc.trim().replace(/\.$/, "")}.`);
+  if (E.concl === "Sustained") { const nv = (PSB_NIV.find(x => x[0] === E.niv) || PSB_NIV[0])[1];
+    if (E.niv === "0") L.push(`- **Medida:** ${nv}${E.det.trim() ? " " + E.det.trim().replace(/\.$/, "") : ""}. ${NIV_D["0"]}`);
+    else { L.push(`- **Sanción:** ${nv}${E.det.trim() ? " " + E.det.trim().replace(/\.$/, "") : ""}.`); const ef = E.efe.trim() || psbEfecto(E.niv, E.grav); if (ef) L.push(`- **Efecto:** ${ef.replace(/\.$/, "")}.`); } }
+  if (E.arch) L.push(firme ? "- **Se archiva el expediente.**" : E.concl === "Sustained" ? "- Una vez firmada, **se archiva el expediente**." : "- Con esta conclusión, **se archiva el expediente**.");
+  return L;
+}
+/* la elevación vale para la resolución solo si es del mismo número de expediente */
+const eleLista = (E: PXT["ele"], cf: string) => !!(E.hechos.trim() || E.const.trim() || E.enc.trim() || E.det.trim()) && (!E.cf || E.cf === cf);
+
 function Forms({ tab }: { tab: string }) {
   const me = useMe(), { toast } = useFeedback(), [p, up] = usePX(), F = getFaltas(), E = p.ele, J = p.jus, Rs = p.res;
   const cf = p.cA || p.cB ? casoTxt(p) : "CF-XX-XXXXXX", firma = `**${me.n}** · ${psbRank(me.n) || "Investigator"} · ${PSB_DIVS_EN[p.dv]}`;
@@ -201,12 +214,7 @@ function Forms({ tab }: { tab: string }) {
         `${pa ? `${rkFem(pa.r, pa.n)} ${apellido(pa.n)}` : "[Destinatario]"}, le elevo el caso de la referencia para su decisión.`, "",
         "**📌 Hechos**", E.hechos.trim() || "[Describí los hechos]", "", "**🔎 Constatado**",
         ...(E.const.trim() ? E.const.trim().split("\n").map(x => x.trim()).filter(Boolean).map(x => "- " + x.replace(/^[-•]\s*/, "")) : ["- [Lo constatado en la investigación]"]), "",
-        "**⚖️ Propuesta**", `- **Conclusión:** ${E.concl}.`];
-      if (E.enc.trim()) L.push(`- **Encuadre:** ${E.enc.trim().replace(/\.$/, "")}.`);
-      if (E.concl === "Sustained") { const nv = (PSB_NIV.find(x => x[0] === E.niv) || PSB_NIV[0])[1];
-        if (E.niv === "0") L.push(`- **Medida:** ${nv}${E.det.trim() ? " " + E.det.trim().replace(/\.$/, "") : ""}. ${NIV_D["0"]}`);
-        else { L.push(`- **Sanción:** ${nv}${E.det.trim() ? " " + E.det.trim().replace(/\.$/, "") : ""}.`); const ef = E.efe.trim() || psbEfecto(E.niv, E.grav); if (ef) L.push(`- **Efecto:** ${ef.replace(/\.$/, "")}.`); } }
-      if (E.arch) L.push(E.concl === "Sustained" ? "- Una vez firmada, **se archiva el expediente**." : "- Con esta conclusión, **se archiva el expediente**.");
+        "**⚖️ Propuesta**", ...medidaLines(E, false)];
       if (E.pend.trim()) L.push("", "**⚠️ Pendiente**", E.pend.trim());
       L.push("", "Quedo a la espera de su decisión para proceder."); return L.join("\n");
     }
@@ -230,13 +238,15 @@ function Forms({ tab }: { tab: string }) {
     return [`## 📩 Resolución de investigación — ${cf}`, "", `**De:** ${emailOf(me.n)}`, `**Para:** ${p.ag ? emailOf(p.ag) : "—"}`, "", "Hola,", "",
       `Le informo de que la investigación con número de caso **${cf}**, a cargo de la **${PSB_DIVS[p.dv]}**, ya cuenta con una **resolución**.`, "",
       Rs.modo === "ambas" ? "### 📄 Cómo desea recibirla" : "### 📄 Cómo se le comunicará", ...op, "",
-      ...(Rs.modo === "ambas" ? ["Responda a este mensaje indicando la opción que prefiera y se procederá en consecuencia.", ""] : []), ...(Rs.extra.trim() ? [Rs.extra.trim(), ""] : []),
+      ...(Rs.modo === "ambas" ? ["Responda a este mensaje indicando la opción que prefiera y se procederá en consecuencia.", ""] : []),
+      ...(Rs.modo !== "ambas" && Rs.bloque !== false && eleLista(E, cf) ? ["### ⚖️ Bloque resolutivo", Rs.modo === "web" ? `Revisado el expediente **${cf}**, se resuelve lo siguiente:` : `En la reunión presencial se le comunicará la resolución del expediente **${cf}**:`, ...medidaLines(E, true), ""] : []),
+      ...(Rs.extra.trim() ? [Rs.extra.trim(), ""] : []),
       "Recuerde que, si la sanción es de **Nivel 3 o superior**, puede solicitar un **Board of Rights** dentro de las **72 horas** siguientes a recibirla.", "",
       "> 🔒 Este procedimiento es **confidencial** y no debe comentarse fuera de los canales oficiales.", "", "Saludos.", firma].join("\n");
   }, [tab, p, E, J, Rs, F, cf, me.n, firma]);
   const co = Object.keys(uMap("psb")).filter(n => n !== me.n).sort((a, b) => UNITS.psb.R.indexOf(uTop("psb", uMap("psb")[a])) - UNITS.psb.R.indexOf(uTop("psb", uMap("psb")[b])));
   const fq = norm(J.fq), FL = F.filter(x => !fq || norm(x.n + " " + x.d + " " + x.g).includes(fq)).slice(0, 60);
-  const ue = (fn: (e: PXT["ele"]) => void) => up(x => fn(x.ele)), uj = (fn: (j: PXT["jus"]) => void) => up(x => fn(x.jus));
+  const ue = (fn: (e: PXT["ele"]) => void) => up(x => { fn(x.ele); x.ele.cf = x.cA || x.cB ? casoTxt(x) : ""; }), uj = (fn: (j: PXT["jus"]) => void) => up(x => fn(x.jus));
   const title = { ele: "Elevación de caso", jus: "Sanción a Justicia", res: "Notificación de resolución", vot: "Votación" }[tab] || "";
   const uv = (fn: (v: PXT["vot"]) => void) => up(x => fn(x.vot)), V = p.vot;
   const saveCase = () => { const r = saveDoc(tab, text, me.n, tab === "vot" ? V.concl : tab === "ele" ? E.concl : ""); toast(r.msg, r.ok ? undefined : "err"); };
@@ -318,6 +328,9 @@ function Forms({ tab }: { tab: string }) {
           <CardHeader icon={<FileCheck2 />} title="Resolución" />
           <CardBody>
             <Field label="Cómo se comunica"><Segmented size="sm" value={Rs.modo} onChange={v => up(x => { x.res.modo = v; })} options={[{ value: "ambas", label: "Que elija el agente" }, { value: "web", label: "Por este medio" }, { value: "pres", label: "Presencial" }]} /></Field>
+            {Rs.modo !== "ambas" && <div className={cn("rounded-xl border p-3 text-sm", eleLista(E, cf) ? "border-slate-200 dark:border-slate-800" : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200")}>
+              <label className="flex items-start gap-2"><input type="checkbox" className="mt-0.5 size-4 accent-brand-600" checked={Rs.bloque !== false} onChange={e => up(x => { x.res.bloque = e.target.checked; })} />
+                <span><b>Agregar el bloque resolutivo</b><span className="block text-xs text-slate-500">{eleLista(E, cf) ? `Se toma de la Elevación de este mismo expediente (${cf}): conclusión ${E.concl}${E.concl === "Sustained" ? ", sanción y efecto" : ""}.` : E.cf && E.cf !== cf ? `La Elevación cargada es del expediente ${E.cf}, no del ${cf}: revisá el número.` : `La Elevación del expediente ${cf} está vacía: completala para que salga el bloque.`}</span></span></label></div>}
             <Field label="Agregado" hint="(opcional)"><Textarea rows={2} value={Rs.extra} onChange={e => up(x => { x.res.extra = e.target.value; })} placeholder="Algo más que quieras decirle." /></Field>
           </CardBody>
         </Card>}
