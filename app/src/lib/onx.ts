@@ -17,3 +17,10 @@ export const ONX: [string, string][] = [
 ];
 /* patrullas terrestres (sin helicópteros), para la revisión de patrullas */
 export const PATROL_CARS: [string, string][] = ONX.filter(([, m]) => !/helic/i.test(m)).map(([s, m]) => [s.toLowerCase(), m]);
+/* tipo de cada patrulla, para agruparlas en el selector */
+export const CAR_TYPES = ["Sedán", "Interceptor", "SUV", "Pickup", "Furgón"] as const;
+export const carType = (k: string, n: string): (typeof CAR_TYPES)[number] =>
+  /interceptor|gaunt|dom|vigero|vstr|coq/i.test(n + k) ? "Interceptor"
+  : /jog/i.test(k) ? "Furgón"
+  : /cara|sand|bison|guard/i.test(k) ? "Pickup"
+  : /aleu|scout|term|cava|stalk|grang|alamo|sem|regentxl|invict|kandra/i.test(k) ? "SUV" : "Sedán";

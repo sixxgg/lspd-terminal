@@ -86,7 +86,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
             <button onClick={onLogout} title="Cerrar sesión" aria-label="Cerrar sesión" className={cn("rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400", focusRing)}><LogOut className="size-4" /></button>
           </div>
         </div>
-        {(area.k !== "ini" || secsOf(area, me.r).length > 1) && (
+        {secsOf(area, me.r).length > 1 && (
           <div className="border-t border-slate-200/70 dark:border-slate-800/70">
             <nav aria-label="Secciones" className="scrollbar-none mx-auto flex max-w-[1760px] gap-0.5 overflow-x-auto px-3 py-2 sm:px-5 [&>*:first-child]:ml-auto [&>*:last-child]:mr-auto">
               {secsOf(area, me.r).map(s => { const on = s.k === sec.k, I = s.icon; return (

@@ -1,10 +1,10 @@
 /* Supervisión · Registro de huellas: lo que cada agente registra en el laboratorio (nuevo registro o coincidencia), cargado a mano o pegando las filas copiadas. */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ClipboardPaste, Fingerprint, Plus, Search, Trash2, Users } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Select, Textarea } from "@/components/ui";
 import { AgentCombo, Avatar } from "@/components/agents";
 import { useFeedback } from "@/components/feedback";
-import { useJSON } from "@/lib/store";
+import { LS, useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { findLoose, norm, uid } from "@/lib/domain";
 import { cn } from "@/lib/cn";
@@ -27,11 +27,40 @@ export function parseHuellas(txt: string, por: string): Hu[] {
   return out;
 }
 
+
+/* registros de las capturas del laboratorio que pasó six (09-10/11/2026): se cargan una sola vez en el historial compartido */
+const RW = "Ryan Westbrook";
+const SEED: [string, string, string, string, "nuevo" | "coinc", string, string][] = [
+  ["09/11/2026 22:53", "Darwin Ford", "KLH50JMP", "NK609FP6NZ1PET1", "nuevo", "09/11/2026 22:53", RW],
+  ["09/11/2026 22:53", "Madison Pierce", "QA55VE5H", "CR9X9I5DJ1G2T30", "nuevo", "09/11/2026 22:53", RW],
+  ["09/11/2026 22:55", "Logan Barrett", "HS80263R", "73WFP1T1PM71G39", "nuevo", "09/11/2026 22:55", RW],
+  ["09/11/2026 22:56", "Yooa Baek-Harrington", "U3IC247Z", "1W2611QN2KI1T2L", "nuevo", "09/11/2026 22:56", RW],
+  ["09/11/2026 22:59", "Clancy Skinner", "SXTC22Z0", "8425UQ1RS7007G8", "nuevo", "09/11/2026 22:59", RW],
+  ["09/11/2026 23:00", "Daniel López", "BDIT0684", "864Y6904P415611", "nuevo", "09/11/2026 23:00", RW],
+  ["09/11/2026 23:00", "Kellan Ross", "EF1JG374", "SDE6I9I1004X6W9", "coinc", "01/10/2026 17:14", RW],
+  ["09/11/2026 23:01", "Kai Jeon-Soo", "Y4E782F6", "18QL56X6002E10I", "nuevo", "09/11/2026 23:01", RW],
+  ["09/11/2026 23:09", "Ryan Sullivan", "Y579QK9U", "79CI5SRH754599Z", "nuevo", "09/11/2026 23:09", "Kai Jeon-Soo"],
+  ["09/11/2026 23:09", "Ethan Roggers", "P6R74G2N", "L02SR06477ZDK9W", "nuevo", "09/11/2026 23:09", RW],
+  ["09/11/2026 23:10", "Hailey Deacon", "H7MFF7E6", "QG8KGP68XC1A9V8", "nuevo", "09/11/2026 23:10", RW],
+  ["09/11/2026 23:10", "Haley Brenner-Scott", "VXHJ3018", "Q500Y0V043A7DMC", "nuevo", "09/11/2026 23:10", "Yooa Baek-Harrington"],
+  ["09/11/2026 23:10", "Rodney Deacon", "Y2F31602", "7F7HC9Q93V32W85", "coinc", "18/08/2026 01:58", RW],
+  ["09/11/2026 23:11", "William Weston", "LWQ4526T", "I63WYW4UY9682X0", "coinc", "09/11/2026 23:10", RW],
+  ["09/11/2026 23:15", "Daniel López", "BDIT0684", "864Y6904P415611", "coinc", "09/11/2026 23:00", "Liam Campbell"],
+  ["09/11/2026 23:30", "Elioth Smith", "OP085C9Y", "8SH7438OWV33EA9", "nuevo", "09/11/2026 23:30", RW],
+  ["09/11/2026 23:32", "Allison Badway", "N7U1LXNH", "8R4WRDG91CV4G67", "nuevo", "09/11/2026 23:32", RW],
+  ["10/11/2026 00:35", "Leonardo Nascimento", "NC1XFB94", "ATN0I78DK454UK2", "nuevo", "10/11/2026 00:35", RW],
+];
+const SEED_FLAG = "lspdt.huellasSeed";
+
 type SortK = "f" | "c" | "st" | "fr" | "a";
 export function Huellas() {
   const me = useMe(), { toast, confirm } = useFeedback();
   const [L, setL] = useJSON<Hu[]>(KEY, []);
   const [paste, setPaste] = useState(""), [q, setQ] = useState(""), [ag, setAg] = useState(""), [stF, setStF] = useState(""), [sort, setSort] = useState<[SortK, 1 | -1]>(["f", -1]);
+  useEffect(() => { if (LS.get(SEED_FLAG) === "1" || (me.l < 6 && !me.admin)) return;
+    const cur = LS.json<Hu[]>(KEY, []), seen = new Set(cur.map(x => `${x.h}|${x.f}`));
+    const nu = SEED.filter(r => !seen.has(`${r[3]}|${r[0]}`)).map(([f, c, cid, h, st, fr, a]) => ({ id: uid(), f, c, cid, h, st, fr, a, por: "Capturas del laboratorio" }));
+    if (nu.length) LS.setJSON(KEY, [...cur, ...nu]); LS.set(SEED_FLAG, "1"); }, [me.l, me.admin]);
   const blank = (): Hu => ({ id: "", f: nowTxt(), c: "", cid: "", h: "", st: "nuevo", fr: nowTxt(), a: "", por: me.n });
   const [n, setN] = useState<Hu>(blank);
   const add = (rows: Hu[]) => {

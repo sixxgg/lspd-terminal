@@ -16,7 +16,7 @@ const plain = h => String(h).replace(/<br\s*\/?>/gi, "\n").replace(/<\/(div|p|li
 const clean = h => String(h).replace(/<(script|style|iframe|object|embed|link|meta)[\s\S]*?(<\/\1>|$)/gi, "").replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "").replace(/javascript:/gi, "");
 
 async function notify(t) {
-  const tok = process.env.DISCORD_BOT_TOKEN; if (!tok) return "sin token";
+  const tok = (process.env.DISCORD_BOT_TOKEN || "").trim().replace(/^Bot\s+/i, ""); if (!tok) return "falta la variable DISCORD_BOT_TOKEN en Vercel (y un Redeploy después de crearla)";
   const txt = plain(t.html), head = `<@${PING}> 📬 **Nuevo feedback** de **${t.by}**${t.r ? ` (${t.r})` : ""}`;
   const content = `${head}\n>>> ${txt.length > 1700 ? txt.slice(0, 1700) + "…" : txt || "(sin texto)"}`;
   const fd = new FormData();
@@ -26,7 +26,12 @@ async function notify(t) {
     fd.append(`files[${i}]`, new Blob([b], { type: "image/" + m[1] }), `foto${i + 1}.${m[1] === "jpeg" ? "jpg" : m[1]}`); });
   try {
     const r = await fetch(`https://discord.com/api/v10/channels/${CHANNEL}/messages`, { method: "POST", headers: { Authorization: "Bot " + tok }, body: fd, signal: AbortSignal.timeout(8000) });
-    return r.ok ? "" : `Discord respondió ${r.status}`;
+    if (r.ok) return "";
+    let m = ""; try { m = (await r.json()).message || ""; } catch {}
+    const hint = r.status === 401 ? "el token no es válido (¿se reseteó? copiá el nuevo en DISCORD_BOT_TOKEN y hacé Redeploy)"
+      : r.status === 403 ? "el bot no tiene permiso en ese canal (Ver canal, Enviar mensajes y Adjuntar archivos)"
+      : r.status === 404 ? "no existe el canal o el bot no está en ese servidor" : m;
+    return `Discord respondió ${r.status}: ${hint}`;
   } catch { return "no se pudo contactar a Discord"; }
 }
 
@@ -36,7 +41,6 @@ export default wrap(async (req, res) => {
   const b = await body(req);
   if (b.test) { // prueba del aviso (solo six)
     if (!isSix(u)) return send(res, 403, { msg: "Solo six" });
-    if (!process.env.DISCORD_BOT_TOKEN) return send(res, 200, { ok: false, msg: "Falta la variable DISCORD_BOT_TOKEN en Vercel" });
     const dc = await notify({ by: u.n, r: u.r || "", html: "✅ Prueba del aviso de feedback de la terminal.", raw: [] });
     return send(res, 200, dc ? { ok: false, msg: dc } : { ok: true });
   }

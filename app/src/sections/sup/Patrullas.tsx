@@ -4,6 +4,7 @@ import { Button, Card, CardBody, CardHeader, Field, Input, Textarea } from "@/co
 import { AgentPicker, Avatar, RankBadge } from "@/components/agents";
 import { Lightbox, Modal } from "@/components/modal";
 import { useCopy } from "@/components/output";
+import { CarPicker } from "@/components/carpick";
 import { useFeedback } from "@/components/feedback";
 import { findAgent as getAgent, lvl, rankES, uid } from "@/lib/domain";
 import { LS, useJSON, useStoreVersion } from "@/lib/store";
@@ -40,13 +41,13 @@ export function Patrullas() {
   const me = useMe(), { toast, confirm } = useFeedback(), copy = useCopy();
   const [PAT, setPAT] = useJSON<Patrol>("lspdt.patrol", newPat());
   const [HIST, setHIST] = useJSON<PHist[]>("lspdt.patHist", []);
-  const [nota, setNota] = useState(""), [eqOpen, setEqOpen] = useState(false), [miss, setMiss] = useState<{ i: number; k: string } | null>(null);
+  const [pick, setPick] = useState<number | null>(null), [nota, setNota] = useState(""), [eqOpen, setEqOpen] = useState(false), [miss, setMiss] = useState<{ i: number; k: string } | null>(null);
   const save = (fn: (p: Patrol) => void) => { const x = structuredClone(PAT); fn(x); setPAT(x); };
   const cnt = (s: string) => vcount(PAT.rows, s);
   const by = `${rankES(me.r)} ${me.n}`;
   const report = useMemo(() => (PAT.rows.length ? patReport({ ...PAT, nota: nota.trim() }, `${me.r} ${me.n}`) : ""), [PAT, nota, me.r, me.n]);
   const setCell = (i: number, k: string, s: Cell["s"]) => { save(p => { p.rows[i].v[k] = { ...(p.rows[i].v[k] || {}), s, by: me.n }; }); if (s === "no") setMiss({ i, k }); };
-  const addVeh = (i: number, k: string) => { if (k) save(p => { p.rows[i].v[k] = { s: "" }; }); };
+  const addVeh = (i: number, ks: string[]) => save(p => { ks.forEach(k => { if (!p.rows[i].v[k]) p.rows[i].v[k] = { s: "" }; }); });
   const delVeh = (i: number, k: string) => { (PAT.rows[i].v[k]?.f || []).forEach(id => LS.del("lspdt.pfoto." + id)); save(p => { delete p.rows[i].v[k]; }); };
   const discard = async () => { if (PAT.rows.length && !(await confirm("¿Descartar la revisión en curso sin guardarla?", { danger: true, ok: "Descartar" }))) return; delPhotos(PAT.rows); setPAT(newPat()); setNota(""); };
   const store = async () => {
@@ -56,6 +57,9 @@ export function Patrullas() {
     setPAT(newPat()); setNota(""); toast("Revisión guardada en el registro y en el perfil de cada agente.");
   };
   const last = HIST[0];
+  /* los patrullas que más se revisaron (para tenerlos a mano en el selector) */
+  const topCars = useMemo(() => { const c: Record<string, number> = {}; HIST.slice(0, 40).forEach(h => h.rows.forEach(r => vehOf(r).forEach(k => { if (PATROL_CARS.some(x => x[0] === k)) c[k] = (c[k] || 0) + 1; })));
+    return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 6).map(x => x[0]); }, [HIST]);
   return (
     <div className="space-y-5">
       <div className="grid gap-5 lg:grid-cols-2">
@@ -110,10 +114,8 @@ export function Patrullas() {
                         {c.by && c.s && <p className="mt-1 text-[10.5px] text-slate-400">Inspeccionó: {c.by}</p>}
                         <Thumbs ids={c.f} cap={`${r.n} · ${vn}`} />
                       </div>); })}
-                    <select value="" onChange={e => addVeh(i, e.target.value)} aria-label={`Agregar patrulla a ${r.n}`}
-                      className="h-9 w-[15.5rem] rounded-xl border border-dashed border-slate-300 bg-transparent px-2 text-xs font-semibold text-slate-500 outline-none hover:border-brand-400 focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-700">
-                      <option value="">+ Agregar patrulla…</option>{PATROL_CARS.filter(([k]) => !r.v[k]).map(([k, n]) => <option key={k} value={k} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100">{n}</option>)}
-                    </select>
+                    <button onClick={() => setPick(i)} className="grid h-[5.5rem] w-[15.5rem] place-items-center rounded-xl border-2 border-dashed border-slate-300 text-xs font-semibold text-slate-500 transition hover:border-brand-400 hover:bg-brand-50/50 hover:text-brand-600 dark:border-slate-700 dark:hover:bg-brand-500/5">
+                      <span className="flex flex-col items-center gap-1"><Car className="size-5" />{vehOf(r).length ? "Agregar otro patrulla" : "Elegir patrullas"}</span></button>
                   </div></td>
                   <td className="py-3 pr-3"><button aria-label="Quitar de la revisión" onClick={() => { delPhotos([r]); save(p => { p.rows.splice(i, 1); }); }} className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><X className="size-4" /></button></td>
                 </tr>))}</tbody>
@@ -146,6 +148,7 @@ export function Patrullas() {
         <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><p className="mb-2 font-semibold">Todos los patrullas</p>
           {eqAll().length ? eqAll().map(x => <div key={x.n} className="flex justify-between border-t border-slate-100 py-1.5 text-sm first:border-0 dark:border-slate-800"><span>{x.n}</span><span className="font-mono text-slate-400">×{x.q}</span></div>) : <p className="text-xs text-slate-400">Sin ítems</p>}</div>
       </Modal>
+      {pick !== null && PAT.rows[pick] && <CarPicker open onClose={() => setPick(null)} who={PAT.rows[pick].n} have={vehOf(PAT.rows[pick])} top={topCars} onAdd={ks => addVeh(pick, ks)} />}
       {miss && <MissModal key={`${miss.i}${miss.k}`} row={PAT.rows[miss.i]} k={miss.k} items={eqFor(miss.k)} onClose={() => setMiss(null)}
         onSave={c => { const was = PAT.rows[miss.i].v[miss.k]?.s; save(p => { p.rows[miss.i].v[miss.k] = { ...c, by: me.n }; }); setMiss(null);
           if (c.s === "ok") toast(was === "ok" ? (c.f?.length ? "Fotos guardadas" : "Cambios guardados") : "No falta nada: el vehículo quedó como preparado"); }} />}
