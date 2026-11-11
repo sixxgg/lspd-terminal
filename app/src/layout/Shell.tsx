@@ -99,7 +99,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
                 className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-xl px-1.5 py-2 text-[11px] min-[1450px]:px-2 min-[1450px]:text-[11.5px] font-semibold uppercase tracking-wide transition min-[1800px]:px-2.5 min-[1800px]:text-[12px]", focusRing,
                   red ? (on ? "bg-red-600 text-white shadow-sm shadow-red-600/30" : "text-red-500 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300")
                   : pink ? (on ? "bg-pink-500 text-white shadow-sm shadow-pink-500/30" : "text-pink-500 hover:bg-pink-500/10 hover:text-pink-600 dark:text-pink-400 dark:hover:text-pink-300")
-                  : on ? "bg-brand-600 text-white shadow-sm shadow-brand-600/30 dark:bg-brand-500" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white")}>{AI && <AI className={cn("size-[15px] shrink-0", !on && "hidden min-[1450px]:block")} />}{a.l}</button>); })}
+                  : on ? "bg-brand-600 text-white shadow-sm shadow-brand-600/30 dark:bg-brand-500" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white")}>{AI && <AI className={cn("size-[15px] shrink-0", !on && "hidden min-[1450px]:block")} />}{a.l}{a.beta && <span className="beta-tag">BETA</span>}</button>); })}
           </nav>
           <div className="flex shrink-0 items-center gap-1">
             {sync}<NotifBell me={me} go={go} />{tools}
@@ -136,7 +136,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
         return (
           <div key={a.k}>
             <p className="mb-1.5 flex items-center gap-1.5 px-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-              {a.l}{!ok && <Lock className="size-3" />}
+              {a.l}{a.beta && <span className="beta-tag">BETA</span>}{!ok && <Lock className="size-3" />}
             </p>
             {ok ? (
               <ul className="space-y-0.5">

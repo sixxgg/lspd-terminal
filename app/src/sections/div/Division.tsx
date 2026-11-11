@@ -1,8 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { GraduationCap, Lock, Megaphone } from "lucide-react";
-import { Segmented } from "@/components/ui";
 import { Instrucciones } from "./Instrucciones";
-import { DivAdmin, Uniformidad, divTabs, uniTab, type DivTab, type URole } from "./DivTools";
+import { DivAdmin, DivNav, Uniformidad, divTabs, uniTab, type DivTab, type URole } from "./DivTools";
 import { findAgent } from "@/lib/domain";
 import { UNITS, insRole, isUMem, uMap } from "@/lib/units";
 import { Card } from "@/components/ui";
@@ -16,6 +15,8 @@ import { Unit } from "./Unit";
 import { Comunicados, type CommDiv } from "./Comunicados";
 import { cn } from "@/lib/cn";
 
+/* colores de la división como variables CSS (los usan el encabezado y la barra de pestañas) */
+const hv = (d: string) => { const { acc, light, base } = heroColors(d); return { ["--ha" as string]: acc, ["--hl" as string]: light, ["--hb" as string]: base }; };
 export function DivHero({ d }: { d: string }) {
   useDivColors(d);
   const { acc, light, base } = heroColors(d), subs = subsOf(d);
@@ -71,10 +72,11 @@ function SubBody({ sub, div }: { sub: string; div: CommDiv }) {
   const t = opts.some(x => x.value === t0) ? t0 : opts[0]?.value || "com";
   const go = (v: string) => { setT(v); LS.set("lspdt.next.subtab." + div, v); };
   const names = Object.keys(uMap("md")).filter(n => findAgent(n)).sort((a, b) => a.localeCompare(b, "es"));
+  useDivColors(sub);
   return (
-    <div className="space-y-5">
+    <div className="space-y-4" style={hv(sub)}>
       <DivHero d={sub} />
-      <Segmented value={t} onChange={go} options={opts} />
+      <DivNav value={t} onChange={go} options={opts} />
       {t === "adm" ? <DivAdmin id={div} ab={div.toUpperCase()} dn={sub} tabs={base} /> : t === "uni" ? <Uniformidad id={div} ab={div.toUpperCase()} dn={sub} canEdit={co} roles={UNITS.md.R.map(r => [r[0], r[1], r[2]] as URole)} mine={uMap("md")[me.n] || []} /> : t === "ins" ? <Instrucciones div={div} ab={div.toUpperCase()} names={names} roleOf={n => insRole("md", n)} tipos={["Persecución marítima", "Buceo", "Rescate subacuático", "Navegación"]} canEdit={can} isCoord={!!ME_ROLES.admin || insRole("md", me.n) === "coord"} />
         : <Comunicados div={div} canEdit={can} />}
     </div>);
@@ -83,6 +85,7 @@ function SubBody({ sub, div }: { sub: string; div: CommDiv }) {
 export function Division({ d }: { d: string }) {
   useStoreVersion();
   const me = useMe(), k = DIV_DONE[d], open = divOpen(d, me.n);
+  useDivColors(d);
   const [sub, setSub] = useState(() => LS.get("lspdt.next.dsub." + d) || "");
   let body: ReactNode;
   if (!open) body = (
@@ -98,5 +101,5 @@ export function Division({ d }: { d: string }) {
   else body = <Unit k={k} dn={d} />;
   const subDiv = SUB_OPEN[sub];
   if (subDiv && subsOf(d).includes(sub)) body = <SubBody sub={sub} div={subDiv} />;
-  return <div className={cn("space-y-5")}><DivHero d={d} /><SubTiles d={d} sel={sub} onSel={s => { setSub(s); LS.set("lspdt.next.dsub." + d, s); }} />{body}</div>;
+  return <div className="space-y-4" style={hv(d)}><DivHero d={d} /><SubTiles d={d} sel={sub} onSel={s => { setSub(s); LS.set("lspdt.next.dsub." + d, s); }} />{body}</div>;
 }

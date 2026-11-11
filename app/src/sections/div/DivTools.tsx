@@ -2,7 +2,7 @@
    · Uniformidad: atuendos con nombre y código para copiar (lspdt.unif.<div>)
    · Administración (solo coordinación / subcoordinación): qué pestañas ven los miembros (lspdt.divacc.<div>) y links temporales
    · Links temporales de solo lectura (api/share) y su vista pública (?ver=<token>) */
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, Copy, Eye, EyeOff, Link2, Lock, Pencil, Plus, Shirt, ShieldAlert, Trash2 } from "lucide-react";
 import { Button, Card, Empty, Field, Input, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
@@ -23,6 +23,28 @@ export function divTabs(id: string, tabs: DivTab[], coord: boolean): DivTab[] {
   const hide = new Set(LS.json<Acc>(accKey(id), {}).hide || []);
   const L = coord ? tabs.map(t => hide.has(t.value) ? { ...t, label: <span className="inline-flex items-center gap-1">{t.label}<EyeOff className="!size-3 opacity-60" /></span> } : t) : tabs.filter(t => !hide.has(t.value));
   return coord ? [...L, { value: "adm", label: <span className="text-red-600 dark:text-red-400">Administración</span>, icon: <ShieldAlert className="text-red-600 dark:text-red-400" /> }] : L;
+}
+/* barra de pestañas de la división: una sola fila (se desliza si no entra), con el color de la división y Administración aparte a la derecha */
+export function DivNav({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: DivTab[] }) {
+  const main = options.filter(o => o.value !== "adm"), adm = options.find(o => o.value === "adm");
+  const tab = (o: DivTab, red = false) => (
+    <button key={o.value} type="button" role="tab" aria-selected={o.value === value} onClick={() => onChange(o.value)} className={cn("dv-tab", red && "dv-tab-red", o.value === value && "on")}>
+      {o.icon}<span>{red ? "Administración" : o.label}</span>
+    </button>);
+  /* el desvanecido del borde solo aparece cuando quedan pestañas fuera de vista */
+  const row = useRef<HTMLDivElement>(null), [ov, setOv] = useState(false);
+  useEffect(() => {
+    const el = row.current; if (!el) return;
+    const f = () => setOv(el.scrollWidth - el.clientWidth - el.scrollLeft > 4);
+    f(); const ro = new ResizeObserver(f); ro.observe(el); el.addEventListener("scroll", f, { passive: true });
+    el.querySelector<HTMLElement>(".dv-tab.on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    return () => { ro.disconnect(); el.removeEventListener("scroll", f); };
+  }, [options.length, value]);
+  return (
+    <div className="dv-nav" role="tablist">
+      <div ref={row} className={cn("dv-nav-row scrollbar-none", ov && "ov")}>{main.map(o => tab(o))}</div>
+      {adm && <div className="dv-nav-adm">{tab(adm, true)}</div>}
+    </div>);
 }
 export const uniTab = (): DivTab => ({ value: "uni", label: "Uniformidad", icon: <Shirt />, txt: "Uniformidad" });
 

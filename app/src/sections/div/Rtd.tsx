@@ -1,4 +1,4 @@
-import { DivAdmin, Uniformidad, divTabs, uniTab, type DivTab } from "./DivTools";
+import { DivAdmin, DivNav, Uniformidad, divTabs, uniTab, type DivTab } from "./DivTools";
 import { scrollTopApp } from "@/lib/appearance";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GraduationCap, UserRound, Check, X, Plus, Shuffle, PenLine, FileUp, Wand2, Trash2, Save, ClipboardList, ChevronDown, Pencil, Copy, Scale } from "lucide-react";
@@ -33,8 +33,8 @@ export function Rtd({ dn }: { dn?: string }) {
     { value: "ins", label: "Instrucciones", icon: <GraduationCap />, txt: "Instrucciones" }, uniTab()], opts = divTabs("rtd", base, co);
   const t = opts.some(x => x.value === tab) ? tab : opts[0]?.value || "new";
   return (
-    <div className="space-y-5">
-      <Segmented value={t} onChange={setTab} options={opts} />
+    <div className="space-y-4">
+      <DivNav value={t} onChange={setTab} options={opts} />
       {t === "adm" ? <DivAdmin id="rtd" ab="RTD" dn={dn} tabs={base} /> : t === "uni" ? <Uniformidad id="rtd" ab="RTD" dn={dn} canEdit={co} /> : t === "ins" ? <Instrucciones div="rtd" ab="RTD" names={rtdMem().slice().sort()} roleOf={() => "inst"} tipos={["Academia", "Procedimientos de patrulla", "Código penal", "Uso de la radio", "Conducción"]} canEdit={isRTD(me.n)} isCoord={!!me.admin} />
         : t === "new" ? <RtdForm key={edit?.id || "n"} init={edit} onSaved={id => { setEdit(null); setOpen(id); setTab("list"); }} />
         : <RtdList open={open} setOpen={setOpen} onEdit={r => { setEdit(r); setTab("new"); scrollTopApp(); }} />}

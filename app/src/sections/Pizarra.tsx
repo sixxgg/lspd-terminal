@@ -110,6 +110,12 @@ export function PizarraArea() {
     onMeta={p => setIdx(cur.sc, L => L.map(b => (b.id === cur.id ? { ...b, ...p(b) } : b)))} />;
   const L = all.filter(b => f === "all" || b.sc === f).sort((a, b) => b.upd - a.upd);
   return (
+    <div className="space-y-4">
+    <div className="beta-hero flex flex-wrap items-center gap-4 rounded-2xl px-5 py-4">
+      <Presentation className="size-8 shrink-0 text-amber-300" />
+      <div className="min-w-0 flex-1"><h2 className="flex flex-wrap items-center gap-3 text-2xl font-extrabold tracking-tight text-white">Pizarra <span className="beta-big">(BETA)</span></h2>
+        <p className="mt-0.5 text-sm text-amber-100/80">Función en prueba: puede tener errores o cambiar. Si algo falla, avisá por Feedback.</p></div>
+    </div>
     <Card className="overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
         <Presentation className="size-4 text-brand-500" /><b className="text-sm">Pizarras ({all.length})</b>
@@ -128,6 +134,7 @@ export function PizarraArea() {
               {(b.by === me.n || ME_ROLES.admin) && <button aria-label="Eliminar" onClick={async () => { if (await confirm(`¿Eliminar la pizarra «${b.t}»?`, { danger: true })) { LS.del(bK(b.sc, b.id)); setIdx(b.sc, X => X.filter(x => x.id !== b.id)); toast("Pizarra eliminada"); } }} className="rounded p-1 text-slate-400 hover:text-red-500"><Trash2 className="size-3.5" /></button>}</div>}
           </div>); })}</div>}
     </Card>
+    </div>
   );
 }
 
@@ -308,6 +315,7 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
     <div className={cn("overflow-hidden rounded-2xl border border-white/10 text-slate-200", full && "fixed inset-2 z-[80] shadow-2xl")} style={{ background: "#1f2125" }}>
       <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-3 py-2">
         {onBack && <button onClick={onBack} className="rounded-lg px-2 py-1 text-xs font-semibold text-slate-400 hover:bg-white/10">← Pizarras</button>}
+        <span className="beta-tag !text-[11px]">BETA</span>
         <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300">{scope}</span>
         <input value={title} disabled={!canEdit} onChange={e => setTitle(e.target.value)} onBlur={() => title.trim() && title !== meta.t && onMeta?.(() => ({ t: title.trim() }))} className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none" aria-label="Nombre de la pizarra" />
         {k && <Button size="sm" variant="outline" icon={<Link2 />} onClick={() => setShare(!share)}>Compartir en vivo</Button>}
