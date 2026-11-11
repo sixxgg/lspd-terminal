@@ -244,3 +244,14 @@ html:is([data-head="rajdhani"], [data-head="teko"]) h1.text-2xl { font-size: 1.7
 .fb-rich[contenteditable] [data-sp] { outline: 1px dashed rgba(100,116,139,.6); }
 .fb-rich ul { list-style: disc; padding-left: 1.25rem; } .fb-rich ol { list-style: decimal; padding-left: 1.25rem; }
 .fb-empty::before { content: attr(data-ph); color: rgb(148 163 184); pointer-events: none; position: absolute; }
+
+/* logros míticos: lámina holográfica iridiscente (degradé que se desplaza + brillo que cruza + líneas de arcoíris finas) */
+.holo { background: linear-gradient(115deg, #ffb3e6 0%, #a5f3ff 16%, #d4ff9e 30%, #fff1a8 44%, #c4b0ff 58%, #8ef5e4 72%, #ffc1d9 86%, #a5f3ff 100%); background-size: 300% 300%; animation: holo-shift 7s ease-in-out infinite; }
+.holo::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(60deg, rgba(255,0,128,.18) 0 2px, rgba(0,255,255,.18) 2px 4px, rgba(255,255,0,.16) 4px 6px, transparent 6px 9px); mix-blend-mode: color-dodge; opacity: .55; pointer-events: none; }
+.holo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,.85) 46%, rgba(255,255,255,.2) 52%, transparent 62%); background-size: 260% 100%; mix-blend-mode: soft-light; animation: holo-sweep 3.4s linear infinite; pointer-events: none; }
+.holo-text { background: linear-gradient(90deg, #ff7ad9, #6ee7ff, #b7ff6e, #ffe66e, #b18cff, #ff7ad9); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: holo-shift 5s linear infinite; }
+.holo-card { position: relative; border-color: transparent !important; background: linear-gradient(var(--hc-bg, #fff), var(--hc-bg, #fff)) padding-box, linear-gradient(115deg, #ff9ad5, #8ff0ff, #c9ff9a, #ffe98f, #b7a3ff, #ff9ad5) border-box; background-size: 100% 100%, 300% 300%; animation: holo-shift 6s linear infinite; }
+.dark .holo-card { --hc-bg: #0b1020; }
+@keyframes holo-shift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+@keyframes holo-sweep { from { background-position: 160% 0; } to { background-position: -60% 0; } }
+@media (prefers-reduced-motion: reduce) { .holo, .holo::after, .holo-text, .holo-card { animation: none !important; } }

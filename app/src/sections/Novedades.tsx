@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.9.10";
+export const APP_VERSION = "1.9.11";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,11 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "1.9.11", f: "11/11/2026", t: "Perfiles conectados", items: [
+    "Logros míticos con lámina holográfica iridiscente.",
+    "Seguidores y seguidos se abren en una ventana, y al final del perfil aparecen «Sugerencias para ti» para seguir a otros.",
+    "Cada perfil puede tener su propia foto, sin tocar la foto del agente.",
+  ] },
   { v: "1.9.10", f: "11/11/2026", t: "Uniformidad y administración por división", items: [
     "Todas las divisiones tienen la pestaña Uniformidad: atuendos con nombre y código que se copian con un clic.",
     "Coordinación y subcoordinación tienen la pestaña Administración (en rojo) para elegir qué pestañas ven los miembros de la división.",
