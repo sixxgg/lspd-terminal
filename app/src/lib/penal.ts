@@ -1,9 +1,9 @@
 /* Código penal (lspdt.penal sobre el catálogo base) e informes policiales (lspdt.informes): misma lógica y texto que la versión clásica */
 import { RK_AB, findAgent, joinY, norm, rankES } from "./domain";
-import { CIRC, EV_T, INF_EST, INF_FZ, INF_ROLES, INF_TIPOS, PENAL_DEF, PEN_CATS, SYN } from "@/legacy/penal";
+import { CIRC, EV_T, INF_EST, INF_FZ, INF_ROLES, INF_TIPOS, PENAL_DEF, SYN } from "@/legacy/penal";
 
 export type Art = { a: string; t: string; d: string; c: string; k?: "cp" | "adm"; g?: string; m?: number; p?: number; pt?: number; v?: number };
-export { CIRC, EV_T, INF_EST, INF_FZ, INF_ROLES, INF_TIPOS, PEN_CATS };
+export { CIRC, EV_T, INF_EST, INF_FZ, INF_TIPOS };
 const PENAL_BASE = PENAL_DEF as Art[];
 export const artCmp = (x: Art, y: Art) => { const A = x.a.split(".").map(Number), B = y.a.split(".").map(Number); return A[0] - B[0] || (A[1] || 0) - (B[1] || 0) || (A[2] || 0) - (B[2] || 0); };
 /* el catálogo oficial (apartado Legal) es la única fuente: lo guardado antes en lspdt.penal ya no se usa */

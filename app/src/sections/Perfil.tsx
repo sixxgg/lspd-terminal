@@ -1,19 +1,22 @@
-/* Perfil (BETA) estilo comunidad: portada, foto, contadores, seguidores, «acerca de», visitantes recientes y pestañas
-   Actividad · Logros (condecoraciones) · Comentarios. Cualquiera puede ver un perfil y dejar comentarios; el dueño recibe la notificación.
-   Datos: lspdt.uprof.<slug> (solo el dueño), lspdt.uprof.<slug>.ban (portada), lspdt.ucom.<slug> (comentarios), lspdt.uvis.<slug> (visitas), lspdt.ufol.<slug> (seguidores). */
-import { useEffect, useRef, useState } from "react";
-import { Activity, Award as AwardI, Camera, Eye, MessageSquare, Pencil, Save, Send, Trash2, UserCheck, UserPlus, Users, X } from "lucide-react";
+/* Perfil (BETA), estilo comunidad y OOC: portada, foto, ID de cuenta, contadores en una línea, seguidores, «acerca de» con formato,
+   visitantes y pestañas Actividad · Logros · Comentarios · Personaje (lo policial). La actividad policial de cada división
+   solo la ven los miembros de esa división.
+   Datos: lspdt.uprof.<slug> (solo el dueño), .ban (portada), lspdt.ucom.<slug> (comentarios), lspdt.uvis.<slug> (visitas), lspdt.ufol.<slug> (seguidores). */
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Activity, BadgeCheck, Bold, Camera, ChevronsUp, Crown, Eye, Gem, Heading1, Heading2, Heading3, IdCard, Italic, List, Lock, MessageSquare, Pencil, Quote, Save, Scale, Send, Strikethrough, Trash2, Trophy, Underline, UserCheck, UserPlus, Users, X, type LucideIcon } from "lucide-react";
 import { Button, Card, Textarea } from "@/components/ui";
 import { Avatar, RankBadge } from "@/components/agents";
 import { Ribbon } from "@/components/ribbon";
 import { useFeedback } from "@/components/feedback";
 import { useTick } from "@/components/fbnotif";
-import { LS, useStoreVersion } from "@/lib/store";
+import { ACC, LS, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { readImg } from "@/lib/patrol";
-import { ago, emailOf, findAgent, fmtDate, rankES, uid } from "@/lib/domain";
+import { ago, emailOf, findAgent, fmtDate, lvl, rankES, uid } from "@/lib/domain";
 import { decorOf, type Award } from "@/lib/decor";
 import { profFull, takePreset } from "@/lib/profiles";
+import { isPSB, rtdMem, uMap, type UnitKey } from "@/lib/units";
+import { mdHtml } from "@/lib/discord";
 import { cn } from "@/lib/cn";
 
 export type UProf = { bio?: string; since?: number; seen?: number; col?: string };
@@ -22,28 +25,120 @@ type UVis = { c: number; l: { n: string; t: number }[] };
 export const slugOf = (n: string) => emailOf(n).split("@")[0];
 export const K = { prof: (n: string) => `lspdt.uprof.${slugOf(n)}`, ban: (n: string) => `lspdt.uprof.${slugOf(n)}.ban`, com: (n: string) => `lspdt.ucom.${slugOf(n)}`, vis: (n: string) => `lspdt.uvis.${slugOf(n)}`, fol: (n: string) => `lspdt.ufol.${slugOf(n)}` };
 const COLS = ["#0f7a3a", "#1e3a8a", "#7c3aed", "#b91c1c", "#0e7490", "#be185d", "#334155"];
-const dmy = (t?: number) => (t ? new Date(t).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" }) : "—");
+const FOUNDER = "Ryan Westbrook";
+const dmy = (t?: number) => (t ? new Date(t).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—");
+
+/* ---------- logros ---------- */
+const TIER = {
+  comun: { l: "Común", c: "#94a3b8", bg: "linear-gradient(145deg,#64748b,#334155)" },
+  raro: { l: "Raro", c: "#38bdf8", bg: "linear-gradient(145deg,#0ea5e9,#1e3a8a)" },
+  epico: { l: "Épico", c: "#c084fc", bg: "linear-gradient(145deg,#a855f7,#4c1d95)" },
+  legend: { l: "Legendario", c: "#fbbf24", bg: "linear-gradient(145deg,#fde047,#d97706 55%,#78350f)" },
+  mitico: { l: "Mítico", c: "#f43f5e", bg: "conic-gradient(from 0deg,#f43f5e,#f59e0b,#22c55e,#06b6d4,#8b5cf6,#f43f5e)" },
+} as const;
+type Tier = keyof typeof TIER;
+const LOGROS: { k: string; t: string; d: string; tier: Tier; I: LucideIcon; ok: (n: string, r: string) => boolean }[] = [
+  { k: "reg", t: "Registrado", d: "Tiene cuenta en la terminal.", tier: "comun", I: UserCheck, ok: n => ACC.names.includes(n) },
+  { k: "ofi", t: "Oficial", d: "Forma parte del LSPD.", tier: "comun", I: BadgeCheck, ok: (_n, r) => lvl(r) >= 1 },
+  { k: "sgt", t: "Sargento", d: "Llegó a Sargento I.", tier: "raro", I: ChevronsUp, ok: (_n, r) => lvl(r) >= 6 },
+  { k: "psb", t: "Miembro de la PSB", d: "Integra el Professional Standards Bureau.", tier: "epico", I: Scale, ok: n => isPSB(n) },
+  { k: "sgt2", t: "Sargento II", d: "Llegó a Sargento II.", tier: "legend", I: Crown, ok: (_n, r) => lvl(r) >= 7 },
+  { k: "fnd", t: "Fundador", d: "Creó la terminal.", tier: "mitico", I: Gem, ok: n => n === FOUNDER },
+];
+function Medal({ tier, I, on = true, size = 56 }: { tier: Tier; I: LucideIcon; on?: boolean; size?: number }) {
+  const T = TIER[tier];
+  return (
+    <span className={cn("relative grid shrink-0 place-items-center", !on && "opacity-35 grayscale")} style={{ width: size, height: size }}>
+      {on && tier !== "comun" && <span className={cn("absolute inset-0 rounded-full blur-md", tier === "mitico" && "animate-spin [animation-duration:6s]")} style={{ background: T.bg, opacity: 0.55 }} />}
+      <span className={cn("absolute inset-0 [clip-path:polygon(50%_0,93%_25%,93%_75%,50%_100%,7%_75%,7%_25%)]", on && tier === "mitico" && "animate-spin [animation-duration:8s]")} style={{ background: T.bg }} />
+      <span className="absolute inset-[3px] bg-slate-950/55 [clip-path:polygon(50%_0,93%_25%,93%_75%,50%_100%,7%_75%,7%_25%)]" />
+      {on ? <I className="relative drop-shadow" style={{ width: size * 0.42, height: size * 0.42, color: T.c }} /> : <Lock className="relative text-slate-300" style={{ width: size * 0.34, height: size * 0.34 }} />}
+    </span>);
+}
+
+/* ---------- editor del «acerca de» con formato (mismo formato que Discord) ---------- */
+const FMT: [LucideIcon, string, string, string][] = [[Heading1, "Título grande", "# ", ""], [Heading2, "Título", "## ", ""], [Heading3, "Subtítulo", "### ", ""], [Bold, "Negrita", "**", "**"], [Italic, "Cursiva", "*", "*"],
+  [Underline, "Subrayado", "__", "__"], [Strikethrough, "Tachado", "~~", "~~"], [Quote, "Cita", "> ", ""], [List, "Lista", "- ", ""]];
+const Md = ({ s, className }: { s: string; className?: string }) => <div className={cn("break-words text-sm text-slate-600 dark:text-slate-300 [&_.text-white]:text-slate-900 dark:[&_.text-white]:text-white", className)} dangerouslySetInnerHTML={{ __html: mdHtml(s) }} />;
+function BioEditor({ v, set }: { v: string; set: (s: string) => void }) {
+  const ta = useRef<HTMLTextAreaElement>(null);
+  const wrap = (a: string, b: string) => {
+    const el = ta.current; if (!el) return; const s = el.selectionStart, e = el.selectionEnd;
+    const line = !b; /* títulos, citas y listas van al principio de la línea */
+    const ls = line ? v.lastIndexOf("\n", s - 1) + 1 : s;
+    const nv = line ? v.slice(0, ls) + a + v.slice(ls) : v.slice(0, s) + a + v.slice(s, e) + b + v.slice(e);
+    set(nv); requestAnimationFrame(() => { el.focus(); const k = s + a.length; el.setSelectionRange(k, line ? k : e + a.length); });
+  };
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-0.5 rounded-lg border border-slate-200 p-0.5 dark:border-slate-700">{FMT.map(([I, l, a, b]) => (
+        <button key={l} type="button" title={l} onClick={() => wrap(a, b)} className="grid size-7 place-items-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"><I className="size-3.5" /></button>))}</div>
+      <Textarea ref={ta} rows={6} value={v} onChange={e => set(e.target.value)} placeholder="Contá algo sobre vos… (# título, **negrita**, *cursiva*, > cita)" />
+      {v.trim() && <div className="rounded-lg border border-dashed border-slate-200 p-3 dark:border-slate-700"><p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Vista previa</p><Md s={v} /></div>}
+    </div>);
+}
+
+/* ---------- actividad policial privada: cada bloque lo ve solo quien pertenece a esa división ---------- */
+type Ev = { t: number; x: string };
+type PCase = { cf: string; ag: string; by: string; ts: number; upd: number; st?: string };
+type PIns = { t: number; tipo: string; ins: { n: string }[]; imp: { n: string }[] };
+type PEnt = { asp: string; ent: string[]; res: string; t?: number };
+type SEnt = { st?: string; por?: string; t?: number };
+const INS_DIV: [string, string, UnitKey | "rtd"][] = [["md", "METRO", "md"], ["udu", "UDU", "md"], ["asd", "A.S.D", "asd"], ["k9", "K-9", "k9"], ["psb", "PSB", "psb"], ["rtd", "RTD", "rtd"]];
+const memOf = (k: UnitKey | "rtd", n: string) => (k === "rtd" ? rtdMem().includes(n) : !!uMap(k)[n]);
+function policeAct(who: string, me: { n: string; r: string }): { l: string; v: string; ev: Ev[] }[] {
+  const out: { l: string; v: string; ev: Ev[] }[] = [];
+  if (isPSB(me.n)) {
+    const C = LS.json<PCase[]>("lspdt.psbCases", []);
+    const ev = [...C.filter(c => c.by === who).map(c => ({ t: c.upd || c.ts, x: `Lleva el expediente ${c.cf}${c.ag ? ` (${c.ag})` : ""}${c.st ? ` · ${c.st}` : ""}` })),
+      ...C.filter(c => c.ag === who).map(c => ({ t: c.ts, x: `Investigado en el expediente ${c.cf}, a cargo de ${c.by}` }))];
+    if (ev.length) out.push({ l: "PSB · expedientes", v: "Solo PSB", ev });
+  }
+  if (rtdMem().includes(me.n)) {
+    const ev = LS.json<PEnt[]>("lspdt.rtdEnt", []).filter(e => e.ent?.includes(who)).map(e => ({ t: e.t || 0, x: `Entrevistó a ${e.asp || "un aspirante"}${e.res ? ` · ${e.res === "apto" ? "Apto" : e.res === "noapto" ? "No apto" : "Pendiente"}` : ""}` }));
+    if (ev.length) out.push({ l: "RTD · entrevistas de ingreso", v: "Solo RTD", ev });
+  }
+  if (lvl(me.r) >= 6) {
+    const ev = Object.entries(LS.json<Record<string, SEnt>>("lspdt.entrev", {})).filter(([, e]) => e.por === who).map(([n, e]) => ({ t: e.t || 0, x: `Entrevista de supervisión a ${n}${e.st === "si" ? " · realizada" : e.st === "no" ? " · no realizada" : ""}` }));
+    if (ev.length) out.push({ l: "Supervisores · entrevistas", v: "Solo supervisores", ev });
+  }
+  for (const [div, ab, k] of INS_DIV) {
+    if (!memOf(k, me.n)) continue;
+    const L = LS.json<PIns[]>(`lspdt.instr.${div}`, []);
+    const ev = [...L.filter(i => i.ins?.some(x => x.n === who)).map(i => ({ t: i.t, x: `Impartió «${i.tipo}»` })), ...L.filter(i => i.imp?.some(x => x.n === who)).map(i => ({ t: i.t, x: `Asistió a «${i.tipo}»` }))];
+    if (ev.length) out.push({ l: `${ab} · instrucciones`, v: `Solo ${ab}`, ev });
+  }
+  return out.map(g => ({ ...g, ev: g.ev.sort((a, b) => b.t - a.t).slice(0, 15) }));
+}
+
+const Timeline = ({ ev }: { ev: (Ev & { by?: string })[] }) => (
+  <ol className="relative space-y-3 border-l border-slate-200 pl-5 dark:border-slate-800">{ev.map((a, i) => (
+    <li key={i}><span className="absolute -left-1.5 mt-1.5 size-3 rounded-full border-2 border-white bg-brand-500 dark:border-slate-900" /><p className="text-sm">{a.x}</p><p className="text-xs text-slate-400">{a.t ? ago(a.t) : "sin fecha"}{a.by ? ` · por ${a.by}` : ""}</p></li>))}</ol>);
+const Empty = ({ children }: { children: ReactNode }) => <p className="py-6 text-center text-sm text-slate-400">{children}</p>;
 
 export function Perfil() {
   useStoreVersion(); useTick();
   const me = useMe(), { toast, confirm } = useFeedback();
-  const [who, setWho] = useState(() => takePreset<{ n: string }>()?.n || me.n), own = who === me.n, ag = findAgent(who);
+  const [who, setWho] = useState(() => takePreset<{ n: string }>()?.n || me.n), own = who === me.n, ag = findAgent(who), r = ag?.r || "";
   const P = LS.json<UProf>(K.prof(who), {}), ban = LS.get(K.ban(who)) || "", coms = LS.json<UCom[]>(K.com(who), []), vis = LS.json<UVis>(K.vis(who), { c: 0, l: [] }), fol = LS.json<string[]>(K.fol(who), []);
   const prof = profFull(who), cond = ((prof.cond || []) as unknown as Award[]).slice().sort((a, b) => (b.f || "").localeCompare(a.f || ""));
-  const [tab, setTab] = useState<"act" | "log" | "com">("com"), [ed, setEd] = useState(false), [bio, setBio] = useState(P.bio || ""), [txt, setTxt] = useState(""), fBan = useRef<HTMLInputElement>(null);
+  const [tab, setTab] = useState<"act" | "log" | "com" | "pj">("com"), [ed, setEd] = useState(false), [bio, setBio] = useState(P.bio || ""), [txt, setTxt] = useState(""), fBan = useRef<HTMLInputElement>(null);
   useEffect(() => { setBio(P.bio || ""); setEd(false); setTab("com"); }, [who]); // eslint-disable-line react-hooks/exhaustive-deps
   /* visita: una por sesión y por perfil (no cuenta la propia) */
   useEffect(() => { if (own) return; const sk = "lspdt.next.vis." + slugOf(who); try { if (sessionStorage.getItem(sk)) return; sessionStorage.setItem(sk, "1"); } catch { /* */ }
     const v = LS.json<UVis>(K.vis(who), { c: 0, l: [] }); LS.setJSON(K.vis(who), { c: v.c + 1, l: [{ n: me.n, t: Date.now() }, ...v.l.filter(x => x.n !== me.n)].slice(0, 12) }); }, [who, own, me.n]);
   const saveP = (p: Partial<UProf>) => LS.setJSON(K.prof(who), { ...LS.json<UProf>(K.prof(who), {}), ...p });
   const post = () => { const x = txt.trim(); if (!x) return; LS.setJSON(K.com(who), [...LS.json<UCom[]>(K.com(who), []), { id: uid(), by: me.n, t: Date.now(), x: x.slice(0, 1500) }].slice(-200)); setTxt(""); toast(own ? "Publicado" : `Comentario enviado a ${who}`); };
-  const following = fol.includes(me.n);
-  /* actividad: ascensos/traslados del perfil del agente, condecoraciones y comentarios que dejó en su perfil */
-  const act = [...(prof.movs || []).map(m => ({ t: m.t, x: `${m.tipo}${m.de ? ` · ${m.de}` : ""}${m.a ? ` → ${m.a}` : ""}`, by: m.por?.n })),
-    ...cond.filter(c => c.f).map(c => ({ t: new Date(c.f!).getTime(), x: `Recibió «${c.t}»`, by: c.by })),
-    ...coms.filter(c => c.by === who).map(c => ({ t: c.t, x: `Escribió en su perfil: «${c.x.slice(0, 80)}${c.x.length > 80 ? "…" : ""}»`, by: undefined }))].filter(a => a.t).sort((a, b) => b.t - a.t).slice(0, 30);
-  const TABS: ["act" | "log" | "com", string, typeof Activity, number][] = [["act", "Actividad", Activity, act.length], ["log", "Logros", AwardI, cond.length], ["com", "Comentarios", MessageSquare, coms.length]];
+  const following = fol.includes(me.n), idx = ACC.names.indexOf(who), id = idx >= 0 ? idx + 1 : 0;
+  const logros = LOGROS.map(l => ({ ...l, on: l.ok(who, r) })), got = logros.filter(l => l.on);
+  const best = got.slice().reverse().slice(0, 3);
+  /* actividad general (OOC) y la policial privada */
+  const act: (Ev & { by?: string })[] = [...(P.since ? [{ t: P.since, x: "Se registró en la terminal" }] : []),
+    ...coms.filter(c => c.by === who).map(c => ({ t: c.t, x: `Escribió en su perfil: «${c.x.slice(0, 80)}${c.x.length > 80 ? "…" : ""}»` }))].sort((a, b) => b.t - a.t).slice(0, 20);
+  const pol = policeAct(who, me);
+  const TABS: ["act" | "log" | "com" | "pj", string, LucideIcon, number | string][] = [["act", "Actividad", Activity, act.length + pol.reduce((s, g) => s + g.ev.length, 0)], ["log", "Logros", Trophy, `${got.length}/${LOGROS.length}`], ["com", "Comentarios", MessageSquare, coms.length], ["pj", "Personaje", IdCard, ""]];
   const people = (L: string[]) => <div className="grid grid-cols-5 gap-2">{L.slice(0, 15).map(n => <button key={n} title={n} onClick={() => setWho(n)} className="justify-self-center"><Avatar n={n} size={36} /></button>)}</div>;
+  const stats: [string, string][] = [["Comentarios", String(coms.length)], ["Ingreso", dmy(P.since)], ["Última visita", P.seen ? ago(P.seen) : "—"]];
   return (
     <div className="space-y-4">
       {/* portada */}
@@ -55,20 +150,22 @@ export function Perfil() {
             <button onClick={() => fBan.current?.click()} className="inline-flex items-center gap-1 rounded-lg bg-black/50 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur hover:bg-black/70"><Camera className="size-3.5" />Portada</button></div>}
           <input ref={fBan} type="file" accept="image/*" hidden onChange={async e => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; LS.set(K.ban(who), await readImg(f, 1400)); toast("Portada actualizada"); }} />
         </div>
-        <div className="flex flex-wrap items-end gap-4 px-5 pb-4">
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-2 px-5 pb-4">
           <div className="-mt-12 rounded-full ring-4 ring-white dark:ring-slate-900"><Avatar n={who} size={104} /></div>
           <div className="min-w-0 flex-1 pt-2">
-            <h1 className="truncate text-2xl font-bold">{who}</h1>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">{ag && <RankBadge r={ag.r} />}{ag?.p && <span className="font-mono text-xs">#{ag.p}</span>}{prof.cs && <span className="font-mono text-xs text-red-500">{prof.cs}</span>}</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-2xl font-bold">{who}</h1>
+              {id > 0 && <span title="ID de cuenta (orden de registro)" className={cn("rounded-md px-1.5 py-0.5 font-mono text-xs font-bold", id === 1 ? "bg-gradient-to-r from-rose-500 via-amber-400 to-fuchsia-500 text-white" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300")}>#{id}</span>}
+              {best.map(l => <span key={l.k} title={`${l.t} · ${TIER[l.tier].l}`}><Medal tier={l.tier} I={l.I} size={24} /></span>)}
+            </div>
+            {/* contadores en un solo renglón */}
+            <div className="mt-1.5 flex items-center gap-x-4 overflow-x-auto whitespace-nowrap text-sm">{stats.map(([l, v], i) => (
+              <span key={l} className="flex items-baseline gap-1.5">{i > 0 && <span className="mr-2.5 text-slate-300 dark:text-slate-700">|</span>}<span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{l}</span><b className="font-semibold">{v}</b></span>))}</div>
           </div>
           <div className="flex gap-2">
             {!own && <Button size="sm" variant={following ? "outline" : "primary"} icon={following ? <UserCheck /> : <UserPlus />} onClick={() => { LS.setJSON(K.fol(who), following ? fol.filter(x => x !== me.n) : [...fol, me.n]); }}>{following ? "Siguiendo" : "Seguir"}</Button>}
             {!own && <Button size="sm" variant="outline" onClick={() => setWho(me.n)}>Ir a mi perfil</Button>}
           </div>
-        </div>
-        <div className="grid grid-cols-3 border-t border-slate-100 text-center dark:border-slate-800 sm:max-w-xl sm:text-left">
-          {([["Comentarios", String(coms.length)], ["Ingreso", dmy(P.since)], ["Última visita", P.seen ? ago(P.seen) : "—"]] as const).map(([l, v]) => (
-            <div key={l} className="px-5 py-3"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{l}</p><p className="text-sm font-semibold">{v}</p></div>))}
         </div>
       </Card>
 
@@ -79,9 +176,9 @@ export function Perfil() {
             {fol.length ? people(fol) : <p className="text-xs text-slate-400">Todavía nadie.</p>}</Card>
           <Card className="p-4"><div className="mb-2 flex items-center"><p className="flex-1 text-sm font-semibold">Acerca de {own ? "mí" : who.split(" ")[0]}</p>
             {own && !ed && <button aria-label="Editar" onClick={() => setEd(true)} className="text-slate-400 hover:text-brand-500"><Pencil className="size-3.5" /></button>}</div>
-            {ed ? <div className="space-y-2"><Textarea rows={4} value={bio} onChange={e => setBio(e.target.value)} placeholder="Contá algo sobre vos…" />
-              <div className="flex justify-end gap-1.5"><Button size="sm" variant="ghost" icon={<X />} onClick={() => { setBio(P.bio || ""); setEd(false); }}>Cancelar</Button><Button size="sm" icon={<Save />} onClick={() => { saveP({ bio: bio.trim().slice(0, 1000) }); setEd(false); toast("Guardado"); }}>Guardar</Button></div></div>
-              : <p className="whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-300">{P.bio || <span className="text-slate-400">{own ? "Escribí algo sobre vos." : "Sin información."}</span>}</p>}</Card>
+            {ed ? <div className="space-y-2"><BioEditor v={bio} set={setBio} />
+              <div className="flex justify-end gap-1.5"><Button size="sm" variant="ghost" icon={<X />} onClick={() => { setBio(P.bio || ""); setEd(false); }}>Cancelar</Button><Button size="sm" icon={<Save />} onClick={() => { saveP({ bio: bio.trim().slice(0, 2000) }); setEd(false); toast("Guardado"); }}>Guardar</Button></div></div>
+              : P.bio ? <Md s={P.bio} /> : <p className="text-sm text-slate-400">{own ? "Escribí algo sobre vos." : "Sin información."}</p>}</Card>
           <Card className="p-4"><p className="mb-1 flex items-center gap-2 text-sm font-semibold"><Eye className="size-4 text-slate-400" />Visitantes recientes</p>
             <p className="mb-2 text-xs text-slate-400">{vis.c.toLocaleString("es-AR")} visitas al perfil</p>
             {vis.l.length ? <div className="divide-y divide-slate-100 dark:divide-slate-800">{vis.l.slice(0, 6).map(v => (
@@ -91,16 +188,16 @@ export function Perfil() {
 
         {/* pestañas */}
         <Card className="overflow-hidden p-0">
-          <div className="grid grid-cols-3 border-b border-slate-100 dark:border-slate-800">{TABS.map(([k, l, I, n]) => (
+          <div className="grid grid-cols-4 border-b border-slate-100 dark:border-slate-800">{TABS.map(([k, l, I, n]) => (
             <button key={k} onClick={() => setTab(k)} className={cn("relative flex items-center justify-center gap-2 py-3 text-sm font-semibold transition", tab === k ? "text-brand-600 dark:text-brand-300" : "text-slate-500 hover:text-slate-800 dark:hover:text-white")}>
-              <I className="size-4" />{l}<span className="rounded-md bg-slate-100 px-1.5 text-[11px] tabular-nums dark:bg-slate-800">{n}</span>
+              <I className="size-4" /><span className="hidden sm:inline">{l}</span>{n !== "" && <span className="rounded-md bg-slate-100 px-1.5 text-[11px] tabular-nums dark:bg-slate-800">{n}</span>}
               {tab === k && <span className="absolute inset-x-6 bottom-0 h-0.5 rounded-full bg-brand-500" />}</button>))}</div>
           <div className="p-5">
             {tab === "com" && <div className="space-y-4">
               <div className="flex gap-3"><Avatar n={me.n} size={36} /><div className="flex-1 space-y-2"><Textarea rows={2} value={txt} onChange={e => setTxt(e.target.value)} placeholder={own ? "Escribí algo en tu perfil…" : `Dejale un comentario a ${who.split(" ")[0]}…`}
                 onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) post(); }} />
                 <div className="flex justify-end"><Button size="sm" icon={<Send />} disabled={!txt.trim()} onClick={post}>Publicar</Button></div></div></div>
-              {!coms.length ? <p className="py-6 text-center text-sm text-slate-400">Sin comentarios todavía.</p> : <div className="space-y-3">{coms.slice().reverse().map(c => (
+              {!coms.length ? <Empty>Sin comentarios todavía.</Empty> : <div className="space-y-3">{coms.slice().reverse().map(c => (
                 <div key={c.id} className="flex gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
                   <button onClick={() => setWho(c.by)}><Avatar n={c.by} size={36} /></button>
                   <div className="min-w-0 flex-1"><p className="text-sm"><button onClick={() => setWho(c.by)} className="font-semibold hover:underline">{c.by}</button> <span className="text-xs text-slate-400">· {ago(c.t)}</span></p>
@@ -108,15 +205,40 @@ export function Perfil() {
                   {(c.by === me.n || own) && <button aria-label="Borrar comentario" onClick={async () => { if (await confirm("¿Borrar este comentario?", { danger: true })) LS.setJSON(K.com(who), LS.json<UCom[]>(K.com(who), []).filter(x => x.id !== c.id)); }} className="self-start text-slate-400 hover:text-red-500"><Trash2 className="size-3.5" /></button>}
                 </div>))}</div>}
             </div>}
-            {tab === "log" && (!cond.length ? <p className="py-6 text-center text-sm text-slate-400">Sin condecoraciones todavía.</p> : <div className="divide-y divide-slate-100 dark:divide-slate-800">{cond.map(c => { const d = decorOf(c.k); return (
-              <div key={c.id} className="flex gap-4 py-3"><span className="w-24 shrink-0 pt-1">{d && <Ribbon d={d} />}</span>
-                <div className="min-w-0"><b className="block">{c.t}</b><p className="text-xs text-slate-500">Otorgada {c.f ? fmtDate(new Date(c.f).getTime()).split(",")[0] : ""}{c.by ? `, por ${c.by}` : ""}</p>{c.m && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{c.m}</p>}</div></div>); })}</div>)}
-            {tab === "act" && (!act.length ? <p className="py-6 text-center text-sm text-slate-400">Sin actividad registrada.</p> : <ol className="relative space-y-3 border-l border-slate-200 pl-5 dark:border-slate-800">{act.map((a, i) => (
-              <li key={i}><span className="absolute -left-1.5 mt-1.5 size-3 rounded-full border-2 border-white bg-brand-500 dark:border-slate-900" /><p className="text-sm">{a.x}</p><p className="text-xs text-slate-400">{ago(a.t)}{a.by ? ` · por ${a.by}` : ""}</p></li>))}</ol>)}
+
+            {tab === "log" && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{logros.map(l => (
+              <div key={l.k} className={cn("flex items-center gap-3 rounded-xl border p-3", l.on ? "border-slate-200 dark:border-slate-700" : "border-dashed border-slate-200 dark:border-slate-800")} style={l.on ? { boxShadow: `inset 3px 0 0 ${TIER[l.tier].c}` } : undefined}>
+                <Medal tier={l.tier} I={l.I} on={l.on} />
+                <div className="min-w-0"><b className={cn("block text-sm", !l.on && "text-slate-400")}>{l.t}</b>
+                  <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: TIER[l.tier].c }}>{TIER[l.tier].l}</span>
+                  <p className="text-xs text-slate-500">{l.on ? l.d : "Bloqueado"}</p></div>
+              </div>))}</div>}
+
+            {tab === "act" && <div className="space-y-5">
+              {act.length ? <Timeline ev={act} /> : <Empty>Sin actividad registrada.</Empty>}
+              {pol.map(g => (
+                <div key={g.l} className="rounded-xl border border-amber-500/25 bg-amber-500/[.04] p-4">
+                  <p className="mb-3 flex items-center gap-2 text-sm font-semibold">{g.l}<span className="ml-auto inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-700 dark:text-amber-300"><Lock className="size-3" />{g.v}</span></p>
+                  <Timeline ev={g.ev} /></div>))}
+              <p className="text-center text-[11px] text-slate-400">La actividad de cada división solo la ven sus miembros.</p>
+            </div>}
+
+            {tab === "pj" && <div className="space-y-5">
+              <div className="flex flex-wrap items-center gap-3">{r && <RankBadge r={r} />}{ag?.p && <span className="font-mono text-sm">Placa #{ag.p}</span>}{prof.cs && <span className="font-mono text-sm text-red-500">{prof.cs}</span>}
+                {!ag && <span className="text-sm text-slate-400">No figura en el roster.</span>}</div>
+              {(prof.div || []).length > 0 && <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Divisiones</p>
+                <div className="flex flex-wrap gap-1.5">{(prof.div as string[]).map(d => <span key={d} className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold dark:bg-slate-800">{d}</span>)}</div></div>}
+              <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Condecoraciones</p>
+                {!cond.length ? <p className="text-sm text-slate-400">Sin condecoraciones todavía.</p> : <div className="divide-y divide-slate-100 dark:divide-slate-800">{cond.map(c => { const d = decorOf(c.k); return (
+                  <div key={c.id} className="flex gap-4 py-3"><span className="w-24 shrink-0 pt-1">{d && <Ribbon d={d} />}</span>
+                    <div className="min-w-0"><b className="block">{c.t}</b><p className="text-xs text-slate-500">Otorgada {c.f ? fmtDate(new Date(c.f).getTime()).split(",")[0] : ""}{c.by ? `, por ${c.by}` : ""}</p>{c.m && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{c.m}</p>}</div></div>); })}</div>}</div>
+              {(prof.movs || []).length > 0 && <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Carrera</p>
+                <Timeline ev={(prof.movs || []).map(m => ({ t: m.t, x: `${m.tipo}${m.de ? ` · ${m.de}` : ""}${m.a ? ` → ${m.a}` : ""}`, by: m.por?.n })).sort((a, b) => b.t - a.t)} /></div>}
+            </div>}
           </div>
         </Card>
       </div>
-      {!own && <p className="text-center text-xs text-slate-400">Estás viendo el perfil de {who} · {ag ? rankES(ag.r) : ""}</p>}
+      {!own && <p className="text-center text-xs text-slate-400">Estás viendo el perfil de {who}{r ? ` · ${rankES(r)}` : ""}</p>}
     </div>
   );
 }

@@ -85,4 +85,4 @@ ${q(A.dif)}
 function rtdParts(s){const out=[];let cur="";for(const blk of s.split(/\n(?=## |\*\*\d\. )/)){const b=(cur?"\n":"")+blk;if((cur+b).length>1950&&cur){out.push(cur);cur=blk}else cur+=b}if(cur)out.push(cur);
   return out.flatMap(p=>p.length<=1990?[p]:p.match(/[\s\S]{1,1990}/g))}
 
-export { RTD_CASOS, RTD_DIV, RTD_F, rtdCaso, rtdScore, rtdAge, parsePost, rtdCmp, CMP_I, CMP_L, rtdText };
+export { RTD_CASOS, RTD_F, rtdCaso, rtdScore, rtdAge, parsePost, rtdCmp, CMP_L, rtdText };

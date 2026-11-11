@@ -1,27 +1,17 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { Eye, EyeOff, LogIn, UserPlus, Clock, AlertCircle, ShieldCheck, LifeBuoy, CheckCircle2 } from "lucide-react";
 import { RecCodes } from "@/components/account";
 import { Button, Checkbox, Field, Input, Segmented } from "@/components/ui";
 import { authApi } from "@/lib/api";
 import { emailOf, norm, rankES } from "@/lib/domain";
 import { cn } from "@/lib/cn";
+import { cipher, tabIcon, useTabFx } from "@/lib/tabfx";
 
 export type PubInfo = { names: string[]; roster?: { n: string; r: string; p?: string }[]; brand?: Record<string, string> };
 type Msg = { kind: "err" | "pend" | "ok"; text: string } | null;
 
-/* pantalla de ingreso: la pestaña muestra una calavera y un título que se va "cifrando" */
-const SKULL_ICO = "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#05070a"/><path fill="#39ff88" d="M32 8C19 8 10 17 10 29c0 7 3 12 8 15v8c0 2 2 4 4 4h4v-6h4v6h4v-6h4v6h4c2 0 4-2 4-4v-8c5-3 8-8 8-15C54 17 45 8 32 8zm-10 30a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm20 0a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm-10 6-3-6h6z"/></svg>`);
-const GLYPH = "0123456789ABCDEF#$%&@*/\\<>";
-function useCipherTab() {
-  useEffect(() => {
-    const links = [...document.querySelectorAll<HTMLLinkElement>('link[rel="icon"],link[rel="apple-touch-icon"]')], old = links.map(l => l.href), t0 = document.title;
-    links.forEach(l => { l.href = SKULL_ICO; });
-    const words = ["ACCESO RESTRINGIDO", "CIFRADO AES-256", "HANDSHAKE", "NODO MR-10", "AUTENTICANDO", "ENLACE SEGURO"];
-    let k = 0; const i = setInterval(() => { k++; const w = words[Math.floor(k / 4) % words.length], r = (n: number) => Array.from({ length: n }, () => GLYPH[Math.floor(Math.random() * GLYPH.length)]).join("");
-      const shown = w.split("").map((c, j) => (j < (k % 4) * (w.length / 3) ? c : c === " " ? " " : r(1))).join("");
-      document.title = `☠ ${shown} · 0x${r(4)}`; }, 450);
-    return () => { clearInterval(i); document.title = t0; links.forEach((l, j) => { l.href = old[j]; }); }; }, []);
-}
+/* pantalla de ingreso: la pestaña muestra una calavera y un título cifrado con caracteres aleatorios */
+const useCipherTab = () => useTabFx(k => ({ title: `☠ ${cipher(3, 4)}`, icon: tabIcon("calavera", "#39ff88", k % 8 !== 0) }), 260);
 
 export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unknown }) => void }) {
   useCipherTab();

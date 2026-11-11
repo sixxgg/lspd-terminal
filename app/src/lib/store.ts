@@ -106,6 +106,8 @@ async function poll() {
 export const syncNow = () => { if (!document.hidden) void poll(); };
 function schedule() { clearTimeout(pollT); pollT = window.setTimeout(async () => { if (!document.hidden) await poll(); schedule(); }, 5000); }
 
+/* cuentas registradas en orden de alta (la posición es el ID público del perfil) */
+export const ACC: { names: string[] } = { names: [] };
 export const ME_ROLES: { admin?: boolean; owner?: boolean; six?: boolean; anita?: boolean } = {};
 export type Me = { n: string; r: string; admin: boolean; owner: boolean; six?: boolean; anita?: boolean };
 export let DEF_ROSTER: Agent[] = [];

@@ -32,7 +32,8 @@ function inline(s: string, c: DcCtx) {
     .replace(/~~(.+?)~~/g, "<s>$1</s>").replace(/\|\|(.+?)\|\|/g, '<span class="rounded bg-[#1e1f22] px-0.5 text-[#1e1f22] transition hover:text-inherit">$1</span>')
     .replace(/(^|[\s(])(https?:\/\/[^\s<]+)/g, '$1<a class="text-[#00a8fc] hover:underline" href="$2" target="_blank" rel="noreferrer">$2</a>');
 }
-export function discordHtml(src: string, c: DcCtx = {}, bot = "LSPD Terminal", avatar = "/next/logo.svg") {
+/* cuerpo con formato (títulos, negrita, citas, listas…) sin el marco del mensaje; usado también por la bio del perfil */
+export function mdHtml(src: string, c: DcCtx = {}) {
   let out = "", q = false, ul = false;
   for (const L of esc(src || "").split("\n")) {
     const h = /^(#{1,3}) (.*)$/.exec(L), bq = /^&gt; ?(.*)$/.exec(L), li = /^\s*[-*] (.*)$/.exec(L), sub = /^-# (.*)$/.exec(L);
@@ -45,7 +46,10 @@ export function discordHtml(src: string, c: DcCtx = {}, bot = "LSPD Terminal", a
     out += L.trim() ? `<div>${inline(L, c)}</div>` : '<div class="h-[0.6em]"></div>';
   }
   if (q) out += "</div>"; if (ul) out += "</ul>";
-  const time = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  return out;
+}
+export function discordHtml(src: string, c: DcCtx = {}, bot = "LSPD Terminal", avatar = "/next/logo.svg") {
+  const out = mdHtml(src, c), time = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
   return `<div class="flex gap-3"><img src="${esc(avatar)}" alt="" class="mt-0.5 size-10 shrink-0 rounded-full bg-black/20 object-contain p-1"><div class="min-w-0 flex-1">
     <div class="flex items-baseline gap-1.5"><b class="font-medium text-white">${esc(bot)}</b><span class="rounded bg-[#5865f2] px-1 text-[10px] font-semibold text-white">APP</span><span class="text-xs text-[#949ba4]">Hoy a las ${time}</span></div>
     <div class="break-words">${out}</div></div></div>`;

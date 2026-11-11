@@ -1,19 +1,38 @@
 import { useMemo, useRef, useState } from "react";
-import { AlertTriangle, Camera, CheckCircle2, CircleSlash, Copy, Info, Plus, Search, Shield, Users } from "lucide-react";
+import { AlertTriangle, Camera, Car, CarFront, CheckCircle2, CircleSlash, Copy, Info, Plus, Search, Shield, Ship, Users } from "lucide-react";
 import { toPng } from "html-to-image";
 import { useFeedback } from "@/components/feedback";
 import { cn } from "@/lib/cn";
-import { CATS, MISIONES, catalogo, type Cat, type Item } from "./robosData";
+import { CATS, MISIONES, WPN, catalogo, perfilDe, type Cat, type Item } from "./robosData";
 
 const NT = {
   conf: { l: "Diferencia", c: "#f59e0b", I: AlertTriangle }, nuevo: { l: "Para sumar", c: "#a855f7", I: Plus }, off: { l: "Se puede sacar", c: "#ef4444", I: CircleSlash },
   rev: { l: "Recompensa pendiente", c: "#eab308", I: Info }, dup: { l: "Duplicado", c: "#f97316", I: Copy }, ok: { l: "Coincide", c: "#22c55e", I: CheckCircle2 }, sin: { l: "Sin misión", c: "#64748b", I: Info },
 } as const;
 const yn = (v: boolean | null | undefined) => (v == null ? "—" : v ? "Sí" : "No");
-const PVL = ["Patrulla", "Interceptor", "Helicóptero", "Barco"];
+/* siluetas propias (24x12) para las armas y el helicóptero */
+const G = ({ d, className }: { d: string; className?: string }) => <svg viewBox="0 0 24 12" className={cn("h-3 w-6", className)} fill="currentColor" aria-hidden><path d={d} /></svg>;
+const WD = [
+  ["Arma blanca", "M1 6.6 13 5l1.3-.6h1.4v3.2h-1.4L13 7 1 6.6Zm14.9-2.4h1.4v3.6h-1.4zm1.8.6H23v2.4h-5.3z"],
+  ["Pistola", "M4 3h15v3h-8.5l-.6 1.3H8.6L7.2 11H3.6l1.5-5H4z"],
+  ["Escopeta", "M1 4.5h17.5V6H9.8l-.7 1.2H7L4.4 9.6H1.6L3.4 6H1zm18 0h4v1.4h-4z"],
+  ["SMG", "M3 3.5h13l1.2 1h3.8V6h-6.3l-.7 1.6h-2.2L11 10.5H9l.7-2.9H7.4L6 11H3.2l1.3-3.4L3 7z"],
+  ["Fusil", "M.8 4.6h4l1-.8h12.4v.8H23v1.2h-4.8l-.8 1.4h-2.2l-.6 3H13l.3-3H9.4L6.6 9.6H3.4L5 6.4H.8z"],
+] as const;
+const HELI = "M2 2.5h20v.9h-9.4v1.2h1.8c3 0 5 1.6 5 3.6v.6h-4.3l-.6 1.5H8.6V8.8H4.3L1.8 6.3h2.6l1.3 1.2h2.7V6.1c0-.9.8-1.5 1.8-1.5h1.3V3.4H2z";
+const PV = [["Patrulla", Car], ["Interceptor", CarFront], ["Helicóptero", (p: { className?: string }) => <G d={HELI} className={cn("h-3.5 w-6", p.className)} />], ["Barco", Ship]] as const;
+const LV = ["Prohibida", "Permitida", "Obligatoria"];
+
+function Armas({ arm }: { arm?: string }) {
+  const w = arm ? WPN[arm] : undefined; if (!w) return null;
+  return <div className="flex flex-wrap gap-1">{WD.map(([l, d], i) => (
+    <span key={l} title={`${l}: ${LV[w[i]].toLowerCase()}`} className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold",
+      w[i] === 2 ? "border-red-400/50 bg-red-500/15 text-red-200" : w[i] === 1 ? "border-white/15 bg-white/5 text-slate-300" : "border-white/5 text-slate-600 line-through decoration-slate-600")}>
+      <G d={d} className={w[i] ? "" : "opacity-40"} />{l}{w[i] === 2 && <b className="text-[9px] text-red-300">OBLIG.</b>}</span>))}</div>;
+}
 
 function Card({ it, obs }: { it: Item; obs: boolean }) {
-  const C = CATS[it.cat], pv = (it.pv || []).map((v, i) => v && PVL[i]).filter(Boolean) as string[];
+  const C = CATS[it.cat], perf = [...new Set(it.mis.map(perfilDe).filter(Boolean))] as string[];
   const rec = it.mis.map(m => m.rec).filter((x, i, a) => a.indexOf(x) === i);
   const bad = it.notas.some(n => n.t === "conf" || n.t === "off");
   return (
@@ -22,6 +41,7 @@ function Card({ it, obs }: { it: Item; obs: boolean }) {
       <header className="flex items-start gap-2">
         <div className="min-w-0 flex-1"><h3 className="text-[15px] font-bold leading-tight text-white">{it.n}</h3>
           <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: C.c }}>{C.l}{!it.norm && " · propuesta"}</p></div>
+        {perf.map(p => <span key={p} className={cn("rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase", p === "drogas" ? "border-lime-400/40 bg-lime-500/10 text-lime-300" : "border-orange-400/40 bg-orange-500/10 text-orange-300")}>Banda de {p}</span>)}
         {it.prop && <span className="rounded-md border border-purple-400/40 bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-bold text-purple-300">NUEVO</span>}
       </header>
       <div className="grid grid-cols-3 gap-2 text-center">
@@ -36,10 +56,16 @@ function Card({ it, obs }: { it: Item; obs: boolean }) {
         <dt className="text-slate-500">Rehenes</dt><dd className="text-slate-200">{it.reh ?? "—"}</dd>
         <dt className="text-slate-500">Bloqueo</dt><dd className="text-slate-200">{yn(it.blq)}</dd>
         {it.ilg && <><dt className="text-slate-500">Vehículo</dt><dd className="text-slate-200">{it.ilg}</dd></>}
-        {it.arm && <><dt className="text-slate-500">Armamento</dt><dd className="text-slate-200">{it.arm}</dd></>}
-        <dt className="text-slate-500">Policía</dt><dd className="text-slate-200">{pv.join(" · ") || "—"}{it.mando ? " · con mando" : ""}</dd>
-        {it.mis.length > 0 && <><dt className="text-slate-500">Misión</dt><dd className="text-slate-300">{it.mis.map(m => `${m.n} (${m.min}–${m.max})`).join(" · ")}</dd></>}
+        {it.mis.length > 0 && <><dt className="text-slate-500">Planilla</dt><dd className="text-slate-300">{it.mis.map(m => `${m.n} · fila ${m.f.join(", ")} (${m.min}–${m.max})`).join(" · ")}</dd></>}
       </dl>
+      <div className="space-y-1.5">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Policía puede llevar</p>
+        <div className="flex flex-wrap gap-1">{PV.map(([l, I], i) => { const on = !!it.pv?.[i]; if (i === 3 && !on) return null; return (
+          <span key={l} className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold", on ? "border-sky-400/40 bg-sky-500/10 text-sky-200" : "border-white/5 text-slate-600 line-through")}><I className="size-3" />{l}</span>); })}
+          {it.mando && <span className="rounded-md border border-amber-400/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-200">Con mando</span>}</div>
+        <p className="pt-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Armas de los atracadores{!it.norm && " (propuesta)"}</p>
+        <Armas arm={it.arm} />
+      </div>
       {obs && it.notas.length > 0 && <ul className="mt-auto space-y-1">{it.notas.map((n, i) => { const N = NT[n.t]; return (
         <li key={i} className="flex gap-2 rounded-lg px-2 py-1.5 text-[11.5px] leading-snug" style={{ background: N.c + "14", color: "#cbd5e1" }}>
           <N.I className="mt-px size-3.5 shrink-0" style={{ color: N.c }} /><span><b style={{ color: N.c }}>{N.l}:</b> {n.x}</span></li>); })}</ul>}
@@ -51,7 +77,7 @@ export function Catalogo() {
   const [cat, setCat] = useState<Cat | "all">("all"), [q, setQ] = useState(""), [obs, setObs] = useState(true), [busy, setBusy] = useState(false), [shot, setShot] = useState(false);
   const list = all.filter(x => (cat === "all" || x.cat === cat) && (!q.trim() || (x.n + " " + x.mis.map(m => m.n).join(" ")).toLowerCase().includes(q.trim().toLowerCase())));
   const cnt = (t: keyof typeof NT) => all.reduce((s, x) => s + (t === "nuevo" && x.cat === "mis" ? 0 : x.notas.filter(n => n.t === t).length), 0);
-  const off = MISIONES.filter(m => m.off), dup = MISIONES.filter(m => m.dup);
+  const off = MISIONES.filter(m => m.off), dup = MISIONES.filter(m => m.f.length > 1);
   const foto = async () => {
     const el = box.current; if (!el) return; setBusy(true);
     try {
@@ -88,7 +114,7 @@ export function Catalogo() {
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3"><b className="text-amber-300">Para corregir</b>
             <ul className="mt-1 space-y-0.5 text-slate-300">{all.filter(x => x.notas.some(n => n.t === "conf")).map(x => <li key={x.id}>· {x.n}</li>)}</ul></div>
           <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3"><b className="text-red-300">Se puede sacar</b>
-            <ul className="mt-1 space-y-0.5 text-slate-300">{off.map(m => <li key={m.n}>· {m.n} (no activa)</li>)}{dup.map(m => <li key={m.n}>· {m.n} (fila repetida)</li>)}</ul></div>
+            <ul className="mt-1 space-y-0.5 text-slate-300">{off.map(m => <li key={m.n}>· {m.n} (fila {m.f[0]}, no activa)</li>)}{dup.map(m => <li key={m.n}>· {m.n} (filas {m.f.join(" y ")}, sin decir para qué banda)</li>)}</ul></div>
           <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-3"><b className="text-purple-300">Para sumar a la normativa</b>
             <ul className="mt-1 space-y-0.5 text-slate-300">{all.filter(x => x.prop && x.cat !== "mis" && !x.mis.some(m => m.off)).map(x => <li key={x.id}>· {x.n} → {CATS[x.cat].l} ({x.max}/{x.pol})</li>)}</ul></div>
         </section>}

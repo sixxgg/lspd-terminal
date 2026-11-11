@@ -68,7 +68,7 @@ const lsSet = (k: string, v: string | null) => { try { if (v == null) localStora
 let deptUi: Record<string, string> = {};
 export const setDeptUi = (u: Record<string, string>) => { const t = JSON.stringify(u); if (t !== JSON.stringify(deptUi)) { deptUi = u; applyAppearance(); } };
 export const deptUiNow = () => deptUi;
-type Pref = { skin: string; skinOwn: boolean; acc: string; crt: string; crtI: number; frame: boolean; neon: boolean; font: string; head: string; cur: string; curOwn: boolean; nav: "top" | "side" };
+type Pref = { skin: string; skinOwn: boolean; acc: string; crt: string; crtI: number; frame: boolean; neon: boolean; font: string; head: string; cur: string; curOwn: boolean; nav: "top" | "side"; brand: "rgb" | "magenta" | "off"; brandSpd: number };
 function pref(): Pref {
   const s = lsGet("lspdt.theme"), old = lsGet("lspdt.next.theme");
   const skin = s && SKINS[s] ? s : SKINS[deptUi.theme] ? deptUi.theme : old === "light" ? "nuevoc" : "nuevo";
@@ -76,12 +76,13 @@ function pref(): Pref {
   const cu = lsGet("lspdt.cursor");
   return { skin, skinOwn: !!(s && SKINS[s]), acc: lsGet("lspdt.accent") || "", crt: c === "0" ? "0" : c && CRT_V[c] ? c : "lite", crtI: isNaN(i) ? 70 : Math.max(0, Math.min(100, i)),
     frame: lsGet("lspdt.frame") !== "0", neon: lsGet("lspdt.next.neon") !== "0", font: lsGet("lspdt.next.font") || "inter", head: HEADS[lsGet("lspdt.next.head") || ""] ? lsGet("lspdt.next.head")! : "rajdhani",
-    cur: cu && CURS[cu] ? cu : CURS[deptUi.cursor] ? deptUi.cursor : "sys", curOwn: !!(cu && CURS[cu]), nav: lsGet("lspdt.next.navmode") === "side" ? "side" : "top" };
+    cur: cu && CURS[cu] ? cu : CURS[deptUi.cursor] ? deptUi.cursor : "sys", curOwn: !!(cu && CURS[cu]), nav: lsGet("lspdt.next.navmode") === "side" ? "side" : "top",
+    brand: (["rgb", "magenta", "off"] as const).find(x => x === lsGet("lspdt.next.brand")) || "rgb", brandSpd: Math.max(1, Math.min(20, parseFloat(lsGet("lspdt.next.brandSpd") || "") || 6)) };
 }
 const subs = new Set<() => void>(); let ver = 0;
 export const usePref = () => { useSyncExternalStore(f => { subs.add(f); return () => { subs.delete(f); }; }, () => ver); return pref(); };
-export function setPref(k: "skin" | "acc" | "crt" | "crtI" | "frame" | "neon" | "font" | "head" | "cur" | "nav", v: string | number | boolean | null) {
-  const key = { skin: "lspdt.theme", acc: "lspdt.accent", crt: "lspdt.crt", crtI: "lspdt.crtI", frame: "lspdt.frame", neon: "lspdt.next.neon", font: "lspdt.next.font", head: "lspdt.next.head", cur: "lspdt.cursor", nav: "lspdt.next.navmode" }[k];
+export function setPref(k: "skin" | "acc" | "crt" | "crtI" | "frame" | "neon" | "font" | "head" | "cur" | "nav" | "brand" | "brandSpd", v: string | number | boolean | null) {
+  const key = { skin: "lspdt.theme", acc: "lspdt.accent", crt: "lspdt.crt", crtI: "lspdt.crtI", frame: "lspdt.frame", neon: "lspdt.next.neon", font: "lspdt.next.font", head: "lspdt.next.head", cur: "lspdt.cursor", nav: "lspdt.next.navmode", brand: "lspdt.next.brand", brandSpd: "lspdt.next.brandSpd" }[k];
   lsSet(key, v === null || v === "" ? null : typeof v === "boolean" ? (v ? "1" : "0") : String(v));
   applyAppearance();
 }

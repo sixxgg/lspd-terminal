@@ -949,7 +949,6 @@ const PENAL_DEF=[
 ];
 const ADM_MULTA={"Leve":200,"Grave":400,"Muy grave":600};
 PENAL_DEF.forEach(x=>{if(x.k==="adm"&&x.g&&!x.m)x.m=ADM_MULTA[x.g]});
-const PEN_CATS=[...new Set(PENAL_DEF.map(x=>x.c))];
 const CIRC=[["Atenuantes (Art. 21)",[["Eximente incompleta","Concurre una causa de exención (trastorno, intoxicación, legítima defensa, estado de necesidad, miedo insuperable…) sin todos sus requisitos."],["Grave adicción","Actúa por una grave adicción al alcohol, drogas u otras sustancias."],["Arrebato u obcecación","Actúa por estímulos tan intensos que provocan arrebato u otro estado pasional."],["Confesión","Confiesa antes de saber que se le investigaba."],["Reparación del daño","Repara o mitiga el daño a la víctima antes del juicio."],["Dilación extraordinaria","Retraso injustificado y no atribuible al acusado en el procedimiento."],["Análoga significación","Otra circunstancia de relevancia similar."]]],
  ["Agravantes (Art. 22)",[["Alevosía","Medios que aseguran el resultado sin riesgo por la defensa de la víctima."],["Disfraz / abuso de superioridad","Actúa disfrazado o aprovecha circunstancias que debilitan la defensa de la víctima."],["Precio, recompensa o promesa","Comete el delito a cambio de dinero, recompensa o promesa."],["Discriminación","Motivos racistas o de discriminación por ideología, religión, etnia, sexo, orientación, discapacidad u otras."],["Ensañamiento","Aumenta deliberada e inhumanamente el sufrimiento de la víctima."],["Abuso de confianza","Se aprovecha de la confianza que la víctima depositó en él."],["Prevalimiento del carácter público","Se aprovecha de su notoriedad o carácter público."],["Reincidencia","Condena firme previa por un delito del mismo título y naturaleza similar."]]],
  ["Parentesco (Art. 23)",[["Circunstancia mixta","Cónyuge o pareja, ascendiente, descendiente o hermano (propio o de la pareja). Suele agravar en delitos violentos y puede atenuar en patrimoniales sin violencia entre familiares."]]]];
@@ -963,4 +962,4 @@ const INF_ROLES=["INCIDENT COMMANDER / Mando del operativo","Unidad inicial de i
 const INF_FZ=["N/A","Reducción física","Arma no letal (táser)","Arma de fuego","Vehículo (maniobra PIT)"];
 const EV_T=["Vehículo","Arma de fuego","Arma blanca","Sustancias","Dinero","Objeto","Otro"];
 
-export { PENAL_DEF, PEN_CATS, CIRC, SYN, INF_TIPOS, INF_EST, INF_ROLES, INF_FZ, EV_T };
+export { PENAL_DEF, CIRC, SYN, INF_TIPOS, INF_EST, INF_ROLES, INF_FZ, EV_T };

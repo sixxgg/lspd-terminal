@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.9.6";
+export const APP_VERSION = "1.9.7";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,13 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "1.9.7", f: "11/11/2026", t: "Perfiles OOC, logros y tablet táctica", items: [
+    "Perfil: ID de cuenta según el orden de registro, contadores en un solo renglón, «Acerca de mí» con formato (títulos, negrita, cursiva, citas, listas) y pestaña Personaje con rango, placa, divisiones, condecoraciones y carrera.",
+    "Logros por rareza: Registrado y Oficial (común), Sargento (raro), Miembro de la PSB (épico), Sargento II (legendario) y Fundador (mítico).",
+    "Actividad policial en el perfil (expedientes PSB, entrevistas RTD y de supervisión, instrucciones): cada bloque lo ven solo los miembros de esa división.",
+    "Pestaña del navegador: punto ONLINE que parpadea en el ícono y sesión cifrada en el título; en el ingreso, calavera y caracteres aleatorios.",
+    "Nuevo marco de tablet táctica con esquinas de goma, grips y luces, y la marca «Bananita» con efecto RGB (velocidad regulable) o magenta neón desde Apariencia.",
+  ] },
   { v: "1.9.6", f: "11/11/2026", t: "Perfiles, pizarra más en vivo", items: [
     "Perfiles nuevos (BETA): portada, avatar, «Acerca de», seguidores, visitantes recientes, actividad, logros y comentarios. Si te comentan el perfil te llega una notificación.",
     "Pizarra: las imágenes se colocan fijas para escribir y dibujar encima (botón Fijar/Desbloquear). Cursores y movimientos ajenos mucho más rápidos.",

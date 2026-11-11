@@ -7,7 +7,7 @@ const ring = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring
 /* ---------- Button ---------- */
 type BtnVariant = "primary" | "secondary" | "ghost" | "danger" | "outline";
 type BtnSize = "sm" | "md" | "lg" | "icon";
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> { variant?: BtnVariant; size?: BtnSize; loading?: boolean; icon?: ReactNode }
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> { variant?: BtnVariant; size?: BtnSize; loading?: boolean; icon?: ReactNode }
 const btnV: Record<BtnVariant, string> = {
   primary: "bg-brand-600 text-white shadow-sm hover:bg-brand-500 active:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-400",
   secondary: "bg-slate-900 text-white shadow-sm hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200",

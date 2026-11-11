@@ -1,5 +1,5 @@
 import { q } from "../lib/db.js";
-import { send, body, wrap, roster, findIn, lvl, CAP, norm, emailOf, hashPw, checkPw, needsRehash, randomPw, safeEq, clientIp, loginBlocked, loginFail, loginOk, sessionToken, tokenHash, newSession, endSession, current, PUBLIC_KEYS, query, canEnter, invalidate, isSix, OWNERS, dbAdmins, parseList, parseRoster as parseRosterRaw } from "../lib/core.js";
+import { send, body, wrap, roster, findIn, lvl, CAP, norm, emailOf, hashPw, checkPw, needsRehash, randomPw, safeEq, clientIp, loginBlocked, loginFail, loginOk, sessionToken, tokenHash, newSession, endSession, current, PUBLIC_KEYS, query, canEnter, invalidate, isSix, SIX_OWNER, OWNERS, dbAdmins, parseList, parseRoster as parseRosterRaw } from "../lib/core.js";
 import { fullData } from "../lib/store.js";
 import { randomBytes } from "node:crypto";
 
@@ -30,16 +30,18 @@ export default wrap(async (req, res) => {
   if (req.method === "GET") {
     // todo lo público en una sola consulta: cuentas, roster e imagen de la terminal
     const me = await current(req);
-    const rows = (await q(`select 'n' as g, name as k, null as v, 0::bigint as t from accounts
+    const rows = (await q(`select 'n' as g, name as k, null as v, created as t from accounts
       union all select 'r', null, v, 0 from kv where k='lspdt.roster'
       union all select 'b', k, case when v like 'data:%' then '#img' else v end, t from kv where k = any($1) and v is not null`, [PUBLIC_KEYS])).rows;
-    const names = [], brand = {}; let raw = null;
+    const acc = [], brand = {}; let raw = null;
     for (const r of rows) {
-      if (r.g === "n") names.push(r.k);
+      if (r.g === "n") acc.push(r);
       else if (r.g === "r") raw = r.v;
       else brand[r.k] = r.v === "#img" ? `/api/img?k=${encodeURIComponent(r.k)}&t=${r.t}` : r.v;
     }
-    const out = { me: me ? me.n : null, names, brand };
+    /* orden de registro = ID de la cuenta en los perfiles (six, el fundador, siempre es el #1) */
+    acc.sort((a, b) => (b.k === SIX_OWNER) - (a.k === SIX_OWNER) || +a.t - +b.t);
+    const out = { me: me ? me.n : null, names: acc.map(r => r.k), brand };
     if (me && query(req).full) out.data = await fullData(me); // ahorra una vuelta al iniciar
     else out.roster = slim(parseRosterRaw(raw).list);
     return send(res, 200, out);

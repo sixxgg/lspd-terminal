@@ -65,4 +65,4 @@ function fbText(A, c) {
   return L.join("\n");
 }
 const fbErrs = A => [!fq(A.ag) && "agente", !A.tipo && "tipo"].filter(Boolean);
-export { FB_TIPOS, FB_TPL, FB_MED, fbNew, fbText, fbErrs };
+export { FB_TIPOS, FB_TPL, fbNew, fbText, fbErrs };

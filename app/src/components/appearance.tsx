@@ -53,6 +53,10 @@ export function AppearanceModal({ open, onClose }: { open: boolean; onClose: () 
         <div className="flex items-start gap-2.5"><MonitorSmartphone className="mt-0.5 size-4 text-slate-400" /><div><Checkbox checked={p.frame} onChange={v => setPref("frame", v)} label="Marco de tablet" /><p className="text-xs text-slate-500">Bisel, barra de estado y fondo detrás (en pantallas chicas se oculta solo).</p></div></div>
         <div className="flex items-start gap-2.5"><Sparkles className="mt-0.5 size-4 text-slate-400" /><div><Checkbox checked={p.neon} onChange={v => setPref("neon", v)} label="Brillo neón" /><p className="text-xs text-slate-500">Resplandor del color de acento en títulos, botones y terminales (temas oscuros).</p></div></div>
       </div>
+      {p.frame && <div className="grid gap-4 rounded-xl border border-slate-200 p-3 sm:grid-cols-2 dark:border-slate-800">
+        <Field label="Marca «Bananita» del marco"><Segmented size="sm" value={p.brand} onChange={v => setPref("brand", v)} options={[{ value: "rgb", label: "RGB" }, { value: "magenta", label: "Magenta neón" }, { value: "off", label: "Apagada" }]} /></Field>
+        <Field label={`Velocidad del RGB · ${p.brandSpd} s por vuelta`}><input type="range" min={1} max={20} step={0.5} value={p.brandSpd} disabled={p.brand !== "rgb"} onChange={e => setPref("brandSpd", +e.target.value)} className="mt-3 w-full accent-brand-600 disabled:opacity-40" /></Field>
+      </div>}
       <Field label="Menú"><Segmented size="sm" value={p.nav} onChange={v => setPref("nav", v)} options={[{ value: "top", label: "Arriba, por áreas" }, { value: "side", label: "Lateral" }]} /></Field>
       <Field label="Tipografía"><div className="flex items-center gap-2"><Type className="size-4 text-slate-400" />
         <Segmented size="sm" value={p.font} onChange={v => setPref("font", v)} options={[{ value: "inter", label: "Moderna (Inter)" }, { value: "public", label: "Clásica (Public Sans)" }]} /></div></Field>

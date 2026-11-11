@@ -1,3 +1,4 @@
+import { cipher, onlineIcons, useTabFx } from "@/lib/tabfx";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, Flame, UserRound, KeyRound } from "lucide-react";
 import { AREAS, canArea, lockedOf, menuAreas, secsOf, type Area, type Sec } from "@/nav";
@@ -48,7 +49,11 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
   const [open, setOpen] = useState(false), [acc, setAcc] = useState(false);
   useStoreVersion();
   const ui = LS.json<Record<string, string>>("lspdt.ui", {}), title = (ui.title || "").trim() || "Terminal de Mando", kicker = ((ui.kicker || "").trim() || "Los Santos Police Department").replace(/\bDept\.?$/i, "Department");
-  useEffect(() => { document.title = title + " · LSPD"; }, [title]);
+  /* pestaña: favicon de la marca con punto ONLINE que parpadea y una sesión cifrada que va rotando */
+  const fav = LS.get("lspdt.fav") || LS.get("lspdt.logo") || "/next/logo.svg", ico = useRef<[string, string] | null>(null), ses = useRef(cipher(2, 4));
+  useEffect(() => { ico.current = null; void onlineIcons(fav).then(x => { ico.current = x; }); }, [fav]);
+  useTabFx(k => { if (k % 12 === 0) ses.current = cipher(2, 4); const on = k % 2 === 0;
+    return { title: `${on ? "●" : "○"} ONLINE · ${title} · ${ses.current}`, icon: ico.current?.[on ? 0 : 1] }; }, 800, [title]);
   const net = getNet();
   useEffect(() => setOpen(false), [area.k, sec.k]);
   useEffect(() => { LS.set("lspdt.sec." + area.k, sec.k); }, [area.k, sec.k]);

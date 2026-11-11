@@ -16,7 +16,7 @@ const SHARE = new URLSearchParams(location.search).get("pizarra");
 import { AREAS, canArea, secsOf } from "./nav";
 import { api, authApi } from "./lib/api";
 import { BootScreen } from "./components/boot";
-import { LS, ME_ROLES, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
+import { ACC, LS, ME_ROLES, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
 import { emailOf, findAgent, getRoster, rankES } from "./lib/domain";
 import { useFeedback } from "./components/feedback";
 
@@ -52,16 +52,12 @@ function Main() {
     if (!fbKnown.current) { fbKnown.current = new Set(ks); return; }
     for (const k of ks) if (!fbKnown.current.has(k)) { fbKnown.current.add(k); const t = LS.ro<{ by: string; who?: string } | null>(k, null); if (t) toast(`💗 Nuevo feedback de ${t.who || t.by} · six → Notificaciones`); } });
   useEffect(() => {
-    void api("/api/auth?full=1").then(r => { const b = r as unknown as Boot; setBoot(b); if (b.me && b.data) enter(b.data); });
+    void api("/api/auth?full=1").then(r => { const b = r as unknown as Boot; ACC.names = b.names || []; setBoot(b); if (b.me && b.data) enter(b.data); });
   }, [enter]);
   useEffect(() => { const f = (e: Event) => { setNav((e as CustomEvent<{ a: string; s: string }>).detail); scrollTopApp(); }; window.addEventListener("lspd:go", f); return () => window.removeEventListener("lspd:go", f); }, []);
   useEffect(() => { if (nav.a !== "six" && nav.a !== "anita") try { localStorage.setItem("lspdt.next.nav", JSON.stringify(nav)); } catch { /* */ } }, [nav]); /* six nunca queda como página de inicio */
 
   useEffect(() => { if (!me) return; const t = setTimeout(() => { void import("./sections/Informes"); void import("./sections/Legal"); }, 2500); return () => clearTimeout(t); }, [me]);
-  useEffect(() => { /* favicon editable desde Administración → Marca e imágenes (en el ingreso va la calavera) */
-    if (!me) return;
-    const src = LS.get("lspdt.fav") || boot?.brand?.["lspdt.fav"] || LS.get("lspdt.logo") || boot?.brand?.["lspdt.logo"] || "/next/logo.svg";
-    document.querySelectorAll<HTMLLinkElement>('link[rel="icon"],link[rel="apple-touch-icon"]').forEach(l => { if (l.getAttribute("href") !== src) l.href = src; }); });
   /* perfil: fecha de ingreso (una vez) y última visita (cada 30 min); a six se le pasa lo que tenía en su perfil viejo */
   useEffect(() => { if (!me) return; const k = `lspdt.uprof.${emailOf(me.n).split("@")[0]}`, p = LS.json<{ since?: number; seen?: number; bio?: string }>(k, {}), now = Date.now();
     if (p.since && p.seen && now - p.seen < 30 * 60e3) return;

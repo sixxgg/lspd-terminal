@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { WifiOff, BatteryFull, BatteryCharging, BatteryLow, BatteryMedium, MapPin, ShieldCheck } from "lucide-react";
 import { usePref } from "@/lib/appearance";
 import { LS, getNet, useStoreVersion } from "@/lib/store";
+import { TAB_ICONS } from "@/lib/tabfx";
 import { cn } from "@/lib/cn";
 
 /* ---- barra de estado de la tablet: ubicación por zona horaria, fecha, latencia, red, batería y hora ---- */
@@ -59,8 +60,15 @@ export function Device({ children, brand }: { children: ReactNode; brand?: Recor
   return (
     <>
       <div className={cn("backdrop", bg && "img")} style={bg ? { backgroundImage: `url("${bg}")` } : undefined} />
-      <div className="tablet">
-        <div className="tab-btns" />
+      <div className="tablet" data-brand={p.brand} style={{ ["--bspd" as string]: `${p.brandSpd}s` }}>
+        <i className="tb-corner tl" /><i className="tb-corner tr" /><i className="tb-corner bl" /><i className="tb-corner br" /><i className="tb-grip l" /><i className="tb-grip r" />
+        <div className="tb-bar top" aria-hidden>
+          <span className="tb-leds"><i style={{ ["--l" as string]: "#39ff88" }}>PWR</i><i className="net" style={{ ["--l" as string]: net === "off" ? "#ff4d52" : "#38bdf8" }}>NET</i><i className="rec" style={{ ["--l" as string]: "#ff2b4a" }}>REC</i></span>
+          {p.brand !== "off" ? <span className="tb-brand"><svg viewBox="0 0 64 64"><path d={TAB_ICONS.banana[1]} /></svg>BANANITA</span> : <span className="tb-brand">LSPD</span>}
+          <span className="flex items-center gap-3">MDT-X7 · RUGGED<span className="tb-cam" /></span>
+        </div>
+        <div className="tb-bar bot" aria-hidden><span>LSPD // UNIDAD MÓVIL</span><span>PROPERTY OF LOS SANTOS POLICE DEPARTMENT</span><span>MIL-STD-810H · IP68</span></div>
+        <i className="tb-glow" aria-hidden />
         <div className="tab-screen bg-slate-50 dark:bg-slate-950">
           <div className="tab-status">
             <div className="l flex items-center gap-4">

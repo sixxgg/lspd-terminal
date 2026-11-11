@@ -8,6 +8,7 @@ import { api, authApi } from "@/lib/api";
 import { discordHtml } from "@/lib/discord";
 import { uid } from "@/lib/domain";
 import { cn } from "@/lib/cn";
+import { TAB_ICONS, cipher, glyphs, tabIcon, useTabFx } from "@/lib/tabfx";
 import { FIRMAS, ILIC_VARS, consultaInteres, firmaDe, ilicText, mentions, type IlicForm } from "./ilicito";
 import { Catalogo } from "./Robos";
 import { NotifTab, fbList, whoOf, FB_SEEN } from "./Notif";
@@ -77,7 +78,9 @@ export function Six({ onExit, start = "ini", who = "six" }: { onExit: () => void
   const users = useMemo(() => Object.fromEntries(staff.filter(s => isId(s.dc)).map(s => [s.dc.trim(), s.n])), [staff]);
   const [clock, setClock] = useState(""), [sig, setSig] = useState(hex(8));
   useEffect(() => { const f = () => { setClock(new Date().toLocaleTimeString("es-AR", { hour12: false })); setSig(hex(8)); }; f(); const i = setInterval(f, 1000); return () => clearInterval(i); }, []);
-  useEffect(() => { const t = document.title; document.title = NAME(); return () => { document.title = t; }; }, []);
+  /* pestaña cifrada: ícono y color elegidos en Administración (six: calavera roja) */
+  useTabFx(k => { const col = c.tabCol === "tema" ? colorOf(c.tema) : c.tabCol === "arcoiris" ? `hsl(${(k * 24) % 360} 100% 62%)` : c.tabCol;
+    return { title: `${k % 10 < 2 ? NAME().toUpperCase() : glyphs(NAME().length)} ▸ ${cipher(3, 4)}`, icon: tabIcon(c.tabIco, col, k % 7 !== 0) }; }, 280, [c.tabIco, c.tabCol, c.tema]);
   const color = colorOf(c.tema), exit = () => { setOut(true); setTimeout(onExit, 650); };
   const set = (p: Partial<SixCfg>) => setCfg({ ...c, ...p });
   return (
@@ -178,6 +181,14 @@ function AdmTab({ c, set, replay }: { c: SixCfg; set: (p: Partial<SixCfg>) => vo
           <Toggle on={c.flicker} set={v => set({ flicker: v })} t="Parpadeo" d="Titileo leve del neón" />
           <Toggle on={c.error} set={v => set({ error: v })} t="Error al entrar" d="Pantallazo rojo antes de la intro" />
         </div>
+      </Panel>
+      <Panel t="Pestaña del navegador" icon={<Skull />} d="Ícono y color de la pestaña mientras estás en este panel. El título va cifrado." className="space-y-3">
+        <div className="space-y-1.5"><span className="font-sans text-xs font-semibold text-slate-300">Ícono</span><div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{Object.entries(TAB_ICONS).map(([k, [l]]) => (
+          <button key={k} onClick={() => set({ tabIco: k })} className={cn("grid place-items-center gap-1.5 rounded-xl border p-2 font-sans text-[11px] font-semibold transition", c.tabIco === k ? "border-six bg-six/10 text-six" : "border-six/15 text-slate-400 hover:border-six/40")}>
+            <img src={tabIcon(k, c.tabCol === "tema" || c.tabCol === "arcoiris" ? colorOf(c.tema) : c.tabCol)} alt="" className="size-8" />{l}</button>))}</div></div>
+        <div className="space-y-1.5"><span className="font-sans text-xs font-semibold text-slate-300">Color</span><div className="flex flex-wrap gap-2">{([["tema", "Del tema", colorOf(c.tema)], ...THEMES.filter(t => t[0] !== "arcoiris").map(t => [t[2], t[1], t[2]]), ["arcoiris", "Arcoíris", ""]] as [string, string, string][]).map(([v, l, col]) => (
+          <button key={v} title={l} onClick={() => set({ tabCol: v })} className={cn("flex items-center gap-1.5 rounded-lg border px-2 py-1 font-sans text-[11px] font-semibold", c.tabCol === v ? "border-six bg-six/10 text-six" : "border-six/15 text-slate-400")}>
+            <span className={cn("size-3.5 rounded-full", v === "arcoiris" && "six-rainbow-dot")} style={col ? { background: col } : undefined} />{l}</button>))}</div></div>
       </Panel>
       <Panel t="Intro" icon={<Power />} d={`La consola que aparece al abrir ${NAME()}.`} className="space-y-3">
         <Seg v={c.intro} set={v => set({ intro: v })} opts={[["completa", "Completa (~10 s)"], ["corta", "Corta (~4 s)"], ["no", "Sin intro"]] as const} />

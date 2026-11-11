@@ -2,14 +2,14 @@
 import { LS } from "@/lib/store";
 
 /* ---------- ajustes (independientes de la MDT; viajan con la cuenta) ---------- */
-export type SixCfg = { tema: string; lluvia: 0 | 1 | 2 | 3; scan: boolean; grid: boolean; glow: 0 | 1 | 2; flicker: boolean; intro: "completa" | "corta" | "no"; error: boolean; bd: "tema" | "neutro" | "no" };
+export type SixCfg = { tema: string; lluvia: 0 | 1 | 2 | 3; scan: boolean; grid: boolean; glow: 0 | 1 | 2; flicker: boolean; intro: "completa" | "corta" | "no"; error: boolean; bd: "tema" | "neutro" | "no"; tabIco: string; tabCol: string };
 /* espacio activo: el de six o el de Anita (mismo panel, datos y colores separados: lspdt.six.* / lspdt.anita.*) */
 export type Who = "six" | "anita";
 export const NS: { id: Who } = { id: "six" };
 export const K = (k: string) => `lspdt.${NS.id}.${k}`;
 export const cfgKey = (w: Who = NS.id) => `lspdt.${w}.cfg`;
-const BASE: SixCfg = { tema: "verde", lluvia: 1, scan: true, grid: true, glow: 1, flicker: true, intro: "completa", error: true, bd: "tema" };
-export const cfg0 = (w: Who = NS.id): SixCfg => (w === "anita" ? { ...BASE, tema: "rosa", lluvia: 2, error: false } : BASE);
+const BASE: SixCfg = { tema: "verde", lluvia: 1, scan: true, grid: true, glow: 1, flicker: true, intro: "completa", error: true, bd: "tema", tabIco: "calavera", tabCol: "#ff2b4a" };
+export const cfg0 = (w: Who = NS.id): SixCfg => (w === "anita" ? { ...BASE, tema: "rosa", lluvia: 2, error: false, tabIco: "corazon", tabCol: "tema" } : BASE);
 export const THEMES: [string, string, string][] = [["verde", "Verde", "#39ff88"], ["cian", "Cian", "#00e5ff"], ["rojo", "Rojo", "#ff2b4a"], ["ambar", "Ámbar", "#ffb000"], ["violeta", "Violeta", "#b46cff"], ["blanco", "Blanco", "#e8eef7"],
   ["rosa", "Rosa", "#ff4fd8"], ["magenta", "Magenta", "#ff1f8f"], ["lila", "Lila", "#d58cff"], ["arcoiris", "Arcoíris", "#ff4fd8"]];
 export const colorOf = (t: string) => (THEMES.find(x => x[0] === t) || THEMES[0])[2];
