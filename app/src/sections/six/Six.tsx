@@ -2,7 +2,7 @@
    Pestañas: Inicio y, de la A a la Z, Administración · Comunicados · Equipo de ilícitos · Gestión de staff · Notificaciones. Los datos van en lspdt.six.* (el servidor no se los muestra a nadie más). */
 import "./six.css";
 import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
-import { AtSign, Bell, Check, ChevronRight, Copy, FileText, Home, Lock, Megaphone, Plus, Power, RotateCcw, Save, Settings2, Skull, Trash2, Users, X } from "lucide-react";
+import { AtSign, Bell, Check, ChevronRight, Copy, FileText, Home, Lock, Megaphone, Plus, Power, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
 import { api, authApi } from "@/lib/api";
 import { discordHtml } from "@/lib/discord";
@@ -177,12 +177,30 @@ function AdmTab({ c, set, replay }: { c: SixCfg; set: (p: Partial<SixCfg>) => vo
         <Seg v={c.intro} set={v => set({ intro: v })} opts={[["completa", "Completa (~10 s)"], ["corta", "Corta (~4 s)"], ["no", "Sin intro"]] as const} />
         <div className="flex flex-wrap gap-2"><NBtn icon={<Power />} onClick={replay}>VER LA INTRO</NBtn><NBtn ghost icon={<RotateCcw />} onClick={() => set({ ...cfg0() })}>RESTABLECER TODO</NBtn></div>
       </Panel>
+      <Panel t="Invitaciones" icon={<Ticket />} d="Para registrarse en la terminal hace falta un código. Un solo uso, vence a las 72 h." className="space-y-3"><Invites /></Panel>
       {NS.id === "six" && <Panel t="Avisos de Discord" icon={<Bell />} d="Cada feedback nuevo llega a NOTIFICACIONES y al canal de Discord con mención." className="space-y-3"><DcTest /></Panel>}
       {NS.id === "six" && <Panel t="Acceso de Anita" icon={<Users />} d="Qué cuenta abre el panel de Anita (sus datos son solo suyos; vos no los ves)." className="space-y-3"><AnitaAcc /></Panel>}
     </div>
   );
 }
 
+type Inv = { c: string; t: number; exp: number; u?: string; ut?: number };
+function Invites() {
+  const { toast } = useFeedback(), [L, setL] = useState<Inv[]>([]), [U, setU] = useState<Inv[]>([]), [busy, setBusy] = useState(false);
+  const load = () => void authApi({ a: "invites" }).then(r => { if (r.__s === 200) { setL(r.list); setU(r.used || []); } });
+  useEffect(load, []);
+  const cp = (c: string) => { void navigator.clipboard?.writeText(c).catch(() => {}); toast(`Copiado: ${c}`); };
+  const f = (t: number) => new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return <div className="space-y-2">
+    <NBtn icon={<Plus />} disabled={busy} onClick={async () => { setBusy(true); const r = await authApi({ a: "invite" }); setBusy(false); if (r.__s !== 200) { toast(r.msg || "No se pudo generar", "err"); return; } cp(r.c); load(); }}>GENERAR INVITACIÓN</NBtn>
+    {L.map(x => <div key={x.c} className="flex items-center gap-2 rounded-lg border border-six/20 bg-black/40 px-3 py-2 text-xs">
+      <b className="font-mono text-sm text-six">{x.c}</b><span className="font-sans text-slate-500">vence {f(x.exp)}</span>
+      <button title="Copiar" onClick={() => cp(x.c)} className="ml-auto text-slate-500 hover:text-six"><Copy className="size-3.5" /></button>
+      <button title="Revocar" onClick={async () => { const r = await authApi({ a: "uninvite", c: x.c }); if (r.__s !== 200) { toast(r.msg || "No se pudo revocar", "err"); return; } load(); }} className="text-slate-600 hover:text-[#ff2b4a]"><Trash2 className="size-3.5" /></button></div>)}
+    {U.length > 0 && <div className="pt-1"><p className="mb-1 text-[10px] font-bold tracking-[0.2em] text-slate-500">USADAS</p>
+      {U.slice().reverse().map(x => <p key={x.c} className="font-sans text-xs text-slate-500"><span className="font-mono">{x.c}</span> → <b className="text-slate-300">{x.u}</b>{x.ut ? ` · ${f(x.ut)}` : ""}</p>)}</div>}
+  </div>;
+}
 function AnitaAcc() {
   const { toast } = useFeedback(), [d, setD] = useState<{ n: string; accounts: string[] } | null>(null);
   useEffect(() => { void authApi({ a: "anita" }).then(r => { if (r.__s === 200) setD({ n: r.n, accounts: r.accounts }); }); }, []);

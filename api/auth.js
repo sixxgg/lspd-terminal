@@ -4,8 +4,9 @@ import { fullData } from "../lib/store.js";
 import { randomBytes } from "node:crypto";
 
 const slim = list => list.map(a => ({ n: a.n, r: a.r, p: a.p }));
-/* invitaciones: códigos aleatorios de un solo uso que genera cualquier agente con cuenta (vencen a las 72 h) */
-const INV_TTL = 72 * 3600e3, INV_MAX = 5;
+/* invitaciones: códigos aleatorios de un solo uso (vencen a las 72 h); solo las generan los dueños desde su panel (six o Anita) */
+const INV_TTL = 72 * 3600e3, INV_MAX = 20;
+const canInvite = u => isSix(u) || !!u.anita;
 const invCode = () => { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", b = randomBytes(10); let c = ""; for (let i = 0; i < 10; i++) c += A[b[i] % A.length]; return `LSPD-${c.slice(0, 5)}-${c.slice(5)}`; };
 const invList = async () => (await metaObjs("invites")).filter(x => x && x.exp > Date.now() && !x.u);
 /* códigos de recuperación: 8 por cuenta, de un solo uso; se guardan con hash */
@@ -75,7 +76,7 @@ export default wrap(async (req, res) => {
     const ip = clientIp(req), wait = await loginBlocked("inv", ip);
     if (wait) return send(res, 429, { msg: `Demasiados intentos. Probá de nuevo en ${wait} min.` });
     const all = await metaObjs("invites"), ic = String(b.code || "").trim().toUpperCase(), inv = all.find(x => x && !x.u && x.exp > Date.now() && safeEq(x.c, ic));
-    if (!inv) { await loginFail("", ip); return send(res, 403, { msg: "El código de invitación no es válido o ya se usó. Pedile uno a un compañero con cuenta." }); }
+    if (!inv) { await loginFail("", ip); return send(res, 403, { msg: "El código de invitación no es válido o ya se usó. Pedíselo a la administración de la terminal." }); }
     const now = Date.now();
     const r = await q("insert into accounts(name,email,hash,created,last) values($1,$2,$3,$4,$4) on conflict do nothing returning name", [ag.n, emailOf(ag.n), hashPw(b.pw), now]);
     if (!r.rows[0]) return send(res, 409, { msg: "Ese agente ya tiene cuenta. Iniciá sesión." });
@@ -115,16 +116,17 @@ export default wrap(async (req, res) => {
     return send(res, 200, { e: r.email, c: +r.created, last: +r.last, no: +r.no, rec: (await metaList("rec:" + me.n)).length });
   }
   if (a === "recgen") return send(res, 200, { rec: await newRec(me.n) });
-  if (a === "invites") return send(res, 200, { list: (await invList()).filter(x => x.by === me.n || me.admin), max: INV_MAX });
+  if (["invites", "invite", "uninvite"].includes(a) && !canInvite(me)) return send(res, 403, { msg: "Las invitaciones las generan solo los dueños de la terminal." });
+  if (a === "invites") return send(res, 200, { list: (await invList()).filter(x => x.by === me.n), used: (await metaObjs("invites")).filter(x => x.by === me.n && x.u).slice(-20), max: INV_MAX });
   if (a === "invite") {
     const all = await metaObjs("invites"), mine = (await invList()).filter(x => x.by === me.n);
-    if (mine.length >= INV_MAX && !me.admin) return send(res, 429, { msg: `Ya tenés ${INV_MAX} invitaciones activas. Revocá alguna o esperá a que se usen.` });
+    if (mine.length >= INV_MAX) return send(res, 429, { msg: `Ya tenés ${INV_MAX} invitaciones activas. Revocá alguna o esperá a que se usen.` });
     const x = { c: invCode(), by: me.n, t: Date.now(), exp: Date.now() + INV_TTL };
     await setMeta("invites", [...all.filter(i => i && (i.exp > Date.now() || i.u)), x].slice(-300)); return send(res, 200, x);
   }
   if (a === "uninvite") {
     const all = await metaObjs("invites"), i = all.find(x => x && x.c === b.c);
-    if (!i || (i.by !== me.n && !me.admin)) return send(res, 403, { msg: "No podés revocar esa invitación." });
+    if (!i || i.by !== me.n) return send(res, 403, { msg: "No podés revocar esa invitación." });
     await setMeta("invites", all.filter(x => x !== i)); return send(res, 200, { ok: 1 });
   }
   if (a === "passwd") {

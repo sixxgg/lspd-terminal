@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { UserCog, KeyRound, Languages, Save, Ticket, LifeBuoy, Copy, Download, Trash2, Plus } from "lucide-react";
+import { UserCog, KeyRound, Languages, Save, LifeBuoy, Copy, Download } from "lucide-react";
 import { Button, Field, Input, Segmented } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { useFeedback } from "@/components/feedback";
@@ -21,13 +21,11 @@ export function RecCodes({ codes }: { codes: string[] }) {
     </div>);
 }
 
-type Inv = { c: string; by: string; t: number; exp: number };
 export function AccountModal({ me, open, onClose }: { me: { n: string; r: string }; open: boolean; onClose: () => void }) {
   const { toast, confirm } = useFeedback();
   const [info, setInfo] = useState<{ e: string; c: number; rec: number } | null>(null), [o, setO] = useState(""), [n1, setN1] = useState(""), [n2, setN2] = useState(""), [busy, setBusy] = useState(false);
-  const [lang, setLang] = useState(() => LS.get("lspdt.rankLang") || "en"), [rec, setRec] = useState<string[] | null>(null), [inv, setInv] = useState<Inv[]>([]);
-  const loadInv = () => void authApi({ a: "invites" }).then(r => { if (r.__s === 200) setInv(r.list); });
-  useEffect(() => { if (!open) { setRec(null); return; } void authApi({ a: "info" }).then(r => { if (r.__s === 200) setInfo({ e: r.e, c: r.c, rec: r.rec }); }); loadInv(); }, [open]);
+  const [lang, setLang] = useState(() => LS.get("lspdt.rankLang") || "en"), [rec, setRec] = useState<string[] | null>(null);
+  useEffect(() => { if (!open) { setRec(null); return; } void authApi({ a: "info" }).then(r => { if (r.__s === 200) setInfo({ e: r.e, c: r.c, rec: r.rec }); }); }, [open]);
   const chpw = async () => {
     if (!o || !n1) { toast("Completá la contraseña actual y la nueva", "err"); return; }
     if (n1 !== n2) { toast("Las contraseñas nuevas no coinciden", "err"); return; }
@@ -44,15 +42,6 @@ export function AccountModal({ me, open, onClose }: { me: { n: string; r: string
       <Field label="Idioma de los rangos en los textos" hint="(/me, /do, anuncios, 10-80)">
         <Segmented size="sm" value={lang} onChange={v => { setLang(v); LS.set("lspdt.rankLang", v); toast("Preferencia guardada"); }} options={[{ value: "en", label: "Inglés (Police Officer II)", icon: <Languages /> }, { value: "es", label: "Español (Oficial II)" }]} />
       </Field>
-      <div className={sec}>
-        <p className={h}><Ticket className="size-4 text-slate-400" />Invitar a un compañero<span className="ml-auto text-xs font-normal text-slate-400">{inv.length}/5 activas</span></p>
-        <p className="text-xs text-slate-500">Para registrarse hace falta un código de invitación. Sirve una sola vez y vence a las 72 h.</p>
-        {inv.map(x => <div key={x.c} className="flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs dark:bg-slate-800/50">
-          <b className="font-mono text-sm">{x.c}</b><span className="text-slate-400">vence {fmtDate(x.exp)}</span>
-          <button aria-label="Copiar" onClick={async () => { await copyText(x.c); toast("Código copiado"); }} className="ml-auto text-slate-400 hover:text-brand-500"><Copy className="size-3.5" /></button>
-          <button aria-label="Revocar" onClick={async () => { const r = await authApi({ a: "uninvite", c: x.c }); if (r.__s !== 200) { toast(r.msg || "No se pudo revocar", "err"); return; } loadInv(); }} className="text-slate-400 hover:text-red-500"><Trash2 className="size-3.5" /></button></div>)}
-        <Button size="sm" variant="outline" icon={<Plus />} onClick={async () => { const r = await authApi({ a: "invite" }); if (r.__s !== 200) { toast(r.msg || "No se pudo generar", "err"); return; } await copyText(r.c); toast(`Invitación ${r.c} copiada`); loadInv(); }}>Generar invitación</Button>
-      </div>
       <div className={sec}>
         <p className={h}><LifeBuoy className="size-4 text-slate-400" />Códigos de recuperación<span className="ml-auto text-xs font-normal text-slate-400">{info ? `${info.rec} disponibles` : ""}</span></p>
         {rec ? <RecCodes codes={rec} /> : <>

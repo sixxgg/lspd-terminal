@@ -36,7 +36,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
     if (reg.has(picked.n)) return setMsg({ kind: "err", text: "Ese agente ya tiene cuenta. Iniciá sesión." });
     if (pw.length < 8) return setMsg({ kind: "err", text: "La contraseña tiene que tener al menos 8 caracteres." });
     if (pw !== pw2) return setMsg({ kind: "err", text: "Las contraseñas no coinciden." });
-    if (!code.trim()) return setMsg({ kind: "err", text: "Ingresá el código de invitación que te pasó un compañero." });
+    if (!code.trim()) return setMsg({ kind: "err", text: "Ingresá el código de invitación que te dio la administración." });
     setBusy(true);
     const r = await authApi({ a: "register", n: picked.n, pw, code, keep: true });
     setBusy(false);
@@ -122,7 +122,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
                 <Field label="Contraseña"><Input type="password" autoComplete="new-password" value={pw} onChange={e => setPw(e.target.value)} /></Field>
                 <Field label="Repetir"><Input type="password" autoComplete="new-password" value={pw2} onChange={e => setPw2(e.target.value)} /></Field>
               </div>
-              <Field label="Código de invitación" hint="(te lo genera un compañero con cuenta)"><Input value={code} onChange={e => setCode(e.target.value)} placeholder="LSPD-XXXXX-XXXXX" className="font-mono uppercase" autoComplete="off" /></Field>
+              <Field label="Código de invitación" hint="(te lo da la administración)"><Input value={code} onChange={e => setCode(e.target.value)} placeholder="LSPD-XXXXX-XXXXX" className="font-mono uppercase" autoComplete="off" /></Field>
               <MsgBox m={msg} />
               <Button type="submit" size="lg" loading={busy} className="w-full">Crear cuenta</Button>
             </form>
