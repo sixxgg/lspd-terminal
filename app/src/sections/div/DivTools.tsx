@@ -33,19 +33,18 @@ function useCopy() { const { toast } = useFeedback(); return (s: string, what = 
 export type URole = [string, string, string]; /* [clave, nombre, color] de mayor a menor jerarquía */
 function UnifCard({ u, copy, tools, locked }: { u: Unif; copy: (s: string) => void; tools?: ReactNode; locked?: string }) {
   return (
-    <div className={cn("group relative flex flex-col gap-1.5 overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition dark:border-slate-800 dark:bg-slate-900/70", !locked && "hover:-translate-y-0.5 hover:shadow-md")}
-      style={{ boxShadow: u.rc ? `inset 3px 0 0 ${u.rc}` : undefined }}>
-      <div className="flex items-start gap-2"><b className="min-w-0 flex-1 truncate text-sm leading-tight">{u.n}</b>{tools}</div>
-      <div className="flex flex-wrap items-center gap-1"><GenTag g={u.g} />{u.rl && <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: (u.rc || "#64748b") + "22", color: u.rc || undefined }}>{u.rl}</span>}</div>
-      {locked ? <div className="flex items-center gap-2 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs text-slate-500 dark:bg-slate-800/70"><Lock className="size-3.5 shrink-0" /><span className="truncate">{locked}</span></div>
-        : <button onClick={() => copy(u.code)} title="Copiar código" className="flex items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-2.5 py-1.5 text-left font-mono text-xs transition hover:border-brand-500 dark:border-slate-700 dark:bg-slate-950/60">
-          <span className="line-clamp-2 min-w-0 flex-1 break-all">{u.code}</span><Copy className="size-3.5 shrink-0 text-slate-400" /></button>}
-      {u.nota && !locked && <p className="line-clamp-2 text-[11px] text-slate-500">{u.nota}</p>}
+    <div className={cn("fx-card group relative flex flex-col gap-2 rounded-2xl p-3.5", locked && "fx-card-off")} style={{ ["--c" as string]: u.rc || "rgb(var(--b-400))" }}>
+      <div className="relative flex items-start gap-2"><b className="min-w-0 flex-1 truncate text-[15px] leading-tight">{u.n}</b>{tools}</div>
+      <div className="relative flex flex-wrap items-center gap-1.5"><GenTag g={u.g} />{u.rl && <span className="fx-rank rounded-full px-2 py-0.5 text-[10px] font-bold">{u.rl}</span>}</div>
+      {locked ? <div className="fx-code relative flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-500"><Lock className="size-3.5 shrink-0" /><span className="truncate">{locked}</span></div>
+        : <button onClick={() => copy(u.code)} title="Copiar código" className="fx-code relative flex items-center gap-2 rounded-xl px-3 py-2 text-left font-mono text-xs">
+          <span className="line-clamp-2 min-w-0 flex-1 break-all">{u.code}</span><Copy className="size-3.5 shrink-0 opacity-60" /></button>}
+      {u.nota && !locked && <p className="relative line-clamp-2 text-[11px] text-slate-500">{u.nota}</p>}
     </div>);
 }
 const GenFilter = ({ v, set, L }: { v: "" | "h" | "m"; set: (v: "" | "h" | "m") => void; L: Unif[] }) => (
   <div className="flex gap-1">{([["", "Todos"], ["h", "Hombre"], ["m", "Mujer"]] as const).map(([k, l]) => (
-    <button key={k} onClick={() => set(k)} className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold transition", v === k ? "border-brand-500 bg-brand-500/10 text-brand-700 dark:text-brand-300" : "border-slate-200 text-slate-500 hover:text-slate-800 dark:border-slate-700 dark:hover:text-white")}>
+    <button key={k} onClick={() => set(k)} className={cn("fx-chip rounded-full border px-2.5 py-1 text-xs font-semibold transition", v === k ? "fx-chip-on border-brand-500 bg-brand-500/10 text-brand-700 dark:text-brand-300" : "border-slate-200 text-slate-500 hover:text-slate-800 dark:border-slate-700 dark:hover:text-white")}>
       {k && GEN[k].s} {l} <span className="opacity-60">{k ? L.filter(u => u.g === k).length : L.length}</span></button>))}</div>);
 /* atuendos agrupados por rango (de mayor a menor) y al final los generales */
 function groups(L: Unif[], roles: URole[]) {
@@ -78,8 +77,8 @@ export function Uniformidad({ id, ab, dn, canEdit, roles = [], mine = [] }: { id
       {!L.length ? <Empty icon={<Shirt />} title="Sin atuendos cargados" desc={canEdit ? "Creá el primero con su nombre, rango, género y el código para copiar." : "La coordinación todavía no cargó la uniformidad."} />
         : G.map(gr => (
           <section key={gr.k || "_"} className="space-y-2">
-            <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider" style={{ color: gr.c }}><span className="size-2 rounded-full" style={{ background: gr.c }} />{gr.l}<span className="font-semibold text-slate-400">· {gr.L.length}</span></h4>
-            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{gr.L.map(u => <UnifCard key={u.id} u={u} copy={copy} locked={lockOf(u)} tools={canEdit && <span className="flex gap-1.5 opacity-60 transition group-hover:opacity-100">
+            <h4 className="fx-rank-h flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em]" style={{ ["--c" as string]: gr.c }}><span className="size-2 rounded-full" />{gr.l}<span className="font-semibold text-slate-400">· {gr.L.length}</span><span className="h-px flex-1" /></h4>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{gr.L.map(u => <UnifCard key={u.id} u={u} copy={copy} locked={lockOf(u)} tools={canEdit && <span className="flex gap-1.5 opacity-60 transition group-hover:opacity-100">
               <button aria-label="Editar" onClick={() => setEd(u)} className="text-slate-400 hover:text-brand-500"><Pencil className="size-3.5" /></button>
               <button aria-label="Borrar" onClick={async () => { if (await confirm(`¿Borrar «${u.n}»?`, { danger: true })) setL(L.filter(x => x.id !== u.id)); }} className="text-slate-400 hover:text-red-500"><Trash2 className="size-3.5" /></button></span>} />)}</div>
           </section>))}

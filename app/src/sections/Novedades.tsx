@@ -16,6 +16,7 @@ const LOG: Rel[] = [
   { v: "1.9.14", f: "11/11/2026", t: "Links con el emblema real y ventanas con luz", items: [
     "Los links temporales muestran el emblema actual de la división, el logo del departamento y el nombre completo de la división.",
     "Ventanas y campos de texto con borde de luz, halo de neón y foco más visible.",
+    "Tarjetas de uniformidad con la misma luz: borde en degradé del color del rango, halo y código que se ilumina al pasar el mouse.",
   ] },
   { v: "1.9.13", f: "11/11/2026", t: "Uniformes por rango", items: [
     "Uniformidad agrupada por rango de la división: cada uno accede a los atuendos de su rango y de los de abajo; los de arriba aparecen bloqueados.",
