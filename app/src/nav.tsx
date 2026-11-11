@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
-  Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, Award, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint, UserRound,
+  Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint, UserRound, Presentation,
 } from "lucide-react";
 import { ME_ROLES } from "./lib/store";
 import { Helicopter } from "./components/icons";
@@ -35,27 +35,28 @@ const RAW_AREAS: Area[] = [
     { k: "fbk", l: "Feedback (incidentes)", sl: "Feedback", d: "Feedback y acciones disciplinarias sobre la actuación de un agente", icon: MessageSquareWarning, ready: true },
     { k: "parm", l: "Pérdida de armamento", sl: "Pérdida de arma", d: "Informe de incidente por pérdida de arma de servicio", icon: ShieldAlert, ready: true },
   ] },
-  { k: "sgt", l: "Sargentos", icon: Award, min: 7, req: "Sargento II", sec: [
-    { k: "exa", l: "Examen escrito", d: "Fase II del ascenso a Sargento I: corte 70 % y bonificación por antigüedad", icon: ClipboardCheck, ready: true },
-    { k: "ent", l: "Entrevista (Oral Board)", sl: "Entrevista", d: "Fase III: tribunal de mandos, cada pregunta del 1 al 5", icon: MessageCircle, ready: true },
-    { k: "list", l: "Lista de elegibles", d: "Convocatorias: nota final /22 y sobre 100, ranking y observaciones", icon: Trophy, ready: true },
+  /* Capitanía: los Sargentos II entran solo a la categoría Sargentos (ascenso a Sargento I); el resto pide Teniente */
+  { k: "cap", l: "Capitanía", icon: Briefcase, min: 7, req: "Sargento II", sec: [
+    { k: "exa", l: "Sargentos · Examen escrito", sl: "Sgto. · Examen", d: "Fase II del ascenso a Sargento I: corte 70 % y bonificación por antigüedad", icon: ClipboardCheck, ready: true, min: 7 },
+    { k: "ent", l: "Sargentos · Entrevista (Oral Board)", sl: "Sgto. · Entrevista", d: "Fase III: tribunal de mandos, cada pregunta del 1 al 5", icon: MessageCircle, ready: true, min: 7 },
+    { k: "list", l: "Sargentos · Lista de elegibles", sl: "Sgto. · Elegibles", d: "Convocatorias: nota final /22 y sobre 100, ranking y observaciones", icon: Trophy, ready: true, min: 7 },
+    { k: "vot", l: "Resolución de votaciones", d: "Aprobar o rechazar propuestas abiertas", icon: Gavel, ready: true, min: 8 },
+    { k: "equ", l: "Equipamiento de patrullas", d: "Lo que debe llevar cada vehículo", icon: Package, ready: true, min: 8 },
+    { k: "perm", l: "Permisos y cuentas", d: "Excepciones de rango y cuentas de la terminal", icon: KeyRound, ready: true, min: 8 },
   ] },
-  { k: "cap", l: "Capitanía", icon: Briefcase, min: 8, req: "Teniente", sec: [
-    { k: "vot", l: "Resolución de votaciones", d: "Aprobar o rechazar propuestas abiertas", icon: Gavel, ready: true },
-    { k: "equ", l: "Equipamiento de patrullas", d: "Lo que debe llevar cada vehículo", icon: Package, ready: true },
-    { k: "perm", l: "Permisos y cuentas", d: "Excepciones de rango y cuentas de la terminal", icon: KeyRound, ready: true },
-  ] },
+  { k: "piz", l: "Pizarra", icon: Presentation, min: 0, sec: [{ k: "piz", l: "Pizarra", d: "Lienzo compartido para planear operativos, mapas mentales y flujos", icon: Presentation, ready: true }] },
+  { k: "cod", l: "Códigos", icon: Radio, min: 0, sec: [{ k: "cod", l: "Códigos radiales", d: "Códigos de radio, 10-X, terminología, derechos y alfabeto NATO", icon: Radio, ready: true }] },
   { k: "jef", l: "Jefatura", icon: Star, min: 10, req: "Comandante", sec: [
     { k: "ros", l: "Estado del roster", d: "Composición del departamento", icon: BarChart3, ready: true },
     { k: "his", l: "Historial de votaciones", d: "Propuestas cerradas y su resultado", icon: History, ready: true },
   ] },
   { k: "div", l: "Divisiones", icon: Landmark, min: 0, sec: [
     { k: "dv_asb", l: "Administration Services Bureau", d: "Próximamente", icon: Building2, ready: true },
-    { k: "dv_asd", l: "Air Support Division", d: "Roster, vuelos, exámenes, instrucciones y pizarra", icon: Helicopter, ready: true },
+    { k: "dv_asd", l: "Air Support Division", d: "Roster, vuelos, exámenes e instrucciones", icon: Helicopter, ready: true },
     { k: "dv_db", l: "Detective Bureau", d: "Próximamente", icon: Search, ready: true },
     { k: "dv_hsiu", l: "High Speed Interception Unit", d: "Próximamente", icon: Gauge, ready: true },
-    { k: "dv_kd", l: "K-9 Division", d: "Roster, perros, patrullajes, instrucciones y pizarra", icon: Dog, ready: true },
-    { k: "dv_md", l: "Metropolitan Division", d: "Roster, instrucciones, exámenes de instructor y pizarra", icon: Crosshair, ready: true },
+    { k: "dv_kd", l: "K-9 Division", d: "Roster, perros, patrullajes e instrucciones", icon: Dog, ready: true },
+    { k: "dv_md", l: "Metropolitan Division", d: "Roster, instrucciones, exámenes de instructor", icon: Crosshair, ready: true },
     { k: "dv_psb", l: "Professional Standards Bureau", d: "Expedientes de principio a fin: notificación, elevación, Justicia/SAJD y resolución", icon: Shield, ready: true },
     { k: "dv_rtd", l: "Recruitment and Training Division", d: "Entrevistas de aspirantes", icon: GraduationCap, ready: true },
   ] },

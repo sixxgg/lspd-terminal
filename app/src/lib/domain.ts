@@ -132,8 +132,5 @@ export function dmyToISO(s: string) {
   return `${y}-${pad2(mo)}-${pad2(d)}`;
 }
 export const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
-/* nombre de rango escrito de cualquier forma ("police officer iii", "Oficial III") → rango oficial */
-export const rankFrom = (s: string) => { const k = norm(s).replace(/\s+/g, " ").trim(); return Object.keys(LEVEL).find(r => norm(r) === k || norm(RANK_ES[r] || "") === k) || ""; };
 const nkey = (n: string) => norm(n).replace(/[^a-z0-9]/g, "");
 export const findLoose = (n: string) => findAgent(n) || getRoster().find(a => nkey(a.n) === nkey(n)) || null;
-export const nameKey = nkey;

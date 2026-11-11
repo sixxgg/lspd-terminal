@@ -17,7 +17,17 @@ export const K9_PL: Record<string, string> = { "Logan Barrett": "884", "Ethan Ro
 export const PSB_DEF: Record<string, string[]> = { "Madison Wells": ["co", "iad", "fid", "sod"], "Vega Chambers": ["co", "iad", "fid", "sod"], "Derek McGarrett": ["inv", "iad", "fid"],
   "Ryan Westbrook": ["jinv", "iad", "fid", "sod"], "Liam Campbell": ["jinv", "iad", "fid", "sod"], "Evelyn Molina": ["jinv", "iad", "fid", "sod"] };
 
-export const MD_DEF: Record<string, string[]> = { "Ryan Westbrook": ["coord"] };
+/* METRO y SWAT (roster que pasó six): rol principal + subdivisiones activas; el indicativo va aparte (lspdt.mdCalls) */
+export const MD_DEF: Record<string, string[]> = {
+  "Derek McGarrett": ["co", "swat", "sierra", "bq", "h", "udu", "cnt"], "Evelyn Molina": ["aco", "swat", "sierra", "bq", "h", "udu", "cnt"],
+  "Ryan Westbrook": ["oic", "swat", "sierra", "udu", "cnt"], "Liam Campbell": ["tl", "swat", "sierra", "udu", "cnt"],
+  "Tariq Okafor": ["op", "swat"], "Lloyd Burnett": ["op", "swat"], "Charles Jhonson Smith": ["op", "swat"], "Antonio Santos": ["op", "swat"],
+  "Kane Anderson": ["op"], "Elioth Smith": ["op"], "Hailey Deacon": ["op"], "James West": ["op"], "Logan Barrett": ["op"], "Matthew Coleman": ["op"], "Rodney Deacon": ["op"],
+  "Clancy Skinner": ["op"], "Kai Jeon-Soo": ["op"], "Khalan Smith": ["op"], "Lara Calloway": ["op"], "William Weston": ["op"], "Yooa Baek-Harrington": ["op"] };
+export const MD_CALLS: Record<string, string> = { "Derek McGarrett": "D-01", "Evelyn Molina": "D-02 · R10D", "Ryan Westbrook": "R20D · R30C", "Liam Campbell": "R25D", "Tariq Okafor": "R21D",
+  "Lloyd Burnett": "R22D", "Charles Jhonson Smith": "R26D", "Antonio Santos": "R27D", "Kane Anderson": "R32C", "Elioth Smith": "R48C", "Hailey Deacon": "R35C", "James West": "R47C",
+  "Logan Barrett": "R43C", "Matthew Coleman": "R44C", "Rodney Deacon": "R36C", "Clancy Skinner": "R46C", "Kai Jeon-Soo": "R38C", "Khalan Smith": "R42C", "Lara Calloway": "R39C",
+  "William Weston": "R45C", "Yooa Baek-Harrington": "R37C" };
 /* roles de instrucción que se suman a cualquier unidad (además de los propios) */
 const INS_SUB: Role[] = [["inst", "Instructor", "#2fbf68", "Instr."], ["instp", "Instructor en pruebas", "#8fd9a8", "Instr. pruebas"]];
 export const UNITS: Record<"asd" | "k9" | "psb" | "md", Unit> = {
@@ -36,10 +46,10 @@ export const UNITS: Record<"asd" | "k9" | "psb" | "md", Unit> = {
     R: [["co", "Commanding Officer", "#d9b45a", "CO"], ["aco", "Assistant Commanding Officer", "#ecd08a", "ACO"], ["dc", "Division Commander", "#c7ced9", "Div. Cmdr."], ["ss", "Section Supervisor", "#9fb4d6", "Sect. Sup."],
       ["lead", "Lead Investigator", "#7c9fe0", "Lead"], ["senior", "Senior Investigator", "#6b8fd6", "Senior"], ["inv", "Investigator", "#5b82c9", "Inv."], ["jinv", "Junior Investigator", "#8ea3c2", "Junior"]],
     SUB: [["iad", "IAD", "#8fb3ff", "IAD"], ["fid", "FID", "#e0a3a3", "FID"], ["sod", "SOD", "#b7a6e8", "SOD"], ...INS_SUB] },
-  md: { d: "Metropolitan Division", ab: "METRO", rk: "lspdt.mdRoster", lk: "", def: MD_DEF, acc: "#1f6fb0",
-    R: [["coord", "Coordinación METRO", "#1f6fb0", "Coord."], ["subcoord", "Sub Coordinación METRO", "#5aa0d8", "Sub coord."], ["inst", "Instructor", "#2fbf68", "Instr."], ["instp", "Instructor en pruebas", "#8fd9a8", "Instr. pruebas"],
-      ["miembro", "Miembro METRO", "#9fb4d6", "Miembro"], ["asp", "Aspirante", "#8a8f97", "Asp."]],
-    SUB: [["pa", "Pelotón A", "#7c9fe0", "Pel. A"], ["pb", "Pelotón B", "#6b8fd6", "Pel. B"], ["pc", "Pelotón C", "#5b82c9", "Pel. C"], ["pd", "Pelotón D", "#8ea3c2", "Pel. D"], ["swat", "SWAT", "#e05a52", "SWAT"]] },
+  md: { d: "Metropolitan Division", ab: "METRO", rk: "lspdt.mdRoster", lk: "", def: MD_DEF, acc: "#1f6fb0", seedV: 2,
+    R: [["co", "Commanding Officer", "#1f6fb0", "CO"], ["aco", "Assistant Commanding Officer", "#5aa0d8", "ACO"], ["oic", "Officer in Charge", "#7c9fe0", "OIC"], ["tl", "Team Leader", "#9fb4d6", "TL"],
+      ["inst", "Instructor", "#2fbf68", "Instr."], ["instp", "Instructor en pruebas", "#8fd9a8", "Instr. pruebas"], ["op", "Operador", "#8ea3c2", "Op."], ["asp", "Aspirante", "#8a8f97", "Asp."]],
+    SUB: [["swat", "SWAT", "#e05a52", "SWAT"], ["sierra", "SIERRA", "#d4a937", "SIERRA"], ["bq", "Bomb Squad", "#d4a937", "BQ"], ["h", "H", "#d4a937", "H"], ["udu", "UDU", "#d4a937", "UDU"], ["cnt", "Crisis Negotiation Team", "#d4a937", "CNT"]] },
 };
 export type UnitKey = keyof typeof UNITS;
 export const COORD_R = ["coord", "subcoord", "co", "aco"];
@@ -62,7 +72,7 @@ export const uRole = (k: UnitKey, x: string): Role => UNITS[k].R.find(r => r[0] 
 export const isUMem = (k: UnitKey, n: string) => !!ME_ROLES.admin || !!uMap(k)[n];
 export const isUCoord = (k: UnitKey, n: string) => !!ME_ROLES.admin || (uMap(k)[n] || []).some(x => COORD_R.includes(x));
 /* rol en las instrucciones según el roster: coordinador, instructor o instructor en pruebas */
-export const insRole = (k: UnitKey, n: string): "coord" | "inst" | "instp" | "" => { const r = uMap(k)[n] || []; return r.some(x => COORD_R.includes(x)) ? "coord" : r.includes("inst") ? "inst" : r.includes("instp") ? "instp" : ""; };
+export const insRole = (k: UnitKey, n: string): "coord" | "inst" | "instp" | "" => { const r = uMap(k)[n] || []; return r.some(x => COORD_R.includes(x) || x === "oic") ? "coord" : r.includes("inst") ? "inst" : r.includes("instp") ? "instp" : ""; };
 export const isPSB = (n: string) => !!uMap("psb")[n];
 export const rtdMem = (): string[] => { const l = LS.json<Record<string, unknown>>("lspdt.ui", {}).rtd; return Array.isArray(l) ? (l as string[]) : RTD_DEF; };
 export const RTD_DEF = ["Charles Jhonson Smith", "Daniel López", "Derek McGarrett", "Elioth Smith", "Evelyn Molina", "Kai Jeon-Soo", "Kane Anderson", "Khalan Smith", "Lara Calloway",

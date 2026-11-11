@@ -7,7 +7,6 @@ export type DcCtx = { users?: Record<string, string>; roles?: Record<string, str
 export const TS_FMT: [string, string][] = [["t", "Hora corta"], ["T", "Hora con segundos"], ["d", "Fecha corta"], ["D", "Fecha larga"], ["f", "Fecha y hora"], ["F", "Día, fecha y hora"], ["R", "Relativo"]];
 /* marca de tiempo de Discord: <t:unix:formato>, se ve en la hora de cada lector */
 export const unixOf = (date: string, time = "00:00") => (date ? Math.floor(new Date(`${date}T${time || "00:00"}`).getTime() / 1000) : 0);
-export const dcTs = (u: number, f = "f") => (u ? `<t:${u}:${f}>` : "");
 export function ts(u: number, f: string) {
   const d = new Date(u * 1000); if (isNaN(+d)) return "";
   if (f === "R") {

@@ -11,6 +11,8 @@ import { Home } from "./sections/Home";
 import { MeCtx } from "./lib/me";
 import { Division, PerdidaArmamento, VIEWS, lz } from "./routes";
 const Six = lz(() => import("./sections/six/Six"), "Six");
+const PublicBoard = lz(() => import("./sections/Pizarra"), "PublicBoard");
+const SHARE = new URLSearchParams(location.search).get("pizarra");
 import { AREAS, canArea, secsOf } from "./nav";
 import { api, authApi } from "./lib/api";
 import { BootScreen } from "./components/boot";
@@ -21,6 +23,11 @@ import { useFeedback } from "./components/feedback";
 type Boot = { me: string | null; names: string[]; needCode: boolean; brand?: Record<string, string>; roster?: PubInfo["roster"]; data?: Parameters<typeof loadStore>[0] };
 
 export default function App() {
+  /* enlace temporal de una pizarra: se ve sin iniciar sesión */
+  if (SHARE && /^[a-f0-9]{32}$/.test(SHARE)) return <Suspense fallback={null}><PublicBoard tok={SHARE} /></Suspense>;
+  return <Main />;
+}
+function Main() {
   const [boot, setBoot] = useState<Boot | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [nav, setNav] = useState(() => { try { const n = JSON.parse(localStorage.getItem("lspdt.next.nav") || "") as { a: string; s: string }; return n.a === "six" ? { a: "ini", s: "home" } : n; } catch { return { a: "ini", s: "home" }; } });

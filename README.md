@@ -9,7 +9,6 @@ Terminal de mando del LSPD (Eleven Project). Desde la **v0.3** es una página we
 | `public/` | La terminal (una sola página) y el ícono para instalarla como app |
 | `api/` | Funciones de Vercel: `auth` (cuentas y sesiones), `data` (datos compartidos), `img` (fotos) |
 | `lib/` | Conexión a Postgres, fusión de cambios, reglas de permisos y roster por defecto |
-| `dist/`, `latest.json` | Programa `.exe` anterior (v0.2) y su actualizador. No se usan en la web |
 
 - Las tablas se crean solas la primera vez que alguien entra.
 - Contraseñas cifradas con scrypt; sesión en cookie segura (HttpOnly). Mantener la sesión: 30 días; si no, 1 día.

@@ -1,7 +1,6 @@
 /* Modelos de vehículos: los del juego (marca + modelo, sacados de los datos de GTA V / FiveM) y el pack policial ONX del servidor */
 import GAME from "@/data/veh.json";
 import { ONX } from "./onx";
-export { PATROL_CARS } from "./onx";
 
 export type VehModel = { b: string; m: string; n: string; s: string; c: string };  // marca, modelo, nombre completo, spawn, categoría
 

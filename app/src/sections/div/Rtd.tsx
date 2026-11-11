@@ -1,6 +1,6 @@
 import { scrollTopApp } from "@/lib/appearance";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Presentation, GraduationCap, UserRound, Check, X, Plus, Shuffle, PenLine, FileUp, Wand2, Trash2, Save, ClipboardList, ChevronDown, Pencil, Copy, Scale } from "lucide-react";
+import { GraduationCap, UserRound, Check, X, Plus, Shuffle, PenLine, FileUp, Wand2, Trash2, Save, ClipboardList, ChevronDown, Pencil, Copy, Scale } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Textarea } from "@/components/ui";
 import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
@@ -10,9 +10,7 @@ import { LS, useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { isRTD, rtdMem } from "@/lib/units";
 import { Instrucciones } from "./Instrucciones";
-import { Lazy } from "./Unit";
-import { lazy } from "react";
-const Pizarra = lazy(() => import("./Pizarra").then(m => ({ default: m.Pizarra })));
+
 import { dcParts, fileText } from "@/lib/penal";
 import { CMP_L, RTD_CASOS, RTD_F, parsePost, rtdAge, rtdCaso, rtdCmp, rtdScore, rtdText } from "@/legacy/rtd";
 import { cn } from "@/lib/cn";
@@ -26,13 +24,12 @@ const CMP_C: Record<string, string> = { ok: "border-emerald-400/40 bg-emerald-50
 
 export function Rtd() {
   const me = useMe();
-  const [tab, setTab] = useState<"new" | "list" | "ins" | "piz">("new"), [edit, setEdit] = useState<R | null>(null), [open, setOpen] = useState<string | null>(null);
+  const [tab, setTab] = useState<"new" | "list" | "ins">("new"), [edit, setEdit] = useState<R | null>(null), [open, setOpen] = useState<string | null>(null);
   const [L] = useJSON<R[]>("lspdt.rtdEnt", []);
   return (
     <div className="space-y-5">
-      <Segmented value={tab} onChange={setTab} options={[{ value: "new", label: "Entrevista de aspirante", icon: <GraduationCap /> }, { value: "list", label: `Entrevistas registradas (${L.length})`, icon: <ClipboardList /> }, { value: "ins", label: "Instrucciones", icon: <GraduationCap /> }, { value: "piz", label: "Pizarra", icon: <Presentation /> }]} />
+      <Segmented value={tab} onChange={setTab} options={[{ value: "new", label: "Entrevista de aspirante", icon: <GraduationCap /> }, { value: "list", label: `Entrevistas registradas (${L.length})`, icon: <ClipboardList /> }, { value: "ins", label: "Instrucciones", icon: <GraduationCap /> }]} />
       {tab === "ins" ? <Instrucciones div="rtd" ab="RTD" names={rtdMem().slice().sort()} roleOf={() => "inst"} tipos={["Academia", "Procedimientos de patrulla", "Código penal", "Uso de la radio", "Conducción"]} canEdit={isRTD(me.n)} isCoord={!!me.admin} />
-        : tab === "piz" ? <Lazy><Pizarra div="rtd" canEdit={isRTD(me.n)} /></Lazy>
         : tab === "new" ? <RtdForm key={edit?.id || "n"} init={edit} onSaved={id => { setEdit(null); setOpen(id); setTab("list"); }} />
         : <RtdList open={open} setOpen={setOpen} onEdit={r => { setEdit(r); setTab("new"); scrollTopApp(); }} />}
     </div>

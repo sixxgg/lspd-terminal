@@ -95,7 +95,7 @@ function CaseFlow({ tab, go }: { tab: string; go: Go }) {
   const [p, up] = usePX(), c = curCase(), { toast } = useFeedback();
   const has = (t: string) => !!c?.docs.some(d => d.t === t);
   const steps: [string, string, boolean, string?][] = [["not", "Notificación", has("not")], ["ele", "Elevación", has("ele")],
-    ["jus", jusLabel(p.jus.mode), c?.jusOk?.st === "ok", c?.jusOk?.st === "pend" ? "pendiente" : c?.jusOk?.st === "rej" ? "rechazada" : undefined], ["res", "Resolución", has("res")]];
+    ["jus", "Aprobación SAJD", c?.jusOk?.st === "ok", c?.jusOk?.st === "pend" ? "pendiente" : c?.jusOk?.st === "rej" ? "rechazada" : undefined], ["res", "Resolución", has("res")]];
   const mine = p.ag ? getCases().filter(x => x.ag === p.ag && x.cf !== c?.cf).sort((a, b) => b.upd - a.upd) : [];
   return (
     <Card className="p-3">
@@ -128,7 +128,7 @@ function CaseCard() {
   const R = getRoster().filter(a => lvl(a.r) > 0).sort((a, b) => lvl(b.r) - lvl(a.r) || a.n.localeCompare(b.n));
   return (
     <Card>
-      <CardHeader icon={<FolderOpen />} title="Expediente" desc="Se comparte entre Notificación, Elevación, Sanción a Justicia y Resolución." />
+      <CardHeader icon={<FolderOpen />} title="Expediente" desc="Se comparte entre Notificación, Elevación, Aprobación SAJD y Resolución." />
       <CardBody>
         <div className="grid gap-4 sm:grid-cols-[auto_1fr]">
           <Field label="N° de caso"><CaseInput /></Field>
@@ -356,11 +356,11 @@ function Forms({ tab, go }: { tab: string; go: Go }) {
           </CardBody>
         </Card>}
         {tab === "jus" && <Card>
-          <CardHeader icon={<Gavel />} title={jusLabel(J.mode)} />
+          <CardHeader icon={<Gavel />} title="Aprobación SAJD" desc="San Andreas Justice Department: se envía el caso y, cuando lo aprueba, sigue la resolución." />
           <CardBody>
             <Field label="Tipo"><Segmented size="sm" value={J.mode || "san"} onChange={v => uj(j => { j.mode = v; })} options={[{ value: "san", label: "Sanción a Justicia" }, { value: "sajd", label: "Derivación a SAJD" }]} /></Field>
             {jst && <p className={cn("rounded-lg px-3 py-2 text-xs font-semibold", jst === "ok" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : jst === "rej" ? "bg-red-500/10 text-red-700 dark:text-red-300" : "bg-amber-400/15 text-amber-700 dark:text-amber-300")}>
-              {jst === "ok" ? `✓ Aprobado por Justicia · marcado por ${c!.jusOk!.by} el ${fdt(c!.jusOk!.ts)}` : jst === "rej" ? `✗ Rechazado por Justicia (${fdt(c!.jusOk!.ts)}) · corregilo y volvé a enviarlo` : `⏳ Enviado el ${fdt(c!.jusOk!.ts)} · pendiente de aprobación`}</p>}
+              {jst === "ok" ? `✓ Aprobado por el SAJD · marcado por ${c!.jusOk!.by} el ${fdt(c!.jusOk!.ts)}` : jst === "rej" ? `✗ Rechazado por el SAJD (${fdt(c!.jusOk!.ts)}) · corregilo y volvé a enviarlo` : `⏳ Enviado el ${fdt(c!.jusOk!.ts)} · pendiente de aprobación`}</p>}
             <Checkbox checked={J.sum !== false} onChange={v => uj(j => { j.sum = v; })} label={eleLista(E, cf) ? "Adjuntar el resumen del expediente (hechos, constatado y conclusión de la elevación)" : "Adjuntar el resumen del expediente (completá la elevación de este CF)"} />
             <div className="flex gap-2.5 rounded-xl border border-brand-200 bg-brand-50/60 p-3 text-xs text-brand-900 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-100"><Info className="mt-0.5 size-4 shrink-0" />
               <p><b>Cómo se arma:</b> en <b>Motivos</b> va qué hizo el agente con sus pruebas · en <b>Publicación</b> va la <b>falta del catálogo</b> (lo que figura en el Notion), no la medida · en <b>Consecuencias</b> va la medida que se aplica (por ejemplo, el Notice to Correct Deficiencies).</p></div>
@@ -398,12 +398,12 @@ function Forms({ tab, go }: { tab: string; go: Go }) {
         extra={<div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" icon={<History />} onClick={saveCase}>Guardar</Button>
           {tab === "ele" && (E.concl === "Sustained"
-            ? <Button size="sm" icon={<Gavel />} onClick={() => { if (r0(saveDoc("ele", text, me.n, E.concl, "inv"))) toJus(); }}>Guardar y pasar a Justicia</Button>
+            ? <Button size="sm" icon={<Gavel />} onClick={() => { if (r0(saveDoc("ele", text, me.n, E.concl, "inv"))) toJus(); }}>Guardar y pasar al SAJD</Button>
             : <Button size="sm" icon={<ChevronRight />} onClick={() => { if (r0(saveDoc("ele", text, me.n, E.concl, "inv"))) go("res"); }}>Guardar y pasar a la resolución</Button>)}
           {tab === "jus" && (!jst || jst === "rej"
-            ? <Button size="sm" icon={<Send />} onClick={() => { if (r0(saveDoc("jus", text, me.n, "", "inv"))) { patchCase(x => { x.jusOk = { st: "pend", by: me.n, ts: Date.now(), m: J.mode || "san" }; }); toast("Enviado: queda pendiente de aprobación de Justicia"); } }}>Guardar y enviar a Justicia</Button>
+            ? <Button size="sm" icon={<Send />} onClick={() => { if (r0(saveDoc("jus", text, me.n, "", "inv"))) { patchCase(x => { x.jusOk = { st: "pend", by: me.n, ts: Date.now(), m: J.mode || "san" }; }); toast("Enviado: queda pendiente de aprobación del SAJD"); } }}>Guardar y enviar al SAJD</Button>
             : jst === "pend" ? <>
-              <Button size="sm" icon={<ThumbsUp />} onClick={() => { patchCase(x => { x.jusOk = { ...x.jusOk!, st: "ok", by: me.n, ts: Date.now() }; }); toast("Justicia aprobó el caso · seguí con la resolución"); go("res"); }}>Justicia aprobó</Button>
+              <Button size="sm" icon={<ThumbsUp />} onClick={() => { patchCase(x => { x.jusOk = { ...x.jusOk!, st: "ok", by: me.n, ts: Date.now() }; }); toast("El SAJD aprobó el caso · seguí con la resolución"); go("res"); }}>SAJD aprobó</Button>
               <Button size="sm" variant="ghost" className="text-red-600" icon={<ThumbsDown />} onClick={() => { patchCase(x => { x.jusOk = { ...x.jusOk!, st: "rej", by: me.n, ts: Date.now() }; }); toast("Marcado como rechazado: corregilo y volvé a enviarlo"); }}>Rechazó</Button></>
             : <Button size="sm" icon={<ChevronRight />} onClick={() => go("res")}>Ir a la resolución</Button>)}
           {tab === "res" && <Button size="sm" icon={<Check />} onClick={() => { if (r0(saveDoc("res", text, me.n, "", "cerrado"))) toast(`Expediente ${cf} resuelto y cerrado`); }}>Guardar y cerrar expediente</Button>}
@@ -469,7 +469,7 @@ function saveDoc(t: string, txt: string, by: string, concl = "", st = "") {
   LS.setJSON(K_CASES, i >= 0 ? L.map((x, j) => (j === i ? c : x)) : [...L, c]);
   return { ok: true, msg: `Guardado en el historial · ${cf} (${c.docs.length} ${c.docs.length === 1 ? "comunicado" : "comunicados"})` };
 }
-const DOC_T: Record<string, string> = { not: "Notificación", ele: "Elevación de caso", jus: "Justicia / SAJD", res: "Resolución", vot: "Votación" };
+const DOC_T: Record<string, string> = { not: "Notificación", ele: "Elevación de caso", jus: "Aprobación SAJD", res: "Resolución", vot: "Votación" };
 const fdt = (t: number) => new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 function Historial({ go }: { go: Go }) {
@@ -495,7 +495,7 @@ function Historial({ go }: { go: Go }) {
             <FolderOpen className="size-5 shrink-0 text-brand-500" />
             <div className="min-w-0 flex-1"><p className="truncate font-mono text-sm font-semibold">{c.cf} <span className="font-sans font-normal text-slate-500">· {c.ag || "sin agente"} · {c.dv}</span></p>
               <p className="truncate text-xs text-slate-500">{c.docs.length} {c.docs.length === 1 ? "comunicado" : "comunicados"} · última modificación {fdt(c.upd)} · abrió {c.by}</p></div>
-            <StChip c={c} />{c.jusOk && <span className="text-[11px] text-slate-500">Justicia: {c.jusOk.st === "ok" ? "aprobado" : c.jusOk.st === "rej" ? "rechazado" : "pendiente"}</span>}
+            <StChip c={c} />{c.jusOk && <span className="text-[11px] text-slate-500">SAJD: {c.jusOk.st === "ok" ? "aprobado" : c.jusOk.st === "rej" ? "rechazado" : "pendiente"}</span>}
             {c.concl && <span className={cn("rounded-md px-2 py-0.5 text-[11px] font-bold", c.concl === "Sustained" ? "bg-red-500/10 text-red-600 dark:text-red-300" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300")}>{c.concl}</span>}
             <ChevronDown className={cn("size-4 text-slate-400 transition", on && "rotate-180")} />
           </button>

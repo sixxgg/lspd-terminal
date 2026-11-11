@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.9";
+export const APP_VERSION = "1.9.1";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,15 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "1.9.1", f: "11/11/2026", t: "Pizarra, códigos y Capitanía para Sargentos", items: [
+    "La Pizarra pasa al menú principal (sale de las divisiones): fondo gris oscuro, texto con negrita, cursiva, subrayado y títulos H1–H3, y moverse es más fácil: arrastrar el fondo, la rueda o dos dedos; zoom con Ctrl + rueda, pellizco o los botones.",
+    "Compartir en vivo: enlace temporal para ver la pizarra en tiempo real sin iniciar sesión (vence solo y se puede revocar).",
+    "Nueva pestaña Códigos: códigos radiales básicos, comunes, 10-X, otra terminología, derechos y alfabeto NATO, con buscador y clic para copiar.",
+    "Capitanía: los Sargentos II entran solo a la categoría Sargentos (examen escrito, entrevista y lista de elegibles para Sargento I).",
+    "PSB: el paso de Justicia ahora es «Aprobación SAJD» (San Andreas Justice Department).",
+    "METRO y SWAT con su roster real: rol, subdivisiones (SIERRA, BQ, H, UDU, CNT) e indicativo de radio.",
+    "Limpieza de código que ya no se usaba.",
+  ] },
   { v: "1.9", f: "11/11/2026", t: "Pizarras, instrucciones y METRO", items: [
     "Pizarra en todas las divisiones (estilo Miro): lienzo infinito con notas, texto, formas, marcos, flechas, lápiz e imágenes o mapas. Plantillas de operativo, Kanban, mapa mental y diagrama de flujo, y exportación a PNG.",
     "Instrucciones en todas las divisiones: fecha, tipo (queda guardado), quién la dio (coordinador, instructor o instructor en pruebas según el roster) y lista de implicados con asistencia.",

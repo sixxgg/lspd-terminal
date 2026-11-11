@@ -1,12 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { GraduationCap, Lock, Megaphone, Presentation } from "lucide-react";
+import { GraduationCap, Lock, Megaphone } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import { Instrucciones } from "./Instrucciones";
-import { Lazy } from "./Unit";
-import { lazy } from "react";
 import { findAgent } from "@/lib/domain";
 import { insRole, isUMem, uMap } from "@/lib/units";
-const Pizarra = lazy(() => import("./Pizarra").then(m => ({ default: m.Pizarra })));
 import { Card } from "@/components/ui";
 import { DivLogo } from "@/sections/sup/Agentes";
 import { DIV_DESC, DIV_DONE, divOpen, heroColors, subsOf, useDivColors } from "@/lib/divisions";
@@ -65,7 +62,7 @@ function SubTile({ s, on, onClick }: { s: string; on: boolean; onClick?: () => v
     </button>);
 }
 
-/* subdivisión (UDU): comunicados, instrucciones y pizarra; el roster es el de la METRO */
+/* subdivisión (UDU): comunicados e instrucciones; el roster es el de la METRO */
 function SubBody({ sub, div }: { sub: string; div: CommDiv }) {
   const me = useMe(), [t, setT] = useState(() => LS.get("lspdt.next.subtab." + div) || "com"), can = !!ME_ROLES.admin || lvl(me.r) >= lvl("Sargento I") || isUMem("md", me.n);
   const go = (v: string) => { setT(v); LS.set("lspdt.next.subtab." + div, v); };
@@ -73,9 +70,8 @@ function SubBody({ sub, div }: { sub: string; div: CommDiv }) {
   return (
     <div className="space-y-5">
       <DivHero d={sub} />
-      <Segmented value={t} onChange={go} options={[{ value: "com", label: "Comunicados", icon: <Megaphone /> }, { value: "ins", label: "Instrucciones", icon: <GraduationCap /> }, { value: "piz", label: "Pizarra", icon: <Presentation /> }]} />
+      <Segmented value={t} onChange={go} options={[{ value: "com", label: "Comunicados", icon: <Megaphone /> }, { value: "ins", label: "Instrucciones", icon: <GraduationCap /> }]} />
       {t === "ins" ? <Instrucciones div={div} ab={div.toUpperCase()} names={names} roleOf={n => insRole("md", n)} tipos={["Persecución marítima", "Buceo", "Rescate subacuático", "Navegación"]} canEdit={can} isCoord={!!ME_ROLES.admin || insRole("md", me.n) === "coord"} />
-        : t === "piz" ? <Lazy><Pizarra div={div} canEdit={can} /></Lazy>
         : <Comunicados div={div} canEdit={can} />}
     </div>);
 }

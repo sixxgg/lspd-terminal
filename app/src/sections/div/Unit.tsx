@@ -1,6 +1,6 @@
 import { Comunicados } from "./Comunicados";
 import { lazy, Suspense, useMemo, useState } from "react";
-import { Megaphone, Users, Pencil, Check, Plus, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History, Presentation, Dog, ClipboardCheck, MessageCircle, Trophy, Loader2 } from "lucide-react";
+import { Megaphone, Users, Pencil, Check, Plus, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History, Dog, ClipboardCheck, MessageCircle, Trophy, Loader2 } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input, Segmented, Select } from "@/components/ui";
 import { AgentCombo, AgentPicker, Avatar } from "@/components/agents";
 import { Helicopter } from "@/components/icons";
@@ -10,16 +10,17 @@ import { Col, Split } from "@/components/layout";
 import { LUGARES, fmtDate, findAgent, lvl, norm, rankES, uid } from "@/lib/domain";
 import { LS, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { K9_PL, UNITS, insRole, isUCoord, isUMem, uMap, uRole, uSaveMap, uTop, type UnitKey } from "@/lib/units";
+import { K9_PL, MD_CALLS, UNITS, insRole, isUCoord, isUMem, uMap, uRole, uSaveMap, uTop, type UnitKey } from "@/lib/units";
 import { unitPalette } from "@/lib/divisions";
 import { cn } from "@/lib/cn";
 import { Psb, dcIdOf } from "./Psb";
 import { T1080 } from "@/sections/sup/T1080";
 import { Instrucciones } from "./Instrucciones";
-const Pizarra = lazy(() => import("./Pizarra").then(m => ({ default: m.Pizarra })));
 const MetroExam = lazy(() => import("./Metro").then(m => ({ default: m.MetroExam })));
 export const Lazy = ({ children }: { children: React.ReactNode }) => <Suspense fallback={<div className="grid min-h-[30vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{children}</Suspense>;
 
+/* METRO: indicativo de radio de cada integrante */
+const callOf = (n: string) => ({ ...MD_CALLS, ...LS.json<Record<string, string>>("lspdt.mdCalls", {}) })[n] || "";
 /* K-9: perro de cada handler y su especialidad */
 export const K9_ESP = ["Armas", "Drogas", "Explosivos", "Búsqueda", "Dinero"];
 type Dog = { dog: string; esp: string };
@@ -71,17 +72,17 @@ function asdXText(n: string, X: XRec) {
   return `**Oficial:** ${n}${a && a.p ? ` | ${a.p}` : ""}\n**Estado:** ${l.join(" · ") || "—"}${X._n ? `\n**Nota:** ${X._n}` : ""}`;
 }
 
-const PSB_TABS: [string, string, typeof Bell][] = [["not", "Notificación", Bell], ["ele", "Elevación de caso", ArrowUpRight], ["jus", "Justicia / SAJD", Gavel], ["res", "Resolución", FileCheck2], ["vot", "Votaciones", Vote], ["his", "Expedientes", History], ["cat", "Catálogo de faltas", BookMarked], ["cit", "Citación 10-80", Radio]];
+const PSB_TABS: [string, string, typeof Bell][] = [["not", "Notificación", Bell], ["ele", "Elevación de caso", ArrowUpRight], ["jus", "Aprobación SAJD", Gavel], ["res", "Resolución", FileCheck2], ["vot", "Votaciones", Vote], ["his", "Expedientes", History], ["cat", "Catálogo de faltas", BookMarked], ["cit", "Citación 10-80", Radio]];
 
 export function Unit({ k }: { k: UnitKey }) {
   useStoreVersion();
   const me = useMe(), u = UNITS[k], co = isUCoord(k, me.n), pal = unitPalette(k);
   type TB = [string, string, typeof Bell];
-  const mdIns = k === "md" && (co || ["inst", "instp"].includes(insRole("md", me.n)));
+  const mdIns = k === "md" && (co || !!insRole("md", me.n));
   const tabs0: TB[] = [["ros", "Roster", Users], ...(k === "psb" ? PSB_TABS : u.reg ? [["reg", u.reg, ClipboardPen], ["log", `${u.regs} (${uLog(k).length})`, ListChecks]] as TB[] : []),
     ...(k === "asd" ? [["com", "Comunicados", Megaphone] as TB] : []), ...(k === "asd" && co ? [["exa", "Exámenes", GraduationCap] as TB] : []),
     ...(mdIns ? [["mde", "Examen escrito", ClipboardCheck], ["mdi", "Entrevista de instructor", MessageCircle], ["mdl", "Lista de elegibles", Trophy]] as TB[] : []),
-    ["ins", "Instrucciones", GraduationCap], ["piz", "Pizarra", Presentation]];
+    ["ins", "Instrucciones", GraduationCap]];
   const mem = isUMem(k, me.n), names = Object.keys(uMap(k)).filter(n => findAgent(n)).sort((a, b) => a.localeCompare(b, "es"));
   /* Roster siempre primero; el resto de la A a la Z */
   const tabs = [tabs0[0], ...tabs0.slice(1).sort((a, b) => a[1].localeCompare(b[1], "es", { numeric: true }))];
@@ -93,7 +94,6 @@ export function Unit({ k }: { k: UnitKey }) {
       <Segmented value={t} onChange={go} options={tabs.map(([v, l, I]) => ({ value: v, label: l, icon: <I /> }))} />
       {t === "ros" ? <Roster k={k} pal={pal.roles} />
         : t === "ins" ? <Instrucciones div={k} ab={u.ab} names={names} roleOf={n => insRole(k, n)} tipos={INS_TIPOS[k]} canEdit={mem} isCoord={co} />
-        : t === "piz" ? <Lazy><Pizarra div={k} canEdit={mem} /></Lazy>
         : t === "mde" || t === "mdi" || t === "mdl" ? <Lazy><MetroExam tab={t === "mde" ? "exa" : t === "mdi" ? "ent" : "list"} /></Lazy>
         : t === "reg" ? <RegForm k={k} onSaved={() => go("log")} /> : t === "log" ? <LogView k={k} /> : t === "exa" ? <Exams pal={pal.roles} /> : t === "com" ? <Comunicados div="asd" canEdit={co} />
         : t === "cit" ? <T1080 psbOnly /> : <Psb tab={t} go={go} />}
@@ -140,6 +140,8 @@ function Roster({ k, pal }: { k: UnitKey; pal: Record<string, string> }) {
                     <div><p className="text-sm font-semibold">{n}</p><p className="text-xs text-slate-500">{a.p && `#${a.p} · `}{"fuera" in a ? "No figura en el roster cargado" : rankES(a.r)}</p></div></div>
                   {edit ? (
                     <div className="flex flex-wrap items-center gap-1.5">
+                      {k === "md" && <Input defaultValue={callOf(n)} placeholder="Indicativo (R20D…)" className="h-8 w-32 font-mono text-xs"
+                        onBlur={e => { const v = e.target.value.trim().toUpperCase(), M = { ...MD_CALLS, ...LS.json<Record<string, string>>("lspdt.mdCalls", {}) }; if ((M[n] || "") === v) return; M[n] = v; LS.setJSON("lspdt.mdCalls", M); toast("Indicativo guardado"); }} />}
                       {k === "psb" && <Input defaultValue={ids[n] || dcIdOf(n)} placeholder="Discord ID" inputMode="numeric" className="h-8 w-44 font-mono text-xs"
                         onBlur={e => { const v = e.target.value.replace(/\D/g, ""), M = LS.json<Record<string, string>>("lspdt.psbIds", {}); if ((M[n] || "") === v) return; if (v) M[n] = v; else delete M[n]; LS.setJSON("lspdt.psbIds", M); toast("Discord ID guardado"); }} />}
                       {[...u.R, ...(u.SUB || [])].map(([x, ll, , sh]) => { const on = r.includes(x); return (
@@ -150,6 +152,7 @@ function Roster({ k, pal }: { k: UnitKey; pal: Record<string, string> }) {
                     </div>
                   ) : <div className="flex flex-wrap gap-1"><Tag k={k} x={kk} main pal={pal} />{r.filter(x => x !== kk).map(x => <Tag key={x} k={k} x={x} pal={pal} />)}
                     {k === "k9" && <DogEd n={n} can={co || n === me.n} />}
+                    {k === "md" && callOf(n) && <span className="rounded-md bg-red-500/10 px-1.5 py-0.5 font-mono text-[11px] font-bold text-red-600 dark:text-red-400">{callOf(n)}</span>}
                     {k === "asd" && asdSusp(n) && <span title={asdSuspTxt(n)} className="inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-300">Patrullaje aéreo suspendido</span>}</div>}
                 </div>); }) : <p className="px-4 py-3 text-xs text-slate-400">Sin integrantes.</p>}
             </div>);

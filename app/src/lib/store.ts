@@ -102,6 +102,8 @@ async function poll() {
     if (ch) bump();
   } finally { polling = false; }
 }
+/* sincroniza ya (la pizarra la usa cada 2 s mientras está abierta) */
+export const syncNow = () => { if (!document.hidden) void poll(); };
 function schedule() { clearTimeout(pollT); pollT = window.setTimeout(async () => { if (!document.hidden) await poll(); schedule(); }, 5000); }
 
 export const ME_ROLES: { admin?: boolean; owner?: boolean; six?: boolean } = {};
