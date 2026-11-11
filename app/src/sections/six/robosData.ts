@@ -122,31 +122,41 @@ export const MISIONES: Mision[] = [
 const base = (n: string) => n.replace(/\s*\((II|encargo)\)$/i, "").toLowerCase();
 /* el perfil de banda solo se deduce de la recompensa: ítems para droga → drogas · piezas de armas → armas */
 export const perfilDe = (mi: Mision): "drogas" | "armas" | null => (/droga/i.test(mi.rec) ? "drogas" : /piezas/i.test(mi.rec) ? "armas" : null);
-export type Item = Robo & { mis: Mision[]; min?: number; prop?: boolean; notas: { t: "conf" | "nuevo" | "off" | "rev" | "dup" | "ok" | "sin"; x: string }[] };
+export type Nota = { t: "act" | "nuevo" | "rev" | "dup" | "sin"; x: string };
+export type Item = Robo & { mis: Mision[]; min?: number; nuevo?: boolean; chg?: { de: number; a: number; f: number[] }; notas: Nota[] };
 const PV_DEF: Record<Cat, PV> = { rap: [true, true, false], men: [true, false, false], veh: [true, true, false], esp: [true, false, true], may: [true, true, true], mis: [true, true, false] };
+/* misiones NO ACTIVO: quedan fuera del catálogo hasta que vuelvan */
+export const INACTIVAS = MISIONES.filter(m => m.off);
+/* el Excel es lo vigente: sus atracadores pisan a la normativa vieja y los robos que solo están en el Excel entran como nuevos
+   (vehículo, armas, rehenes y policía según su categoría). Policías máx. = atracadores máx. + 2 */
 export function catalogo(): Item[] {
   const out: Item[] = NORMATIVA.map(x => ({ ...x, mis: [], notas: [] }));
   for (const mi of MISIONES) {
+    if (mi.off) continue;
     const it = mi.robo ? out.find(o => o.id === mi.robo) : undefined;
     if (it) { it.mis.push(mi); continue; }
-    /* misión sin robo en la normativa: propuesta con policías = atracadores + 2 */
-    const cat = mi.cat || "mis";
-    out.push({ id: "m:" + mi.n, n: mi.n, cat, norm: false, prop: true, mis: [mi], ilg: ILG_DEF[cat], arm: ARM_DEF[cat], max: mi.max, min: mi.min, pol: mi.max + 2, pv: PV_DEF[cat], reh: cat === "esp" || cat === "may" ? `Sí (1 a ${Math.max(2, mi.max - 1)})` : "No", blq: cat === "esp" || cat === "may", mando: false, notas: [] });
+    const cat = mi.cat || "mis", esp = cat === "esp" || cat === "may";
+    out.push({ id: "m:" + mi.n, n: mi.n, cat, norm: false, nuevo: true, mis: [mi], ilg: ILG_DEF[cat], arm: ARM_DEF[cat], max: mi.max, pol: mi.max + 2, pv: PV_DEF[cat],
+      reh: esp ? `Sí (1 a ${Math.max(2, mi.max - 1)})` : "No", blq: esp, mando: false, notas: [] });
   }
   for (const it of out) {
-    if (it.mis.length) it.min = Math.min(...it.mis.map(x => x.min));
-    if (!it.norm) {
-      it.notas.push({ t: "nuevo", x: it.cat === "mis" ? `Misión de tipo ${it.mis[0].tipo.toLowerCase()}: no es un robo, pero conviene fijar policías máx. (${it.pol}).` : `Está en el Excel pero no en la normativa, así que no tiene límite fijado. Propuesta: ${CATS[it.cat].l} con ${it.max} atracadores y ${it.pol} policías.` });
-    } else if (!it.mis.length) it.notas.push({ t: "sin", x: "Sin misión en la planilla: no tiene recompensa cargada." });
-    for (const mi of it.mis) {
-      if (it.norm && it.max != null && mi.max > it.max) it.notas.push({ t: "conf", x: `«${mi.n}» permite hasta ${mi.max} y la normativa ${it.max}: subir la normativa a ${mi.max} atracadores / ${mi.max + 2} policías o bajar la misión a ${it.max}.` });
-      if (mi.off) it.notas.push({ t: "off", x: `«${mi.n}» está marcada como NO ACTIVA: se puede sacar del catálogo hasta que vuelva.` });
-      if (/revisar|falta/i.test(mi.rec)) it.notas.push({ t: "rev", x: `«${mi.n}»: la recompensa está pendiente (${mi.rec}).` });
-      if (mi.f.length > 1) it.notas.push({ t: "dup", x: `«${mi.n}» está en las filas ${mi.f.join(" y ")}, idénticas: la planilla no dice para qué banda es cada una (la columna «ilegales» está vacía). Si es una por perfil (drogas / armas), conviene escribirlo en cada fila; si no, se borra una.` });
-      const tw = MISIONES.find(o => o !== mi && base(o.n) === base(mi.n));
-      if (tw) it.notas.push({ t: "dup", x: `Mismo nombre que la fila ${tw.f[0]} (${tw.tipo}, ${tw.rec}) con otra recompensa: parece otra versión para otro perfil, pero no está especificado.` });
+    if (it.mis.length) {
+      it.min = Math.min(...it.mis.map(x => x.min));
+      const top = Math.max(...it.mis.map(x => x.max));
+      if (it.norm && it.max != null && top !== it.max) {
+        it.chg = { de: it.max, a: top, f: it.mis.filter(x => x.max === top).flatMap(x => x.f) };
+        it.notas.push({ t: "act", x: `La normativa vieja decía ${it.max}; el Excel (fila ${it.chg.f.join(", ")}) dice ${top}. Queda ${top} atracadores y ${top + 2} policías.` });
+        it.max = top; it.pol = top + 2;
+      }
     }
-    if (it.norm && it.mis.length && !it.notas.some(n => n.t === "conf")) it.notas.push({ t: "ok", x: "La misión coincide con la normativa." });
+    if (it.nuevo) it.notas.push({ t: "nuevo", x: it.cat === "mis" ? `Misión del Excel (${it.mis[0].tipo.toLowerCase()}), no es un robo. Policías máx. ${it.pol}.` : `Robo nuevo del Excel. Vehículo, armas, rehenes y policía según ${CATS[it.cat].l}.` });
+    else if (!it.mis.length) it.notas.push({ t: "sin", x: "No tiene misión en el Excel: sin recompensa cargada." });
+    for (const mi of it.mis) {
+      if (/revisar|falta/i.test(mi.rec)) it.notas.push({ t: "rev", x: `«${mi.n}» (fila ${mi.f.join(", ")}): la recompensa está pendiente.` });
+      if (mi.f.length > 1) it.notas.push({ t: "dup", x: `«${mi.n}» está repetida en las filas ${mi.f.join(" y ")} y no dice para qué banda es cada una.` });
+      const tw = MISIONES.find(o => o !== mi && base(o.n) === base(mi.n));
+      if (tw) it.notas.push({ t: "dup", x: `Mismo nombre que la fila ${tw.f[0]} (${tw.rec}): parece otra versión para otro perfil, sin especificar.` });
+    }
   }
   return out;
 }

@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.9.8";
+export const APP_VERSION = "1.9.9";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,9 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "1.9.9", f: "11/11/2026", t: "Catálogo de robos vigente", items: [
+    "El catálogo de robos de six toma el Excel de misiones como lo vigente: corrige los límites de la normativa vieja y suma los robos nuevos en su categoría.",
+  ] },
   { v: "1.9.8", f: "11/11/2026", t: "Nickname y marca por defecto", items: [
     "Perfil: cada uno puede ponerse un nickname OOC (lápiz al lado del nombre); el personaje queda aparte y se ve en la pestaña Personaje.",
     "La administración elige la marca «Bananita» del marco por defecto (RGB, magenta o desactivada) y la velocidad, como el tema del departamento.",
