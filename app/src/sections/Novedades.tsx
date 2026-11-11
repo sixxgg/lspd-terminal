@@ -15,6 +15,7 @@ type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
   { v: "1.9.9", f: "11/11/2026", t: "Catálogo de robos vigente", items: [
     "El catálogo de robos de six toma el Excel de misiones como lo vigente: corrige los límites de la normativa vieja y suma los robos nuevos en su categoría.",
+    "Catálogo: policías en binomios y uniones, dinero separado de lo que también da (ítems, piezas), filtros rápidos (actualizados, nuevos, pendientes) y FOTO 4K por sección.",
   ] },
   { v: "1.9.8", f: "11/11/2026", t: "Nickname y marca por defecto", items: [
     "Perfil: cada uno puede ponerse un nickname OOC (lápiz al lado del nombre); el personaje queda aparte y se ve en la pestaña Personaje.",

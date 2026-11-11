@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Camera, Car, CarFront, Copy, Info, Plus, RefreshCw, Search, Shield, Ship, Users } from "lucide-react";
+import { Camera, Car, Gift, X, CarFront, Copy, Info, Plus, RefreshCw, Search, Shield, Ship, Users } from "lucide-react";
 import { toPng } from "html-to-image";
 import { useFeedback } from "@/components/feedback";
 import { cn } from "@/lib/cn";
@@ -31,9 +31,26 @@ function Armas({ arm }: { arm?: string }) {
       <G d={d} className={w[i] ? "" : "opacity-40"} />{l}{w[i] === 2 && <b className="text-[9px] text-red-300">OBLIG.</b>}</span>))}</div>;
 }
 
+/* policías en unidades: binomios (2) y, si sobra uno, una unión */
+const unidades = (n?: number | null) => { if (!n) return ""; const b = Math.floor(n / 2), u = n % 2; return [b ? `${b} binomio${b > 1 ? "s" : ""}` : "", u ? "1 unión" : ""].filter(Boolean).join(" + "); };
+/* recompensa: el dinero por un lado y lo extra (ítems para droga, piezas de armas, objetos) por otro */
+const MONEY = /(\d[\d.,]*)\s*\$/;
+const num = (s: string) => Number(s.replace(/[.,](?=\d{3}\b)/g, "").replace(",", ".")) || 0;
+function recOf(mis: Item["mis"]) {
+  const amts = new Set<number>(), extra = new Set<string>(); let pend = false;
+  for (const m of mis) {
+    const r = m.rec, mm = r.match(MONEY); if (mm) amts.add(num(mm[1]));
+    if (/revisar|falta/i.test(r)) pend = true;
+    const ex = r.replace(MONEY, "").replace(/revisar|falta hacerla|no activo/gi, "").replace(/^[\s+\-–·]+|[\s+\-–·]+$/g, "").trim();
+    if (ex) extra.add(ex[0].toUpperCase() + ex.slice(1));
+  }
+  const L = [...amts].sort((a, b) => a - b), f = (n: number) => `$${n.toLocaleString("es-AR")}`;
+  return { money: !L.length ? "" : L.length === 1 ? f(L[0]) : `${f(L[0])} – ${f(L[L.length - 1])}`, extra: [...extra], pend };
+}
+
 function Card({ it, obs }: { it: Item; obs: boolean }) {
   const C = CATS[it.cat], perf = [...new Set(it.mis.map(perfilDe).filter(Boolean))] as string[];
-  const rec = it.mis.map(m => m.rec).filter((x, i, a) => a.indexOf(x) === i);
+  const R = recOf(it.mis);
   return (
     <article className={cn("relative flex flex-col gap-3 overflow-hidden rounded-2xl border bg-gradient-to-b from-[#0e131a] to-[#07090d] p-4 font-sans", it.chg ? "border-amber-500/40" : it.nuevo && it.cat !== "mis" ? "border-purple-500/40" : "border-white/[.07]")}>
       <span className="absolute inset-y-0 left-0 w-1" style={{ background: C.c }} />
@@ -48,10 +65,14 @@ function Card({ it, obs }: { it: Item; obs: boolean }) {
         <div className="rounded-xl bg-black/40 p-2"><p className="text-[10px] uppercase tracking-wider text-slate-500">Atracadores</p>
           <p className="text-lg font-black tabular-nums text-white"><Users className="mr-1 inline size-3.5 text-slate-500" />{it.min != null && it.max != null && it.min < it.max ? `${it.min}–${it.max}` : it.max ?? "—"}</p></div>
         <div className="rounded-xl bg-black/40 p-2"><p className="text-[10px] uppercase tracking-wider text-slate-500">Policías máx.</p>
-          <p className="text-lg font-black tabular-nums text-sky-300"><Shield className="mr-1 inline size-3.5 text-slate-500" />{it.pol ?? "—"}</p></div>
+          <p className="text-lg font-black tabular-nums text-sky-300"><Shield className="mr-1 inline size-3.5 text-slate-500" />{it.pol ?? "—"}</p>
+          {it.pol ? <p className="min-h-[26px] text-[10px] leading-tight text-sky-200/70">{unidades(it.pol)}</p> : null}</div>
         <div className="rounded-xl bg-black/40 p-2"><p className="text-[10px] uppercase tracking-wider text-slate-500">Dinero</p>
-          <p className="truncate text-sm font-black leading-7 text-emerald-300" title={rec.join(" / ")}>{rec.length ? rec.join(" / ") : "—"}</p></div>
+          {R.money ? <p className="text-sm font-black leading-7 tabular-nums text-emerald-300">{R.money}</p> : <p className={cn("text-xs font-bold leading-7", R.pend ? "text-amber-300" : "text-slate-500")}>{R.pend ? "A definir" : "—"}</p>}
+          {R.money && R.pend && <p className="text-[10px] leading-tight text-amber-300/80">+ alguna a definir</p>}</div>
       </div>
+      {R.extra.length > 0 && <div className="flex flex-wrap items-center gap-1 text-[11px]"><span className="font-semibold uppercase tracking-wider text-slate-500">También da</span>
+        {R.extra.map(x => <span key={x} className="inline-flex items-center gap-1 rounded-md border border-emerald-400/30 bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-200"><Gift className="size-3" />{x}</span>)}</div>}
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
         <dt className="text-slate-500">Rehenes</dt><dd className="text-slate-200">{it.reh ?? "—"}</dd>
         <dt className="text-slate-500">Bloqueo</dt><dd className="text-slate-200">{yn(it.blq)}</dd>
@@ -73,21 +94,32 @@ function Card({ it, obs }: { it: Item; obs: boolean }) {
 }
 
 export function Catalogo() {
-  const { toast } = useFeedback(), all = useMemo(catalogo, []), box = useRef<HTMLDivElement>(null);
-  const [cat, setCat] = useState<Cat | "all">("all"), [q, setQ] = useState(""), [obs, setObs] = useState(true), [busy, setBusy] = useState(false), [shot, setShot] = useState(false);
-  const list = all.filter(x => (cat === "all" || x.cat === cat) && (!q.trim() || (x.n + " " + x.mis.map(m => m.n).join(" ")).toLowerCase().includes(q.trim().toLowerCase())));
+  const { toast } = useFeedback(), all = useMemo(catalogo, []), box = useRef<HTMLDivElement>(null), secs = useRef<Record<string, HTMLElement | null>>({});
+  const [cat, setCat] = useState<Cat | "all">("all"), [flt, setFlt] = useState<"" | "act" | "nuevo" | "pend">(""), [q, setQ] = useState(""), [obs, setObs] = useState(true), [busy, setBusy] = useState(false), [shot, setShot] = useState(false);
+  const isPend = (x: Item) => x.notas.some(n => n.t === "rev" || n.t === "dup");
+  const FLT = { act: (x: Item) => !!x.chg, nuevo: (x: Item) => !!x.nuevo && x.cat !== "mis", pend: isPend } as const;
+  const list = all.filter(x => (cat === "all" || x.cat === cat) && (!flt || FLT[flt](x)) && (!q.trim() || (x.n + " " + x.mis.map(m => m.n).join(" ")).toLowerCase().includes(q.trim().toLowerCase())));
   const dup = MISIONES.filter(m => !m.off && m.f.length > 1), rev = MISIONES.filter(m => !m.off && /revisar|falta/i.test(m.rec)), chg = all.filter(x => x.chg), nuevos = all.filter(x => x.nuevo && x.cat !== "mis");
+  /* FOTO 4K: una imagen por bloque (resumen y cada tipo de robo), a 1920 px x2 = 3840 px de ancho */
   const foto = async () => {
-    const el = box.current; if (!el) return; setBusy(true);
+    setBusy(true); setShot(true);
     try {
-      /* se saca a 1920 px de ancho con 5 columnas y x2 = 3840 px (4K); el navegador aguanta hasta ~32000 px de alto */
-      setShot(true); await new Promise(r => setTimeout(r, 120));
-      const h = el.scrollHeight, pr = Math.min(2, 32000 / h);
-      const url = await toPng(el, { pixelRatio: pr, width: 1920, height: h, skipAutoScale: true, backgroundColor: "#05070a", cacheBust: true });
-      const a = document.createElement("a"); a.href = url; a.download = `catalogo-robos-4k-${new Date().toISOString().slice(0, 10)}.png`; a.click();
-      toast("Foto 4K descargada");
+      await new Promise(r => setTimeout(r, 150));
+      const day = new Date().toISOString().slice(0, 10), L = Object.entries(secs.current).filter(([, el]) => el) as [string, HTMLDivElement][];
+      for (const [k, el] of L) {
+        const h = el.scrollHeight, url = await toPng(el, { pixelRatio: Math.min(2, 32000 / h), width: 1920, height: h, skipAutoScale: true, backgroundColor: "#05070a", cacheBust: true });
+        const a = document.createElement("a"); a.href = url; a.download = `robos-${k}-4k-${day}.png`; a.click();
+        await new Promise(r => setTimeout(r, 350));
+      }
+      toast(`${L.length} fotos 4K descargadas`);
     } catch { toast("No se pudo generar la foto"); } finally { setBusy(false); setShot(false); }
   };
+  const chips = [["act", chg.length, "actualizados", RefreshCw, "#f59e0b"], ["nuevo", nuevos.length, "robos nuevos", Plus, "#a855f7"], ["pend", all.filter(isPend).length, "con pendientes", Info, "#ef4444"]] as const;
+  const Head = ({ sub }: { sub?: string }) => (
+    <header className="flex flex-wrap items-end gap-4 border-b border-white/10 pb-3 font-sans">
+      <div className="flex-1"><h2 className="text-2xl font-black tracking-tight text-white">Catálogo de robos{sub && <span className="text-slate-500"> · {sub}</span>}</h2>
+        <p className="text-xs text-slate-500">Vigente: el Excel de misiones manda sobre la normativa vieja · policías máx. = atracadores máx. + 2 (binomios de 2 y una unión si sobra uno)</p></div>
+    </header>);
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -102,14 +134,15 @@ export function Catalogo() {
         <button onClick={foto} disabled={busy} className="six-btn inline-flex items-center gap-1.5 rounded-xl border border-six/60 bg-six/10 px-3.5 py-2 text-xs font-bold tracking-[0.12em] text-six disabled:opacity-40"><Camera className="size-3.5" />{busy ? "GENERANDO…" : "FOTO 4K"}</button>
       </div>
 
-      <div ref={box} style={shot ? { width: 1920 } : undefined} className={cn("space-y-4 rounded-2xl bg-[#05070a] p-4", shot && "p-8")}>
-        <header className="flex flex-wrap items-end gap-4 border-b border-white/10 pb-3 font-sans">
-          <div className="flex-1"><h2 className="text-2xl font-black tracking-tight text-white">Catálogo de robos</h2>
-            <p className="text-xs text-slate-500">Vigente: el Excel de misiones manda sobre la normativa vieja · policías máx. = atracadores máx. + 2</p></div>
-          <div className="flex flex-wrap gap-2 text-xs">{([["act", chg.length, "actualizados"], ["nuevo", nuevos.length, "robos nuevos"], ["rev", rev.length, "recompensas pendientes"]] as const).map(([t, n, l]) => (
-            <span key={t} className="rounded-lg px-2 py-1 font-semibold" style={{ background: NT[t].c + "1a", color: NT[t].c }}>{n} {l}</span>))}</div>
-        </header>
-        {cat === "all" && !q && <section className="grid gap-3 font-sans text-xs md:grid-cols-3">
+      <div ref={box} style={shot ? { width: 1920 } : undefined} className={cn("space-y-5 rounded-2xl bg-[#05070a] p-4", shot && "p-0")}>
+        <div ref={el => { secs.current["0-resumen"] = flt || q || cat !== "all" ? null : el; }} className={cn("space-y-4", shot && "bg-[#05070a] p-8")}>
+        <Head />
+        <div className="flex flex-wrap items-center gap-2 font-sans text-xs">{chips.map(([k, n, l, I, c]) => (
+          <button key={k} onClick={() => setFlt(flt === k ? "" : k)} className={cn("inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-semibold transition", flt === k ? "text-white" : "hover:brightness-125")}
+            style={{ borderColor: c + (flt === k ? "" : "40"), background: c + (flt === k ? "40" : "14"), color: flt === k ? "#fff" : c }}><I className="size-3.5" />{n} {l}</button>))}
+          {flt && <button onClick={() => setFlt("")} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-slate-400 hover:text-white"><X className="size-3.5" />Ver todo</button>}
+          {!flt && <span className="text-slate-500">Tocá uno para filtrar</span>}</div>
+        {cat === "all" && !q && !flt && <section className="grid gap-3 font-sans text-xs md:grid-cols-3">
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3"><b className="text-amber-300">Actualizado desde el Excel</b><p className="text-slate-500">La normativa vieja decía otra cantidad; quedó lo del Excel.</p>
             <ul className="mt-1 space-y-0.5 text-slate-300">{chg.map(x => <li key={x.id}>· {x.n}: {x.chg!.de} → <b className="text-white">{x.chg!.a}</b> atracadores · {x.pol} policías <span className="text-slate-500">(fila {x.chg!.f.join(", ")})</span></li>)}</ul></div>
           <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-3"><b className="text-purple-300">Robos nuevos del Excel ({nuevos.length})</b><p className="text-slate-500">No estaban en la normativa vieja; ya están cargados en su categoría (atracadores / policías).</p>
@@ -122,8 +155,10 @@ export function Catalogo() {
             <p className="mt-1.5 font-semibold text-slate-400">Recompensa sin definir</p>
             <ul className="space-y-0.5 text-slate-300">{rev.map(m => <li key={m.n}>· {m.n} <span className="text-slate-500">(fila {m.f.join(", ")})</span></li>)}</ul></div>
         </section>}
+        </div>
         {(Object.keys(CATS) as Cat[]).filter(k => list.some(x => x.cat === k)).map(k => (
-          <section key={k}>
+          <section key={k} ref={el => { secs.current[`${Object.keys(CATS).indexOf(k) + 1}-${k}`] = el; }} className={cn(shot && "space-y-4 bg-[#05070a] p-8")}>
+            {shot && <Head sub={CATS[k].l} />}
             <h3 className="mb-2 flex items-baseline gap-2 font-sans"><span className="size-2.5 rounded-full" style={{ background: CATS[k].c }} /><b className="text-white">{CATS[k].l}</b><span className="text-xs text-slate-500">{CATS[k].d}</span></h3>
             <div className={cn("grid gap-3", shot ? "grid-cols-5" : "sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4")}>{list.filter(x => x.cat === k).map(x => <Card key={x.id} it={x} obs={obs} />)}</div>
           </section>))}
