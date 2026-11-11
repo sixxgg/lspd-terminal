@@ -157,9 +157,13 @@ export function Perfil() {
         <div className="flex flex-wrap items-end gap-x-4 gap-y-2 px-5 pb-4">
           <div className="group relative -mt-12 rounded-full ring-4 ring-white dark:ring-slate-900"><PAvatar n={who} size={104} />
             {own && <>
-              <button aria-label="Cambiar foto del perfil" title="Foto del perfil (no cambia la del agente)" onClick={() => fPic.current?.click()} className="absolute inset-0 grid place-items-center rounded-full bg-black/55 text-white opacity-0 transition group-hover:opacity-100"><Camera className="size-6" /></button>
+              <button aria-label="Cambiar foto del perfil" title="Foto o GIF del perfil, hasta 1 MB (no cambia la del agente)" onClick={() => fPic.current?.click()} className="absolute inset-0 grid place-items-center rounded-full bg-black/55 text-white opacity-0 transition group-hover:opacity-100"><Camera className="size-6" /></button>
               {LS.get(K.pic(who)) && <button aria-label="Quitar foto del perfil" title="Volver a la foto del agente" onClick={() => { LS.del(K.pic(who)); toast("Foto del perfil quitada"); }} className="absolute -right-1 bottom-1 grid size-7 place-items-center rounded-full bg-slate-900 text-white ring-2 ring-white hover:bg-red-600 dark:ring-slate-900"><Trash2 className="size-3.5" /></button>}
-              <input ref={fPic} type="file" accept="image/*" hidden onChange={async e => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; LS.set(K.pic(who), await readImg(f, 400)); toast("Foto del perfil actualizada"); }} />
+              <input ref={fPic} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={async e => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return;
+                /* GIF animado: se guarda tal cual (hasta 1 MB) para que siga moviéndose; el resto se achica */
+                if (f.type === "image/gif") { if (f.size > 1024 * 1024) { toast(`El GIF pesa ${(f.size / 1048576).toFixed(1)} MB: el máximo es 1 MB`, "err"); return; }
+                  LS.set(K.pic(who), await new Promise<string>((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = ko; r.readAsDataURL(f); })); toast("GIF del perfil actualizado"); return; }
+                LS.set(K.pic(who), await readImg(f, 400)); toast("Foto del perfil actualizada"); }} />
             </>}</div>
           <div className="min-w-0 flex-1 pt-2">
             <div className="flex flex-wrap items-center gap-2">

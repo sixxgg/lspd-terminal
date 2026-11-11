@@ -17,6 +17,7 @@ const LOG: Rel[] = [
     "Uniformidad: cada atuendo lleva nombre, género (Hombre / Mujer) y código para copiar y pegar; se puede filtrar por género.",
     "Links temporales: la coordinación crea un link de solo lectura de la uniformidad que vence solo (de 1 hora a 7 días), ve cuántas veces se abrió y lo puede revocar.",
     "Perfiles (BETA): notificaciones cuando te siguen, cuando ven tu perfil y cuando desbloqueás un logro; logros nuevos con confeti.",
+    "La foto del perfil puede ser un GIF animado de hasta 1 MB.",
   ] },
   { v: "1.9.11", f: "11/11/2026", t: "Perfiles conectados", items: [
     "Logros míticos con lámina holográfica iridiscente.",
