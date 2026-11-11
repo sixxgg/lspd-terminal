@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, Flame, UserRound, KeyRound } from "lucide-react";
-import { AREAS, canArea, menuAreas, secsOf, type Area, type Sec } from "@/nav";
+import { AREAS, canArea, lockedOf, menuAreas, secsOf, type Area, type Sec } from "@/nav";
 import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
 import { rankES } from "@/lib/domain";
@@ -66,7 +66,8 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
   const tools = <>
     <button onClick={() => setAp(true)} className={cn("rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white", focusRing)}
       aria-label="Apariencia: temas y efectos" title="Temas, colores y efectos"><Palette className="size-[18px]" /></button></>;
-  const pageHead = area.k !== "div" && area.k !== "ini" && (
+  /* el encabezado solo aparece en áreas con varias secciones (en las de una sola ya lo dice el menú) */
+  const pageHead = area.k !== "div" && area.k !== "ini" && area.sec.length > 1 && (
     <div className="mb-6 flex items-start gap-4">
       <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-brand-600 text-white shadow-lg shadow-brand-600/25 dark:bg-brand-500">{<sec.icon className="size-5" />}</div>
       <div className="min-w-0"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand-600 dark:text-brand-300">{area.l}</p><h1 className="text-2xl font-bold tracking-tight">{sec.l}</h1><p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{sec.d}</p></div>
@@ -104,7 +105,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
             <button onClick={onLogout} title="Cerrar sesión" aria-label="Cerrar sesión" className={cn("rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400", focusRing)}><LogOut className="size-4" /></button>
           </div>
         </div>
-        {secsOf(area, me.r).length > 1 && (
+        {secsOf(area, me.r).length + lockedOf(area, me.r).length > 1 && (
           <div className="border-t border-slate-200/70 dark:border-slate-800/70">
             <nav aria-label="Secciones" className="scrollbar-none mx-auto flex max-w-[1760px] gap-0.5 overflow-x-auto px-3 py-2 sm:px-5 [&>*:first-child]:ml-auto [&>*:last-child]:mr-auto">
               {secsOf(area, me.r).map(s => { const on = s.k === sec.k, I = s.icon; return (
@@ -112,6 +113,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
                   className={cn("inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition min-[1800px]:px-2.5 min-[1800px]:text-[11.5px]", focusRing,
                     on ? "bg-brand-500/15 text-brand-700 ring-1 ring-inset ring-brand-500/40 dark:text-brand-200" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-white")}>
                   <I className="size-3.5 shrink-0" />{area.k === "div" ? <><span className="hidden min-[1700px]:inline">{s.l}</span><span className="min-[1700px]:hidden">{divShort(s.l)}</span></> : s.sl || s.l}</button>); })}
+              {lockedOf(area, me.r).map(s => <span key={s.k} title="Bloqueada para tu rango" className="inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400/60 dark:text-slate-600 min-[1800px]:px-2.5 min-[1800px]:text-[11.5px]"><Lock className="size-3.5 shrink-0" />{s.sl || s.l}</span>)}
             </nav>
           </div>)}
       </header>

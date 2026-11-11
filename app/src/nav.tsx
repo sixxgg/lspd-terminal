@@ -37,9 +37,9 @@ const RAW_AREAS: Area[] = [
   ] },
   /* Capitanía: los Sargentos II entran solo a la categoría Sargentos (ascenso a Sargento I); el resto pide Teniente */
   { k: "cap", l: "Capitanía", icon: Briefcase, min: 7, req: "Sargento II", sec: [
-    { k: "exa", l: "Sargentos · Examen escrito", sl: "Sgto. · Examen", d: "Fase II del ascenso a Sargento I: corte 70 % y bonificación por antigüedad", icon: ClipboardCheck, ready: true, min: 7 },
-    { k: "ent", l: "Sargentos · Entrevista (Oral Board)", sl: "Sgto. · Entrevista", d: "Fase III: tribunal de mandos, cada pregunta del 1 al 5", icon: MessageCircle, ready: true, min: 7 },
-    { k: "list", l: "Sargentos · Lista de elegibles", sl: "Sgto. · Elegibles", d: "Convocatorias: nota final /22 y sobre 100, ranking y observaciones", icon: Trophy, ready: true, min: 7 },
+    { k: "exa", l: "Examen escrito (Sargento I)", d: "Fase II del ascenso a Sargento I: corte 70 % y bonificación por antigüedad", icon: ClipboardCheck, ready: true, min: 7 },
+    { k: "ent", l: "Entrevista Oral Board (Sargento I)", d: "Fase III: tribunal de mandos, cada pregunta del 1 al 5", icon: MessageCircle, ready: true, min: 7 },
+    { k: "list", l: "Lista de elegibles (Sargento I)", d: "Convocatorias: nota final /22 y sobre 100, ranking y observaciones", icon: Trophy, ready: true, min: 7 },
     { k: "vot", l: "Resolución de votaciones", d: "Aprobar o rechazar propuestas abiertas", icon: Gavel, ready: true, min: 8 },
     { k: "equ", l: "Equipamiento de patrullas", d: "Lo que debe llevar cada vehículo", icon: Package, ready: true, min: 8 },
     { k: "perm", l: "Permisos y cuentas", d: "Excepciones de rango y cuentas de la terminal", icon: KeyRound, ready: true, min: 8 },
@@ -76,6 +76,8 @@ export const AREAS: Area[] = RAW_AREAS
 export const canArea = (a: Area, r?: string) => (a.k === "me" ? !!ME_ROLES.six : a.admin ? !!ME_ROLES.admin : lvl(r) >= a.min);
 /* áreas del menú (sin las ocultas) */
 export const menuAreas = (r?: string) => AREAS.filter(a => !a.hidden && canArea(a, r));
+/* secciones bloqueadas para ese rango (se muestran con candado) */
+export const lockedOf = (a: Area, r?: string) => (ME_ROLES.admin ? [] : a.sec.filter(s => s.min && lvl(r) < s.min));
 /* secciones que ve cada uno dentro de un área (algunas piden más rango que el área) */
 export const secsOf = (a: Area, r?: string) => a.sec.filter(s => !s.min || lvl(r) >= s.min || !!ME_ROLES.admin);
 

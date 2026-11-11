@@ -49,7 +49,8 @@ export const UNITS: Record<"asd" | "k9" | "psb" | "md", Unit> = {
   md: { d: "Metropolitan Division", ab: "METRO", rk: "lspdt.mdRoster", lk: "", def: MD_DEF, acc: "#1f6fb0", seedV: 2,
     R: [["co", "Commanding Officer", "#1f6fb0", "CO"], ["aco", "Assistant Commanding Officer", "#5aa0d8", "ACO"], ["oic", "Officer in Charge", "#7c9fe0", "OIC"], ["tl", "Team Leader", "#9fb4d6", "TL"],
       ["inst", "Instructor", "#2fbf68", "Instr."], ["instp", "Instructor en pruebas", "#8fd9a8", "Instr. pruebas"], ["op", "Operador", "#8ea3c2", "Op."], ["asp", "Aspirante", "#8a8f97", "Asp."]],
-    SUB: [["swat", "SWAT", "#e05a52", "SWAT"], ["sierra", "SIERRA", "#d4a937", "SIERRA"], ["bq", "Bomb Squad", "#d4a937", "BQ"], ["h", "H", "#d4a937", "H"], ["udu", "UDU", "#d4a937", "UDU"], ["cnt", "Crisis Negotiation Team", "#d4a937", "CNT"]] },
+    /* Pelotón H: manifestaciones y operativos de gran magnitud (Platoon H del LAPD) */
+    SUB: [["swat", "SWAT", "#e05a52", "SWAT"], ["sierra", "SIERRA", "#d4a937", "SIERRA"], ["bq", "Bomb Squad", "#d4a937", "BQ"], ["h", "Pelotón H", "#d4a937", "Pel. H"], ["udu", "UDU", "#d4a937", "UDU"], ["cnt", "Crisis Negotiation Team", "#d4a937", "CNT"]] },
 };
 export type UnitKey = keyof typeof UNITS;
 export const COORD_R = ["coord", "subcoord", "co", "aco"];

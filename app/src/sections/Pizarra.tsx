@@ -327,7 +327,6 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, full: full0 }: { 
           <button onClick={fit} title="Ver todo" className="w-12 rounded py-1 tabular-nums hover:bg-white/10">{Math.round(view.z * 100)} %</button>
           <button aria-label="Acercar" onClick={() => { const r = wrapRef.current!.getBoundingClientRect(); zoomAt(r.width / 2, r.height / 2, 1.2); }} className="rounded p-1.5 hover:bg-white/10"><Plus className="size-3.5" /></button>
         </div>
-        <p className="pointer-events-none absolute bottom-3 left-3 hidden rounded-lg bg-black/40 px-2 py-1 text-[11px] text-slate-400 md:block">Arrastrá el fondo para moverte · rueda o dos dedos: desplazar · Ctrl + rueda o pellizco: zoom · doble clic: escribir</p>
         {!items.length && <div className="pointer-events-none absolute inset-0 grid place-items-center text-center text-sm text-slate-400"><div><Presentation className="mx-auto mb-2 size-8 opacity-60" />{canEdit ? <>Elegí una herramienta a la izquierda o una <b>plantilla</b> para empezar.</> : "La pizarra está vacía."}</div></div>}
         {!canEdit && <span className="absolute right-3 top-3 rounded-lg bg-black/50 px-2 py-1 text-[11px] text-slate-300">Solo lectura</span>}
       </div>

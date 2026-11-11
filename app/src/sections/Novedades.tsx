@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.9.1";
+export const APP_VERSION = "1.9.2";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,11 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "1.9.2", f: "11/11/2026", t: "Ajustes de Capitanía y Códigos", items: [
+    "Capitanía: los Sargentos II ven las tareas de Teniente bloqueadas con candado; las del ascenso a Sargento I quedan con su nombre completo en una sola línea.",
+    "Códigos: Lectura de derechos actualizada y nueva sección Rotura de negociaciones. Menos texto de relleno.",
+    "METRO: la «H» ahora es el Pelotón H (manifestaciones y operativos de gran magnitud).",
+  ] },
   { v: "1.9.1", f: "11/11/2026", t: "Pizarra, códigos y Capitanía para Sargentos", items: [
     "La Pizarra pasa al menú principal (sale de las divisiones): fondo gris oscuro, texto con negrita, cursiva, subrayado y títulos H1–H3, y moverse es más fácil: arrastrar el fondo, la rueda o dos dedos; zoom con Ctrl + rueda, pellizco o los botones.",
     "Compartir en vivo: enlace temporal para ver la pizarra en tiempo real sin iniciar sesión (vence solo y se puede revocar).",
