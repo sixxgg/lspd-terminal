@@ -2,9 +2,10 @@
    - el estado de sus feedback (y la respuesta), - si cambió su rango (ascenso o descenso),
    - para la PSB: expedientes nuevos o resueltos, - versión nueva de la terminal.
    Lo leído se guarda en este navegador. */
-import { nickOf } from "@/lib/nick";
+import { nickOf, profOk } from "@/lib/nick";
+import { LOGROS, TIER, goodTier } from "@/components/logros";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, CheckCheck, Heart, MessageSquare, Shield, Sparkles, TrendingDown, TrendingUp, type LucideIcon } from "lucide-react";
+import { Bell, CheckCheck, Eye, Heart, Trophy, UserPlus, MessageSquare, Shield, Sparkles, TrendingDown, TrendingUp, type LucideIcon } from "lucide-react";
 import { FB_ST, fbSt, fbX, useMyFeedback, useTick } from "@/components/fbnotif";
 import { LS, useStoreVersion } from "@/lib/store";
 import { uMap } from "@/lib/units";
@@ -47,6 +48,17 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
     /* comentarios que otros dejaron en mi perfil */
     for (const c of LS.ro<{ id: string; by: string; t: number; x: string }[]>(`lspdt.ucom.${emailOf(me.n).split("@")[0]}`, [])) if (c.by !== me.n)
       L.push({ id: "com:" + c.id, t: c.t, I: MessageSquare, c: "#38bdf8", title: `${nickOf(c.by)} comentó en tu perfil`, body: c.x, go: ["me", "perfil"] });
+    /* perfiles (BETA): nuevos seguidores, visitas a mi perfil y logros buenos */
+    if (profOk(me.n)) {
+      const sl = emailOf(me.n).split("@")[0];
+      for (const [n, t] of Object.entries(LS.ro<Record<string, number>>(`lspdt.ufolt.${sl}`, {}))) if (n !== me.n)
+        L.push({ id: `fol:${n}:${t}`, t, I: UserPlus, c: "#a855f7", title: `${nickOf(n)} empezó a seguirte`, body: "Tocá para ver tu perfil", go: ["me", "perfil"] });
+      for (const v of LS.ro<{ l?: { n: string; t: number }[] }>(`lspdt.uvis.${sl}`, {}).l || []) if (v.n !== me.n && Date.now() - v.t < 7 * 864e5)
+        L.push({ id: `vis:${v.n}:${v.t}`, t: v.t, I: Eye, c: "#14b8a6", title: `${nickOf(v.n)} vio tu perfil`, body: "Visita a tu perfil", go: ["me", "perfil"] });
+      const lg = LS.ro<{ lg?: Record<string, number> }>(`lspdt.uprof.${sl}`, {}).lg || {};
+      for (const l of LOGROS) if (lg[l.k] && goodTier(l.tier))
+        L.push({ id: `lg:${l.k}`, t: lg[l.k], I: Trophy, c: TIER[l.tier].c, title: `Logro desbloqueado: ${l.t}`, body: `${TIER[l.tier].l} · ${l.d}`, go: ["me", "perfil"] });
+    }
     if (hasNews()) L.push({ id: "ver:" + APP_VERSION, t: lsGet<number>("lspdt.next.verT:" + APP_VERSION, 0) || (lsSet("lspdt.next.verT:" + APP_VERSION, Date.now()), Date.now()), I: Sparkles, c: "#f472b6", title: `Versión ${APP_VERSION} disponible`, body: "Mirá las novedades de la terminal.", go: ["ini", "nov"] });
     return L.sort((a, b) => b.t - a.t).slice(0, 30);
   }, [fb.list, cases, psb, me.n, kEv, ver]); // eslint-disable-line react-hooks/exhaustive-deps

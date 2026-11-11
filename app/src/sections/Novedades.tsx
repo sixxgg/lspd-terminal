@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.9.11";
+export const APP_VERSION = "1.9.12";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,11 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "1.9.12", f: "11/11/2026", t: "Links temporales y uniformidad por género", items: [
+    "Uniformidad: cada atuendo lleva nombre, género (Hombre / Mujer) y código para copiar y pegar; se puede filtrar por género.",
+    "Links temporales: la coordinación crea un link de solo lectura de la uniformidad que vence solo (de 1 hora a 7 días), ve cuántas veces se abrió y lo puede revocar.",
+    "Perfiles (BETA): notificaciones cuando te siguen, cuando ven tu perfil y cuando desbloqueás un logro; logros nuevos con confeti.",
+  ] },
   { v: "1.9.11", f: "11/11/2026", t: "Perfiles conectados", items: [
     "Logros míticos con lámina holográfica iridiscente.",
     "Seguidores y seguidos se abren en una ventana, y al final del perfil aparecen «Sugerencias para ti» para seguir a otros.",

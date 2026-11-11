@@ -1,3 +1,4 @@
+import { profOk } from "@/lib/nick";
 import type { LucideIcon } from "lucide-react";
 import {
   Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
@@ -73,7 +74,7 @@ export const AREAS: Area[] = RAW_AREAS
   .map(a => (a.k === "ini" ? a : { ...a, sec: a.sec.slice().sort(byLabel) }))
   .sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
 
-export const canArea = (a: Area, r?: string) => (a.k === "me" ? true : a.admin ? !!ME_ROLES.admin : lvl(r) >= a.min);
+export const canArea = (a: Area, r?: string) => (a.k === "me" ? profOk() : a.admin ? !!ME_ROLES.admin : lvl(r) >= a.min);
 /* áreas del menú (sin las ocultas) */
 export const menuAreas = (r?: string) => AREAS.filter(a => !a.hidden && canArea(a, r));
 /* secciones bloqueadas para ese rango (se muestran con candado) */

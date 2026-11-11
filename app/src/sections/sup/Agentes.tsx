@@ -1,3 +1,4 @@
+import { profOk } from "@/lib/nick";
 import { useMemo, useRef, useState, type PointerEvent as PE } from "react";
 import { Users, LayoutGrid, Rows3, UserPlus, BadgeCheck, Trophy, Shield, Radio, Clock, TrendingUp, IdCard, AtSign, Mail, Activity, Home as HomeI,
   Pencil, Star, Plus, X, Camera, Move, Trash2, FileText, Award, StickyNote, Car, History, Check, UserMinus, ImagePlus } from "lucide-react";
@@ -204,7 +205,7 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
           <div className="flex flex-wrap items-center gap-2 pb-1">
             <Segmented size="sm" value={p.g === "f" ? "f" : "m"} onChange={v => done(x => { x.g = v; }, "Trato actualizado")} options={[{ value: "m", label: "Masculino" }, { value: "f", label: "Femenino" }]} />
             {foto && <Button size="sm" variant="outline" icon={<Move />} onClick={() => setPh({ ...phOf(p) })}>Encuadre</Button>}
-            <Button size="sm" variant="outline" icon={<IdCard />} onClick={() => goTo("me", "perfil", { n: a.n })}>Perfil</Button>
+            {profOk() && profOk(a.n) && <Button size="sm" variant="outline" icon={<IdCard />} onClick={() => goTo("me", "perfil", { n: a.n })}>Perfil</Button>}
             <Button size="sm" variant="outline" icon={<Pencil />} onClick={onEdit}>Editar datos</Button>
             {me.l >= 8 && <Button size="sm" variant="ghost" className="text-red-600 dark:text-red-400" icon={<UserMinus />} onClick={async () => {
               if (!(await confirm(`¿Dar de baja a ${a.n}? Se quita del roster (su perfil y notas se conservan).`, { danger: true, ok: "Dar de baja" }))) return;

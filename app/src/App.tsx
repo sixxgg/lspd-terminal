@@ -12,10 +12,14 @@ import { MeCtx } from "./lib/me";
 import { Division, PerdidaArmamento, VIEWS, lz } from "./routes";
 const Six = lz(() => import("./sections/six/Six"), "Six");
 const PublicBoard = lz(() => import("./sections/Pizarra"), "PublicBoard");
-const SHARE = new URLSearchParams(location.search).get("pizarra");
+const SHARE = new URLSearchParams(location.search).get("pizarra"), VER = new URLSearchParams(location.search).get("ver");
+const PublicSection = lz(() => import("./sections/div/DivTools"), "PublicSection");
 import { AREAS, canArea, secsOf } from "./nav";
 import { api, authApi } from "./lib/api";
 import { BootScreen } from "./components/boot";
+import { PROF, profOk } from "./lib/nick";
+import { goodTier, stampLogros } from "./components/logros";
+import { confetti } from "./lib/confetti";
 import { ACC, LS, ME_ROLES, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
 import { emailOf, findAgent, getRoster, rankES } from "./lib/domain";
 import { useFeedback } from "./components/feedback";
@@ -25,6 +29,8 @@ type Boot = { me: string | null; names: string[]; brand?: Record<string, string>
 export default function App() {
   /* enlace temporal de una pizarra: se ve sin iniciar sesión */
   if (SHARE && /^[a-f0-9]{32}$/.test(SHARE)) return <Suspense fallback={null}><PublicBoard tok={SHARE} /></Suspense>;
+  /* enlace temporal de una sección (uniformidad): solo lectura, sin sesión */
+  if (VER && /^[a-f0-9]{32}$/.test(VER)) return <Suspense fallback={null}><PublicSection tok={VER} /></Suspense>;
   return <Main />;
 }
 function Main() {
@@ -32,7 +38,7 @@ function Main() {
   const [me, setMe] = useState<Me | null>(null);
   const [nav, setNav] = useState(() => { try { const n = JSON.parse(localStorage.getItem("lspdt.next.nav") || "") as { a: string; s: string }; return n.a === "six" || n.a === "anita" ? { a: "ini", s: "home" } : n; } catch { return { a: "ini", s: "home" }; } });
   const { toast } = useFeedback();
-  useStoreVersion();
+  const sv = useStoreVersion();
 
   const [fx, setFx] = useState<"" | "full" | "short">(""), [breach, setBreach] = useState(false);
   const endBreach = useCallback(() => { setBreach(false); setNav({ a: "six", s: "staff" }); scrollTopApp(); }, []);
@@ -65,6 +71,10 @@ function Main() {
     if (ban) LS.set(k + ".ban", ban);
     const save = (since?: number) => LS.setJSON(k, { ...LS.json(k, {}), seen: now, ...(since ? { since } : {}), ...(old ? { bio: old } : {}) });
     if (p.since) save(); else void authApi({ a: "info" }).then(r => save(r.__s === 200 ? r.c : now)); }, [me]);
+  if (me) PROF.me = me.n;
+  /* logros (perfiles BETA): sella los nuevos; los raros o mejores tiran confeti */
+  useEffect(() => { if (!me || !profOk(me.n) || !ACC.names.length) return;
+    stampLogros(me.n, me.r, l => { if (goodTier(l.tier)) { confetti(); toast(`¡Logro desbloqueado: ${l.t}!`); } }); }, [me, sv]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (me && LS.get("lspdt.ui") != null) setDeptUi(LS.json<Record<string, string>>("lspdt.ui", {})); });
   if (!boot) return <Device><div className="grid min-h-[var(--app-h,100dvh)] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div></Device>;
   if (!me) return <Device brand={boot.brand}><UpdateBar /><Login pub={boot} onDone={r => enter((r as { data: Parameters<typeof loadStore>[0] }).data, true)} /></Device>;

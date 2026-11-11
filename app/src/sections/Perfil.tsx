@@ -3,11 +3,12 @@
    solo la ven los miembros de esa división.
    Datos: lspdt.uprof.<slug> (solo el dueño), .ban (portada), lspdt.ucom.<slug> (comentarios), lspdt.uvis.<slug> (visitas), lspdt.ufol.<slug> (seguidores). */
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Activity, BadgeCheck, Bomb, Check, Bold, Camera, ChevronsUp, Crown, Eye, Gem, Heading1, Heading2, Heading3, IdCard, Italic, List, Lock, MessageSquare, Pencil, Quote, Save, Scale, Send, Strikethrough, Trash2, Trophy, Underline, UserCheck, UserPlus, Users, X, type LucideIcon } from "lucide-react";
+import { Activity, Check, Bold, Camera, Eye, Heading1, Heading2, Heading3, IdCard, Italic, List, Lock, MessageSquare, Pencil, Quote, Save, Send, Strikethrough, Trash2, Trophy, Underline, UserCheck, UserPlus, Users, X, type LucideIcon } from "lucide-react";
 import { Button, Card, Textarea } from "@/components/ui";
 import { Avatar, RankBadge } from "@/components/agents";
 import { Ribbon } from "@/components/ribbon";
 import { Modal } from "@/components/modal";
+import { LOGROS, Medal, TIER } from "@/components/logros";
 import { useFeedback } from "@/components/feedback";
 import { useTick } from "@/components/fbnotif";
 import { ACC, LS, useStoreVersion } from "@/lib/store";
@@ -18,77 +19,21 @@ import { decorOf, type Award } from "@/lib/decor";
 import { profFull, takePreset } from "@/lib/profiles";
 import { isPSB, rtdMem, uMap, type UnitKey } from "@/lib/units";
 import { mdHtml } from "@/lib/discord";
-import { nickOf } from "@/lib/nick";
+import { nickOf, profOk } from "@/lib/nick";
 import { cn } from "@/lib/cn";
 
 export type UProf = { bio?: string; since?: number; seen?: number; col?: string; nick?: string };
 export type UCom = { id: string; by: string; t: number; x: string };
 type UVis = { c: number; l: { n: string; t: number }[] };
 export const slugOf = (n: string) => emailOf(n).split("@")[0];
-export const K = { prof: (n: string) => `lspdt.uprof.${slugOf(n)}`, ban: (n: string) => `lspdt.uprof.${slugOf(n)}.ban`, pic: (n: string) => `lspdt.uprof.${slugOf(n)}.pic`, com: (n: string) => `lspdt.ucom.${slugOf(n)}`, vis: (n: string) => `lspdt.uvis.${slugOf(n)}`, fol: (n: string) => `lspdt.ufol.${slugOf(n)}` };
+export const K = { prof: (n: string) => `lspdt.uprof.${slugOf(n)}`, ban: (n: string) => `lspdt.uprof.${slugOf(n)}.ban`, pic: (n: string) => `lspdt.uprof.${slugOf(n)}.pic`, com: (n: string) => `lspdt.ucom.${slugOf(n)}`, vis: (n: string) => `lspdt.uvis.${slugOf(n)}`, fol: (n: string) => `lspdt.ufol.${slugOf(n)}`, folt: (n: string) => `lspdt.ufolt.${slugOf(n)}` };
 const COLS = ["#0f7a3a", "#1e3a8a", "#7c3aed", "#b91c1c", "#0e7490", "#be185d", "#334155"];
-const FOUNDER = "Ryan Westbrook";
 const dmy = (t?: number) => (t ? new Date(t).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—");
 
 /* foto del perfil: propia del perfil (no toca la foto del agente); si no hay, la del agente */
 function PAvatar({ n, size = 32 }: { n: string; size?: number }) {
   const p = LS.get(K.pic(n));
   return p ? <img src={p} alt="" className="shrink-0 rounded-full object-cover ring-1 ring-black/5 dark:ring-white/10" style={{ width: size, height: size }} /> : <Avatar n={n} size={size} />;
-}
-
-/* ---------- logros ---------- */
-const TIER = {
-  comun: { l: "Común", c: "#94a3b8", bg: "linear-gradient(145deg,#64748b,#334155)" },
-  raro: { l: "Raro", c: "#38bdf8", bg: "linear-gradient(145deg,#0ea5e9,#1e3a8a)" },
-  epico: { l: "Épico", c: "#c084fc", bg: "linear-gradient(145deg,#a855f7,#4c1d95)" },
-  legend: { l: "Legendario", c: "#fbbf24", bg: "linear-gradient(145deg,#fde047,#d97706 55%,#78350f)" },
-  mitico: { l: "Mítico", c: "#f43f5e", bg: "conic-gradient(from 0deg,#f43f5e,#f59e0b,#22c55e,#06b6d4,#8b5cf6,#f43f5e)" },
-} as const;
-type Tier = keyof typeof TIER;
-/* íconos propios de los logros únicos */
-type IcoP = { className?: string; style?: React.CSSProperties };
-/* banana: cáscara amarilla con degradé, nervio claro, puntas y tallo marrones */
-const BananaI = ({ className, style }: IcoP) => (
-  <svg viewBox="0 0 64 64" className={className} style={{ ...style, width: typeof style?.width === "number" ? style.width * 1.3 : undefined, height: typeof style?.height === "number" ? style.height * 1.3 : undefined, color: undefined, filter: "drop-shadow(0 1px 1px rgba(0,0,0,.45))" }}>
-    <defs><linearGradient id="bn-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff27a" /><stop offset=".55" stopColor="#ffd21f" /><stop offset="1" stopColor="#e9a400" /></linearGradient></defs>
-    <path d="M47.5 14.5c4.2 6.6 5.2 15.4 1.6 23.4C44.3 48.6 32.4 55 19.6 54.2c-4.1-.3-8-1.4-10.8-3.2 0 0-1-1.2.2-1.6 13.3-.6 24.5-7.1 29.7-17.6 3.1-6.2 3.6-12.2 2.7-16.6z" fill="url(#bn-g)" stroke="#a86b00" strokeWidth="1.6" strokeLinejoin="round" />
-    <path d="M44.2 19.6c1.2 5 .5 10.6-2.3 15.8-4.6 8.6-13.4 13.9-23.6 15.4" fill="none" stroke="#fff9c4" strokeWidth="1.8" strokeLinecap="round" opacity=".9" />
-    <path d="M41.4 14.6 43.7 7.6c.3-.9 1.3-1.3 2.1-.9l1.8.9c.8.4 1.1 1.4.6 2.2l-2.6 6.5z" fill="#6b4a1e" />
-    <ellipse cx="9.4" cy="50.3" rx="2.2" ry="1.6" fill="#4a2f12" transform="rotate(-20 9.4 50.3)" />
-  </svg>);
-/* bandera de Turquía con las proporciones oficiales (alto G=20, largo 1,5G): media luna 0,5G / 0,4G y estrella en un círculo de 0,25G */
-const TR_STAR = (() => { const cx = 16.42, cy = 10, R = 2.5, r = R * 0.382; return Array.from({ length: 10 }, (_, i) => { const a = Math.PI + (i * Math.PI) / 5, rr = i % 2 ? r : R; return `${(cx + rr * Math.cos(a)).toFixed(2)},${(cy + rr * Math.sin(a)).toFixed(2)}`; }).join(" "); })();
-const TurkeyI = ({ className, style }: IcoP) => (
-  <svg viewBox="0 0 30 20" className={className} style={{ ...style, width: typeof style?.width === "number" ? style.width * 1.3 : undefined, height: typeof style?.height === "number" ? style.height * 0.87 : undefined, color: undefined, borderRadius: 2, boxShadow: "0 1px 2px rgba(0,0,0,.5)" }}>
-    <rect width="30" height="20" fill="#E30A17" /><circle cx="10" cy="10" r="5" fill="#fff" /><circle cx="11.25" cy="10" r="4" fill="#E30A17" /><polygon points={TR_STAR} fill="#fff" />
-  </svg>);
-const WatchI = ({ className, style }: IcoP) => <svg viewBox="0 0 64 64" className={className} style={style}><path fill="currentColor" d="M32 4 52 12v18c0 14-9 25-20 30C21 55 12 44 12 30V12z" /><path fill="#0b0f17" d="M32 9.5 47 16v14c0 11-6.6 19.8-15 24-8.4-4.2-15-13-15-24V16z" />
-  <text x="32" y="38" textAnchor="middle" fontSize="15" fontWeight="900" fill="currentColor" fontFamily="sans-serif">WC</text></svg>;
-const LOGROS: { k: string; t: string; d: string; tier: Tier; I: LucideIcon; ok: (n: string, r: string) => boolean; only?: string }[] = [
-  { k: "reg", t: "Registrado", d: "Tiene cuenta en la terminal.", tier: "comun", I: UserCheck, ok: n => ACC.names.includes(n) },
-  { k: "ofi", t: "Oficial", d: "Forma parte del LSPD.", tier: "comun", I: BadgeCheck, ok: (_n, r) => lvl(r) >= 1 },
-  { k: "sgt", t: "Sargento", d: "Llegó a Sargento I.", tier: "raro", I: ChevronsUp, ok: (_n, r) => lvl(r) >= 6 },
-  { k: "psb", t: "Miembro de la PSB", d: "Integra el Professional Standards Bureau.", tier: "epico", I: Scale, ok: n => isPSB(n) },
-  { k: "sgt2", t: "Sargento II", d: "Llegó a Sargento II.", tier: "legend", I: Crown, ok: (_n, r) => lvl(r) >= 7 },
-  { k: "fnd", t: "Fundador", d: "Creó la terminal.", tier: "mitico", I: Gem, ok: n => n === FOUNDER },
-  /* únicos: solo aparecen en el perfil de su dueño */
-  { k: "bomba", t: "Mister Bomba", d: "Explotó más de 3 veces.", tier: "legend", I: Bomb, ok: n => n === "Evelyn Molina", only: "Evelyn Molina" },
-  { k: "banana", t: "Bananita", d: "Logro exclusivo de Aniita.", tier: "mitico", I: BananaI as unknown as LucideIcon, ok: n => n === "Evelyn Molina", only: "Evelyn Molina" },
-  { k: "wc", t: "Watch Commander", d: "Fue Watch Commander durante 4 días.", tier: "legend", I: WatchI as unknown as LucideIcon, ok: n => n === "Liam Campbell", only: "Liam Campbell" },
-  { k: "tr", t: "Turco", d: "Logro exclusivo de TURKO.", tier: "mitico", I: TurkeyI as unknown as LucideIcon, ok: n => n === "Liam Campbell", only: "Liam Campbell" },
-];
-const HEX = "[clip-path:polygon(50%_0,93%_25%,93%_75%,50%_100%,7%_75%,7%_25%)]";
-function Medal({ tier, I, on = true, size = 56 }: { tier: Tier; I: LucideIcon; on?: boolean; size?: number }) {
-  const T = TIER[tier], holo = on && tier === "mitico";
-  return (
-    <span className={cn("relative grid shrink-0 place-items-center", !on && "opacity-35 grayscale")} style={{ width: size, height: size }}>
-      {on && tier !== "comun" && !holo && <span className="absolute inset-0 rounded-full blur-md" style={{ background: T.bg, opacity: 0.55 }} />}
-      {holo && <span className="holo absolute -inset-1 rounded-full opacity-60 blur-md" />}
-      {/* mítico: lámina holográfica iridiscente; el resto, metal de su color */}
-      <span className={cn("absolute inset-0 overflow-hidden", HEX, holo && "holo")} style={holo ? undefined : { background: T.bg }} />
-      <span className={cn("absolute inset-[3px]", HEX, holo ? "bg-white/25 dark:bg-slate-950/25" : "bg-slate-950/55")} />
-      {on ? <I className="relative drop-shadow" style={{ width: size * 0.46, height: size * 0.46, color: holo ? "#3b0764" : T.c }} /> : <Lock className="relative text-slate-300" style={{ width: size * 0.34, height: size * 0.34 }} />}
-    </span>);
 }
 
 /* ---------- editor del «acerca de» con formato (mismo formato que Discord) ---------- */
@@ -154,7 +99,7 @@ const Empty = ({ children }: { children: ReactNode }) => <p className="py-6 text
 export function Perfil() {
   useStoreVersion(); useTick();
   const me = useMe(), { toast, confirm } = useFeedback();
-  const [who, setWho] = useState(() => takePreset<{ n: string }>()?.n || me.n), own = who === me.n, ag = findAgent(who), r = ag?.r || "";
+  const [who, setWho] = useState(() => { const n = takePreset<{ n: string }>()?.n; return n && profOk(n) ? n : me.n; }), own = who === me.n, ag = findAgent(who), r = ag?.r || "";
   const P = LS.json<UProf>(K.prof(who), {}), ban = LS.get(K.ban(who)) || "", coms = LS.json<UCom[]>(K.com(who), []), vis = LS.json<UVis>(K.vis(who), { c: 0, l: [] }), fol = LS.json<string[]>(K.fol(who), []);
   const prof = profFull(who), cond = ((prof.cond || []) as unknown as Award[]).slice().sort((a, b) => (b.f || "").localeCompare(a.f || ""));
   const [tab, setTab] = useState<"act" | "log" | "com" | "pj">("com"), [ed, setEd] = useState(false), [bio, setBio] = useState(P.bio || ""), [txt, setTxt] = useState(""), fBan = useRef<HTMLInputElement>(null), fPic = useRef<HTMLInputElement>(null);
@@ -168,12 +113,16 @@ export function Perfil() {
   const following = fol.includes(me.n), idx = ACC.names.indexOf(who), id = idx >= 0 ? idx + 1 : 0;
   /* red social: a quién sigue cada uno y sugerencias para mí (como en Instagram) */
   const [md, setMd] = useState<"" | "fol" | "sig" | "sug">("");
-  const folOf = (n: string) => LS.json<string[]>(K.fol(n), []), sigOf = (n: string) => ACC.names.filter(x => x !== n && folOf(x).includes(n));
+  const NAMES = ACC.names.filter(n => profOk(n)); /* perfiles en BETA: solo las cuentas habilitadas */
+  const folOf = (n: string) => LS.json<string[]>(K.fol(n), []), sigOf = (n: string) => NAMES.filter(x => x !== n && folOf(x).includes(n));
   const sig = sigOf(who), mySig = new Set(sigOf(me.n));
-  const toggleFol = (n: string) => { const f = folOf(n), on = f.includes(me.n); LS.setJSON(K.fol(n), on ? f.filter(x => x !== me.n) : [...f, me.n]); if (!on) toast(`Ahora seguís a ${nickOf(n)}`); };
+  /* seguir guarda también cuándo (lspdt.ufolt.<slug>) para avisarle al otro */
+  const toggleFol = (n: string) => { const f = folOf(n), on = f.includes(me.n), ft = LS.json<Record<string, number>>(K.folt(n), {});
+    LS.setJSON(K.fol(n), on ? f.filter(x => x !== me.n) : [...f, me.n]);
+    if (on) { delete ft[me.n]; LS.setJSON(K.folt(n), ft); } else { LS.setJSON(K.folt(n), { ...ft, [me.n]: Date.now() }); toast(`Ahora seguís a ${nickOf(n)}`); } };
   const sugs = (() => {
     const myDiv = new Set((profFull(me.n).div || []) as string[]), meFol = folOf(me.n);
-    return ACC.names.filter(n => n !== me.n && !mySig.has(n)).map(n => {
+    return NAMES.filter(n => n !== me.n && !mySig.has(n)).map(n => {
       const dv = ((profFull(n).div || []) as string[]).filter(d => myDiv.has(d)), mut = [...mySig].filter(x => folOf(n).includes(x));
       const why = meFol.includes(n) ? "Te sigue" : mut.length ? `Lo sigue ${nickOf(mut[0])}${mut.length > 1 ? ` y ${mut.length - 1} más` : ""}` : dv.length ? `También en ${dv[0]}` : "Sugerencia para ti";
       return { n, why, sc: (meFol.includes(n) ? 6 : 0) + mut.length * 3 + dv.length * 2 + Math.min(3, folOf(n).length / 3) };
@@ -228,7 +177,7 @@ export function Perfil() {
               <span key={l} className="flex items-baseline gap-1.5">{i > 0 && <span className="mr-2.5 text-slate-300 dark:text-slate-700">|</span>}<span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{l}</span><b className="font-semibold">{v}</b></span>))}</div>
           </div>
           <div className="flex gap-2">
-            {!own && <Button size="sm" variant={following ? "outline" : "primary"} icon={following ? <UserCheck /> : <UserPlus />} onClick={() => { LS.setJSON(K.fol(who), following ? fol.filter(x => x !== me.n) : [...fol, me.n]); }}>{following ? "Siguiendo" : "Seguir"}</Button>}
+            {!own && <Button size="sm" variant={following ? "outline" : "primary"} icon={following ? <UserCheck /> : <UserPlus />} onClick={() => toggleFol(who)}>{following ? "Siguiendo" : "Seguir"}</Button>}
             {!own && <Button size="sm" variant="outline" onClick={() => setWho(me.n)}>Ir a mi perfil</Button>}
           </div>
         </div>
