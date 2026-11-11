@@ -12,7 +12,7 @@ export const FB_ST: Record<FbSt, { l: string; I: LucideIcon; c: string }> = {
 };
 /* los tickets viejos usaban «hecho» */
 export const fbSt = (s?: string): FbSt => (s === "hecho" ? "fix" : s && s in FB_ST ? (s as FbSt) : "pend");
-export function FbBadge({ s, className }: { s?: string; className?: string }) {
+function FbBadge({ s, className }: { s?: string; className?: string }) {
   const x = FB_ST[fbSt(s)];
   return <span className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-semibold", className)} style={{ color: x.c, borderColor: x.c + "66", background: x.c + "1a" }}><x.I className="size-3" />{x.l}</span>;
 }
@@ -20,7 +20,7 @@ export function FbBadge({ s, className }: { s?: string; className?: string }) {
 /* los resúmenes viejos traían «[foto]» por cada imagen */
 export const fbX = (x?: string) => { const s = x || "", n = (s.match(/\[foto\]/g) || []).length; if (!n) return s || "(solo fotos)";
   const t = s.replace(/\[foto\]/g, " ").replace(/\s+/g, " ").trim(); return `[📷 ${n} ${n === 1 ? "foto" : "fotos"}]${t ? " " + t : ""}`; };
-export type MyFb = { id: string; t: number; u: number; st: string; x: string; nota?: string };
+type MyFb = { id: string; t: number; u: number; st: string; x: string; nota?: string };
 const SEEN = "lspdt.next.fbSeen";
 const getSeen = () => { try { return Number(localStorage.getItem(SEEN) || 0); } catch { return 0; } };
 /* mis feedback (del servidor), se actualiza cada 2 minutos y al volver a la pestaña */

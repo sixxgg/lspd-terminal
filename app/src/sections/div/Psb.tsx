@@ -16,7 +16,7 @@ import { cn } from "@/lib/cn";
 type Falta = { id: string; g: string; n: string; d: string };
 const FALTAS_DEF: Falta[] = (FALTAS_RAW as [string, string, string][]).map((f, i) => ({ id: "d" + i, g: f[0], n: f[1], d: f[2] }));
 const GORD: Record<string, number> = { leve: 0, grave: 1, "muy grave": 2 };
-export const getFaltas = () => (LS.json<Falta[] | null>("lspdt.faltas", null) || FALTAS_DEF.map(f => ({ ...f }))).slice().sort((a, b) => GORD[a.g] - GORD[b.g] || a.n.localeCompare(b.n, "es"));
+const getFaltas = () => (LS.json<Falta[] | null>("lspdt.faltas", null) || FALTAS_DEF.map(f => ({ ...f }))).slice().sort((a, b) => GORD[a.g] - GORD[b.g] || a.n.localeCompare(b.n, "es"));
 const G_CLS: Record<string, string> = { leve: "bg-sky-500/10 text-sky-700 dark:text-sky-300", grave: "bg-amber-500/15 text-amber-700 dark:text-amber-300", "muy grave": "bg-red-500/10 text-red-700 dark:text-red-300" };
 const GL: Record<string, string> = { leve: "leves", grave: "graves", "muy grave": "muy graves" };
 const PSB_DIVS: Record<string, string> = { IAD: "División de Asuntos Internos (IAD)", FID: "División de Investigación del Uso de la Fuerza (FID)", SOD: "División de Operaciones Especiales (SOD)" };

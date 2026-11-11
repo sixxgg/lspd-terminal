@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.9.3";
+export const APP_VERSION = "1.9.4";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,15 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "1.9.4", f: "11/11/2026", t: "Invitaciones, recuperación y pizarra en vivo", items: [
+    "Registro solo con código de invitación: cualquier agente con cuenta lo genera desde Mi cuenta (un solo uso, vence a las 72 h).",
+    "Códigos de recuperación: se entregan al crear la cuenta (y se regeneran en Mi cuenta) para restablecer la contraseña desde «¿Olvidaste la contraseña?».",
+    "Pizarra en vivo: se ven los cursores de los demás con su nombre y lo que mueven o dibujan, al instante (también en el enlace compartido).",
+    "Pizarra: grosor de trazo, goma, botón Limpiar y herramientas con nombre.",
+    "METRO: en la entrevista de instructor se ve claro cuánto vale cada bloque (x1, x2, x3).",
+    "Agentes: las divisiones y el indicativo salen solos de los rosters (METRO, SWAT, A.S.D, K-9, PSB, RTD).",
+    "Revisión y limpieza de código.",
+  ] },
   { v: "1.9.3", f: "11/11/2026", t: "Supervisores", items: [
     "Supervisión pasa a llamarse Supervisores.",
     "Las tareas que tu rango no habilita quedan con candado rojo, también para los administradores.",

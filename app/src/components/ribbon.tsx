@@ -11,7 +11,7 @@ const DEV: Record<string, JSX.Element> = {
 };
 
 /* franjas de servicio: galones diagonales blancos */
-export function ServiceBars({ n, className }: { n: number; className?: string }) {
+function ServiceBars({ n, className }: { n: number; className?: string }) {
   const w = 18 / Math.max(1, n);
   return <svg viewBox="0 0 24 24" className={cn("h-7 w-7", className)} aria-hidden>{Array.from({ length: n }, (_, i) => { const x = 3 + i * w + w / 2;
     return <path key={i} d={`M${(x - 2.4).toFixed(1)} 19 L${(x + 2.4).toFixed(1)} 5`} stroke="#eef2f7" strokeWidth={Math.min(2.6, w * 0.7)} strokeLinecap="round" />; })}</svg>;

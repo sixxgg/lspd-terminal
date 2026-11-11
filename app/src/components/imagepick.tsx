@@ -51,7 +51,7 @@ export function imgSpec(max: number, alpha?: boolean, wide?: boolean) {
   const px = wide ? `${max}×${Math.round(max * 9 / 16)} px · 16:9` : `${max}×${max} px · cuadrada`;
   return { px, fmt: alpha ? "PNG o WebP transparente" : "JPG, PNG o WebP", peso: "hasta 3 MB" };
 }
-export function ImgSpec({ max, alpha, wide, className }: { max: number; alpha?: boolean; wide?: boolean; className?: string }) {
+function ImgSpec({ max, alpha, wide, className }: { max: number; alpha?: boolean; wide?: boolean; className?: string }) {
   const s = imgSpec(max, alpha, wide);
   return <div className={cn("flex flex-wrap items-center justify-center gap-1.5 text-[11px]", className)}>
     {[s.px, s.fmt, s.peso].map(x => <span key={x} className="whitespace-nowrap rounded-md bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{x}</span>)}

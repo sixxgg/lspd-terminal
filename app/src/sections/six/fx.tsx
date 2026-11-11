@@ -39,10 +39,10 @@ const SKULL = String.raw`        _____________
 const LINES = [
   "[ OK ] Cerrando la sesión de la MDT…", "[ OK ] Sesión de la MDT suspendida", "[ .. ] Montando volumen privado /dev/six0",
   "[ OK ] Clave AES-256-GCM aceptada", "[ .. ] Abriendo canal seguro", "[ OK ] Canal establecido (latencia: 18 ms)",
-  "[ .. ] Verificando la huella del operador", "[ OK ] Operador reconocido: six", "[ .. ] Sincronizando datos privados",
+  "[ .. ] Verificando la huella del operador", "[ OK ] Operador reconocido: {n}", "[ .. ] Sincronizando datos privados",
   "[ OK ] Módulos cargados: administración · equipo de ilícitos", "[ OK ] Aplicando tema y efectos",
 ];
-export function Boot({ short, onDone }: { short?: boolean; onDone: () => void }) {
+export function Boot({ short, onDone, name = "six" }: { short?: boolean; onDone: () => void; name?: string }) {
   const cb = useRef(onDone); cb.current = onDone;
   const [ph, setPh] = useState<"off" | "con">("off"), [n, setN] = useState(0), [dump, setDump] = useState<string[]>([]);
   const step = short ? 240 : 720, total = LINES.length + (short ? 4 : 3);
@@ -59,11 +59,11 @@ export function Boot({ short, onDone }: { short?: boolean; onDone: () => void })
         <div className="six-con relative grid h-full grid-rows-[auto_1fr_auto] gap-5 p-6 font-mono text-[13px] text-six sm:p-10">
           <div className="flex items-end gap-6">
             <pre className={`six-skull text-[10px] leading-[1.15] sm:text-[14px] ${ok ? "on" : ""}`}>{SKULL}</pre>
-            <p className="hidden pb-2 text-xs text-six/70 sm:block">six@terminal:~# ./acceso --privado</p>
+            <p className="hidden pb-2 text-xs text-six/70 sm:block">{name}@terminal:~# ./acceso --privado</p>
           </div>
           <div className="grid min-h-0 gap-6 md:grid-cols-[1fr_20rem]">
             <div className="space-y-1 overflow-hidden">
-              {LINES.slice(0, n).map((l, i) => <p key={i} className={l.startsWith("[ ..") ? "opacity-60" : ""}>{l}</p>)}
+              {LINES.slice(0, n).map(l => l.replace("{n}", name)).map((l, i) => <p key={i} className={l.startsWith("[ ..") ? "opacity-60" : ""}>{l}</p>)}
               {ok && <p className="six-granted mt-4 text-xl font-bold tracking-[0.3em] text-white">ACCESO CONCEDIDO</p>}
               <span className="six-cur">█</span>
             </div>

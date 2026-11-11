@@ -4,7 +4,7 @@ import { Input, Select } from "@/components/ui";
 import { VEH_CATS, brandsOf, findModel, modelsOf } from "@/lib/vehicles";
 import { cn } from "@/lib/cn";
 
-export type VehVal = { cat?: string; mk?: string; md?: string; mo?: string };
+type VehVal = { cat?: string; mk?: string; md?: string; mo?: string };
 
 export function VehPick({ v, onChange, police, className }: { v: VehVal; onChange: (p: Required<Pick<VehVal, "cat" | "mk" | "md" | "mo">>) => void; police?: boolean; className?: string }) {
   const id = useId(), cat = v.cat || "", mk = v.mk || "", md = v.md ?? v.mo ?? "";

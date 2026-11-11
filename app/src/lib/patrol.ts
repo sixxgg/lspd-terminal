@@ -3,12 +3,12 @@ import { LS } from "./store";
 import { PATROL_CARS } from "./onx";
 /* VEH: los 4 vehículos fijos de antes (siguen sirviendo para leer revisiones viejas y la planilla de Google).
    Ahora cada agente lleva los patrullas ONX que se le revisaron: r.v = { [spawn]: Cell } */
-export const VEH: [string, string][] = [["stx", "Bravado Buffalo STX"], ["scout", "Vapid Scout"], ["mary", "Mary"], ["int", "Interceptor"]];
+const VEH: [string, string][] = [["stx", "Bravado Buffalo STX"], ["scout", "Vapid Scout"], ["mary", "Mary"], ["int", "Interceptor"]];
 export { PATROL_CARS };
 export const vName = (k: string) => VEH.find(v => v[0] === k)?.[1] || PATROL_CARS.find(v => v[0] === k)?.[1] || k;
 export const vehOf = (r: PRow) => Object.keys(r.v);
 export type EqItem = { n: string; q: number };
-export const EQ_DEF: EqItem[] = ([["Esposas", 2], ["Chalecos", 2], ["Radios", 2], ["Barreras", 10], ["Pinchos", 10], ["Conos", 10],
+const EQ_DEF: EqItem[] = ([["Esposas", 2], ["Chalecos", 2], ["Radios", 2], ["Barreras", 10], ["Pinchos", 10], ["Conos", 10],
   ["Escopeta reglamentaria + x8 cartuchos de escopeta", 1], ["Cartuchos de escopeta extra", 16], ["Pistola de bengalas + x1 cartucho de bengala", 1], ["Cartuchos de bengala extra", 2],
   ["Cargadores de pistola de combate", 6], ["Bolsas de evidencias", 5], ["Alcoholímetro", 1], ["Kit de huellas", 1], ["Botiquín", 1], ["Kit IFAK", 1], ["GSR", 5]] as [string, number][]).map(([n, q]) => ({ n, q }));
 export const EQ_KEY = "lspdt.equip2";
@@ -23,7 +23,7 @@ export type PRow = { n: string; r: string; p?: string; v: Record<string, Cell> }
 export type Patrol = { fecha: string; rows: PRow[]; nota?: string };
 export type PHist = { id: string; fecha: string; t: number; por: { n: string; r: string }; nota: string; rows: PRow[] };
 export const VST: Record<string, string> = { "": "Sin revisar", ok: "Preparado", no: "No preparado", na: "No asignado" };
-export const missTxt = (m: Miss) => (typeof m === "string" ? m : `${m.n} (${m.h}/${m.q}, faltan ${m.q - m.h})${m.o ? ` [${m.o}]` : ""}`);
+const missTxt = (m: Miss) => (typeof m === "string" ? m : `${m.n} (${m.h}/${m.q}, faltan ${m.q - m.h})${m.o ? ` [${m.o}]` : ""}`);
 export const missOf = (c: Cell) => [...(c.m || []).map(missTxt), ...(c.o ? [c.o] : [])];
 export const vcount = (rows: PRow[], s: string) => rows.reduce((n, r) => n + vehOf(r).filter(k => (r.v[k]?.s || "") === s).length, 0);
 export const pfoto = (id: string) => LS.get("lspdt.pfoto." + id) || "";
@@ -44,7 +44,7 @@ export function patReport(rec: { fecha: string; rows: PRow[]; nota?: string }, b
   return t.trim();
 }
 /* límite del servidor: 3 MB por imagen. Se achica y comprime sola hasta entrar (y nunca se sube algo que el servidor rechace) */
-export const IMG_MAX_BYTES = 2.8e6;
+const IMG_MAX_BYTES = 2.8e6;
 const b64Size = (d: string) => Math.round((d.length - d.indexOf(",") - 1) * 0.75);
 export function readImg(file: File, max: number, keepAlpha = false): Promise<string> {
   return new Promise(res => {

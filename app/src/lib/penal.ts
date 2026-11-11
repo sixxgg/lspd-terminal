@@ -4,7 +4,7 @@ import { CIRC, EV_T, INF_EST, INF_FZ, INF_ROLES, INF_TIPOS, PENAL_DEF, PEN_CATS,
 
 export type Art = { a: string; t: string; d: string; c: string; k?: "cp" | "adm"; g?: string; m?: number; p?: number; pt?: number; v?: number };
 export { CIRC, EV_T, INF_EST, INF_FZ, INF_ROLES, INF_TIPOS, PEN_CATS };
-export const PENAL_BASE = PENAL_DEF as Art[];
+const PENAL_BASE = PENAL_DEF as Art[];
 export const artCmp = (x: Art, y: Art) => { const A = x.a.split(".").map(Number), B = y.a.split(".").map(Number); return A[0] - B[0] || (A[1] || 0) - (B[1] || 0) || (A[2] || 0) - (B[2] || 0); };
 /* el catálogo oficial (apartado Legal) es la única fuente: lo guardado antes en lspdt.penal ya no se usa */
 export function getPenal(): Art[] { return PENAL_BASE.slice(); }
@@ -30,7 +30,7 @@ export async function fileText(f: File): Promise<string> {
 }
 
 /* ---------- informe ---------- */
-export type Charge = { a: string; m: "" | "at" | "ag" };
+type Charge = { a: string; m: "" | "at" | "ag" };
 export type Suj = { n: string; id: string; cg: Charge[]; p?: string };
 export type Unid = { n: string; r: string; u?: string; ic?: boolean };
 /* el mando (Incident Commander) es una marca aparte del rol; los informes viejos lo tenían como rol */
@@ -49,7 +49,7 @@ export const VEH_EST = ["Sin daños", "Daños leves", "Daños graves", "Siniestr
 export const INF_SECS: [string, string][] = [["motivo", "Motivo"], ["hechos", "Hechos"], ["unid", "Unidades"], ["suj", "Sujetos"], ["veh", "Vehículos"], ["fz", "Uso de la fuerza"], ["ev", "Evidencia"], ["cg", "Cargos"], ["proc", "Detención y procesamiento"]];
 export type Ev = { s: string; t: string; cat?: string; mk?: string; md?: string; mo?: string; co?: string; mat?: string; d?: string };
 export type Inf = { fecha: string; hora: string; ui: string; ux: string; uf: string; tipos: string[]; est: string; motivo: string; hechos: string; unid: Unid[]; suj: Suj[]; fz: string; fzd: string; ev: Ev[]; veh?: Veh[]; off?: string[]; extra: string; id: string; por?: string; t?: number; texto?: string; edit?: string; et?: number };
-export const SEP = "━━━━━━━━━━━━━━━━━━━━━━━";
+const SEP = "━━━━━━━━━━━━━━━━━━━━━━━";
 const rkAb = (r: string) => RK_AB[r] || rankES(r);
 export const agTag = (n: string) => { const a = findAgent(n); return a ? `${rkAb(a.r)} ${a.n}${a.p ? ` [${a.p}]` : ""}` : n; };
 const modTxt = (m?: string) => (m === "at" ? "atenuado" : m === "ag" ? "agravado" : "");
@@ -58,7 +58,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 export const infNew = (me?: string): Inf => { const d = new Date(); return { fecha: `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`, hora: `${pad(d.getHours())}:${pad(d.getMinutes())}`, ui: "", ux: "", uf: "Comisaría de Mission Row", tipos: [], est: "Incidente finalizado", motivo: "", hechos: "",
   unid: me ? [{ n: me, r: "Unidad de apoyo" }] : [], suj: [{ n: "", id: "", cg: [] }], fz: "N/A", fzd: "", ev: [], veh: [], off: [], extra: "", id: "" }; };
 
-export const unitTag = (u: Unid) => (u.n ? agTag(u.n) + (u.u ? ` (${u.u})` : "") : u.u || "");
+const unitTag = (u: Unid) => (u.n ? agTag(u.n) + (u.u ? ` (${u.u})` : "") : u.u || "");
 export function infText(A: Inf, me: string, P = getPenal()) {
   const red = me ? agTag(A.por || me) : "—", S = A.suj.filter(s => s.n.trim()), L: string[] = [], p = (...x: string[]) => L.push(...x);
   const on = (k: string) => !(A.off || []).includes(k), sec = (t: string) => p("", SEP, `**${t}**`, "");
@@ -117,7 +117,7 @@ function infProc(A: Inf, S: Suj[], tt: (a: string) => string) {
   if (A.est === "Incidente finalizado") t += `\n\nConcluidas las actuaciones policiales, el incidente queda finalizado con ${pl ? "los detenidos" : "el detenido"} bajo custodia.`;
   return t;
 }
-export const isDMYValid = (s: string) => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s); if (!m) return false; const d = new Date(+m[3], +m[2] - 1, +m[1]); return d.getMonth() === +m[2] - 1 && d.getDate() === +m[1]; };
+const isDMYValid = (s: string) => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s); if (!m) return false; const d = new Date(+m[3], +m[2] - 1, +m[1]); return d.getMonth() === +m[2] - 1 && d.getDate() === +m[1]; };
 export function infErrs(A: Inf) {
   const e: string[] = []; if (!isDMYValid(A.fecha)) e.push("fecha (dd/mm/aaaa)"); if (!/^\d{1,2}:\d{2}$/.test(A.hora)) e.push("hora (hh:mm)");
   const on = (k: string) => !(A.off || []).includes(k);

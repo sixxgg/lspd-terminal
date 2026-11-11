@@ -24,7 +24,7 @@ const DVC_DEF: Record<string, [string, string, string]> = { "Recruitment and Tra
   "Underwater Dive Unit": ["#b7985d", "#f0ecde", "#0d0d0c"], "Major Crimes Division": ["#d4a937", "#dbd5c0", "#141216"], "High Tech Crime Unit": ["#c9a24a", "#e3cf9f", "#0e0e12"],
   "Gang and Narcotics Division": ["#3f8f3a", "#d4bd7a", "#121412"], "Air Support Division": ["#1b8cb9", "#e2c66a", "#0b0e15"], "K-9 Division": ["#1f8f4a", "#e6c65a", "#0b1a12"], "Professional Standards Bureau": ["#2f5bd3", "#e6c65a", "#0b1f3a"] };
 const DVC: Record<string, [string, string, string]> = (() => { try { return JSON.parse(localStorage.getItem("lspdt.dvc") || "{}"); } catch { return {}; } })();
-export const hexRgb = (h: string) => { const x = h.replace("#", ""); const n = parseInt(x.length === 3 ? x.split("").map(c => c + c).join("") : x, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+const hexRgb = (h: string) => { const x = h.replace("#", ""); const n = parseInt(x.length === 3 ? x.split("").map(c => c + c).join("") : x, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 const busy = new Set<string>(), subs = new Set<() => void>();
 function loadColors(src: string) {
   if (!src || DVC["2:" + src] || busy.has(src)) return; busy.add(src);
@@ -46,7 +46,7 @@ function loadColors(src: string) {
   } catch { /* imagen sin CORS */ } };
   img.src = src;
 }
-export function divColors(d: string): [string, string, string] {
+function divColors(d: string): [string, string, string] {
   const def = !LS.get("lspdt.divlogo." + d) && DVC_DEF[d]; if (def) return def;
   const src = divEmblem(d); if (src && DVC["2:" + src]) return DVC["2:" + src];
   if (src) loadColors(src);

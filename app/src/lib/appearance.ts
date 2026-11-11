@@ -68,8 +68,8 @@ const lsSet = (k: string, v: string | null) => { try { if (v == null) localStora
 let deptUi: Record<string, string> = {};
 export const setDeptUi = (u: Record<string, string>) => { const t = JSON.stringify(u); if (t !== JSON.stringify(deptUi)) { deptUi = u; applyAppearance(); } };
 export const deptUiNow = () => deptUi;
-export type Pref = { skin: string; skinOwn: boolean; acc: string; crt: string; crtI: number; frame: boolean; neon: boolean; font: string; head: string; cur: string; curOwn: boolean; nav: "top" | "side" };
-export function pref(): Pref {
+type Pref = { skin: string; skinOwn: boolean; acc: string; crt: string; crtI: number; frame: boolean; neon: boolean; font: string; head: string; cur: string; curOwn: boolean; nav: "top" | "side" };
+function pref(): Pref {
   const s = lsGet("lspdt.theme"), old = lsGet("lspdt.next.theme");
   const skin = s && SKINS[s] ? s : SKINS[deptUi.theme] ? deptUi.theme : old === "light" ? "nuevoc" : "nuevo";
   const c = lsGet("lspdt.crt"), i = parseInt(lsGet("lspdt.crtI") || "");

@@ -4,7 +4,7 @@
 
 const isObj = x => x !== null && typeof x === "object" && !Array.isArray(x);
 
-export function stable(x) {
+function stable(x) {
   if (Array.isArray(x)) return "[" + x.map(stable).join(",") + "]";
   if (isObj(x)) return "{" + Object.keys(x).sort().map(k => JSON.stringify(k) + ":" + stable(x[k])).join(",") + "}";
   return JSON.stringify(x === undefined ? null : x);
@@ -35,7 +35,7 @@ function mergeArr(base, mine, cur) {
   return out;
 }
 
-export function merge3(base, mine, cur) {
+function merge3(base, mine, cur) {
   if (eq(mine, base)) return cur;
   if (eq(cur, base) || eq(cur, mine)) return mine;
   if (isObj(mine) && isObj(cur)) {

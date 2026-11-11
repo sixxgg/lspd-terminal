@@ -2,11 +2,11 @@
 import GAME from "@/data/veh.json";
 import { ONX } from "./onx";
 
-export type VehModel = { b: string; m: string; n: string; s: string; c: string };  // marca, modelo, nombre completo, spawn, categoría
+type VehModel = { b: string; m: string; n: string; s: string; c: string };  // marca, modelo, nombre completo, spawn, categoría
 
-export const POLICE_MODELS: VehModel[] = ONX.map(([s, m]) => ({ b: "LSPD (pack ONX)", m, n: m, s, c: "Policial" }));
-export const GAME_MODELS: VehModel[] = (GAME as [string, string, string, string][]).map(([b, m, s, c]) => ({ b, m, n: b ? `${b} ${m}` : m, s, c }));
-export const ALL_MODELS = [...POLICE_MODELS, ...GAME_MODELS];
+const POLICE_MODELS: VehModel[] = ONX.map(([s, m]) => ({ b: "LSPD (pack ONX)", m, n: m, s, c: "Policial" }));
+const GAME_MODELS: VehModel[] = (GAME as [string, string, string, string][]).map(([b, m, s, c]) => ({ b, m, n: b ? `${b} ${m}` : m, s, c }));
+const ALL_MODELS = [...POLICE_MODELS, ...GAME_MODELS];
 export const VEH_CATS = [...new Set(ALL_MODELS.map(x => x.c))].sort((a, b) => (a === "Policial" ? -1 : b === "Policial" ? 1 : a.localeCompare(b, "es")));
 const low = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 /* busca un modelo por nombre completo, por modelo solo o por código de spawn */

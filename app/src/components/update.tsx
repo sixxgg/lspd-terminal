@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { RefreshCw, X } from "lucide-react";
 
 /* busca una versión nueva publicada y ofrece actualizar (o se actualiza sola al volver a la pestaña) */
-export const reloadFresh = () => { location.replace("/next/?v=" + Date.now().toString(36) + location.hash); };
+const reloadFresh = () => { location.replace("/next/?v=" + Date.now().toString(36) + location.hash); };
 export function UpdateBar() {
   const [nueva, setNueva] = useState(false), [hide, setHide] = useState(false);
   useEffect(() => {

@@ -9,10 +9,11 @@ import { plainOf, safeHtml } from "@/lib/richtext";
 import { ago } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 
-export type FbTicket = { id: string; by: string; who?: string; no?: number; t: number; u?: number; html: string; x?: string; imgs: string[]; st: string; nota?: string };
+type FbTicket = { id: string; by: string; who?: string; no?: number; t: number; u?: number; html: string; x?: string; imgs: string[]; st: string; nota?: string };
 /* nombre OOC: six (sin asociarlo al personaje) o «Usuario N° X» */
 export const whoOf = (x: FbTicket) => (x.who === "six" || (!x.who && x.by === "Ryan Westbrook") ? "six" : x.who || x.by);
-export const FB_PREFIX = "lspdt.six.fb.", FB_SEEN = "lspdt.six.fbSeen";
+const FB_PREFIX = "lspdt.six.fb.";
+export const FB_SEEN = "lspdt.six.fbSeen";
 export const fbList = (): FbTicket[] => LS.keys(FB_PREFIX).map(k => LS.ro<FbTicket | null>(k, null)).filter((x): x is FbTicket => !!x && !!x.id && x.st !== "elim")
   .map(x => (x.x != null ? x : { ...x, x: (x.imgs.length ? `[📷 ${x.imgs.length} ${x.imgs.length === 1 ? "foto" : "fotos"}] ` : "") + plainOf(x.html.replace(/<img[^>]*>/gi, "")).replace(/\s+/g, " ").slice(0, 160) })).sort((a, b) => b.t - a.t);
 const ORDER: FbSt[] = ["pend", "curso", "add", "fix", "rej", "desc"];

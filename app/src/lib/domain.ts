@@ -7,7 +7,7 @@ export const LEVEL: Record<string, number> = {
   "Sergeant II": 7, "Sergeant I": 6, "Detective III": 5.5, "Detective II": 5, "Detective I": 4.5,
   "Police Officer III+": 4, "Police Officer III": 3, "Police Officer II": 2, "Police Officer I": 1, "Administrativo": 0,
 };
-export const RANK_ES: Record<string, string> = {
+const RANK_ES: Record<string, string> = {
   "Chief of Police": "Jefe de Policía", "Assistant Chief": "Jefe Adjunto", "Deputy Chief": "Jefe Supervisor", "Commander": "Comandante",
   "Captain": "Capitán", "Lieutenant": "Teniente I", "Sergeant II": "Sargento II", "Sergeant I": "Sargento I", "Detective III": "Detective III",
   "Detective II": "Detective II", "Detective I": "Detective I", "Police Officer III+": "Oficial III+", "Police Officer III": "Oficial III",
@@ -77,7 +77,7 @@ export const LUGARES: string[] = [...gta.zonas, ...gta.calles];
 export const DIVISIONES = ["Patrulla", "Detective Bureau", "Metropolitan Division", "Air Support Division", "K-9 Division", "High Speed Interception Unit",
   "Recruitment and Training Division", "Professional Standards Bureau", "Administration Services Bureau"];
 
-export const pad2 = (n: number) => String(n).padStart(2, "0");
+const pad2 = (n: number) => String(n).padStart(2, "0");
 export const hoyDMY = () => { const d = new Date(); return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`; };
 export const isDMY = (s: string) => /^\d{2}\/\d{2}\/\d{4}$/.test(s);
 export const fmtDate = (t: number) => new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -116,7 +116,7 @@ export const DIVS: [string, string[]?][] = [["Detective Bureau", ["High Tech Cri
   ["Metropolitan Division", ["Special Weapons And Tactics", "Bomb Squad", "Metropolitan Drone Support Operations", "Crisis Negotiation Team", "Underwater Dive Unit"]],
   ["Air Support Division"], ["Administration Services Bureau"], ["High Speed Interception Unit"], ["Recruitment and Training Division"], ["Professional Standards Bureau"], ["K-9 Division"]];
 export const ALL_DIVS = DIVS.flatMap(d => [d[0], ...(d[1] || [])]);
-export const DIV_INFO: Record<string, [string, string]> = {
+const DIV_INFO: Record<string, [string, string]> = {
   "Detective Bureau": ["DB", "#7c3aed"], "High Tech Crime Unit": ["HTCU", "#b8975a"], "Gang and Narcotics Division": ["GND", "#3f8f3a"], "Major Crimes Division": ["MCD", "#d4a937"], "Metropolitan Division": ["METRO", "#1f6fb0"],
   "Special Weapons And Tactics": ["SWAT", "#111827"], "Bomb Squad": ["BS", "#b91c1c"], "Metropolitan Drone Support Operations": ["MDSO", "#0f766e"], "Crisis Negotiation Team": ["CNT", "#9333ea"], "Underwater Dive Unit": ["UDU", "#b7985d"],
   "Air Support Division": ["ASD", "#1b8cb9"], "Administration Services Bureau": ["ASB", "#475569"], "High Speed Interception Unit": ["HSIU", "#dc2626"], "Recruitment and Training Division": ["RTD", "#b3262a"],

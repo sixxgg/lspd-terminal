@@ -12,7 +12,7 @@ import { useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { cn } from "@/lib/cn";
 
-export type InsRole = "coord" | "inst" | "instp";
+type InsRole = "coord" | "inst" | "instp";
 const ROL: [InsRole, string, string][] = [["coord", "Coordinador", "#e6c65a"], ["inst", "Instructor", "#2fbf68"], ["instp", "Instructor en pruebas", "#8fd9a8"]];
 type Asis = "asi" | "no" | "pen";
 const AS: [Asis, string, string, string][] = [["asi", "Asistió", "✅", "#22c55e"], ["no", "No asistió", "❌", "#ef4444"], ["pen", "Pendiente", "⏳", "#f59e0b"]];

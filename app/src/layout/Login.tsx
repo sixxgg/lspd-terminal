@@ -1,15 +1,16 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { Eye, EyeOff, LogIn, UserPlus, Clock, AlertCircle, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, LogIn, UserPlus, Clock, AlertCircle, ShieldCheck, LifeBuoy, CheckCircle2 } from "lucide-react";
+import { RecCodes } from "@/components/account";
 import { Button, Checkbox, Field, Input, Segmented } from "@/components/ui";
 import { authApi } from "@/lib/api";
 import { emailOf, norm, rankES } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 
-export type PubInfo = { names: string[]; needCode: boolean; roster?: { n: string; r: string; p?: string }[]; brand?: Record<string, string> };
-type Msg = { kind: "err" | "pend" | "info"; text: string } | null;
+export type PubInfo = { names: string[]; roster?: { n: string; r: string; p?: string }[]; brand?: Record<string, string> };
+type Msg = { kind: "err" | "pend" | "ok"; text: string } | null;
 
 export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unknown }) => void }) {
-  const [tab, setTab] = useState<"in" | "up">("in");
+  const [tab, setTab] = useState<"in" | "up" | "rec">("in"), [codes, setCodes] = useState<{ rec: string[]; then: () => void } | null>(null), [rc, setRc] = useState("");
   const [u, setU] = useState(() => { try { return localStorage.getItem("lspdt.next.lastUser") || ""; } catch { return ""; } });
   const [pw, setPw] = useState(""), [pw2, setPw2] = useState(""), [code, setCode] = useState("");
   const [keep, setKeep] = useState(true), [show, setShow] = useState(false), [busy, setBusy] = useState(false);
@@ -35,13 +36,22 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
     if (reg.has(picked.n)) return setMsg({ kind: "err", text: "Ese agente ya tiene cuenta. Iniciá sesión." });
     if (pw.length < 8) return setMsg({ kind: "err", text: "La contraseña tiene que tener al menos 8 caracteres." });
     if (pw !== pw2) return setMsg({ kind: "err", text: "Las contraseñas no coinciden." });
-    if (pub.needCode && !code.trim()) return setMsg({ kind: "err", text: "Ingresá el código de registro que te pasó Capitanía." });
+    if (!code.trim()) return setMsg({ kind: "err", text: "Ingresá el código de invitación que te pasó un compañero." });
     setBusy(true);
     const r = await authApi({ a: "register", n: picked.n, pw, code, keep: true });
     setBusy(false);
-    if (r.__s === 202) { setTab("in"); setU(r.e || emailOf(picked.n)); setPw(""); setPw2(""); setMsg({ kind: "pend", text: r.msg || "" }); return; }
+    if (r.__s === 202) { setCodes({ rec: r.rec || [], then: () => { setCodes(null); setTab("in"); setU(r.e || emailOf(picked.n)); setPw(""); setPw2(""); setMsg({ kind: "pend", text: r.msg || "" }); } }); return; }
     if (r.__s !== 200) return setMsg({ kind: "err", text: r.msg || "No se pudo crear la cuenta." });
-    onDone(r as unknown as { data: unknown });
+    setCodes({ rec: r.rec || [], then: () => onDone(r as unknown as { data: unknown }) });
+  }
+  async function recover(e: FormEvent) {
+    e.preventDefault(); setMsg(null);
+    if (!u.trim() || !rc.trim()) return setMsg({ kind: "err", text: "Completá tu correo o nombre y un código de recuperación." });
+    if (pw.length < 8) return setMsg({ kind: "err", text: "La nueva contraseña tiene que tener al menos 8 caracteres." });
+    if (pw !== pw2) return setMsg({ kind: "err", text: "Las contraseñas no coinciden." });
+    setBusy(true); const r = await authApi({ a: "recover", u: u.trim(), code: rc, pw }); setBusy(false);
+    if (r.__s !== 200) return setMsg({ kind: "err", text: r.msg || "No se pudo restablecer." });
+    setTab("in"); setPw(""); setPw2(""); setRc(""); setMsg({ kind: "ok", text: `Contraseña restablecida. Te quedan ${r.left} códigos de recuperación. Ya podés ingresar.` });
   }
 
   return (
@@ -55,11 +65,25 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
             <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.2em] text-brand-600 dark:text-brand-300">Los Santos Police Department</p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight">Terminal de Mando</h1>
           </div>
+          {codes ? <div className="mt-6 space-y-4"><RecCodes codes={codes.rec} /><Button size="lg" className="w-full" onClick={codes.then}>Ya los guardé, continuar</Button></div> : <>
           <div className="mt-6 flex justify-center">
             <Segmented value={tab} onChange={v => { setTab(v); setMsg(null); }} options={[{ value: "in", label: "Iniciar sesión", icon: <LogIn /> }, { value: "up", label: "Registrarse", icon: <UserPlus /> }]} />
           </div>
 
-          {tab === "in" ? (
+          {tab === "rec" ? (
+            <form onSubmit={recover} className="mt-6 space-y-4">
+              <p className="flex items-start gap-2 text-sm text-slate-500 dark:text-slate-400"><LifeBuoy className="mt-0.5 size-4 shrink-0 text-brand-500" />Usá uno de los códigos de recuperación que guardaste al crear la cuenta (o desde Mi cuenta). Cada código sirve una sola vez.</p>
+              <Field label="Correo o nombre"><Input autoComplete="username" value={u} onChange={e => setU(e.target.value)} placeholder="nombre@sanandreas.eu" /></Field>
+              <Field label="Código de recuperación"><Input value={rc} onChange={e => setRc(e.target.value)} placeholder="XXXX-XXXX-XXXX" className="font-mono uppercase" autoComplete="off" /></Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Nueva contraseña"><Input type="password" autoComplete="new-password" value={pw} onChange={e => setPw(e.target.value)} /></Field>
+                <Field label="Repetir"><Input type="password" autoComplete="new-password" value={pw2} onChange={e => setPw2(e.target.value)} /></Field>
+              </div>
+              <MsgBox m={msg} />
+              <Button type="submit" size="lg" loading={busy} className="w-full">Restablecer contraseña</Button>
+              <button type="button" onClick={() => { setTab("in"); setMsg(null); }} className="w-full text-center text-xs font-semibold text-brand-600 hover:underline dark:text-brand-300">Volver a iniciar sesión</button>
+            </form>
+          ) : tab === "in" ? (
             <form onSubmit={login} className="mt-6 space-y-4">
               <Field label="Correo o nombre"><Input autoComplete="username" value={u} onChange={e => setU(e.target.value)} placeholder="nombre@sanandreas.eu" /></Field>
               <Field label="Contraseña">
@@ -74,6 +98,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
               <Checkbox checked={keep} onChange={setKeep} label="Mantener la sesión iniciada en este dispositivo" />
               <MsgBox m={msg} />
               <Button type="submit" size="lg" loading={busy} className="w-full">Ingresar</Button>
+              <button type="button" onClick={() => { setTab("rec"); setMsg(null); setPw(""); setPw2(""); }} className="w-full text-center text-xs font-semibold text-brand-600 hover:underline dark:text-brand-300">¿Olvidaste la contraseña?</button>
             </form>
           ) : (
             <form onSubmit={register} className="mt-6 space-y-4">
@@ -97,11 +122,11 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
                 <Field label="Contraseña"><Input type="password" autoComplete="new-password" value={pw} onChange={e => setPw(e.target.value)} /></Field>
                 <Field label="Repetir"><Input type="password" autoComplete="new-password" value={pw2} onChange={e => setPw2(e.target.value)} /></Field>
               </div>
-              {pub.needCode && <Field label="Código de registro"><Input value={code} onChange={e => setCode(e.target.value)} /></Field>}
+              <Field label="Código de invitación" hint="(te lo genera un compañero con cuenta)"><Input value={code} onChange={e => setCode(e.target.value)} placeholder="LSPD-XXXXX-XXXXX" className="font-mono uppercase" autoComplete="off" /></Field>
               <MsgBox m={msg} />
               <Button type="submit" size="lg" loading={busy} className="w-full">Crear cuenta</Button>
             </form>
-          )}
+          )}</>}
         </div>
         <p className="mt-5 text-center text-xs text-slate-400">Mission Row 10 · Uso interno</p>
       </div>
@@ -113,9 +138,10 @@ function MsgBox({ m }: { m: Msg }) {
   if (!m) return null;
   return (
     <div role="status" className={cn("flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-sm",
-      m.kind === "pend" ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+      m.kind === "ok" ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
+      : m.kind === "pend" ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
         : "border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300")}>
-      {m.kind === "pend" ? <Clock className="mt-0.5 size-4 shrink-0" /> : <AlertCircle className="mt-0.5 size-4 shrink-0" />}<span>{m.text}</span>
+      {m.kind === "ok" ? <CheckCircle2 className="mt-0.5 size-4 shrink-0" /> : m.kind === "pend" ? <Clock className="mt-0.5 size-4 shrink-0" /> : <AlertCircle className="mt-0.5 size-4 shrink-0" />}<span>{m.text}</span>
     </div>
   );
 }

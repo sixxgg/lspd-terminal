@@ -17,14 +17,14 @@ import { Psb, dcIdOf } from "./Psb";
 import { T1080 } from "@/sections/sup/T1080";
 import { Instrucciones } from "./Instrucciones";
 const MetroExam = lazy(() => import("./Metro").then(m => ({ default: m.MetroExam })));
-export const Lazy = ({ children }: { children: React.ReactNode }) => <Suspense fallback={<div className="grid min-h-[30vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{children}</Suspense>;
+const Lazy = ({ children }: { children: React.ReactNode }) => <Suspense fallback={<div className="grid min-h-[30vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{children}</Suspense>;
 
 /* METRO: indicativo de radio de cada integrante */
 const callOf = (n: string) => ({ ...MD_CALLS, ...LS.json<Record<string, string>>("lspdt.mdCalls", {}) })[n] || "";
 /* K-9: perro de cada handler y su especialidad */
-export const K9_ESP = ["Armas", "Drogas", "Explosivos", "Búsqueda", "Dinero"];
+const K9_ESP = ["Armas", "Drogas", "Explosivos", "Búsqueda", "Dinero"];
 type Dog = { dog: string; esp: string };
-export const k9Dogs = () => LS.json<Record<string, Dog>>("lspdt.k9Dogs", {});
+const k9Dogs = () => LS.json<Record<string, Dog>>("lspdt.k9Dogs", {});
 function DogEd({ n, can }: { n: string; can: boolean }) {
   const d = k9Dogs()[n] || { dog: "", esp: "" }, { toast } = useFeedback();
   const save = (p: Partial<Dog>) => { const M = k9Dogs(), x = { ...d, ...p }; if (x.dog === d.dog && x.esp === d.esp) return; if (!x.dog && !x.esp) delete M[n]; else M[n] = x; LS.setJSON("lspdt.k9Dogs", M); toast("K-9 guardado"); };
@@ -53,14 +53,14 @@ function uText(k: UnitKey, F: Partial<F> & { ag: string[]; mo: string }) {
 }
 const newF = (k: UnitKey, me: string): F => { const u = UNITS[k]; return { ag: uMap(k)[me] ? [me] : [], veh: u.veh ? u.veh.o[0][0] : "", mat: "", mo: u.mo?.[0] || "", mox: "", perm: "", por: "", dog: "", zona: "" }; };
 
-export const EXAMS: [string, string, string][] = [["EVAL-INS-01", "Instructor de vuelo", "Habilita como instructor de vuelo policial. Si lo supera un Piloto, pasa automáticamente a Piloto experimentado. Permanencia mínima: 3 semanas."],
+const EXAMS: [string, string, string][] = [["EVAL-INS-01", "Instructor de vuelo", "Habilita como instructor de vuelo policial. Si lo supera un Piloto, pasa automáticamente a Piloto experimentado. Permanencia mínima: 3 semanas."],
   ["EVAL-RESC-02", "Búsqueda y rescate (SAR)", "Habilita como operador aéreo de búsqueda y rescate SAR. Permanencia mínima: 2 semanas."],
   ["EVAL-TAC-03", "Táctico", "Solo por recomendación si no se es miembro de METRO/SWAT."],
   ["CERT-DET-04", "Licencia Detective Bureau", "Licencia de vuelo (no de patrullaje) para DET I+ en vuelos confidenciales de la Detective Bureau. Excluyente de la división."],
   ["EVAL-CRIT-EMG-05", "Emergencias críticas", "Práctica de formación obligatoria. Emergencias críticas simuladas en entorno controlado: fallos falsos de máximo riesgo (rotor central o trasero, humo en cabina, incendio…) para entrenar la respuesta y el manejo de crisis. Reprobarla suspende el patrullaje aéreo hasta aprobarla; se puede volver a intentar al día siguiente."]];
 const EMG = "EVAL-CRIT-EMG-05";
 /* EVAL-CRIT-EMG-05 reprobada: patrullaje aéreo suspendido hasta aprobarla; reintento desde el día siguiente */
-export function asdSusp(n: string) {
+function asdSusp(n: string) {
   const x = (LS.json<Record<string, XRec>>("lspdt.asdExam", {})[n] || {})[EMG] as { st: string; t: number } | undefined; if (!x || x.st !== "rep") return null;
   const d = new Date(x.t || Date.now()); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + 1); return { desde: d, puede: Date.now() >= +d };
 }

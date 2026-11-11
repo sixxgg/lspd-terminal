@@ -4,7 +4,7 @@ import "./six.css";
 import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
 import { AtSign, Bell, Check, ChevronRight, Copy, FileText, Home, Lock, Megaphone, Plus, Power, RotateCcw, Save, Settings2, Skull, Trash2, Users, X } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
-import { api } from "@/lib/api";
+import { api, authApi } from "@/lib/api";
 import { discordHtml } from "@/lib/discord";
 import { uid } from "@/lib/domain";
 import { cn } from "@/lib/cn";
@@ -12,7 +12,7 @@ import { FIRMAS, ILIC_VARS, consultaInteres, firmaDe, ilicText, mentions, type I
 import { NotifTab, fbList, whoOf, FB_SEEN } from "./Notif";
 import { LS, useJSON } from "@/lib/store";
 import { FB_ST, fbSt, fbX } from "@/components/fbnotif";
-import { Boot, CFG0, CFG_KEY, Rain, THEMES, colorOf, hex, vars, type SixCfg } from "./fx";
+import { Boot, NS, K, cfg0, cfgKey, Rain, THEMES, colorOf, hex, vars, type SixCfg, type Who } from "./fx";
 
 type Staff = { id: string; n: string; rol: string; dc: string; notas: string };
 type Com = { id: string; t: string; body: string; ts: number };
@@ -20,7 +20,8 @@ type Sent = { id: string; ts: number; banda: string; res: IlicForm["res"]; txt: 
 const ROLES = ["Owner", "Administración", "Moderación", "Soporte", "Ilícitos", "Desarrollo", "Otro"];
 const TABS = [["ini", "INICIO", Home], ["adm", "ADMINISTRACIÓN", Settings2], ["com", "COMUNICADOS", Megaphone], ["ilic", "EQUIPO DE ILÍCITOS", Skull], ["staff", "GESTIÓN DE STAFF", Users], ["not", "NOTIFICACIONES", Bell]] as const;
 type Tab = (typeof TABS)[number][0];
-const LOCKED: Tab[] = ["com", "staff"]; // próximamente
+const LOCKED = (): Tab[] => (NS.id === "six" ? ["com", "staff"] : []); // en six: próximamente
+const NAME = () => (NS.id === "six" ? "six" : "anita");
 const isId = (s: string) => /^\d{17,20}$/.test(s.trim());
 
 /* ---------- controles propios: sólidos, borde fino y degradado ---------- */
@@ -66,21 +67,22 @@ function Preview({ title, text, users }: { title: string; text: string; users: R
 }
 
 /* ---------- panel ---------- */
-export function Six({ onExit, start = "ini" }: { onExit: () => void; start?: "ini" | "not" }) {
-  const [cfg, setCfg] = useJSON<SixCfg>(CFG_KEY, CFG0), c = { ...CFG0, ...cfg };
+export function Six({ onExit, start = "ini", who = "six" }: { onExit: () => void; start?: "ini" | "not"; who?: Who }) {
+  NS.id = who; /* todo lo que sigue usa el espacio de este panel */
+  const C0 = cfg0(who), [cfg, setCfg] = useJSON<SixCfg>(cfgKey(who), C0), c = { ...C0, ...cfg }, tabs = TABS.filter(t => who === "six" || t[0] !== "not");
   const [tab, setTab] = useState<Tab>(start), [out, setOut] = useState(false), [booted, setBooted] = useState(c.intro === "no"), [replay, setReplay] = useState(0);
-  const [staff, setStaff] = useJSON<Staff[]>("lspdt.six.staff", []);
-  const unread = fbList().filter(x => x.t > Number(LS.get(FB_SEEN) || 0)).length;
+  const [staff, setStaff] = useJSON<Staff[]>(K("staff"), []);
+  const unread = who !== "six" ? 0 : fbList().filter(x => x.t > Number(LS.get(FB_SEEN) || 0)).length;
   const users = useMemo(() => Object.fromEntries(staff.filter(s => isId(s.dc)).map(s => [s.dc.trim(), s.n])), [staff]);
   const [clock, setClock] = useState(""), [sig, setSig] = useState(hex(8));
   useEffect(() => { const f = () => { setClock(new Date().toLocaleTimeString("es-AR", { hour12: false })); setSig(hex(8)); }; f(); const i = setInterval(f, 1000); return () => clearInterval(i); }, []);
-  useEffect(() => { const t = document.title; document.title = "six"; return () => { document.title = t; }; }, []);
+  useEffect(() => { const t = document.title; document.title = NAME(); return () => { document.title = t; }; }, []);
   const color = colorOf(c.tema), exit = () => { setOut(true); setTimeout(onExit, 650); };
   const set = (p: Partial<SixCfg>) => setCfg({ ...c, ...p });
   return (
-    <div className={cn("six-root relative min-h-[100dvh] overflow-hidden bg-[#030407] font-mono text-slate-300", out && "six-out", c.flicker && "six-flk")}
+    <div className={cn("six-root relative min-h-[100dvh] overflow-hidden bg-[#030407] font-mono text-slate-300", out && "six-out", c.flicker && "six-flk", c.tema === "arcoiris" && "six-rainbow")}
       data-bd={c.bd} style={{ ...vars(color), ["--gl" as string]: [0.35, 1, 1.8][c.glow] }}>
-      {!booted && <Boot key={replay} short={c.intro === "corta"} onDone={() => setBooted(true)} />}
+      {!booted && <Boot key={replay} name={NAME()} short={c.intro === "corta"} onDone={() => setBooted(true)} />}
       {c.grid && <div className="six-grid pointer-events-none fixed inset-0" aria-hidden />}
       {c.lluvia > 0 && <div className="pointer-events-none fixed inset-0" aria-hidden><Rain color={color} opacity={[0, 0.06, 0.11, 0.18][c.lluvia]} /></div>}
       <div className="six-vignette pointer-events-none fixed inset-0" aria-hidden />
@@ -88,11 +90,11 @@ export function Six({ onExit, start = "ini" }: { onExit: () => void; start?: "in
 
       <header className="sticky top-0 z-30 border-b border-six/25 bg-black/70 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-4 px-4">
-          <span className="six-logo text-3xl font-black" data-t="six">six</span>
+          <span className="six-logo text-3xl font-black" data-t={NAME()}>{NAME()}</span>
           <div className="hidden text-[10px] leading-tight text-slate-500 md:block"><p>SESIÓN PRIVADA · <span className="text-six">CIFRADA</span></p><p>FIRMA {sig.toUpperCase()}</p></div>
-          <nav className="mx-auto flex gap-1 rounded-xl border border-six/10 bg-black/40 p-1">{TABS.map(([k, l, I]) => (
+          <nav className="mx-auto flex gap-1 rounded-xl border border-six/10 bg-black/40 p-1">{tabs.map(([k, l, I]) => (
             <button key={k} onClick={() => setTab(k)} title={l} className={cn("six-tab inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-[11px] font-bold tracking-[0.14em] transition",
-              tab === k ? "on text-six" : "text-slate-500 hover:text-six")}><I className="size-4 shrink-0" /><span className={tab === k ? "hidden sm:inline" : "hidden min-[1700px]:inline"}>{l}</span>{LOCKED.includes(k) && <Lock className="size-3 opacity-60" />}{k === "not" && unread > 0 && <span className="rounded-full bg-six px-1.5 text-[10px] font-black text-black">{unread}</span>}</button>))}</nav>
+              tab === k ? "on text-six" : "text-slate-500 hover:text-six")}><I className="size-4 shrink-0" /><span className={tab === k ? "hidden sm:inline" : "hidden min-[1700px]:inline"}>{l}</span>{LOCKED().includes(k) && <Lock className="size-3 opacity-60" />}{k === "not" && unread > 0 && <span className="rounded-full bg-six px-1.5 text-[10px] font-black text-black">{unread}</span>}</button>))}</nav>
           <span className="hidden tabular-nums text-sm text-six six-txt xl:inline">{clock}</span>
           <NBtn ghost icon={<Power />} onClick={exit} title="Volver a la MDT"><span className="hidden sm:inline">SALIR</span></NBtn>
         </div>
@@ -100,7 +102,7 @@ export function Six({ onExit, start = "ini" }: { onExit: () => void; start?: "in
       </header>
 
       <main key={tab} className="six-in relative mx-auto max-w-[1600px] px-4 py-6">
-        {LOCKED.includes(tab) ? <Soon t={TABS.find(x => x[0] === tab)![1]} />
+        {LOCKED().includes(tab) ? <Soon t={TABS.find(x => x[0] === tab)![1]} />
           : tab === "ini" ? <HomeTab go={setTab} unread={unread} staff={staff.length} />
           : tab === "not" ? <NotifTab />
           : tab === "adm" ? <AdmTab c={c} set={set} replay={() => { setReplay(x => x + 1); setBooted(false); }} />
@@ -108,7 +110,7 @@ export function Six({ onExit, start = "ini" }: { onExit: () => void; start?: "in
           : tab === "com" ? <ComTab staff={staff} users={users} />
           : <IlicTab users={users} />}
       </main>
-      <footer className="relative pb-6 text-center text-[10px] tracking-[0.3em] text-slate-600">six · SOLO VOS VES ESTO</footer>
+      <footer className="relative pb-6 text-center text-[10px] tracking-[0.3em] text-slate-600">{NAME()} · SOLO VOS VES ESTO</footer>
     </div>
   );
 }
@@ -123,25 +125,25 @@ const Soon = ({ t }: { t: string }) => (
 /* ---------- administración: temas y efectos de six ---------- */
 /* ---------- inicio: resumen de todo lo de six ---------- */
 function HomeTab({ go, unread, staff }: { go: (t: Tab) => void; unread: number; staff: number }) {
-  const fb = fbList(), sent = LS.ro<Sent[]>("lspdt.six.ilic", []), com = LS.ro<Com[]>("lspdt.six.com", []);
+  const six = NS.id === "six", fb = six ? fbList() : [], sent = LS.ro<Sent[]>(K("ilic"), []), com = LS.ro<Com[]>(K("com"), []);
   const abiertos = fb.filter(x => ["pend", "curso"].includes(fbSt(x.st))).length, h = new Date().getHours();
   const saludo = h >= 6 && h < 13 ? "Buenos días" : h >= 13 && h < 20 ? "Buenas tardes" : "Buenas noches";
   const cards: [Tab, string, typeof Bell, string, string][] = [
-    ["not", "Notificaciones", Bell, unread ? `${unread} sin leer` : "Todo leído", `${abiertos} abiertos · ${fb.length} en total`],
+    ...(six ? [["not", "Notificaciones", Bell, unread ? `${unread} sin leer` : "Todo leído", `${abiertos} abiertos · ${fb.length} en total`] as [Tab, string, typeof Bell, string, string]] : []),
     ["ilic", "Equipo de ilícitos", Skull, `${sent.length} respuestas`, sent.length ? `Última: ${sent[sent.length - 1].banda}` : "Sin respuestas todavía"],
-    ["staff", "Gestión de staff", Users, `${staff} en el equipo`, "Próximamente"],
-    ["com", "Comunicados", Megaphone, `${com.length} guardados`, "Próximamente"],
-    ["adm", "Administración", Settings2, "Tema, efectos e intro", "Avisos de Discord"],
+    ["staff", "Gestión de staff", Users, `${staff} en el equipo`, six ? "Próximamente" : "Tu equipo"],
+    ["com", "Comunicados", Megaphone, `${com.length} guardados`, six ? "Próximamente" : "Armalos y copialos"],
+    ["adm", "Administración", Settings2, "Tema, efectos e intro", six ? "Avisos de Discord" : "Colores y efectos"],
   ];
   return (
     <div className="space-y-5">
       <Panel><p className="font-sans text-sm text-slate-500">{new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}</p>
-        <h1 className="six-h mt-1 font-sans text-2xl font-bold">{saludo}, six.</h1>
-        <p className="mt-1 font-sans text-sm text-slate-400">{abiertos ? `Tenés ${abiertos} feedback ${abiertos === 1 ? "abierto" : "abiertos"} por revisar.` : "No hay feedback pendiente."}</p></Panel>
+        <h1 className="six-h mt-1 font-sans text-2xl font-bold">{saludo}, {NAME()}.</h1>
+        {six && <p className="mt-1 font-sans text-sm text-slate-400">{abiertos ? `Tenés ${abiertos} feedback ${abiertos === 1 ? "abierto" : "abiertos"} por revisar.` : "No hay feedback pendiente."}</p>}</Panel>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{cards.map(([k, l, I, a, b]) => (
         <button key={k} onClick={() => go(k)} className="six-panel group relative flex items-center gap-4 rounded-2xl p-4 text-left transition hover:-translate-y-0.5">
           <span className="grid size-11 place-items-center rounded-xl border border-six/40 bg-six/10 text-six six-ico"><I className="size-5" /></span>
-          <span className="min-w-0 flex-1 font-sans"><b className="block text-white">{l}{LOCKED.includes(k) && <Lock className="ml-1.5 inline size-3 opacity-50" />}</b><span className="block text-sm text-six">{a}</span><span className="block truncate text-xs text-slate-500">{b}</span></span>
+          <span className="min-w-0 flex-1 font-sans"><b className="block text-white">{l}{LOCKED().includes(k) && <Lock className="ml-1.5 inline size-3 opacity-50" />}</b><span className="block text-sm text-six">{a}</span><span className="block truncate text-xs text-slate-500">{b}</span></span>
           <ChevronRight className="size-4 text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-six" /></button>))}</div>
       {fb.length > 0 && <Panel t="Últimos feedback" icon={<Bell />}>
         <div className="space-y-1.5">{fb.slice(0, 5).map(x => { const S = FB_ST[fbSt(x.st)]; return (
@@ -155,10 +157,10 @@ function HomeTab({ go, unread, staff }: { go: (t: Tab) => void; unread: number; 
 function AdmTab({ c, set, replay }: { c: SixCfg; set: (p: Partial<SixCfg>) => void; replay: () => void }) {
   return (
     <div className="grid items-start gap-5 lg:grid-cols-2">
-      <Panel t="Tema" icon={<Settings2 />} d="Color de toda la interfaz de six. No toca nada de la MDT." className="space-y-4">
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{THEMES.map(([k, l, col]) => (
+      <Panel t="Tema" icon={<Settings2 />} d={`Color de toda la interfaz de ${NAME()}. No toca nada de la MDT.`} className="space-y-4">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">{THEMES.map(([k, l, col]) => (
           <button key={k} onClick={() => set({ tema: k })} style={vars(col)} className={cn("group grid place-items-center gap-2 rounded-xl border p-3 font-sans text-xs font-semibold transition", c.tema === k ? "border-six bg-six/10 text-six" : "border-six/15 text-slate-400 hover:border-six/40")}>
-            <span className="size-7 rounded-full bg-six six-ico" />{l}</button>))}</div>
+            <span className={cn("size-7 rounded-full bg-six six-ico", k === "arcoiris" && "six-rainbow-dot")} />{l}</button>))}</div>
         <Lbl t="Bordes"><Seg v={c.bd} set={v => set({ bd: v })} opts={[["tema", "Color del tema"], ["neutro", "Neutros"], ["no", "Sin bordes"]] as const} /></Lbl>
         <Lbl t="Brillo de neón"><Seg v={c.glow} set={v => set({ glow: v })} opts={[[0, "Suave"], [1, "Medio"], [2, "Intenso"]] as const} /></Lbl>
       </Panel>
@@ -171,15 +173,24 @@ function AdmTab({ c, set, replay }: { c: SixCfg; set: (p: Partial<SixCfg>) => vo
           <Toggle on={c.error} set={v => set({ error: v })} t="Error al entrar" d="Pantallazo rojo antes de la intro" />
         </div>
       </Panel>
-      <Panel t="Intro" icon={<Power />} d="La consola que aparece al abrir six." className="space-y-3">
+      <Panel t="Intro" icon={<Power />} d={`La consola que aparece al abrir ${NAME()}.`} className="space-y-3">
         <Seg v={c.intro} set={v => set({ intro: v })} opts={[["completa", "Completa (~10 s)"], ["corta", "Corta (~4 s)"], ["no", "Sin intro"]] as const} />
-        <div className="flex flex-wrap gap-2"><NBtn icon={<Power />} onClick={replay}>VER LA INTRO</NBtn><NBtn ghost icon={<RotateCcw />} onClick={() => set({ ...CFG0 })}>RESTABLECER TODO</NBtn></div>
+        <div className="flex flex-wrap gap-2"><NBtn icon={<Power />} onClick={replay}>VER LA INTRO</NBtn><NBtn ghost icon={<RotateCcw />} onClick={() => set({ ...cfg0() })}>RESTABLECER TODO</NBtn></div>
       </Panel>
-      <Panel t="Avisos de Discord" icon={<Bell />} d="Cada feedback nuevo llega a NOTIFICACIONES y al canal de Discord con mención." className="space-y-3"><DcTest /></Panel>
+      {NS.id === "six" && <Panel t="Avisos de Discord" icon={<Bell />} d="Cada feedback nuevo llega a NOTIFICACIONES y al canal de Discord con mención." className="space-y-3"><DcTest /></Panel>}
+      {NS.id === "six" && <Panel t="Acceso de Anita" icon={<Users />} d="Qué cuenta abre el panel de Anita (sus datos son solo suyos; vos no los ves)." className="space-y-3"><AnitaAcc /></Panel>}
     </div>
   );
 }
 
+function AnitaAcc() {
+  const { toast } = useFeedback(), [d, setD] = useState<{ n: string; accounts: string[] } | null>(null);
+  useEffect(() => { void authApi({ a: "anita" }).then(r => { if (r.__s === 200) setD({ n: r.n, accounts: r.accounts }); }); }, []);
+  if (!d) return <p className="font-sans text-xs text-slate-500">Cargando…</p>;
+  return <div className="space-y-2"><NSel v={d.n} set={async n => { const r = await authApi({ a: "anita", set: n }); if (r.__s !== 200) { toast(r.msg || "No se pudo guardar", "err"); return; } setD({ ...d, n }); toast(n ? `Panel de Anita: ${n}` : "Panel de Anita desactivado"); }}
+    opts={[["", "— Nadie —"], ...d.accounts.map(a => [a, a] as const)] as const} />
+    <p className="font-sans text-xs text-slate-500">Ella entra con 3 clics seguidos en el escudo de arriba a la izquierda (o Ctrl+Alt+A).</p></div>;
+}
 function DcTest() {
   const [st, setSt] = useState(""), [busy, setBusy] = useState(false);
   return <div className="flex flex-wrap items-center gap-3"><NBtn icon={<Bell />} disabled={busy} onClick={async () => { setBusy(true); const r = await api("/api/feedback", { test: true }); setBusy(false); setSt(r.ok ? "✓ Mensaje de prueba enviado al canal." : r.msg || "No se pudo enviar"); }}>PROBAR AVISO</NBtn>
@@ -212,7 +223,7 @@ function StaffTab({ staff, setStaff }: { staff: Staff[]; setStaff: (s: Staff[]) 
 
 /* ---------- comunicados (bloqueado por ahora) ---------- */
 function ComTab({ staff, users }: { staff: Staff[]; users: Record<string, string> }) {
-  const { toast, confirm } = useFeedback(), [list, setList] = useJSON<Com[]>("lspdt.six.com", []);
+  const { toast, confirm } = useFeedback(), [list, setList] = useJSON<Com[]>(K("com"), []);
   const [cur, setCur] = useState<Com>({ id: "", t: "", body: "", ts: 0 }), ta = useRef<HTMLTextAreaElement>(null);
   const ins = (s: string) => { const el = ta.current, a = el?.selectionStart ?? cur.body.length, b = el?.selectionEnd ?? a; setCur({ ...cur, body: cur.body.slice(0, a) + s + cur.body.slice(b) }); };
   const save = () => { const x = { ...cur, id: cur.id || uid(), ts: Date.now(), t: cur.t.trim() || cur.body.split("\n")[0].replace(/[#*_<>@!:\d]/g, "").trim().slice(0, 60) || "Comunicado" };
@@ -267,7 +278,7 @@ function sancText(x: Omit<Sanc, "id" | "ts" | "txt">, prevAv: number, strikes: n
     `**Estado: ${est}**`, "", firmaDe(FIRMAS[0]), ...(mentions(x.ids).length ? ["", mentions(x.ids).join(" ")] : [])].join("\n");
 }
 function SancTab({ users }: { users: Record<string, string> }) {
-  const { toast } = useFeedback(), [L, setL] = useJSON<Sanc[]>("lspdt.six.sanc", []);
+  const { toast } = useFeedback(), [L, setL] = useJSON<Sanc[]>(K("sanc"), []);
   const blank = { t: "aviso" as SancT, banda: "", motivo: "", desc: "", cons: "", n: 1, st: "act" as Sanc["st"], ids: "" };
   const [f, setF] = useState(blank), [eid, setEid] = useState(""), set = (p: Partial<typeof blank>) => setF({ ...f, ...p });
   const same = (x: Sanc) => x.id !== eid && x.banda.trim().toLowerCase() === f.banda.trim().toLowerCase() && !!f.banda.trim();
@@ -314,7 +325,7 @@ function SancTab({ users }: { users: Record<string, string> }) {
 }
 
 function PostTab({ users }: { users: Record<string, string> }) {
-  const { toast } = useFeedback(), [sent, setSent] = useJSON<Sent[]>("lspdt.six.ilic", []);
+  const { toast } = useFeedback(), [sent, setSent] = useJSON<Sent[]>(K("ilic"), []);
   const [f, setF] = useState<IlicForm>({ ids: "", banda: "", res: "aceptada", motivos: "", v: "std", saludo: "auto", firma: FIRMAS[0], seguir: false, norma: true });
   const set = (p: Partial<IlicForm>) => setF({ ...f, ...p });
   const txt = ilicText(f), bad = f.ids.split(/[\s,;]+/).filter(Boolean).filter(x => !isId(x.replace(/[<@!>]/g, ""))), ok = f.res === "aceptada";

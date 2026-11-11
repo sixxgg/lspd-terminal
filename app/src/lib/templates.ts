@@ -3,8 +3,8 @@ import TPL from "./tpl.json";
 
 export type TplKey = keyof typeof TPL;
 export const TPL_DEF = TPL as Record<TplKey, { l: string; vars: string[]; t: string }>;
-export const DC_DEF = { emoji: "<:LSPD:1316164582732988457>", alertRole: "1322196291509555283", alertRoleName: "Alerta Táctica", desde: "Capitanía", firma: "Atte. Capitanía LSPD" };
-export type DcCfg = typeof DC_DEF;
+const DC_DEF = { emoji: "<:LSPD:1316164582732988457>", alertRole: "1322196291509555283", alertRoleName: "Alerta Táctica", desde: "Capitanía", firma: "Atte. Capitanía LSPD" };
+type DcCfg = typeof DC_DEF;
 export function dcfg(): DcCfg {
   const c = { ...DC_DEF, ...LS.json<Partial<DcCfg>>("lspdt.dcfg", {}) };
   if (!c.desde || c.desde === "Supervisores") c.desde = DC_DEF.desde;

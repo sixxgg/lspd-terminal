@@ -30,6 +30,10 @@ const BLOQ: [string, number, string[]][] = [
   ["Actitud y disciplina", 2, ["¿Cómo manejas la presión y las críticas?", "¿Has tenido sanciones o llamadas de atención? ¿Qué aprendiste?", "¿Cuál es tu disponibilidad semanal y cómo la compaginarías con tus patrullas?"]],
   ["Cierre", 1, ["¿Qué cambiarías de la academia actual?", "¿Hay algo más que quieras que tengamos en cuenta?"]],
 ];
+/* peso de cada bloque: cuanto más pesa, más resalta */
+const W_ST: Record<number, { c: string; l: string }> = { 1: { c: "#64748b", l: "vale x1" }, 2: { c: "#f59e0b", l: "vale el doble · x2" }, 3: { c: "#ef4444", l: "vale el triple · x3" } };
+function WBadge({ w, big }: { w: number; big?: boolean }) { const S = W_ST[w];
+  return <span className={cn("inline-flex items-center gap-1 rounded-md border font-bold tracking-normal", big ? "px-2 py-0.5 text-xs" : "px-1.5 text-[10px]")} style={{ color: S.c, borderColor: S.c + "66", background: S.c + "1a" }}>{"★".repeat(w)}<span>{big ? S.l : "x" + w}</span></span>; }
 const QS = BLOQ.flatMap(([b, w, l]) => l.map(q => ({ b, w, q }))).map((x, i) => ({ ...x, n: i + 1 }));
 const FIL: [string, string][] = [["san", "Sanciones graves recientes sin aprendizaje demostrado"], ["disp", "Disponibilidad insuficiente para dar clase"]];
 const RES = (p: number) => (p >= 48 ? "Apto" : p >= 36 ? "Apto con seguimiento" : "No apto");
@@ -100,14 +104,15 @@ function Ent({ evs, onSave, onDel }: { evs: Ev[]; onSave: (e: Ev) => void; onDel
   return (
     <div className="space-y-5">
       <Card className="flex flex-wrap items-center gap-2 p-3 text-sm text-slate-500"><MessageCircle className="size-4 text-brand-500" />
-        Cada pregunta del 1 al 5 · media de cada bloque × su peso · máximo <b>60</b> · <b>48–60</b> apto · <b>36–47</b> apto con seguimiento · menos de 36 no apto</Card>
+        Cada pregunta del 1 al 5 · media de cada bloque × su peso · máximo <b>60</b> · <b>48–60</b> apto · <b>36–47</b> apto con seguimiento · menos de 36 no apto
+        <span className="ml-auto flex gap-1.5"><WBadge w={1} /><WBadge w={2} /><WBadge w={3} /></span></Card>
       <Head e={e} set={set} />
       {BLOQ.map(([b, w]) => { const bl = S.bl.find(x => x.b === b)!; return (
-        <section key={b} className="space-y-2">
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">{b}<span className="rounded bg-slate-100 px-1.5 text-[10px] dark:bg-slate-800">peso x{w}</span><span className="ml-auto normal-case tracking-normal">media {f1(bl.m, 2)} · {f1(bl.s, 2)} pts</span></p>
+        <section key={b} className="space-y-2 rounded-2xl" style={w > 1 ? { boxShadow: `inset 3px 0 0 ${W_ST[w].c}`, paddingLeft: 10 } : undefined}>
+          <p className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">{b}<WBadge w={w} big /><span className="ml-auto normal-case tracking-normal">media {f1(bl.m, 2)} × {w} = <b className="text-slate-700 dark:text-slate-200">{f1(bl.s, 2)} pts</b> <span className="text-slate-400">(máx. {5 * w})</span></span></p>
           {QS.filter(q => q.b === b).map(q => { const v = Number(e.notas["q" + q.n]) || 0, crit = q.n === 14 || q.n === 15; return (
-            <Card key={q.n} className={cn("grid gap-3 p-4 sm:grid-cols-[2rem_1fr_auto]", v && "border-l-4", v && (v >= 4 ? "border-l-emerald-500" : v === 3 ? "border-l-amber-400" : "border-l-red-500"))}>
-              <b className="text-slate-400">{q.n}</b>
+            <Card key={q.n} className={cn("grid gap-3 p-4 sm:grid-cols-[2.6rem_1fr_auto]", v && "border-l-4", v && (v >= 4 ? "border-l-emerald-500" : v === 3 ? "border-l-amber-400" : "border-l-red-500"))}>
+              <span className="flex flex-col items-start gap-1"><b className="text-slate-400">{q.n}</b><WBadge w={q.w} /></span>
               <div className="space-y-2"><p className="text-sm leading-relaxed">{q.q}{crit && <span className="ml-2 rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 dark:text-red-300">eliminatoria si es menos de 3</span>}</p>
                 <Input className="h-8 text-xs" value={e.obs["q" + q.n] || ""} onChange={x => set({ obs: { ...e.obs, ["q" + q.n]: x.target.value } })} placeholder="Observación (opcional)…" /></div>
               <div className="flex gap-0.5 self-start" role="radiogroup" aria-label={`Puntaje de la pregunta ${q.n}`}>{[1, 2, 3, 4, 5].map(s =>

@@ -3,7 +3,7 @@
    Moverse: arrastrar el fondo, la rueda o dos dedos; zoom con Ctrl + rueda, pellizco o los botones. Enlace temporal en vivo para ver sin cuenta.
    Datos: lspdt.board.<ámbito>.<id> y el índice lspdt.boards.<ámbito> (ámbito: gen o una división). */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPE } from "react";
-import { AlignCenter, AlignLeft, ArrowUpRight, Bold, Circle, Copy, Diamond, Download, Frame, Hand, ImagePlus, Italic, LayoutTemplate, Link2, Loader2, Maximize, Minus, MousePointer2, PenLine, Plus, Presentation, Redo2, Square, StickyNote, Trash2, Type, Underline, Undo2, X, Pencil } from "lucide-react";
+import { AlignCenter, AlignLeft, ArrowUpRight, Bold, Circle, Copy, Diamond, Download, Frame, Hand, ImagePlus, Italic, LayoutTemplate, Link2, Loader2, Maximize, Minus, MousePointer2, PenLine, Plus, Presentation, Redo2, Square, StickyNote, Trash2, Type, Underline, Undo2, X, Pencil, Eraser } from "lucide-react";
 import { Button, Card, Empty, Input, Select } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
 import { LS, ME_ROLES, syncNow, useStoreVersion } from "@/lib/store";
@@ -15,9 +15,14 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
 
 type K = "note" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "conn" | "pen" | "img";
-type It = { id: string; k: K; x: number; y: number; w: number; h: number; c: string; tx?: string; fs?: number; a?: string; b?: string; pts?: number[]; src?: string; bo?: boolean; it?: boolean; un?: boolean; al?: "l" | "c" };
+type It = { id: string; k: K; x: number; y: number; w: number; h: number; c: string; tx?: string; fs?: number; a?: string; b?: string; pts?: number[]; src?: string; sw?: number; bo?: boolean; it?: boolean; un?: boolean; al?: "l" | "c" };
 type Meta = { id: string; t: string; by: string; upd: number; sh?: { t: string; exp: number; by: string }[] };
-type Tool = "sel" | "hand" | "note" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "conn" | "pen";
+type Tool = "sel" | "hand" | "note" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "conn" | "pen" | "erase";
+/* presencia en vivo: cursor (coordenadas del lienzo) y lo que cada uno está moviendo o dibujando */
+type LiveS = { x: number | null; y: number | null; mv?: It[] };
+type Live = { n: string; v: LiveS | null; t: number };
+const SW = [2, 4, 8, 14];
+const hueOf = (n: string) => { let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) % 360; return `hsl(${h} 85% 62%)`; };
 
 const BG = "#2a2d33", DOT = "rgba(255,255,255,.09)", FG = "#e5e7eb";
 const NOTE_C = ["#fde68a", "#fbcfe8", "#bfdbfe", "#bbf7d0", "#fed7aa", "#ddd6fe", "#f1f5f9"];
@@ -76,14 +81,14 @@ async function exportPng(items: It[], name: string) {
     const b = box(i); ctx.save();
     if (i.k === "frame") { ctx.fillStyle = i.c + "14"; ctx.strokeStyle = i.c; ctx.lineWidth = 2; ctx.setLineDash([8, 6]); ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 14); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); text(i); }
     else if (i.k === "note") { ctx.shadowColor = "rgba(0,0,0,.35)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4; ctx.fillStyle = i.c; ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 6); ctx.fill(); ctx.shadowColor = "transparent"; text(i); }
-    else if (isFill(i.k)) { ctx.fillStyle = i.c + "26"; ctx.strokeStyle = i.c; ctx.lineWidth = 2.5; ctx.beginPath();
+    else if (isFill(i.k)) { ctx.fillStyle = i.c + "26"; ctx.strokeStyle = i.c; ctx.lineWidth = i.sw || 2.5; ctx.beginPath();
       if (i.k === "rect") ctx.roundRect(b.x, b.y, b.w, b.h, 10); else if (i.k === "ellipse") ctx.ellipse(b.x + b.w / 2, b.y + b.h / 2, b.w / 2, b.h / 2, 0, 0, Math.PI * 2);
       else { ctx.moveTo(b.x + b.w / 2, b.y); ctx.lineTo(b.x + b.w, b.y + b.h / 2); ctx.lineTo(b.x + b.w / 2, b.y + b.h); ctx.lineTo(b.x, b.y + b.h / 2); ctx.closePath(); }
       ctx.fill(); ctx.stroke(); text(i); }
     else if (i.k === "text") text(i);
     else if (i.k === "img") { const im = imgs.get(i.id); if (im) ctx.drawImage(im, b.x, b.y, b.w, b.h); }
-    else if (i.k === "pen") { const p = i.pts!; ctx.strokeStyle = i.c; ctx.lineWidth = 3; ctx.lineCap = ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(p[0], p[1]); for (let j = 2; j < p.length; j += 2) ctx.lineTo(p[j], p[j + 1]); ctx.stroke(); }
-    else if (i.k === "conn") { const pp = connPts(i, M); if (pp) { const [a, z] = pp, ang = Math.atan2(z.y - a.y, z.x - a.x); ctx.strokeStyle = ctx.fillStyle = i.c; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(z.x, z.y); ctx.stroke();
+    else if (i.k === "pen") { const p = i.pts!; ctx.strokeStyle = i.c; ctx.lineWidth = i.sw || 3; ctx.lineCap = ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(p[0], p[1]); for (let j = 2; j < p.length; j += 2) ctx.lineTo(p[j], p[j + 1]); ctx.stroke(); }
+    else if (i.k === "conn") { const pp = connPts(i, M); if (pp) { const [a, z] = pp, ang = Math.atan2(z.y - a.y, z.x - a.x); ctx.strokeStyle = ctx.fillStyle = i.c; ctx.lineWidth = i.sw || 2.5; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(z.x, z.y); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(z.x, z.y); ctx.lineTo(z.x - 14 * Math.cos(ang - 0.4), z.y - 14 * Math.sin(ang - 0.4)); ctx.lineTo(z.x - 14 * Math.cos(ang + 0.4), z.y - 14 * Math.sin(ang + 0.4)); ctx.closePath(); ctx.fill(); } }
     ctx.restore();
   }
@@ -128,25 +133,28 @@ export function PizarraArea() {
 
 /* ---------- vista pública en vivo (enlace temporal, sin cuenta) ---------- */
 export function PublicBoard({ tok }: { tok: string }) {
-  const [st, setSt] = useState<{ items: It[]; title: string; by: string; exp: number } | null>(null), [err, setErr] = useState(""), since = useRef(0);
-  useEffect(() => { let on = true;
-    const load = async () => { const r = await api(`/api/share?t=${tok}&since=${since.current}`); if (!on) return;
+  const [st, setSt] = useState<{ items: It[]; title: string; by: string; exp: number } | null>(null), [err, setErr] = useState(""), [live, setLive] = useState<Live[]>([]), since = useRef(0);
+  /* rápido (≈250 ms) mientras alguien está moviendo el cursor; lento cuando no hay nadie */
+  useEffect(() => { let on = true, tm = 0;
+    const load = async () => { const r = await api(`/api/share?t=${tok}&since=${since.current}&live=1`); if (!on) return;
       if (r.__s !== 200) { setErr(r.msg || "No se pudo abrir la pizarra"); return; }
-      if (r.same) return; since.current = r.t; let items: It[] = []; try { items = (JSON.parse(r.v || "{}").items || []) as It[]; } catch { /* */ }
-      setSt({ items, title: r.title, by: r.by, exp: r.exp }); };
-    void load(); const i = setInterval(() => { if (!document.hidden) void load(); }, 2000); return () => { on = false; clearInterval(i); }; }, [tok]);
+      const L = (r.live || []) as Live[]; setLive(L);
+      if (!r.same) { since.current = r.t; let items: It[] = []; try { items = (JSON.parse(r.v || "{}").items || []) as It[]; } catch { /* */ } setSt({ items, title: r.title, by: r.by, exp: r.exp }); }
+      const busy = L.some(x => (r.now || Date.now()) - x.t < 4000); tm = window.setTimeout(tick, document.hidden ? 4000 : busy ? 250 : 1500); };
+    const tick = () => void load().catch(() => { tm = window.setTimeout(tick, 3000); });
+    tick(); return () => { on = false; clearTimeout(tm); }; }, [tok]);
   if (err) return <div className="grid min-h-[100dvh] place-items-center p-6 text-center text-slate-300" style={{ background: BG }}><div><Presentation className="mx-auto mb-3 size-10 opacity-60" /><p className="text-lg font-semibold">{err}</p><p className="mt-1 text-sm text-slate-500">Pedile a quien te lo pasó un enlace nuevo.</p></div></div>;
   if (!st) return <div className="grid min-h-[100dvh] place-items-center text-slate-400" style={{ background: BG }}><Loader2 className="size-6 animate-spin" /></div>;
-  return <div className="h-[100dvh] p-2" style={{ background: "#1c1e22" }}><Board k="" meta={{ id: tok, t: st.title, by: st.by, upd: 0 }} scope={`En vivo · compartida por ${st.by} · vence ${new Date(st.exp).toLocaleString(undefined, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`} canEdit={false} ext={st.items} full /></div>;
+  return <div className="h-[100dvh] p-2" style={{ background: "#1c1e22" }}><Board k="" meta={{ id: tok, t: st.title, by: st.by, upd: 0 }} scope={`En vivo · compartida por ${st.by} · vence ${new Date(st.exp).toLocaleString(undefined, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`} canEdit={false} ext={st.items} others={live} full /></div>;
 }
 
 /* ---------- la pizarra ---------- */
 type Act = { m: "pan" | "move" | "resize" | "draw" | "pen" | "marq" | "conn" | "pinch"; sx: number; sy: number; vx: number; vy: number; vz: number; o?: It[]; id?: string; wx?: number; wy?: number; d0?: number };
-function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, full: full0 }: { k: string; meta: Meta; scope: string; canEdit: boolean; onBack?: () => void; onMeta?: (p: (m: Meta) => Partial<Meta>) => void; ext?: It[]; full?: boolean }) {
-  const ver = useStoreVersion(), { toast } = useFeedback(), me = useMe();
+function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, full: full0 }: { k: string; meta: Meta; scope: string; canEdit: boolean; onBack?: () => void; onMeta?: (p: (m: Meta) => Partial<Meta>) => void; ext?: It[]; others?: Live[]; full?: boolean }) {
+  const ver = useStoreVersion(), { toast, confirm } = useFeedback(), me = useMe();
   const [items, setItems] = useState<It[]>(() => ext || LS.json<{ items: It[] }>(k, { items: [] }).items || []);
   const [view, setView] = useState({ x: 80, y: 80, z: 0.8 }), [tool, setTool] = useState<Tool>("sel"), [selIds, setSel] = useState<string[]>([]), [edit, setEdit] = useState("");
-  const [col, setCol] = useState({ note: NOTE_C[0], line: LINE_C[0] }), [tpl, setTpl] = useState(false), [title, setTitle] = useState(meta.t), [full, setFull] = useState(!!full0), [share, setShare] = useState(false);
+  const [col, setCol] = useState({ note: NOTE_C[0], line: LINE_C[0], sw: 4 }), [tpl, setTpl] = useState(false), [title, setTitle] = useState(meta.t), [full, setFull] = useState(!!full0), [share, setShare] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null), fileRef = useRef<HTMLInputElement>(null), act = useRef<Act | null>(null), ptrs = useRef(new Map<number, { x: number; y: number }>());
   const [marq, setMarq] = useState<null | { x: number; y: number; w: number; h: number }>(null), [ghost, setGhost] = useState<null | { a: string; x: number; y: number }>(null);
   const hist = useRef<{ u: It[][]; r: It[][] }>({ u: [], r: [] }), saved = useRef(JSON.stringify(items)), space = useRef(false), timer = useRef(0);
@@ -158,9 +166,19 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, full: full0 }: { 
     fitH(); window.addEventListener("resize", fitH); return () => window.removeEventListener("resize", fitH); }, [full]);
   const M = useMemo(() => new Map(items.map(i => [i.id, i])), [items]), itRef = useRef(items); itRef.current = items;
 
-  const persist = useCallback((L: It[]) => { if (!k) return; window.clearTimeout(timer.current); timer.current = window.setTimeout(() => { const s = JSON.stringify(L); if (s === saved.current) return; saved.current = s; LS.setJSON(k, { items: L }); onMeta?.(() => ({ upd: Date.now() })); }, 500); }, [k, onMeta]);
-  /* cambios de otros: llegan con la sincronización (cada 2 s mientras la pizarra está abierta) */
-  useEffect(() => { if (!k) return; const i = setInterval(syncNow, 2000); return () => clearInterval(i); }, [k]);
+  const persist = useCallback((L: It[]) => { if (!k) return; window.clearTimeout(timer.current); timer.current = window.setTimeout(() => { const s = JSON.stringify(L); if (s === saved.current) return; saved.current = s; LS.setJSON(k, { items: L }); onMeta?.(() => ({ upd: Date.now() })); }, 120); }, [k, onMeta]);
+  /* en vivo: mando mi cursor y lo que estoy moviendo, recibo lo de los demás y, si alguien guardó, traigo la pizarra al instante */
+  const me$ = useRef<LiveS>({ x: null, y: null }), dirty = useRef(false), lastAct = useRef(0), kt = useRef(0), [others1, setOthers] = useState<Live[]>([]);
+  const others = (others0 || others1).filter(o => o.v); /* el servidor ya descarta a los que se fueron */
+  useEffect(() => { if (!k) return; let on = true, tm = 0;
+    const tick = async () => { const busy = Date.now() - lastAct.current < 4000;
+      const r = await api("/api/live", { b: k, ...(dirty.current ? { s: me$.current } : {}) }).catch(() => null); dirty.current = false; if (!on) return;
+      if (r && r.__s === 200) { setOthers(r.o || []); if (r.kt > kt.current) { if (kt.current) syncNow(); kt.current = r.kt; } }
+      const live = busy || (r?.o || []).some((o: Live) => (r?.now || Date.now()) - o.t < 4000);
+      tm = window.setTimeout(tick, document.hidden ? 5000 : live ? 200 : 1500); };
+    void tick(); const bye = () => { void api("/api/live", { b: k, s: null }); };
+    window.addEventListener("pagehide", bye); return () => { on = false; clearTimeout(tm); window.removeEventListener("pagehide", bye); bye(); }; }, [k]);
+  const pushLive = (p: Partial<LiveS>) => { me$.current = { ...me$.current, ...p }; dirty.current = true; lastAct.current = Date.now(); };
   useEffect(() => { if (act.current || edit) return; const r = ext || LS.json<{ items: It[] }>(k, { items: [] }).items || [], s = JSON.stringify(r); if (s !== saved.current) { saved.current = s; setItems(r); } }, [ver, ext]); // eslint-disable-line react-hooks/exhaustive-deps
   const commit = (L: It[], prev = items) => { hist.current.u.push(prev); if (hist.current.u.length > 80) hist.current.u.shift(); hist.current.r = []; setItems(L); persist(L); };
   const undo = () => { const p = hist.current.u.pop(); if (!p) return; hist.current.r.push(items); setItems(p); persist(p); };
@@ -191,7 +209,7 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, full: full0 }: { 
       else if ((e.ctrlKey || e.metaKey) && ["b", "i", "u"].includes(e.key.toLowerCase()) && selIds.length) { e.preventDefault(); toggle(({ b: "bo", i: "it", u: "un" } as const)[e.key.toLowerCase() as "b"]); }
       else if (e.key === "Escape") { setSel([]); setTool("sel"); }
       else if (e.key === "Enter" && selIds.length === 1) { e.preventDefault(); setEdit(selIds[0]); }
-      else if (!e.ctrlKey && !e.metaKey && !e.altKey) { const t = ({ v: "sel", h: "hand", n: "note", t: "text", r: "rect", o: "ellipse", d: "diamond", f: "frame", c: "conn", p: "pen" } as Record<string, Tool>)[e.key.toLowerCase()]; if (t) setTool(t); } };
+      else if (!e.ctrlKey && !e.metaKey && !e.altKey) { const t = ({ v: "sel", h: "hand", n: "note", t: "text", r: "rect", o: "ellipse", d: "diamond", f: "frame", c: "conn", p: "pen", e: "erase" } as Record<string, Tool>)[e.key.toLowerCase()]; if (t) setTool(t); } };
     const ku = (e: KeyboardEvent) => { if (e.code === "Space") space.current = false; };
     window.addEventListener("keydown", kd); window.addEventListener("keyup", ku); return () => { window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku); };
   });
@@ -211,11 +229,12 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, full: full0 }: { 
     const p = toW(e.clientX, e.clientY), base = { sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y, vz: view.z, wx: p.x, wy: p.y };
     if (edit && !it) (document.activeElement as HTMLElement | null)?.blur(); /* el blur guarda el texto */
     if (e.button === 1 || tool === "hand" || space.current || (!canEdit && !(it && selIds.includes(it.id)))) { if (!canEdit && it) setSel([it.id]); act.current = { m: "pan", ...base }; return; }
+    if (tool === "erase") { if (it) del([it.id]); return; }
     if (handle && it) { act.current = { m: "resize", ...base, id: it.id, o: items }; return; }
     if (tool === "conn" && it && it.k !== "conn") { act.current = { m: "conn", ...base, id: it.id }; setGhost({ a: it.id, x: p.x, y: p.y }); return; }
-    if (tool === "pen") { const n: It = { id: uid(), k: "pen", x: 0, y: 0, w: 0, h: 0, c: col.line, pts: [p.x, p.y] }; act.current = { m: "pen", ...base, id: n.id, o: items }; setItems([...items, n]); return; }
+    if (tool === "pen") { const n: It = { id: uid(), k: "pen", x: 0, y: 0, w: 0, h: 0, c: col.line, sw: col.sw, pts: [p.x, p.y] }; act.current = { m: "pen", ...base, id: n.id, o: items }; setItems([...items, n]); return; }
     if (["note", "text", "rect", "ellipse", "diamond", "frame"].includes(tool)) {
-      const kk = tool as K, n: It = { id: uid(), k: kk, x: p.x, y: p.y, w: 0, h: 0, c: kk === "note" ? col.note : kk === "text" ? FG : col.line, tx: kk === "frame" ? "Marco" : kk === "text" ? "Texto" : "", fs: kk === "frame" ? 18 : 16 };
+      const kk = tool as K, n: It = { id: uid(), k: kk, x: p.x, y: p.y, w: 0, h: 0, c: kk === "note" ? col.note : kk === "text" ? FG : col.line, tx: kk === "frame" ? "Marco" : kk === "text" ? "Texto" : "", fs: kk === "frame" ? 18 : 16, ...(isFill(kk) ? { sw: col.sw } : {}) };
       act.current = { m: "draw", ...base, id: n.id, o: items }; setItems([...items, n]); setSel([n.id]); return; }
     if (it) { const ids = e.shiftKey ? (selIds.includes(it.id) ? selIds.filter(x => x !== it.id) : [...selIds, it.id]) : selIds.includes(it.id) ? selIds : [it.id];
       const inside = ids.flatMap(id => { const f = M.get(id); if (!f || f.k !== "frame") return []; const b = box(f); return items.filter(o => o.id !== f.id && o.k !== "conn" && ctr(o).x > b.x && ctr(o).x < b.x + b.w && ctr(o).y > b.y && ctr(o).y < b.y + b.h).map(o => o.id); });
@@ -223,8 +242,12 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, full: full0 }: { 
     /* fondo: arrastrar mueve el lienzo; con Shift, selección por área */
     if (!e.shiftKey) setSel([]); act.current = { m: e.shiftKey ? "marq" : "pan", ...base };
   };
-  const raf = useRef(0), last = useRef<{ x: number; y: number } | null>(null);
+  const raf = useRef(0), last = useRef<{ x: number; y: number } | null>(null), clrMv = useRef(0);
+  useEffect(() => { const a = act.current; if (!k || !a || !["move", "resize", "draw", "pen"].includes(a.m)) return; const ids = (a.id || "").split(",");
+    const mv = items.filter(i => ids.includes(i.id)).slice(0, 40).map(i => (i.pts && i.pts.length > 3000 ? { ...i, pts: i.pts.slice(-3000) } : i));
+    window.clearTimeout(clrMv.current); pushLive({ mv }); }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
   const move = (e: RPE) => { if (ptrs.current.has(e.pointerId)) ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (k) { const w = toW(e.clientX, e.clientY); pushLive({ x: Math.round(w.x), y: Math.round(w.y) }); }
     if (!act.current) return; last.current = { x: e.clientX, y: e.clientY }; if (raf.current) return;
     raf.current = requestAnimationFrame(() => { raf.current = 0; const a = act.current, pt = last.current; if (!a || !pt) return;
       if (a.m === "pinch") { const P = [...ptrs.current.values()]; if (P.length < 2) return; const r = wrapRef.current!.getBoundingClientRect(), cx = (P[0].x + P[1].x) / 2 - r.left, cy = (P[0].y + P[1].y) / 2 - r.top;
@@ -238,6 +261,7 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, full: full0 }: { 
       if (a.m === "conn") { setGhost(g => (g ? { ...g, x: p.x, y: p.y } : g)); return; }
       if (a.m === "marq") setMarq({ x: Math.min(a.wx!, p.x), y: Math.min(a.wy!, p.y), w: Math.abs(dx), h: Math.abs(dy) }); }); };
   const up = (e: RPE) => { ptrs.current.delete(e.pointerId); const a = act.current;
+    if (k && me$.current.mv) { window.clearTimeout(clrMv.current); clrMv.current = window.setTimeout(() => pushLive({ mv: undefined }), 1500); } /* lo suelta cuando el resto ya tiene la pizarra guardada */
     if (a?.m === "pinch") { if (ptrs.current.size < 2) act.current = null; return; }
     act.current = null; if (raf.current) { cancelAnimationFrame(raf.current); raf.current = 0; } if (!a) return; const p = toW(e.clientX, e.clientY);
     if (a.m === "move" || a.m === "resize" || a.m === "pen") { const ids = a.id?.split(",") || []; if (a.m === "move") { const dx = p.x - a.wx!, dy = p.y - a.wy!; const L = a.o!.map(i => (ids.includes(i.id) ? { ...i, x: i.x + dx, y: i.y + dy, pts: i.pts?.map((v, j) => v + (j % 2 ? dy : dx)) } : i)); if (dx || dy) commit(L, a.o); else setItems(a.o!); return; }
@@ -247,10 +271,15 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, full: full0 }: { 
       else f = { ...n, ...box(n) };
       commit(cur.map(i => (i.id === n.id ? f : i)), a.o); setTool("sel"); if (f.k !== "frame") setEdit(f.id); return; }
     if (a.m === "conn") { setGhost(null); const t = [...items].reverse().find(i => { if (i.k === "conn" || i.k === "pen" || i.id === a.id) return false; const b = box(i); return p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h; });
-      if (t) commit([...items, { id: uid(), k: "conn", x: 0, y: 0, w: 0, h: 0, c: col.line, a: a.id, b: t.id }]); return; }
+      if (t) commit([...items, { id: uid(), k: "conn", x: 0, y: 0, w: 0, h: 0, c: col.line, sw: col.sw, a: a.id, b: t.id }]); return; }
     if (a.m === "marq") { const m = marq; setMarq(null); if (m && (m.w > 4 || m.h > 4)) setSel(items.filter(i => { if (i.k === "conn") return false; const c = i.k === "pen" ? { x: i.pts![0], y: i.pts![1] } : ctr(i); return c.x >= m.x && c.x <= m.x + m.w && c.y >= m.y && c.y <= m.y + m.h; }).map(i => i.id)); }
   };
 
+  /* lo que otros están moviendo se ve encima, sin esperar a que lo suelten */
+  const shown = useMemo(() => { const ov = new Map<string, It>(); for (const o of others) for (const m of o.v?.mv || []) ov.set(m.id, m); if (!ov.size) return items;
+    const out = items.map(i => ov.get(i.id) || i); for (const [id, m] of ov) if (!M.has(id)) out.push(m); return out; }, [items, others, M]);
+  const MS = useMemo(() => (shown === items ? M : new Map(shown.map(i => [i.id, i]))), [shown, items, M]);
+  const strokeSel = selIds.map(id => M.get(id)).filter(i => i && (i.k === "pen" || i.k === "conn" || isFill(i.k))) as It[];
   const setProp = (p: Partial<It>) => commit(items.map(i => (selIds.includes(i.id) ? { ...i, ...p } : i)));
   const txSel = items.filter(i => selIds.includes(i.id) && i.k !== "conn" && i.k !== "pen" && i.k !== "img");
   const toggle = (f: "bo" | "it" | "un") => { const on = txSel.length > 0 && txSel.every(i => i[f]); commit(items.map(i => (txSel.some(t => t.id === i.id) ? { ...i, [f]: !on } : i))); };
@@ -261,9 +290,10 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, full: full0 }: { 
     const n: It = { id: uid(), k: "img", x: c.x - w / 2, y: c.y - h / 2, w, h, c: "", src: d }; commit([...items, n]); setSel([n.id]); }; im.src = d; };
   const one = selIds.length === 1 ? M.get(selIds[0]) : undefined, selK = selIds.map(id => M.get(id)?.k);
 
-  const T: [Tool, string, typeof Hand][] = [["sel", "Seleccionar (V) · arrastrá el fondo para moverte, Shift + arrastrar para elegir varios", MousePointer2], ["hand", "Mano (H o barra espaciadora)", Hand], ["note", "Nota adhesiva (N)", StickyNote], ["text", "Texto (T)", Type],
-    ["rect", "Rectángulo (R)", Square], ["ellipse", "Círculo (O)", Circle], ["diamond", "Rombo / decisión (D)", Diamond], ["frame", "Marco (F)", Frame], ["conn", "Flecha (C): arrastrá de una forma a otra", ArrowUpRight], ["pen", "Lápiz (P)", PenLine]];
-  const tb = "grid size-9 place-items-center rounded-lg transition [&>svg]:size-4", tbI = "text-slate-300 hover:bg-white/10", sep = <span className="mx-1 h-5 w-px bg-white/15" />;
+  const T: [Tool, string, string, typeof Hand][] = [["sel", "Elegir", "Seleccionar (V) · arrastrá el fondo para moverte, Shift + arrastrar para elegir varios", MousePointer2], ["hand", "Mover", "Mover el lienzo (H o barra espaciadora)", Hand],
+    ["note", "Nota", "Nota adhesiva (N)", StickyNote], ["text", "Texto", "Texto (T)", Type], ["rect", "Cuadro", "Rectángulo (R)", Square], ["ellipse", "Círculo", "Círculo (O)", Circle], ["diamond", "Rombo", "Rombo / decisión (D)", Diamond],
+    ["frame", "Marco", "Marco (F)", Frame], ["conn", "Flecha", "Flecha (C): arrastrá de una forma a otra", ArrowUpRight], ["pen", "Lápiz", "Lápiz (P)", PenLine], ["erase", "Goma", "Goma (E): tocá algo para borrarlo", Eraser]];
+  const tb = "flex w-14 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium leading-none transition [&>svg]:size-4", tbI = "text-slate-300 hover:bg-white/10", sep = <span className="mx-1 h-5 w-px bg-white/15" />;
   const fb = (on: boolean) => cn("grid size-7 place-items-center rounded-md text-xs font-bold transition [&>svg]:size-3.5", on ? "bg-brand-600 text-white" : "text-slate-300 hover:bg-white/10");
   const grid = 24 * view.z, dot = Math.max(0.7, view.z * 1.1);
   return (
@@ -278,39 +308,48 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, full: full0 }: { 
       </div>
       <div ref={wrapRef} className={cn("relative touch-none select-none overflow-hidden", full && "h-[calc(100%-49px)]", tool === "sel" ? "cursor-grab active:cursor-grabbing" : tool === "hand" ? "cursor-grab" : "cursor-crosshair")}
         style={{ ...(!full && { height: hh || "70vh" }), background: BG, backgroundImage: `radial-gradient(circle, ${DOT} ${dot}px, transparent ${dot}px)`, backgroundSize: `${grid}px ${grid}px`, backgroundPosition: `${view.x}px ${view.y}px` }}
-        onPointerDown={e => down(e)} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onContextMenu={e => e.preventDefault()}>
+        onPointerDown={e => down(e)} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={() => k && pushLive({ x: null, y: null })} onContextMenu={e => e.preventDefault()}>
         <div className="absolute left-0 top-0 origin-top-left will-change-transform" style={{ transform: `translate3d(${view.x}px,${view.y}px,0) scale(${view.z})` }}>
-          {items.filter(i => i.k === "frame").map(i => <ItemV key={i.id} i={i} sel={selIds.includes(i.id)} edit={edit === i.id} canEdit={canEdit} onDown={down} onEdit={() => canEdit && setEdit(i.id)} onText={tx => { if (tx !== i.tx) commit(items.map(x => (x.id === i.id ? { ...x, tx } : x))); setEdit(""); }} />)}
+          {shown.filter(i => i.k === "frame").map(i => <ItemV key={i.id} i={i} sel={selIds.includes(i.id)} edit={edit === i.id} canEdit={canEdit} onDown={down} onEdit={() => canEdit && setEdit(i.id)} onText={tx => { if (tx !== i.tx) commit(items.map(x => (x.id === i.id ? { ...x, tx } : x))); setEdit(""); }} />)}
           <svg className="pointer-events-none absolute left-0 top-0 overflow-visible" width="1" height="1">
             <defs><marker id={`ah-${meta.id}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke" /></marker></defs>
-            {items.filter(i => i.k === "conn").map(i => { const pp = connPts(i, M); if (!pp) return null; return <g key={i.id} className="pointer-events-auto cursor-pointer" onPointerDown={e => down(e, i)}>
+            {shown.filter(i => i.k === "conn").map(i => { const pp = connPts(i, MS); if (!pp) return null; return <g key={i.id} className="pointer-events-auto cursor-pointer" onPointerDown={e => down(e, i)}>
               <line x1={pp[0].x} y1={pp[0].y} x2={pp[1].x} y2={pp[1].y} stroke="transparent" strokeWidth={14} />
-              <line x1={pp[0].x} y1={pp[0].y} x2={pp[1].x} y2={pp[1].y} stroke={selIds.includes(i.id) ? "#818cf8" : i.c} strokeWidth={2.5} markerEnd={`url(#ah-${meta.id})`} /></g>; })}
-            {items.filter(i => i.k === "pen").map(i => <polyline key={i.id} points={i.pts!.join(" ")} fill="none" stroke={i.c} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="pointer-events-auto cursor-move" style={selIds.includes(i.id) ? { filter: "drop-shadow(0 0 3px #818cf8)" } : undefined} onPointerDown={e => down(e, i)} />)}
+              <line x1={pp[0].x} y1={pp[0].y} x2={pp[1].x} y2={pp[1].y} stroke={selIds.includes(i.id) ? "#818cf8" : i.c} strokeWidth={i.sw || 2.5} markerEnd={`url(#ah-${meta.id})`} /></g>; })}
+            {shown.filter(i => i.k === "pen").map(i => <polyline key={i.id} points={i.pts!.join(" ")} fill="none" stroke={i.c} strokeWidth={i.sw || 3} strokeLinecap="round" strokeLinejoin="round" className="pointer-events-auto cursor-move" style={selIds.includes(i.id) ? { filter: "drop-shadow(0 0 3px #818cf8)" } : undefined} onPointerDown={e => down(e, i)} />)}
             {ghost && (() => { const A = M.get(ghost.a); if (!A) return null; const s = edge(A, ghost); return <line x1={s.x} y1={s.y} x2={ghost.x} y2={ghost.y} stroke={col.line} strokeWidth={2} strokeDasharray="6 5" markerEnd={`url(#ah-${meta.id})`} />; })()}
           </svg>
-          {items.filter(i => i.k !== "frame" && i.k !== "conn" && i.k !== "pen").map(i => <ItemV key={i.id} i={i} sel={selIds.includes(i.id)} edit={edit === i.id} canEdit={canEdit} onDown={down} onEdit={() => canEdit && i.k !== "img" && setEdit(i.id)} onText={tx => { if (tx !== i.tx) commit(items.map(x => (x.id === i.id ? { ...x, tx } : x))); setEdit(""); }} />)}
+          {shown.filter(i => i.k !== "frame" && i.k !== "conn" && i.k !== "pen").map(i => <ItemV key={i.id} i={i} sel={selIds.includes(i.id)} edit={edit === i.id} canEdit={canEdit} onDown={down} onEdit={() => canEdit && i.k !== "img" && setEdit(i.id)} onText={tx => { if (tx !== i.tx) commit(items.map(x => (x.id === i.id ? { ...x, tx } : x))); setEdit(""); }} />)}
+          {others.filter(o => o.v!.x != null).map(o => (
+            <div key={o.n} className="pointer-events-none absolute left-0 top-0 z-50 transition-transform duration-200 ease-linear" style={{ transform: `translate(${o.v!.x}px,${o.v!.y}px) scale(${1 / view.z})`, transformOrigin: "0 0" }}>
+              <svg width="20" height="20" viewBox="0 0 20 20" className="drop-shadow"><path d="M2 2l6 16 2.5-6.5L17 9z" fill={hueOf(o.n)} stroke="#111" strokeWidth="1.2" strokeLinejoin="round" /></svg>
+              <span className="absolute left-4 top-4 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-black shadow" style={{ background: hueOf(o.n) }}>{o.n}</span>
+            </div>))}
           {marq && <div className="pointer-events-none absolute border border-indigo-400 bg-indigo-400/10" style={{ left: marq.x, top: marq.y, width: marq.w, height: marq.h }} />}
         </div>
 
         {canEdit && <div className="absolute left-3 top-1/2 flex -translate-y-1/2 flex-col gap-0.5 rounded-xl border border-white/10 bg-[#1f2125]/95 p-1 shadow-xl backdrop-blur" onPointerDown={e => e.stopPropagation()}>
-          {T.map(([kk, l, I]) => <button key={kk} title={l} aria-label={l} onClick={() => setTool(kk)} className={cn(tb, tool === kk ? "bg-brand-600 text-white" : tbI)}><I /></button>)}
+          {T.map(([kk, l, t, I]) => <button key={kk} title={t} aria-label={t} onClick={() => setTool(kk)} className={cn(tb, tool === kk ? "bg-brand-600 text-white" : tbI)}><I />{l}</button>)}
           <span className="mx-1 my-0.5 h-px bg-white/15" />
-          <button title="Imagen o mapa" aria-label="Imagen o mapa" onClick={() => fileRef.current?.click()} className={cn(tb, tbI)}><ImagePlus /></button>
-          <button title="Plantillas" aria-label="Plantillas" onClick={() => setTpl(!tpl)} className={cn(tb, tpl ? "bg-brand-600 text-white" : tbI)}><LayoutTemplate /></button>
-          <button title="Deshacer (Ctrl+Z)" aria-label="Deshacer" onClick={undo} className={cn(tb, tbI)}><Undo2 /></button>
-          <button title="Rehacer (Ctrl+Y)" aria-label="Rehacer" onClick={redo} className={cn(tb, tbI)}><Redo2 /></button>
+          <button title="Agregar una imagen o un mapa" onClick={() => fileRef.current?.click()} className={cn(tb, tbI)}><ImagePlus />Imagen</button>
+          <button title="Plantillas" onClick={() => setTpl(!tpl)} className={cn(tb, tpl ? "bg-brand-600 text-white" : tbI)}><LayoutTemplate />Plantilla</button>
+          <div className="flex"><button title="Deshacer (Ctrl+Z)" aria-label="Deshacer" onClick={undo} className="grid size-7 place-items-center rounded-lg text-slate-300 hover:bg-white/10 [&>svg]:size-4"><Undo2 /></button>
+            <button title="Rehacer (Ctrl+Y)" aria-label="Rehacer" onClick={redo} className="grid size-7 place-items-center rounded-lg text-slate-300 hover:bg-white/10 [&>svg]:size-4"><Redo2 /></button></div>
+          <button title="Borrar todo lo de la pizarra" onClick={async () => { if (items.length && (await confirm("¿Borrar todo lo de la pizarra? Se puede deshacer con Ctrl+Z mientras no salgas.", { danger: true }))) { commit([]); setSel([]); } }} className={cn(tb, "text-red-400 hover:bg-red-500/15")}><Trash2 />Limpiar</button>
         </div>}
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => { const f = e.target.files?.[0]; if (f) void addImg(f); e.target.value = ""; }} />
-        {tpl && <div className="absolute left-16 top-1/2 w-60 -translate-y-1/2 rounded-xl border border-white/10 bg-[#1f2125] p-2 shadow-xl" onPointerDown={e => e.stopPropagation()}>
+        {tpl && <div className="absolute left-20 top-1/2 w-60 -translate-y-1/2 rounded-xl border border-white/10 bg-[#1f2125] p-2 shadow-xl" onPointerDown={e => e.stopPropagation()}>
           <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Plantillas</p>
           {TPL.map(([kk, l, f]) => <button key={kk} onClick={() => addTpl(f)} className="block w-full rounded-lg px-2 py-1.5 text-left text-sm hover:bg-white/10">{l}</button>)}</div>}
         {share && k && <SharePanel k={k} meta={meta} me={me.n} onMeta={onMeta!} onClose={() => setShare(false)} />}
 
         {/* barra de formato y colores de lo elegido */}
-        {canEdit && (selIds.length > 0 || ["note", "rect", "ellipse", "diamond", "frame", "conn", "pen", "text"].includes(tool)) && <div className="absolute left-1/2 top-3 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-[#1f2125]/95 p-1.5 shadow-xl backdrop-blur" onPointerDown={e => e.stopPropagation()}>
+        {canEdit && (selIds.length > 0 || ["note", "rect", "ellipse", "diamond", "frame", "conn", "pen", "text"].includes(tool)) && <div className="absolute left-[calc(50%+2rem)] top-3 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-[#1f2125]/95 p-1.5 shadow-xl backdrop-blur" onPointerDown={e => e.stopPropagation()}>
           {(selK.length ? selK.every(x => x === "note") : tool === "note") ? NOTE_C.map(c => <button key={c} aria-label={c} onClick={() => { setCol({ ...col, note: c }); if (selIds.length) setProp({ c }); }} className="size-6 rounded-md ring-1 ring-black/20" style={{ background: c, outline: (one?.c || col.note) === c ? "2px solid #818cf8" : undefined }} />)
             : LINE_C.map(c => <button key={c} aria-label={c} onClick={() => { setCol({ ...col, line: c }); if (selIds.length) setProp({ c }); }} className="size-6 rounded-full ring-1 ring-black/20" style={{ background: c, outline: (one?.c || col.line) === c ? "2px solid #818cf8" : undefined }} />)}
+          {(["pen", "conn", "rect", "ellipse", "diamond"].includes(tool) || strokeSel.length > 0) && <>{sep}
+            {SW.map(w => <button key={w} title={`Grosor ${w}`} aria-label={`Grosor ${w}`} onClick={() => { setCol({ ...col, sw: w }); if (strokeSel.length) commit(items.map(i => (strokeSel.some(x => x.id === i.id) ? { ...i, sw: w } : i))); }}
+              className={fb((strokeSel[0]?.sw || col.sw) === w)}><span className="block w-4 rounded-full bg-current" style={{ height: Math.max(1.5, w / 2) }} /></button>)}</>}
           {txSel.length > 0 && <>{sep}
             {HEAD.map(([l, fs, bo]) => <button key={l} title={l === "P" ? "Texto normal" : `Título ${l}`} onClick={() => commit(items.map(i => (selIds.includes(i.id) ? { ...i, fs, bo, h: i.k === "text" ? Math.max(Math.abs(i.h), Math.ceil(fs * 1.3 + 26)) : i.h } : i)))} className={fb(txSel.every(i => (i.fs || 16) === fs))}>{l}</button>)}
             {sep}
@@ -373,9 +412,9 @@ function ItemV({ i, sel, edit, canEdit, onDown, onEdit, onText }: { i: It; sel: 
     : <div className={cn("pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words p-3", !top && "flex flex-col justify-center")} style={ts}>{i.tx}</div>;
   let body: React.ReactNode = null;
   if (i.k === "note") body = <div className="absolute inset-0 rounded-md shadow-[0_6px_16px_rgba(0,0,0,.35)]" style={{ background: i.c }} />;
-  else if (i.k === "rect") body = <div className="absolute inset-0 rounded-[10px] border-[2.5px]" style={{ borderColor: i.c, background: i.c + "26" }} />;
-  else if (i.k === "ellipse") body = <div className="absolute inset-0 rounded-[50%] border-[2.5px]" style={{ borderColor: i.c, background: i.c + "26" }} />;
-  else if (i.k === "diamond") body = <svg className="absolute inset-0 overflow-visible" width={b.w} height={b.h}><polygon points={`${b.w / 2},0 ${b.w},${b.h / 2} ${b.w / 2},${b.h} 0,${b.h / 2}`} fill={i.c + "26"} stroke={i.c} strokeWidth={2.5} /></svg>;
+  else if (i.k === "rect") body = <div className="absolute inset-0 rounded-[10px] border-solid" style={{ borderWidth: i.sw || 2.5, borderColor: i.c, background: i.c + "26" }} />;
+  else if (i.k === "ellipse") body = <div className="absolute inset-0 rounded-[50%] border-solid" style={{ borderWidth: i.sw || 2.5, borderColor: i.c, background: i.c + "26" }} />;
+  else if (i.k === "diamond") body = <svg className="absolute inset-0 overflow-visible" width={b.w} height={b.h}><polygon points={`${b.w / 2},0 ${b.w},${b.h / 2} ${b.w / 2},${b.h} 0,${b.h / 2}`} fill={i.c + "26"} stroke={i.c} strokeWidth={i.sw || 2.5} /></svg>;
   else if (i.k === "frame") body = <div className="absolute inset-0 rounded-[14px] border-2 border-dashed" style={{ borderColor: i.c, background: i.c + "14" }} />;
   else if (i.k === "img") body = <img src={i.src} alt="" draggable={false} className="absolute inset-0 size-full rounded object-fill" />;
   return (

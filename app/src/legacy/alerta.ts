@@ -25,14 +25,14 @@ export const ALT_CONS=[
  ["Daños",[["vp","vehículo policial destruido","vehículos policiales destruidos","m"],["ua","unidad aérea dañada o derribada","unidades aéreas dañadas o derribadas","f"],["cs2","comercio saqueado","comercios saqueados","m"],["ei","edificio incendiado","edificios incendiados","m"],["ra","arma estatal sustraída","armas estatales sustraídas","f"],["rc","","robo de armamento estatal","m","",true],["dm","","graves daños materiales en la vía pública","m","",true]]]
 ];
 export const CONS_MAP=Object.fromEntries(ALT_CONS.flatMap(c=>c[1]).map(x=>[x[0],x]));
-export function consTxt(k,n){const [,s,p,g,pre="",noN]=CONS_MAP[k];n=parseInt(n)||0;
+function consTxt(k,n){const [,s,p,g,pre="",noN]=CONS_MAP[k];n=parseInt(n)||0;
   if(noN)return `**${p}**`;
   const q=n===1?(g==="f"?"una":"un"):n>1?String(n):(g==="f"?"varias":"varios");
   return `**${pre}${q} ${n===1?s:p}**`}
 
-export const isSing=h=>/^(un|una|el|la) /.test(h);
-export const altPal=A=>A.tipo==="ampliacion"?"ampliación":"elevación";
-export function altParts(A){
+const isSing=h=>/^(un|una|el|la) /.test(h);
+const altPal=A=>A.tipo==="ampliacion"?"ampliación":"elevación";
+function altParts(A){
   const N=`Nivel ${A.nivel}`, ac=[];
   if(A.hechos.length){const sing=A.hechos.length===1&&isSing(A.hechos[0]);
     ac.push(`Durante los acontecimientos, se ${sing?"ha":"han"} producido **${joinY(A.hechos)}**`);

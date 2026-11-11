@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type ApiRes = { __s: number; msg?: string; [k: string]: any };
+type ApiRes = { __s: number; msg?: string; [k: string]: any };
 
 export async function api(url: string, body?: unknown): Promise<ApiRes> {
   try {

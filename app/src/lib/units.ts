@@ -1,24 +1,24 @@
 /* Divisiones con roster propio (A.S.D, K-9, PSB): mismas claves y reglas que la versión clásica */
 import { LS, ME_ROLES } from "./store";
 
-export type Role = [k: string, label: string, color: string, short: string];
-export type Unit = {
+type Role = [k: string, label: string, color: string, short: string];
+type Unit = {
   d: string; ab: string; rk: string; lk: string; def: Record<string, string[]>; acc: string; seedV?: number; R: Role[]; SUB?: Role[];
   reg?: string; regs?: string; one?: string; ones?: string; crew?: string; save?: string;
   veh?: { l: string; o: [string, string, string][] }; mat?: boolean; dog?: boolean; zona?: boolean; mo?: string[];
 };
-export const ASD_DEF: Record<string, string[]> = { "Ryan Westbrook": ["coord"], "Kai Jeon-Soo": ["coord", "piloto"], "Evelyn Molina": ["sup", "tfo", "piloto"], "Lewis Clarkson": ["sup", "piloto"], "Liam Campbell": ["sup", "piloto"], "Miles Campbell": ["sup", "piloto"],
+const ASD_DEF: Record<string, string[]> = { "Ryan Westbrook": ["coord"], "Kai Jeon-Soo": ["coord", "piloto"], "Evelyn Molina": ["sup", "tfo", "piloto"], "Lewis Clarkson": ["sup", "piloto"], "Liam Campbell": ["sup", "piloto"], "Miles Campbell": ["sup", "piloto"],
   "Yooa Baek-Harrington": ["tfo", "piloto"], "Khalan Smith": ["piloto"], "Lara Calloway": ["piloto"], "Leonardo Nascimento": ["piloto"], "Madison Lopez": ["piloto"], "Madison Pierce": ["piloto"], "Tariq Okafor": ["piloto"],
   "Tyler Walker": ["piloto"], "William Weston": ["piloto"], "Antonio Santos": ["asp"], "Darwin Ford": ["asp"] };
-export const K9_DEF: Record<string, string[]> = { "Kai Jeon-Soo": ["coord"], "Yooa Baek-Harrington": ["subcoord"], "Charles Jhonson Smith": ["inst"], "Liam Campbell": ["inst"], "Evelyn Molina": ["handler"],
+const K9_DEF: Record<string, string[]> = { "Kai Jeon-Soo": ["coord"], "Yooa Baek-Harrington": ["subcoord"], "Charles Jhonson Smith": ["inst"], "Liam Campbell": ["inst"], "Evelyn Molina": ["handler"],
   "Olivia Molina": ["prac"], "Logan Barrett": ["prac"], "Morvanna Montenegro": ["prac"], "Leonardo Nascimento": ["prac"], "Violet Faith": ["prac"], "Ethan Roggers": ["prac"],
   "Darwin Ford": ["prac"], "Naia Bishop": ["prac"], "Noah Smith": ["prac"], "Ryan Sullivan": ["prac"] };
 export const K9_PL: Record<string, string> = { "Logan Barrett": "884", "Ethan Roggers": "850", "Noah Smith": "871", "Ryan Sullivan": "800" };
-export const PSB_DEF: Record<string, string[]> = { "Madison Wells": ["co", "iad", "fid", "sod"], "Vega Chambers": ["co", "iad", "fid", "sod"], "Derek McGarrett": ["inv", "iad", "fid"],
+const PSB_DEF: Record<string, string[]> = { "Madison Wells": ["co", "iad", "fid", "sod"], "Vega Chambers": ["co", "iad", "fid", "sod"], "Derek McGarrett": ["inv", "iad", "fid"],
   "Ryan Westbrook": ["jinv", "iad", "fid", "sod"], "Liam Campbell": ["jinv", "iad", "fid", "sod"], "Evelyn Molina": ["jinv", "iad", "fid", "sod"] };
 
 /* METRO y SWAT (roster que pasó six): rol principal + subdivisiones activas; el indicativo va aparte (lspdt.mdCalls) */
-export const MD_DEF: Record<string, string[]> = {
+const MD_DEF: Record<string, string[]> = {
   "Derek McGarrett": ["co", "swat", "sierra", "bq", "h", "udu", "cnt"], "Evelyn Molina": ["aco", "swat", "sierra", "bq", "h", "udu", "cnt"],
   "Ryan Westbrook": ["oic", "swat", "sierra", "udu", "cnt"], "Liam Campbell": ["tl", "swat", "sierra", "udu", "cnt"],
   "Tariq Okafor": ["op", "swat"], "Lloyd Burnett": ["op", "swat"], "Charles Jhonson Smith": ["op", "swat"], "Antonio Santos": ["op", "swat"],
@@ -53,7 +53,7 @@ export const UNITS: Record<"asd" | "k9" | "psb" | "md", Unit> = {
     SUB: [["swat", "SWAT", "#e05a52", "SWAT"], ["sierra", "SIERRA", "#d4a937", "SIERRA"], ["bq", "Bomb Squad", "#d4a937", "BQ"], ["h", "Pelotón H", "#d4a937", "Pel. H"], ["udu", "UDU", "#d4a937", "UDU"], ["cnt", "Crisis Negotiation Team", "#d4a937", "CNT"]] },
 };
 export type UnitKey = keyof typeof UNITS;
-export const COORD_R = ["coord", "subcoord", "co", "aco"];
+const COORD_R = ["coord", "subcoord", "co", "aco"];
 
 export function uMap(k: UnitKey, me?: string): Record<string, string[]> {
   const u = UNITS[k], o = LS.json<Record<string, unknown> | null>(u.rk, null);
@@ -76,6 +76,19 @@ export const isUCoord = (k: UnitKey, n: string) => !!ME_ROLES.admin || (uMap(k)[
 export const insRole = (k: UnitKey, n: string): "coord" | "inst" | "instp" | "" => { const r = uMap(k)[n] || []; return r.some(x => COORD_R.includes(x) || x === "oic") ? "coord" : r.includes("inst") ? "inst" : r.includes("instp") ? "instp" : ""; };
 export const isPSB = (n: string) => !!uMap("psb")[n];
 export const rtdMem = (): string[] => { const l = LS.json<Record<string, unknown>>("lspdt.ui", {}).rtd; return Array.isArray(l) ? (l as string[]) : RTD_DEF; };
-export const RTD_DEF = ["Charles Jhonson Smith", "Daniel López", "Derek McGarrett", "Elioth Smith", "Evelyn Molina", "Kai Jeon-Soo", "Kane Anderson", "Khalan Smith", "Lara Calloway",
+const RTD_DEF = ["Charles Jhonson Smith", "Daniel López", "Derek McGarrett", "Elioth Smith", "Evelyn Molina", "Kai Jeon-Soo", "Kane Anderson", "Khalan Smith", "Lara Calloway",
   "Liam Campbell", "Madison Pierce", "Madison Wells", "Matthew Coleman", "Miles Campbell", "Ryan Westbrook", "William Weston", "Yooa Baek-Harrington"];
 export const isRTD = (n: string) => !!ME_ROLES.admin || rtdMem().includes(n);
+
+/* divisiones e indicativo que salen de los rosters cargados (se suman a lo que tenga el perfil del agente) */
+const MD_SUB_DIV: Record<string, string> = { swat: "Special Weapons And Tactics", bq: "Bomb Squad", cnt: "Crisis Negotiation Team", udu: "Underwater Dive Unit" };
+export function rosterDivs(n: string): string[] {
+  const out: string[] = [], md = uMap("md")[n];
+  if (md) { out.push("Metropolitan Division"); for (const r of md) if (MD_SUB_DIV[r]) out.push(MD_SUB_DIV[r]); }
+  if (uMap("asd")[n]) out.push("Air Support Division");
+  if (uMap("k9")[n]) out.push("K-9 Division");
+  if (uMap("psb")[n]) out.push("Professional Standards Bureau");
+  if (rtdMem().includes(n)) out.push("Recruitment and Training Division");
+  return out;
+}
+export const rosterCall = (n: string) => ({ ...MD_CALLS, ...LS.json<Record<string, string>>("lspdt.mdCalls", {}) })[n] || "";

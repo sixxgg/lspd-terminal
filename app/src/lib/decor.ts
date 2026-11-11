@@ -113,7 +113,7 @@ export const DECOR: Decor[] = [
     ["Desempeño Destacable en IA", "Hito", "P:1 Y:.6 P:1"],
   ]),
 ];
-export const DECOR_BY = new Map(DECOR.map(d => [d.k, d]));
+const DECOR_BY = new Map(DECOR.map(d => [d.k, d]));
 export const decorOf = (k?: string) => (k ? DECOR_BY.get(k) : undefined);
 
 /* fondo de la cinta: franjas + textura de hilo + brillo, todo en un solo background */

@@ -1,14 +1,24 @@
 import { q } from "../lib/db.js";
-import { send, body, wrap, roster, findIn, lvl, MIN_ACC, CAP, norm, emailOf, hashPw, checkPw, needsRehash, randomPw, safeEq, clientIp, loginBlocked, loginFail, loginOk, sessionToken, tokenHash, newSession, endSession, current, PUBLIC_KEYS, query, canEnter, invalidate, OWNERS, dbAdmins, parseList, parseRoster as parseRosterRaw } from "../lib/core.js";
+import { send, body, wrap, roster, findIn, lvl, CAP, norm, emailOf, hashPw, checkPw, needsRehash, randomPw, safeEq, clientIp, loginBlocked, loginFail, loginOk, sessionToken, tokenHash, newSession, endSession, current, PUBLIC_KEYS, query, canEnter, invalidate, isSix, OWNERS, dbAdmins, parseList, parseRoster as parseRosterRaw } from "../lib/core.js";
 import { fullData } from "../lib/store.js";
+import { randomBytes } from "node:crypto";
 
 const slim = list => list.map(a => ({ n: a.n, r: a.r, p: a.p }));
-async function regCode() { const r = await q("select v from meta where k='regcode'"); return (r.rows[0] && r.rows[0].v) || ""; }
-async function userOf(n, ag) { const owner = OWNERS.includes(n); return { n, r: ag.r, l: lvl(ag.r), owner, admin: owner || (await dbAdmins()).includes(n) }; }
+/* invitaciones: códigos aleatorios de un solo uso que genera cualquier agente con cuenta (vencen a las 72 h) */
+const INV_TTL = 72 * 3600e3, INV_MAX = 5;
+const invCode = () => { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", b = randomBytes(10); let c = ""; for (let i = 0; i < 10; i++) c += A[b[i] % A.length]; return `LSPD-${c.slice(0, 5)}-${c.slice(5)}`; };
+const invList = async () => (await metaObjs("invites")).filter(x => x && x.exp > Date.now() && !x.u);
+/* códigos de recuperación: 8 por cuenta, de un solo uso; se guardan con hash */
+const recCode = () => randomBytes(6).toString("hex").toUpperCase().replace(/(.{4})(.{4})(.{4})/, "$1-$2-$3");
+const normRec = c => String(c || "").toUpperCase().replace(/[^0-9A-F]/g, "");
+async function newRec(n) { const L = Array.from({ length: 8 }, recCode); await setMeta("rec:" + n, L.map(c => tokenHash(normRec(c)))); return L; }
+async function userOf(n, ag) { const owner = OWNERS.includes(n), anita = (await q("select v from meta where k='anita'")).rows[0]?.v === n;
+  return { n, r: ag.r, l: lvl(ag.r), owner, anita, admin: owner || (await dbAdmins()).includes(n) }; }
 const tooShort = pw => typeof pw !== "string" || pw.length < 8 || pw.length > 200;
 
 const uiRaw = async () => ((await q("select v from kv where k='lspdt.ui'")).rows[0] || {}).v;
 const metaList = async k => parseList((await q("select v from meta where k=$1", [k])).rows[0]?.v);
+const metaObjs = async k => { try { const a = JSON.parse((await q("select v from meta where k=$1", [k])).rows[0]?.v || "[]"); return Array.isArray(a) ? a.filter(x => x && typeof x === "object") : []; } catch { return []; } };
 const setMeta = (k, l) => q("insert into meta(k,v) values($1,$2) on conflict(k) do update set v=excluded.v", [k, JSON.stringify(l)]);
 async function gate(ag) { // ¿puede entrar? (mando, RTD, ASD o aprobado por un administrador)
   const r = (await q(`select (select v from kv where k='lspdt.ui') ui, (select v from meta where k='approved') ap, (select v from kv where k='lspdt.asdRoster') asd, (select v from kv where k='lspdt.k9Roster') k9, (select v from kv where k='lspdt.mdRoster') md`)).rows[0];
@@ -17,20 +27,18 @@ async function gate(ag) { // ¿puede entrar? (mando, RTD, ASD o aprobado por un 
 const PEND_MSG = "Tus credenciales están siendo revisadas por la administración. Intentá más tarde.";
 export default wrap(async (req, res) => {
   if (req.method === "GET") {
-    // todo lo público en una sola consulta: cuentas, roster, código de registro e imagen de la terminal
+    // todo lo público en una sola consulta: cuentas, roster e imagen de la terminal
     const me = await current(req);
     const rows = (await q(`select 'n' as g, name as k, null as v, 0::bigint as t from accounts
       union all select 'r', null, v, 0 from kv where k='lspdt.roster'
-      union all select 'c', null, v, 0 from meta where k='regcode'
       union all select 'b', k, case when v like 'data:%' then '#img' else v end, t from kv where k = any($1) and v is not null`, [PUBLIC_KEYS])).rows;
-    const names = [], brand = {}; let raw = null, code = "";
+    const names = [], brand = {}; let raw = null;
     for (const r of rows) {
       if (r.g === "n") names.push(r.k);
       else if (r.g === "r") raw = r.v;
-      else if (r.g === "c") code = r.v || "";
       else brand[r.k] = r.v === "#img" ? `/api/img?k=${encodeURIComponent(r.k)}&t=${r.t}` : r.v;
     }
-    const out = { me: me ? me.n : null, names, needCode: !!code, brand };
+    const out = { me: me ? me.n : null, names, brand };
     if (me && query(req).full) out.data = await fullData(me); // ahorra una vuelta al iniciar
     else out.roster = slim(parseRosterRaw(raw).list);
     return send(res, 200, out);
@@ -63,19 +71,37 @@ export default wrap(async (req, res) => {
   if (a === "register") {
     const ag = findIn((await roster()).list, b.n);
     if (!ag) return send(res, 400, { msg: "Escribí el nombre de tu personaje y elegilo de la lista." });
-    const code = await regCode();
-    if (code && !safeEq(String(b.code || "").trim(), code)) return send(res, 403, { msg: "El código de registro no es correcto. Pedíselo a Capitanía." });
     if (tooShort(b.pw)) return send(res, 400, { msg: "La contraseña tiene que tener al menos 8 caracteres." });
+    const ip = clientIp(req), wait = await loginBlocked("inv", ip);
+    if (wait) return send(res, 429, { msg: `Demasiados intentos. Probá de nuevo en ${wait} min.` });
+    const all = await metaObjs("invites"), ic = String(b.code || "").trim().toUpperCase(), inv = all.find(x => x && !x.u && x.exp > Date.now() && safeEq(x.c, ic));
+    if (!inv) { await loginFail("", ip); return send(res, 403, { msg: "El código de invitación no es válido o ya se usó. Pedile uno a un compañero con cuenta." }); }
     const now = Date.now();
     const r = await q("insert into accounts(name,email,hash,created,last) values($1,$2,$3,$4,$4) on conflict do nothing returning name", [ag.n, emailOf(ag.n), hashPw(b.pw), now]);
     if (!r.rows[0]) return send(res, 409, { msg: "Ese agente ya tiene cuenta. Iniciá sesión." });
+    inv.u = ag.n; inv.ut = now; await setMeta("invites", all.filter(x => x && (x.exp > now || x.u)).slice(-300));
+    const rec = await newRec(ag.n);
     if (!(await gate(ag))) { // queda pendiente de aprobación
       const pend = (await metaList("pending")).filter(x => x !== ag.n); pend.push(ag.n); await setMeta("pending", pend);
       await setMeta("rejected", (await metaList("rejected")).filter(x => x !== ag.n));
-      return send(res, 202, { pending: true, n: ag.n, e: emailOf(ag.n), msg: "Cuenta creada. " + PEND_MSG });
+      return send(res, 202, { pending: true, n: ag.n, e: emailOf(ag.n), rec, msg: "Cuenta creada. " + PEND_MSG });
     }
     await newSession(res, ag.n, b.keep !== false);
-    return send(res, 200, { n: ag.n, e: emailOf(ag.n), data: await fullData(await userOf(ag.n, ag)) });
+    return send(res, 200, { n: ag.n, e: emailOf(ag.n), rec, data: await fullData(await userOf(ag.n, ag)) });
+  }
+
+  /* restablecer la contraseña con un código de recuperación (sin sesión) */
+  if (a === "recover") {
+    const u = norm(String(b.u || "").trim()), ip = clientIp(req), wait = await loginBlocked(u, ip);
+    if (wait) return send(res, 429, { msg: `Demasiados intentos fallidos. Probá de nuevo en ${wait} min.` });
+    if (tooShort(b.pw)) return send(res, 400, { msg: "La nueva contraseña tiene que tener al menos 8 caracteres." });
+    const acc = (await q("select name,email from accounts")).rows.find(x => norm(x.email) === u || norm(x.name) === u || norm(x.email.split("@")[0]) === u);
+    const L = acc ? await metaList("rec:" + acc.name) : [], h = tokenHash(normRec(b.code)), i = L.indexOf(h);
+    if (!acc || i < 0) { await loginFail(u, ip); await new Promise(r => setTimeout(r, 600)); return send(res, 403, { msg: "La cuenta o el código de recuperación no son correctos." }); }
+    L.splice(i, 1); await setMeta("rec:" + acc.name, L);
+    await q("update accounts set hash=$2 where name=$1", [acc.name, hashPw(b.pw)]);
+    await q("delete from sessions where name=$1", [acc.name]); invalidate(); await loginOk(u);
+    return send(res, 200, { ok: 1, left: L.length, e: acc.email });
   }
 
   if (a === "logout") { await endSession(req, res); return send(res, 200, { ok: 1 }); }
@@ -86,7 +112,20 @@ export default wrap(async (req, res) => {
 
   if (a === "info") {
     const r = (await q("select email,created,last,(select count(*) from accounts b where b.created <= a.created) as no from accounts a where name=$1", [me.n])).rows[0];
-    return send(res, 200, { e: r.email, c: +r.created, last: +r.last, no: +r.no });
+    return send(res, 200, { e: r.email, c: +r.created, last: +r.last, no: +r.no, rec: (await metaList("rec:" + me.n)).length });
+  }
+  if (a === "recgen") return send(res, 200, { rec: await newRec(me.n) });
+  if (a === "invites") return send(res, 200, { list: (await invList()).filter(x => x.by === me.n || me.admin), max: INV_MAX });
+  if (a === "invite") {
+    const all = await metaObjs("invites"), mine = (await invList()).filter(x => x.by === me.n);
+    if (mine.length >= INV_MAX && !me.admin) return send(res, 429, { msg: `Ya tenés ${INV_MAX} invitaciones activas. Revocá alguna o esperá a que se usen.` });
+    const x = { c: invCode(), by: me.n, t: Date.now(), exp: Date.now() + INV_TTL };
+    await setMeta("invites", [...all.filter(i => i && (i.exp > Date.now() || i.u)), x].slice(-300)); return send(res, 200, x);
+  }
+  if (a === "uninvite") {
+    const all = await metaObjs("invites"), i = all.find(x => x && x.c === b.c);
+    if (!i || (i.by !== me.n && !me.admin)) return send(res, 403, { msg: "No podés revocar esa invitación." });
+    await setMeta("invites", all.filter(x => x !== i)); return send(res, 200, { ok: 1 });
   }
   if (a === "passwd") {
     const r = (await q("select hash from accounts where name=$1", [me.n])).rows[0];
@@ -95,6 +134,15 @@ export default wrap(async (req, res) => {
     await q("update accounts set hash=$2 where name=$1", [me.n, hashPw(b.nw)]);
     await q("delete from sessions where name=$1 and token<>$2", [me.n, tokenHash(sessionToken(req))]); invalidate(); // cierra las otras sesiones
     return send(res, 200, { ok: 1 });
+  }
+
+  /* six elige qué cuenta es la de Anita (su espacio privado) */
+  if (a === "anita") {
+    if (!isSix(me)) return send(res, 403, { msg: "No permitido." });
+    if (b.set !== undefined) { const n = String(b.set || ""); if (n && !(await q("select 1 from accounts where name=$1", [n])).rows[0]) return send(res, 404, { msg: "Esa cuenta no existe." });
+      await q("insert into meta(k,v) values('anita',$1) on conflict(k) do update set v=excluded.v", [n]); invalidate(); }
+    const cur = (await q("select v from meta where k='anita'")).rows[0]?.v || "";
+    return send(res, 200, { n: cur, accounts: (await q("select name from accounts order by name")).rows.map(r => r.name) });
   }
 
   // Solicitudes de acceso (administradores)
@@ -136,7 +184,7 @@ export default wrap(async (req, res) => {
   if (me.l < CAP) return send(res, 403, { msg: "Solo Capitanía puede administrar cuentas." });
   if (a === "list") {
     const rows = (await q("select name,email,created,last from accounts order by last desc nulls last")).rows;
-    return send(res, 200, { list: rows.map(r => ({ n: r.name, e: r.email, c: +r.created, last: r.last ? +r.last : null })), code: await regCode() });
+    return send(res, 200, { list: rows.map(r => ({ n: r.name, e: r.email, c: +r.created, last: r.last ? +r.last : null })) });
   }
   if (a === "reset") {
     const tmp = randomPw();
@@ -150,11 +198,6 @@ export default wrap(async (req, res) => {
     await q("delete from sessions where name=$1", [b.n]);
     await q("delete from accounts where name=$1", [b.n]); invalidate();
     return send(res, 200, { ok: 1 });
-  }
-  if (a === "setcode") {
-    const c = String(b.code || "").trim().slice(0, 60);
-    await q("insert into meta(k,v) values('regcode',$1) on conflict(k) do update set v=excluded.v", [c]);
-    return send(res, 200, { code: c });
   }
   return send(res, 400, { msg: "Acción desconocida" });
 });

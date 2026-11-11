@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { KeyRound, ShieldCheck, UserPlus, Trash2, RotateCcw, Users, Save, Search } from "lucide-react";
+import { ShieldCheck, UserPlus, Trash2, RotateCcw, Users, Search } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Input } from "@/components/ui";
 import { AgentPicker, Avatar, RankBadge } from "@/components/agents";
 import { copyText } from "@/components/output";
@@ -13,8 +13,8 @@ const MIN_ACC = 6;
 export function Permisos() {
   const me = useMe(), { toast, confirm } = useFeedback();
   const [EXC, setEXC] = useJSON<Exc>("lspdt.exc", {});
-  const [acc, setAcc] = useState<{ n: string; e: string; last?: number }[] | null>(null), [err, setErr] = useState(""), [code, setCode] = useState(""), [hasCode, setHasCode] = useState(false), [q, setQ] = useState("");
-  const load = useCallback(async () => { const r = await authApi({ a: "list" }); if (r.__s !== 200) { setErr(r.msg || "No se pudieron cargar las cuentas."); return; } setAcc(r.list); setCode(r.code || ""); setHasCode(!!r.code); }, []);
+  const [acc, setAcc] = useState<{ n: string; e: string; last?: number }[] | null>(null), [err, setErr] = useState(""), [q, setQ] = useState("");
+  const load = useCallback(async () => { const r = await authApi({ a: "list" }); if (r.__s !== 200) { setErr(r.msg || "No se pudieron cargar las cuentas."); return; } setAcc(r.list); }, []);
   useEffect(() => { void load(); }, [load]);
   const ex = Object.entries(EXC).filter(([n]) => findAgent(n));
   const s = norm(q), A = (acc || []).filter(x => !s || norm(x.n + " " + x.e).includes(s));
@@ -34,11 +34,6 @@ export function Permisos() {
         </CardBody>
       </Card>
       <Card>
-        <CardHeader icon={<KeyRound />} title="Código de registro" desc={hasCode ? "El registro pide código." : "Registro abierto: cualquier Sargento I o superior del roster puede crear su cuenta."} />
-        <CardBody>
-          <div className="flex gap-2"><Input value={code} onChange={e => setCode(e.target.value)} placeholder="Vacío = registro sin código" />
-            <Button icon={<Save />} onClick={async () => { const r = await authApi({ a: "setcode", code }); if (r.__s !== 200) { toast(r.msg || "No se pudo guardar", "err"); return; } toast(r.code ? "Código de registro guardado" : "Registro abierto sin código"); void load(); }}>Guardar</Button></div>
-        </CardBody>
         <CardHeader icon={<Users />} title={`Cuentas de la terminal${acc ? ` (${acc.length})` : ""}`} />
         <CardBody>
           <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input className="pl-9" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar cuenta…" /></div>

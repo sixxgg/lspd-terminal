@@ -1,22 +1,25 @@
 /* Perfiles de agentes (lspdt.profiles) y roster: mismas estructuras que la versión clásica */
 import { LS } from "./store";
 import { DET, genderOf, getRoster, type Agent } from "./domain";
+import { rosterCall, rosterDivs } from "./units";
 
 export type Mov = { tipo: string; de?: string; a?: string; via?: string; t: number; por: { n: string; r: string } };
 export type Nota = { m: string; t: number; a?: string; r?: string; [k: string]: unknown };
 export type Profile = { g: string; cs: string; fr: number; main: string; ph: { x: number; y: number; z: number } | null; cv: unknown; cond: string[]; lic: Record<string, unknown>;
   div: string[]; foto: string; notas: Nota[]; movs: Mov[]; [k: string]: unknown };
-export const PROF_SEED: Record<string, { cs?: string; fr?: number; div?: string[] }> = {
+const PROF_SEED: Record<string, { cs?: string; fr?: number; div?: string[] }> = {
   "Ryan Westbrook": { cs: "DAVID-20", fr: 3, div: ["Metropolitan Division", "Special Weapons And Tactics", "Professional Standards Bureau", "Air Support Division"] },
   "Evelyn Molina": { div: ["Metropolitan Division", "Special Weapons And Tactics", "Administration Services Bureau", "Air Support Division"] },
   "James Hopper": { div: ["Recruitment and Training Division"] }, "James Villanueva": { div: ["Detective Bureau"] }, "Derek McGarrett": { div: ["High Tech Crime Unit"] },
   "Madison Wells": { div: ["Professional Standards Bureau"] }, "Vega Chambers": { div: ["Detective Bureau"] }, "Kane Anderson": { div: ["Administration Services Bureau"] },
 };
 export const allProfiles = () => LS.ro<Record<string, Profile>>("lspdt.profiles", {});
+/* el perfil se completa con los rosters: divisiones (METRO, SWAT, A.S.D, K-9, PSB, RTD…) e indicativo de radio */
+const withRoster = (n: string, p: Profile): Profile => { const rd = rosterDivs(n); if (rd.some(d => !p.div.includes(d))) p.div = [...p.div, ...rd.filter(d => !p.div.includes(d))]; if (!p.cs) p.cs = rosterCall(n); return p; };
 export function profFull(n: string, all = allProfiles()): Profile {
-  const p = all[n]; if (p) return Object.assign({ cond: [], lic: {}, div: [], notas: [], movs: [] }, p) as Profile;
+  const p = all[n]; if (p) return withRoster(n, Object.assign({ cond: [], lic: {}, div: [], notas: [], movs: [] }, p, { div: [...((p.div as string[]) || [])] }) as Profile);
   const s = PROF_SEED[n] || {}, a = getRoster().find(x => x.n === n);
-  return { g: genderOf(n), cs: s.cs || "", fr: s.fr || 0, main: "", ph: null, cv: null, cond: [], lic: {}, div: s.div ? [...s.div] : a && DET.includes(a.r) ? ["Detective Bureau"] : [], foto: "", notas: [], movs: [] };
+  return withRoster(n, { g: genderOf(n), cs: s.cs || "", fr: s.fr || 0, main: "", ph: null, cv: null, cond: [], lic: {}, div: s.div ? [...s.div] : a && DET.includes(a.r) ? ["Detective Bureau"] : [], foto: "", notas: [], movs: [] });
 }
 export function updateProf(n: string, fn: (p: Profile) => void) {
   const all = { ...LS.json<Record<string, Profile>>("lspdt.profiles", {}) }, p = profFull(n, all); fn(p); all[n] = p;

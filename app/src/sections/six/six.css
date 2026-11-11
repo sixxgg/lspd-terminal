@@ -45,3 +45,9 @@
 /* six · estado elegido con brillo neón (cada uno con su color: --k) */
 .fb-neon { background: color-mix(in srgb, var(--k) 14%, transparent); box-shadow: 0 0 12px -3px var(--k), inset 0 0 10px -6px var(--k); text-shadow: 0 0 8px color-mix(in srgb, var(--k) 70%, transparent); }
 @media (prefers-reduced-motion: reduce) { .six-logo::after, .six-flk .six-logo, .six-flk .six-line, .six-in, .six-off, .six-con, .six-skull, .six-granted { animation: none !important; } }
+
+/* tema arcoíris (panel de Anita): todo el neón va girando de color */
+@keyframes six-hue { to { filter: hue-rotate(360deg); } }
+.six-rainbow > header, .six-rainbow > main, .six-rainbow > footer, .six-rainbow > .fixed { animation: six-hue 8s linear infinite; }
+.six-rainbow-dot { background: conic-gradient(#ff4fd8, #ffb000, #39ff88, #00e5ff, #b46cff, #ff4fd8) !important; }
+@media (prefers-reduced-motion: reduce) { .six-rainbow > * { animation: none !important; } }

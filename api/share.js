@@ -2,6 +2,7 @@
 import { randomBytes } from "node:crypto";
 import { q } from "../lib/db.js";
 import { send, body, query, wrap, requireUser } from "../lib/core.js";
+import { liveOf } from "./live.js";
 
 const BOARD = /^lspdt\.board\.[a-z0-9]+\.[a-z0-9]+$/, TOK = /^[a-f0-9]{32}$/;
 const read = async t => { const r = (await q("select v from meta where k=$1", ["share:" + t])).rows[0]; try { return r ? JSON.parse(r.v) : null; } catch { return null; } };
@@ -14,8 +15,9 @@ export default wrap(async (req, res) => {
     if (!s || s.exp < Date.now()) { if (s) await q("delete from meta where k=$1", ["share:" + t]); return send(res, 410, { msg: "El enlace venció o fue revocado" }); }
     const r = (await q("select v, t from kv where k=$1", [s.k])).rows[0], kt = r ? +r.t : 0;
     res.setHeader("Cache-Control", "no-store");
-    if (Number(qs.since) >= kt) return send(res, 200, { same: true, exp: s.exp });
-    return send(res, 200, { v: r ? r.v : null, t: kt, title: s.title || "Pizarra", by: s.by, exp: s.exp });
+    const L = qs.live ? (await liveOf(s.k)).o : undefined;
+    if (Number(qs.since) >= kt) return send(res, 200, { same: true, exp: s.exp, live: L, now: Date.now() });
+    return send(res, 200, { v: r ? r.v : null, t: kt, title: s.title || "Pizarra", by: s.by, exp: s.exp, live: L, now: Date.now() });
   }
   const u = await requireUser(req, res); if (!u) return;
   const b = await body(req);

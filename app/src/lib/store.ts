@@ -16,10 +16,10 @@ const bump = () => { version++; subs.forEach(f => f()); };
 
 /* claves que viven solo en este navegador (igual que en la versión clásica) */
 const LOCAL = /^lspdt\.(session|accounts|theme|frame|rankLang|seenVersion|area|sec\..*|agView|upd.*|iconpng|fix\..*|patrol|recent|altFirma|altDraft|cursor|accent|crt|crtI|rtdDraft|dvc|psbCargo|infDraft|next\..*)$/;
-export const isLocal = (k: string) => LOCAL.test(k);
+const isLocal = (k: string) => LOCAL.test(k);
 const has = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
 
-export type NetState = "ok" | "saving" | "off";
+type NetState = "ok" | "saving" | "off";
 let net: NetState = "ok";
 const setNet = (s: NetState) => { if (net !== s) { net = s; bump(); } };
 export const getNet = () => net;
@@ -106,8 +106,8 @@ async function poll() {
 export const syncNow = () => { if (!document.hidden) void poll(); };
 function schedule() { clearTimeout(pollT); pollT = window.setTimeout(async () => { if (!document.hidden) await poll(); schedule(); }, 5000); }
 
-export const ME_ROLES: { admin?: boolean; owner?: boolean; six?: boolean } = {};
-export type Me = { n: string; r: string; admin: boolean; owner: boolean; six?: boolean };
+export const ME_ROLES: { admin?: boolean; owner?: boolean; six?: boolean; anita?: boolean } = {};
+export type Me = { n: string; r: string; admin: boolean; owner: boolean; six?: boolean; anita?: boolean };
 export let DEF_ROSTER: Agent[] = [];
 export type Agent = { n: string; p?: string; r: string; e?: string; s?: string; i?: string; d?: string; a?: string; c?: string };
 
@@ -118,7 +118,7 @@ export function loadStore(d: { store: Dict; kt?: Record<string, number>; t?: num
   for (const k of Object.keys(BASE)) delete BASE[k];
   Object.assign(CACHE, d.store); Object.assign(BASE, d.store); Object.assign(KT, d.kt || {});
   SYNC_T = d.t || 0; DEF_ROSTER = d.defRoster || DEF_ROSTER; ONLINE = true;
-  Object.assign(ME_ROLES, { admin: !!d.me?.admin, owner: !!d.me?.owner, six: !!d.me?.six });
+  Object.assign(ME_ROLES, { admin: !!d.me?.admin, owner: !!d.me?.owner, six: !!d.me?.six, anita: !!d.me?.anita });
   bump(); schedule();
   document.addEventListener("visibilitychange", () => { if (!document.hidden) void poll(); });
   addEventListener("online", () => { void poll(); void Sync.run(); });
