@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 import { CATS, MISIONES, WPN, catalogo, perfilDe, type Cat, type Item } from "./robosData";
 
 const NT = {
-  conf: { l: "Diferencia", c: "#f59e0b", I: AlertTriangle }, nuevo: { l: "Para sumar", c: "#a855f7", I: Plus }, off: { l: "Se puede sacar", c: "#ef4444", I: CircleSlash },
+  conf: { l: "Diferencia", c: "#f59e0b", I: AlertTriangle }, nuevo: { l: "Sin regla", c: "#a855f7", I: Plus }, off: { l: "Se puede sacar", c: "#ef4444", I: CircleSlash },
   rev: { l: "Recompensa pendiente", c: "#eab308", I: Info }, dup: { l: "Duplicado", c: "#f97316", I: Copy }, ok: { l: "Coincide", c: "#22c55e", I: CheckCircle2 }, sin: { l: "Sin misión", c: "#64748b", I: Info },
 } as const;
 const yn = (v: boolean | null | undefined) => (v == null ? "—" : v ? "Sí" : "No");
@@ -111,12 +111,13 @@ export function Catalogo() {
             <span key={t} className="rounded-lg px-2 py-1 font-semibold" style={{ background: NT[t].c + "1a", color: NT[t].c }}>{cnt(t)} {NT[t].l.toLowerCase()}</span>))}</div>
         </header>
         {cat === "all" && !q && <section className="grid gap-3 font-sans text-xs md:grid-cols-3">
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3"><b className="text-amber-300">Para corregir</b>
-            <ul className="mt-1 space-y-0.5 text-slate-300">{all.filter(x => x.notas.some(n => n.t === "conf")).map(x => <li key={x.id}>· {x.n}</li>)}</ul></div>
-          <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3"><b className="text-red-300">Se puede sacar</b>
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3"><b className="text-amber-300">Para corregir</b><p className="text-slate-500">El Excel deja ir más atracadores que la normativa: hay que igualar uno de los dos.</p>
+            <ul className="mt-1 space-y-0.5 text-slate-300">{all.filter(x => x.notas.some(n => n.t === "conf")).map(x => { const m = x.mis.find(y => x.max != null && y.max > x.max)!; return <li key={x.id}>· {x.n}: Excel {m.max} (fila {m.f.join(", ")}) · normativa {x.max}</li>; })}</ul></div>
+          <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3"><b className="text-red-300">Se puede sacar</b><p className="text-slate-500">Misiones marcadas NO ACTIVO y filas repetidas del Excel.</p>
             <ul className="mt-1 space-y-0.5 text-slate-300">{off.map(m => <li key={m.n}>· {m.n} (fila {m.f[0]}, no activa)</li>)}{dup.map(m => <li key={m.n}>· {m.n} (filas {m.f.join(" y ")}, sin decir para qué banda)</li>)}</ul></div>
-          <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-3"><b className="text-purple-300">Para sumar a la normativa</b>
-            <ul className="mt-1 space-y-0.5 text-slate-300">{all.filter(x => x.prop && x.cat !== "mis" && !x.mis.some(m => m.off)).map(x => <li key={x.id}>· {x.n} → {CATS[x.cat].l} ({x.max}/{x.pol})</li>)}</ul></div>
+          <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-3"><b className="text-purple-300">Robos del Excel que no están en la normativa</b>
+            <p className="text-slate-500">Existen como misión, pero la Normativa de Robos no dice cuántos atracadores ni cuántos policías pueden ir. Propuesta: la categoría más parecida, el máximo del Excel y policías = atracadores + 2.</p>
+            <ul className="mt-1 space-y-0.5 text-slate-300">{all.filter(x => x.prop && x.cat !== "mis" && !x.mis.some(m => m.off)).map(x => <li key={x.id}>· {x.n} <span className="text-slate-500">(fila {x.mis[0].f.join(", ")})</span> → {CATS[x.cat].l} · {x.max} atracadores · {x.pol} policías</li>)}</ul></div>
         </section>}
         {(Object.keys(CATS) as Cat[]).filter(k => list.some(x => x.cat === k)).map(k => (
           <section key={k}>

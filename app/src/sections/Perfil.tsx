@@ -3,7 +3,7 @@
    solo la ven los miembros de esa división.
    Datos: lspdt.uprof.<slug> (solo el dueño), .ban (portada), lspdt.ucom.<slug> (comentarios), lspdt.uvis.<slug> (visitas), lspdt.ufol.<slug> (seguidores). */
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Activity, BadgeCheck, Bold, Camera, ChevronsUp, Crown, Eye, Gem, Heading1, Heading2, Heading3, IdCard, Italic, List, Lock, MessageSquare, Pencil, Quote, Save, Scale, Send, Strikethrough, Trash2, Trophy, Underline, UserCheck, UserPlus, Users, X, type LucideIcon } from "lucide-react";
+import { Activity, BadgeCheck, Check, Bold, Camera, ChevronsUp, Crown, Eye, Gem, Heading1, Heading2, Heading3, IdCard, Italic, List, Lock, MessageSquare, Pencil, Quote, Save, Scale, Send, Strikethrough, Trash2, Trophy, Underline, UserCheck, UserPlus, Users, X, type LucideIcon } from "lucide-react";
 import { Button, Card, Textarea } from "@/components/ui";
 import { Avatar, RankBadge } from "@/components/agents";
 import { Ribbon } from "@/components/ribbon";
@@ -17,9 +17,10 @@ import { decorOf, type Award } from "@/lib/decor";
 import { profFull, takePreset } from "@/lib/profiles";
 import { isPSB, rtdMem, uMap, type UnitKey } from "@/lib/units";
 import { mdHtml } from "@/lib/discord";
+import { nickOf } from "@/lib/nick";
 import { cn } from "@/lib/cn";
 
-export type UProf = { bio?: string; since?: number; seen?: number; col?: string };
+export type UProf = { bio?: string; since?: number; seen?: number; col?: string; nick?: string };
 export type UCom = { id: string; by: string; t: number; x: string };
 type UVis = { c: number; l: { n: string; t: number }[] };
 export const slugOf = (n: string) => emailOf(n).split("@")[0];
@@ -123,12 +124,13 @@ export function Perfil() {
   const P = LS.json<UProf>(K.prof(who), {}), ban = LS.get(K.ban(who)) || "", coms = LS.json<UCom[]>(K.com(who), []), vis = LS.json<UVis>(K.vis(who), { c: 0, l: [] }), fol = LS.json<string[]>(K.fol(who), []);
   const prof = profFull(who), cond = ((prof.cond || []) as unknown as Award[]).slice().sort((a, b) => (b.f || "").localeCompare(a.f || ""));
   const [tab, setTab] = useState<"act" | "log" | "com" | "pj">("com"), [ed, setEd] = useState(false), [bio, setBio] = useState(P.bio || ""), [txt, setTxt] = useState(""), fBan = useRef<HTMLInputElement>(null);
-  useEffect(() => { setBio(P.bio || ""); setEd(false); setTab("com"); }, [who]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [nk, setNk] = useState<string | null>(null), nick = nickOf(who), N = nickOf; /* N: nick de cualquiera */
+  useEffect(() => { setBio(P.bio || ""); setEd(false); setNk(null); setTab("com"); }, [who]); // eslint-disable-line react-hooks/exhaustive-deps
   /* visita: una por sesión y por perfil (no cuenta la propia) */
   useEffect(() => { if (own) return; const sk = "lspdt.next.vis." + slugOf(who); try { if (sessionStorage.getItem(sk)) return; sessionStorage.setItem(sk, "1"); } catch { /* */ }
     const v = LS.json<UVis>(K.vis(who), { c: 0, l: [] }); LS.setJSON(K.vis(who), { c: v.c + 1, l: [{ n: me.n, t: Date.now() }, ...v.l.filter(x => x.n !== me.n)].slice(0, 12) }); }, [who, own, me.n]);
   const saveP = (p: Partial<UProf>) => LS.setJSON(K.prof(who), { ...LS.json<UProf>(K.prof(who), {}), ...p });
-  const post = () => { const x = txt.trim(); if (!x) return; LS.setJSON(K.com(who), [...LS.json<UCom[]>(K.com(who), []), { id: uid(), by: me.n, t: Date.now(), x: x.slice(0, 1500) }].slice(-200)); setTxt(""); toast(own ? "Publicado" : `Comentario enviado a ${who}`); };
+  const post = () => { const x = txt.trim(); if (!x) return; LS.setJSON(K.com(who), [...LS.json<UCom[]>(K.com(who), []), { id: uid(), by: me.n, t: Date.now(), x: x.slice(0, 1500) }].slice(-200)); setTxt(""); toast(own ? "Publicado" : `Comentario enviado a ${nickOf(who)}`); };
   const following = fol.includes(me.n), idx = ACC.names.indexOf(who), id = idx >= 0 ? idx + 1 : 0;
   const logros = LOGROS.map(l => ({ ...l, on: l.ok(who, r) })), got = logros.filter(l => l.on);
   const best = got.slice().reverse().slice(0, 3);
@@ -137,7 +139,7 @@ export function Perfil() {
     ...coms.filter(c => c.by === who).map(c => ({ t: c.t, x: `Escribió en su perfil: «${c.x.slice(0, 80)}${c.x.length > 80 ? "…" : ""}»` }))].sort((a, b) => b.t - a.t).slice(0, 20);
   const pol = policeAct(who, me);
   const TABS: ["act" | "log" | "com" | "pj", string, LucideIcon, number | string][] = [["act", "Actividad", Activity, act.length + pol.reduce((s, g) => s + g.ev.length, 0)], ["log", "Logros", Trophy, `${got.length}/${LOGROS.length}`], ["com", "Comentarios", MessageSquare, coms.length], ["pj", "Personaje", IdCard, ""]];
-  const people = (L: string[]) => <div className="grid grid-cols-5 gap-2">{L.slice(0, 15).map(n => <button key={n} title={n} onClick={() => setWho(n)} className="justify-self-center"><Avatar n={n} size={36} /></button>)}</div>;
+  const people = (L: string[]) => <div className="grid grid-cols-5 gap-2">{L.slice(0, 15).map(n => <button key={n} title={N(n)} onClick={() => setWho(n)} className="justify-self-center"><Avatar n={n} size={36} /></button>)}</div>;
   const stats: [string, string][] = [["Comentarios", String(coms.length)], ["Ingreso", dmy(P.since)], ["Última visita", P.seen ? ago(P.seen) : "—"]];
   return (
     <div className="space-y-4">
@@ -154,10 +156,15 @@ export function Perfil() {
           <div className="-mt-12 rounded-full ring-4 ring-white dark:ring-slate-900"><Avatar n={who} size={104} /></div>
           <div className="min-w-0 flex-1 pt-2">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-2xl font-bold">{who}</h1>
+              {nk !== null ? <form className="flex items-center gap-1.5" onSubmit={e => { e.preventDefault(); saveP({ nick: nk.trim().slice(0, 24) }); setNk(null); toast("Nickname guardado"); }}>
+                <input autoFocus value={nk} onChange={e => setNk(e.target.value)} maxLength={24} placeholder={who} className="w-48 rounded-lg border border-slate-300 bg-transparent px-2 py-1 text-xl font-bold outline-none focus:border-brand-500 dark:border-slate-700" />
+                <button type="submit" aria-label="Guardar" className="text-emerald-500"><Check className="size-4" /></button><button type="button" aria-label="Cancelar" onClick={() => setNk(null)} className="text-slate-400"><X className="size-4" /></button></form>
+                : <h1 className="truncate text-2xl font-bold">{nick}</h1>}
+              {own && nk === null && <button aria-label="Cambiar nickname" title="Cambiar nickname OOC" onClick={() => setNk(P.nick ?? nick)} className="text-slate-400 hover:text-brand-500"><Pencil className="size-3.5" /></button>}
               {id > 0 && <span title="ID de cuenta (orden de registro)" className={cn("rounded-md px-1.5 py-0.5 font-mono text-xs font-bold", id === 1 ? "bg-gradient-to-r from-rose-500 via-amber-400 to-fuchsia-500 text-white" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300")}>#{id}</span>}
               {best.map(l => <span key={l.k} title={`${l.t} · ${TIER[l.tier].l}`}><Medal tier={l.tier} I={l.I} size={24} /></span>)}
             </div>
+            {nick !== who && <p className="text-xs text-slate-500">Personaje: <button onClick={() => setTab("pj")} className="font-semibold hover:underline">{who}</button></p>}
             {/* contadores en un solo renglón */}
             <div className="mt-1.5 flex items-center gap-x-4 overflow-x-auto whitespace-nowrap text-sm">{stats.map(([l, v], i) => (
               <span key={l} className="flex items-baseline gap-1.5">{i > 0 && <span className="mr-2.5 text-slate-300 dark:text-slate-700">|</span>}<span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{l}</span><b className="font-semibold">{v}</b></span>))}</div>
@@ -174,7 +181,7 @@ export function Perfil() {
         <div className="space-y-4">
           <Card className="p-4"><p className="mb-3 flex items-center gap-2 text-sm font-semibold"><Users className="size-4 text-slate-400" />{fol.length} {fol.length === 1 ? "seguidor" : "seguidores"}</p>
             {fol.length ? people(fol) : <p className="text-xs text-slate-400">Todavía nadie.</p>}</Card>
-          <Card className="p-4"><div className="mb-2 flex items-center"><p className="flex-1 text-sm font-semibold">Acerca de {own ? "mí" : who.split(" ")[0]}</p>
+          <Card className="p-4"><div className="mb-2 flex items-center"><p className="flex-1 text-sm font-semibold">Acerca de {own ? "mí" : nick}</p>
             {own && !ed && <button aria-label="Editar" onClick={() => setEd(true)} className="text-slate-400 hover:text-brand-500"><Pencil className="size-3.5" /></button>}</div>
             {ed ? <div className="space-y-2"><BioEditor v={bio} set={setBio} />
               <div className="flex justify-end gap-1.5"><Button size="sm" variant="ghost" icon={<X />} onClick={() => { setBio(P.bio || ""); setEd(false); }}>Cancelar</Button><Button size="sm" icon={<Save />} onClick={() => { saveP({ bio: bio.trim().slice(0, 2000) }); setEd(false); toast("Guardado"); }}>Guardar</Button></div></div>
@@ -182,7 +189,7 @@ export function Perfil() {
           <Card className="p-4"><p className="mb-1 flex items-center gap-2 text-sm font-semibold"><Eye className="size-4 text-slate-400" />Visitantes recientes</p>
             <p className="mb-2 text-xs text-slate-400">{vis.c.toLocaleString("es-AR")} visitas al perfil</p>
             {vis.l.length ? <div className="divide-y divide-slate-100 dark:divide-slate-800">{vis.l.slice(0, 6).map(v => (
-              <button key={v.n} onClick={() => setWho(v.n)} className="flex w-full items-center gap-2.5 py-2 text-left"><Avatar n={v.n} size={28} /><span className="min-w-0"><b className="block truncate text-sm">{v.n}</b><small className="text-xs text-slate-400">{ago(v.t)}</small></span></button>))}</div>
+              <button key={v.n} onClick={() => setWho(v.n)} className="flex w-full items-center gap-2.5 py-2 text-left"><Avatar n={v.n} size={28} /><span className="min-w-0"><b className="block truncate text-sm">{N(v.n)}</b><small className="text-xs text-slate-400">{ago(v.t)}</small></span></button>))}</div>
               : <p className="text-xs text-slate-400">Sin visitas todavía.</p>}</Card>
         </div>
 
@@ -194,13 +201,13 @@ export function Perfil() {
               {tab === k && <span className="absolute inset-x-6 bottom-0 h-0.5 rounded-full bg-brand-500" />}</button>))}</div>
           <div className="p-5">
             {tab === "com" && <div className="space-y-4">
-              <div className="flex gap-3"><Avatar n={me.n} size={36} /><div className="flex-1 space-y-2"><Textarea rows={2} value={txt} onChange={e => setTxt(e.target.value)} placeholder={own ? "Escribí algo en tu perfil…" : `Dejale un comentario a ${who.split(" ")[0]}…`}
+              <div className="flex gap-3"><Avatar n={me.n} size={36} /><div className="flex-1 space-y-2"><Textarea rows={2} value={txt} onChange={e => setTxt(e.target.value)} placeholder={own ? "Escribí algo en tu perfil…" : `Dejale un comentario a ${nick}…`}
                 onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) post(); }} />
                 <div className="flex justify-end"><Button size="sm" icon={<Send />} disabled={!txt.trim()} onClick={post}>Publicar</Button></div></div></div>
               {!coms.length ? <Empty>Sin comentarios todavía.</Empty> : <div className="space-y-3">{coms.slice().reverse().map(c => (
                 <div key={c.id} className="flex gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
                   <button onClick={() => setWho(c.by)}><Avatar n={c.by} size={36} /></button>
-                  <div className="min-w-0 flex-1"><p className="text-sm"><button onClick={() => setWho(c.by)} className="font-semibold hover:underline">{c.by}</button> <span className="text-xs text-slate-400">· {ago(c.t)}</span></p>
+                  <div className="min-w-0 flex-1"><p className="text-sm"><button onClick={() => setWho(c.by)} className="font-semibold hover:underline">{N(c.by)}</button> <span className="text-xs text-slate-400">· {ago(c.t)}</span></p>
                     <p className="whitespace-pre-wrap break-words text-sm text-slate-600 dark:text-slate-300">{c.x}</p></div>
                   {(c.by === me.n || own) && <button aria-label="Borrar comentario" onClick={async () => { if (await confirm("¿Borrar este comentario?", { danger: true })) LS.setJSON(K.com(who), LS.json<UCom[]>(K.com(who), []).filter(x => x.id !== c.id)); }} className="self-start text-slate-400 hover:text-red-500"><Trash2 className="size-3.5" /></button>}
                 </div>))}</div>}
@@ -238,7 +245,7 @@ export function Perfil() {
           </div>
         </Card>
       </div>
-      {!own && <p className="text-center text-xs text-slate-400">Estás viendo el perfil de {who}{r ? ` · ${rankES(r)}` : ""}</p>}
+      {!own && <p className="text-center text-xs text-slate-400">Estás viendo el perfil de {nick}{r ? ` · ${rankES(r)}` : ""}</p>}
     </div>
   );
 }

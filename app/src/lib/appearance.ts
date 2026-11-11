@@ -68,7 +68,13 @@ const lsSet = (k: string, v: string | null) => { try { if (v == null) localStora
 let deptUi: Record<string, string> = {};
 export const setDeptUi = (u: Record<string, string>) => { const t = JSON.stringify(u); if (t !== JSON.stringify(deptUi)) { deptUi = u; applyAppearance(); } };
 export const deptUiNow = () => deptUi;
-type Pref = { skin: string; skinOwn: boolean; acc: string; crt: string; crtI: number; frame: boolean; neon: boolean; font: string; head: string; cur: string; curOwn: boolean; nav: "top" | "side"; brand: "rgb" | "magenta" | "off"; brandSpd: number };
+type Pref = { skin: string; skinOwn: boolean; acc: string; crt: string; crtI: number; frame: boolean; neon: boolean; font: string; head: string; cur: string; curOwn: boolean; nav: "top" | "side"; brand: "rgb" | "magenta" | "off"; brandOwn: boolean; brandSpd: number };
+export const BRANDS = ["rgb", "magenta", "off"] as const;
+const isBrand = (v: unknown): v is Pref["brand"] => BRANDS.includes(v as Pref["brand"]);
+function brandOf(own: string | null, spd: string | null) {
+  const n = parseFloat(spd || "") || parseFloat(deptUi.brandSpd || "") || 6;
+  return { brand: isBrand(own) ? own : isBrand(deptUi.brand) ? deptUi.brand : "rgb", brandOwn: isBrand(own), brandSpd: Math.max(1, Math.min(20, n)) };
+}
 function pref(): Pref {
   const s = lsGet("lspdt.theme"), old = lsGet("lspdt.next.theme");
   const skin = s && SKINS[s] ? s : SKINS[deptUi.theme] ? deptUi.theme : old === "light" ? "nuevoc" : "nuevo";
@@ -77,7 +83,8 @@ function pref(): Pref {
   return { skin, skinOwn: !!(s && SKINS[s]), acc: lsGet("lspdt.accent") || "", crt: c === "0" ? "0" : c && CRT_V[c] ? c : "lite", crtI: isNaN(i) ? 70 : Math.max(0, Math.min(100, i)),
     frame: lsGet("lspdt.frame") !== "0", neon: lsGet("lspdt.next.neon") !== "0", font: lsGet("lspdt.next.font") || "inter", head: HEADS[lsGet("lspdt.next.head") || ""] ? lsGet("lspdt.next.head")! : "rajdhani",
     cur: cu && CURS[cu] ? cu : CURS[deptUi.cursor] ? deptUi.cursor : "sys", curOwn: !!(cu && CURS[cu]), nav: lsGet("lspdt.next.navmode") === "side" ? "side" : "top",
-    brand: (["rgb", "magenta", "off"] as const).find(x => x === lsGet("lspdt.next.brand")) || "rgb", brandSpd: Math.max(1, Math.min(20, parseFloat(lsGet("lspdt.next.brandSpd") || "") || 6)) };
+    /* marca «Bananita» del marco: la propia o, si no eligió, la que fijó la administración */
+    ...brandOf(lsGet("lspdt.next.brand"), lsGet("lspdt.next.brandSpd")) };
 }
 const subs = new Set<() => void>(); let ver = 0;
 export const usePref = () => { useSyncExternalStore(f => { subs.add(f); return () => { subs.delete(f); }; }, () => ver); return pref(); };

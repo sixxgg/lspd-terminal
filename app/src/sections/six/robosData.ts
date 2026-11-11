@@ -136,7 +136,7 @@ export function catalogo(): Item[] {
   for (const it of out) {
     if (it.mis.length) it.min = Math.min(...it.mis.map(x => x.min));
     if (!it.norm) {
-      it.notas.push({ t: "nuevo", x: it.cat === "mis" ? `Misión de tipo ${it.mis[0].tipo.toLowerCase()}: no es un robo, pero conviene fijar policías máx. (${it.pol}).` : `No figura en la normativa: se propone ${CATS[it.cat].l} con ${it.max} atracadores y ${it.pol} policías.` });
+      it.notas.push({ t: "nuevo", x: it.cat === "mis" ? `Misión de tipo ${it.mis[0].tipo.toLowerCase()}: no es un robo, pero conviene fijar policías máx. (${it.pol}).` : `Está en el Excel pero no en la normativa, así que no tiene límite fijado. Propuesta: ${CATS[it.cat].l} con ${it.max} atracadores y ${it.pol} policías.` });
     } else if (!it.mis.length) it.notas.push({ t: "sin", x: "Sin misión en la planilla: no tiene recompensa cargada." });
     for (const mi of it.mis) {
       if (it.norm && it.max != null && mi.max > it.max) it.notas.push({ t: "conf", x: `«${mi.n}» permite hasta ${mi.max} y la normativa ${it.max}: subir la normativa a ${mi.max} atracadores / ${mi.max + 2} policías o bajar la misión a ${it.max}.` });

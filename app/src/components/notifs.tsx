@@ -2,6 +2,7 @@
    - el estado de sus feedback (y la respuesta), - si cambió su rango (ascenso o descenso),
    - para la PSB: expedientes nuevos o resueltos, - versión nueva de la terminal.
    Lo leído se guarda en este navegador. */
+import { nickOf } from "@/lib/nick";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, CheckCheck, Heart, MessageSquare, Shield, Sparkles, TrendingDown, TrendingUp, type LucideIcon } from "lucide-react";
 import { FB_ST, fbSt, fbX, useMyFeedback, useTick } from "@/components/fbnotif";
@@ -45,7 +46,7 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
       if (r && r.by !== me.n) L.push({ id: `psb:r:${c.id}:${r.ts}`, t: r.ts, I: Shield, c: "#22c55e", title: `PSB · ${c.cf} resuelto`, body: `${c.ag || ""} · resolución de ${r.by}`, go: ["div", "dv_psb"] }); }
     /* comentarios que otros dejaron en mi perfil */
     for (const c of LS.ro<{ id: string; by: string; t: number; x: string }[]>(`lspdt.ucom.${emailOf(me.n).split("@")[0]}`, [])) if (c.by !== me.n)
-      L.push({ id: "com:" + c.id, t: c.t, I: MessageSquare, c: "#38bdf8", title: `${c.by} comentó en tu perfil`, body: c.x, go: ["me", "perfil"] });
+      L.push({ id: "com:" + c.id, t: c.t, I: MessageSquare, c: "#38bdf8", title: `${nickOf(c.by)} comentó en tu perfil`, body: c.x, go: ["me", "perfil"] });
     if (hasNews()) L.push({ id: "ver:" + APP_VERSION, t: lsGet<number>("lspdt.next.verT:" + APP_VERSION, 0) || (lsSet("lspdt.next.verT:" + APP_VERSION, Date.now()), Date.now()), I: Sparkles, c: "#f472b6", title: `Versión ${APP_VERSION} disponible`, body: "Mirá las novedades de la terminal.", go: ["ini", "nov"] });
     return L.sort((a, b) => b.t - a.t).slice(0, 30);
   }, [fb.list, cases, psb, me.n, kEv, ver]); // eslint-disable-line react-hooks/exhaustive-deps

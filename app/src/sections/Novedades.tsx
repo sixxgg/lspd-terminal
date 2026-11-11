@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.9.7";
+export const APP_VERSION = "1.9.8";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,10 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "1.9.8", f: "11/11/2026", t: "Nickname y marca por defecto", items: [
+    "Perfil: cada uno puede ponerse un nickname OOC (lápiz al lado del nombre); el personaje queda aparte y se ve en la pestaña Personaje.",
+    "La administración elige la marca «Bananita» del marco por defecto (RGB, magenta o desactivada) y la velocidad, como el tema del departamento.",
+  ] },
   { v: "1.9.7", f: "11/11/2026", t: "Perfiles OOC, logros y tablet táctica", items: [
     "Perfil: ID de cuenta según el orden de registro, contadores en un solo renglón, «Acerca de mí» con formato (títulos, negrita, cursiva, citas, listas) y pestaña Personaje con rango, placa, divisiones, condecoraciones y carrera.",
     "Logros por rareza: Registrado y Oficial (común), Sargento (raro), Miembro de la PSB (épico), Sargento II (legendario) y Fundador (mítico).",

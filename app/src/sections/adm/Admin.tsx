@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { UserCheck, Crown, ShieldPlus, ImagePlus, Type, Save, Trash2, Check, X, Upload, Download, FileSpreadsheet, RotateCcw, GraduationCap, Shield, Database } from "lucide-react";
-import { Button, Card, CardBody, CardHeader, Empty, Field, Input } from "@/components/ui";
+import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented } from "@/components/ui";
 import { AgentCombo, Avatar } from "@/components/agents";
 import { ImagePicker, imgSpec } from "@/components/imagepick";
 import { useFeedback } from "@/components/feedback";
@@ -104,7 +104,7 @@ export function AdmMarca() {
   useStoreVersion();
   const { toast, confirm } = useFeedback();
   const [pick, setPick] = useState<{ k: string; t: string; max: number; alpha: boolean; wide?: boolean } | null>(null);
-  const ui = LS.json<Record<string, string>>("lspdt.ui", {}), [txt, setTxt] = useState<Record<string, string>>(() => Object.fromEntries(UI_TXT.map(([k]) => [k, ui[k] || ""])));
+  const ui = LS.json<Record<string, string>>("lspdt.ui", {}), setUi = (k: string, v: string, msg?: string) => { LS.setJSON("lspdt.ui", { ...LS.json<Record<string, string>>("lspdt.ui", {}), [k]: v }); if (msg) toast(msg); }, [txt, setTxt] = useState<Record<string, string>>(() => Object.fromEntries(UI_TXT.map(([k]) => [k, ui[k] || ""])));
   const SUBS = ["lspdt.logo.login", "lspdt.logo.boot", "lspdt.logo.header", "lspdt.logo.hero", "lspdt.logo.wm", "lspdt.fav"];
   const freeze = () => { const cur = LS.get("lspdt.logo") || "/next/logo.svg"; SUBS.forEach(k => { if (!LS.get(k)) LS.set(k, cur); }); };
   let grp = "";
@@ -120,6 +120,10 @@ export function AdmMarca() {
         <CardBody>
           <Field label="Tema"><SkinGrid value={ui.theme || ""} onPick={k => { const c = LS.json<Record<string, string>>("lspdt.ui", {}); c.theme = k; LS.setJSON("lspdt.ui", c); toast("Tema por defecto del departamento: " + SKINS[k].l); }} /></Field>
           <Field label="Puntero"><CursorGrid value={ui.cursor || "sys"} acc={SKINS[ui.theme]?.acc || "#6366f1"} onPick={k => { const c = LS.json<Record<string, string>>("lspdt.ui", {}); c.cursor = k; LS.setJSON("lspdt.ui", c); toast("Puntero por defecto actualizado"); }} /></Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Marca «Bananita» del marco de tablet"><Segmented size="sm" value={ui.brand || "rgb"} onChange={v => setUi("brand", v, "Marca por defecto actualizada")} options={[{ value: "rgb", label: "RGB" }, { value: "magenta", label: "Magenta neón" }, { value: "off", label: "Desactivada" }]} /></Field>
+            <Field label={`Velocidad del RGB · ${ui.brandSpd || 6} s por vuelta`}><input type="range" min={1} max={20} step={0.5} value={+(ui.brandSpd || 6)} disabled={(ui.brand || "rgb") !== "rgb"} onChange={e => setUi("brandSpd", e.target.value)} className="mt-3 w-full accent-brand-600 disabled:opacity-40" /></Field>
+          </div>
         </CardBody>
       </Card>
       <Card>
