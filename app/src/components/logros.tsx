@@ -15,7 +15,7 @@ export const TIER = {
   legend: { l: "Legendario", c: "#fbbf24", bg: "linear-gradient(145deg,#fde047,#d97706 55%,#78350f)" },
   mitico: { l: "Mítico", c: "#f43f5e", bg: "conic-gradient(from 0deg,#f43f5e,#f59e0b,#22c55e,#06b6d4,#8b5cf6,#f43f5e)" },
 } as const;
-export type Tier = keyof typeof TIER;
+type Tier = keyof typeof TIER;
 /* íconos propios de los logros únicos */
 type IcoP = { className?: string; style?: React.CSSProperties };
 /* banana: cáscara amarilla con degradé, nervio claro, puntas y tallo marrones */

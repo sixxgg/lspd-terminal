@@ -18,9 +18,11 @@ import { AREAS, canArea, secsOf } from "./nav";
 import { api, authApi } from "./lib/api";
 import { BootScreen } from "./components/boot";
 import { PROF, profOk } from "./lib/nick";
+import { prevGet, prevStop } from "./lib/preview";
+import { Eye } from "lucide-react";
 import { goodTier, stampLogros } from "./components/logros";
 import { confetti } from "./lib/confetti";
-import { ACC, LS, ME_ROLES, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
+import { ACC, LS, ME_ROLES, PREV, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
 import { emailOf, findAgent, getRoster, rankES } from "./lib/domain";
 import { useFeedback } from "./components/feedback";
 
@@ -33,6 +35,13 @@ export default function App() {
   if (VER && /^[a-f0-9]{32}$/.test(VER)) return <Suspense fallback={null}><PublicSection tok={VER} /></Suspense>;
   return <Main />;
 }
+/* barra de «Ver como»: recuerda que es una vista previa y permite salir */
+function PrevBar({ r }: { r: string }) {
+  return <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[96] flex justify-center px-3"><div className="pointer-events-auto flex items-center gap-2.5 rounded-full border border-amber-400/40 bg-slate-950/90 py-1.5 pl-3 pr-1.5 text-sm text-amber-100 shadow-[0_0_30px_-8px_rgba(251,191,36,.6)] backdrop-blur">
+    <Eye className="size-4 text-amber-300" /><span>Vista previa como <b>{rankES(r)}</b> sin divisiones</span><button onClick={prevStop} className="rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-slate-900 hover:bg-amber-300">Salir</button></div></div>;
+}
+/* la apariencia por defecto del depto (tema, puntero, marca del marco) viene pública: se aplica ya en el ingreso */
+const deptFromBrand = (b: Boot) => { const u = b.brand?.["lspdt.ui"]; if (u) try { setDeptUi(JSON.parse(u)); } catch { /* */ } };
 function Main() {
   const [boot, setBoot] = useState<Boot | null>(null);
   const [me, setMe] = useState<Me | null>(null);
@@ -42,12 +51,15 @@ function Main() {
 
   const [fx, setFx] = useState<"" | "full" | "short">(""), [breach, setBreach] = useState(false);
   const endBreach = useCallback(() => { setBreach(false); setNav({ a: "six", s: "staff" }); scrollTopApp(); }, []);
-  const enter = useCallback((d: Parameters<typeof loadStore>[0], fresh?: boolean) => { loadStore(d); setMe(d.me!);
+  const enter = useCallback((d: Parameters<typeof loadStore>[0], fresh?: boolean) => {
+    /* «Ver como» (solo administración): otra identidad sin divisiones ni permisos */
+    const pv = prevGet(); if (pv && d.me?.admin) { PREV.on = true; d = { ...d, me: { n: "Vista previa", r: pv.r, admin: false, owner: false, six: false, anita: false } }; }
+    loadStore(d); setMe(d.me!);
     let seen = false; try { seen = !!sessionStorage.getItem("lspdt.next.booted"); sessionStorage.setItem("lspdt.next.booted", "1"); } catch { /* */ }
     if (fresh || !seen) setFx(fresh ? "full" : "short");
     /* limpieza: el código penal viejo guardado en la base ya no se usa (Legal es la única fuente); se borra una sola vez */
     if (LS.get("lspdt.penal") != null) LS.del("lspdt.penal"); }, []);
-  const lost = useCallback(() => { goOffline(); setMe(null); toast("La sesión se cerró. Volvé a ingresar.", "err"); void api("/api/auth").then(r => setBoot(r as unknown as Boot)); }, [toast]);
+  const lost = useCallback(() => { goOffline(); setMe(null); toast("La sesión se cerró. Volvé a ingresar.", "err"); void api("/api/auth").then(r => { deptFromBrand(r as unknown as Boot); setBoot(r as unknown as Boot); }); }, [toast]);
   useEffect(() => { storeHooks(toast, lost); }, [toast, lost]);
   /* enlace directo desde Discord (?ir=six-not): abre six en Notificaciones */
   useEffect(() => { if (!me) return; const ir = new URLSearchParams(location.search).get("ir"); if (!ir) return;
@@ -58,7 +70,7 @@ function Main() {
     if (!fbKnown.current) { fbKnown.current = new Set(ks); return; }
     for (const k of ks) if (!fbKnown.current.has(k)) { fbKnown.current.add(k); const t = LS.ro<{ by: string; who?: string } | null>(k, null); if (t) toast(`💗 Nuevo feedback de ${t.who || t.by} · six → Notificaciones`); } });
   useEffect(() => {
-    void api("/api/auth?full=1").then(r => { const b = r as unknown as Boot; ACC.names = b.names || []; setBoot(b); if (b.me && b.data) enter(b.data); });
+    void api("/api/auth?full=1").then(r => { const b = r as unknown as Boot; ACC.names = b.names || []; deptFromBrand(b); setBoot(b); if (b.me && b.data) enter(b.data); });
   }, [enter]);
   useEffect(() => { const f = (e: Event) => { setNav((e as CustomEvent<{ a: string; s: string }>).detail); scrollTopApp(); }; window.addEventListener("lspd:go", f); return () => window.removeEventListener("lspd:go", f); }, []);
   useEffect(() => { if (nav.a !== "six" && nav.a !== "anita") try { localStorage.setItem("lspdt.next.nav", JSON.stringify(nav)); } catch { /* */ } }, [nav]); /* six nunca queda como página de inicio */
@@ -94,5 +106,5 @@ function Main() {
   else if (area.k === "div") view = <Division d={sec.l} />;
   else if (VIEWS[`${area.k}/${sec.k}`]) view = VIEWS[`${area.k}/${sec.k}`]();
   else view = null;
-  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in"><Suspense fallback={<div className="grid min-h-[40vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{view}</Suspense></div></Shell><UpdateBar /></MeCtx.Provider>{fx && <BootScreen name={me.n} rank={rankES(user.r)} badge={user.p} agents={getRoster().length} short={fx === "short"} onDone={() => setFx("")} />}{breach && <ErrorScreen onDone={endBreach} />}</Device>;
+  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in"><Suspense fallback={<div className="grid min-h-[40vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{view}</Suspense></div></Shell><UpdateBar />{PREV.on && <PrevBar r={user.r} />}</MeCtx.Provider>{fx && <BootScreen name={me.n} rank={rankES(user.r)} badge={user.p} agents={getRoster().length} short={fx === "short"} onDone={() => setFx("")} />}{breach && <ErrorScreen onDone={endBreach} />}</Device>;
 }

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { UserCheck, Crown, ShieldPlus, ImagePlus, Type, Save, Trash2, Check, X, Upload, Download, FileSpreadsheet, RotateCcw, GraduationCap, Shield, Database } from "lucide-react";
-import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented } from "@/components/ui";
+import { UserCheck, Crown, ShieldPlus, ImagePlus, Type, Save, Trash2, Check, X, Upload, Download, FileSpreadsheet, RotateCcw, GraduationCap, Shield, Database, Eye } from "lucide-react";
+import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Select } from "@/components/ui";
+import { prevStart } from "@/lib/preview";
 import { AgentCombo, Avatar } from "@/components/agents";
 import { ImagePicker, imgSpec } from "@/components/imagepick";
 import { useFeedback } from "@/components/feedback";
-import { ALL_DIVS, findAgent, fmtDate, getRoster, lvl, norm, rankES } from "@/lib/domain";
+import { ALL_DIVS, findAgent, fmtDate, getRoster, lvl, norm, rankES, RANK_COLOR } from "@/lib/domain";
 import { authApi } from "@/lib/api";
 import { DEF_ROSTER, LS, syncIdle, useStoreVersion } from "@/lib/store";
 import { uMap, uSaveMap, rtdMem } from "@/lib/units";
@@ -33,9 +34,17 @@ export function AdmAccesos() {
     if (!(await confirm(on ? `¿Dar administrador a ${n}? Va a poder cambiar el logo, los fondos y los textos para todos.` : `¿Quitarle el administrador a ${n}?`, { danger: !on }))) return;
     const r = await authApi({ a: "setadmin", n, on }); if (r.__s !== 200) { toast(r.msg || "No se pudo guardar", "err"); return; } toast(on ? `${n} ahora es administrador` : `${n} ya no es administrador`); setSel(""); void load();
   };
+  const [pv, setPv] = useState("Police Officer II");
   const cand = adm ? adm.accounts.filter(n => !adm.owners.includes(n) && !adm.admins.includes(n)) : [];
   return (
     <div className="grid gap-5 xl:grid-cols-2">
+      <Card className="xl:col-span-2">
+        <CardHeader icon={<Eye />} title="Ver como" desc="Mirá la terminal como la ve otra persona: con el rango que elijas, sin divisiones ni permisos de administración. Es solo lectura y se sale con el botón de abajo." />
+        <CardBody><div className="flex flex-wrap items-center gap-2">
+          <Select value={pv} onChange={e => setPv(e.target.value)} className="max-w-xs">{Object.keys(RANK_COLOR).map(r => <option key={r} value={r}>{rankES(r)}</option>)}</Select>
+          <Button icon={<Eye />} onClick={() => prevStart(pv)}>Ver como {rankES(pv)} sin divisiones</Button>
+        </div></CardBody>
+      </Card>
       <Card>
         <CardHeader icon={<UserCheck />} title="Solicitudes de acceso" desc="Agentes por debajo de Sargento I que crearon su cuenta y esperan aprobación." />
         {!req ? <CardBody><p className="text-sm text-slate-400">Cargando…</p></CardBody> : <>

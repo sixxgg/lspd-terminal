@@ -1,7 +1,8 @@
 /* Divisiones: descripción, colores tomados del logo y paleta de roles (igual que la versión clásica) */
 import { useEffect, useState } from "react";
 import { DIVS, divAb, divEmblem } from "./domain";
-import { LS } from "./store";
+import { LS, ME_ROLES } from "./store";
+import { profFull } from "./profiles";
 import { UNITS, isRTD, isUMem, type UnitKey } from "./units";
 
 export const DIV_DESC: Record<string, string> = {
@@ -17,6 +18,9 @@ export const DIV_DESC: Record<string, string> = {
 };
 export const DIV_DONE: Record<string, "rtd" | UnitKey> = { "Recruitment and Training Division": "rtd", "Air Support Division": "asd", "K-9 Division": "k9", "Professional Standards Bureau": "psb", "Metropolitan Division": "md" };
 export const divOpen = (d: string, me: string) => { const k = DIV_DONE[d]; return k === "rtd" ? isRTD(me) : k ? isUMem(k, me) : false; };
+/* qué divisiones aparecen en el menú: las que tienen contenido, solo para quien está cargado en su roster;
+   las que todavía no tienen contenido, solo para quien la tiene en su perfil. La administración ve todas. */
+export const divVisible = (d: string, me: string) => !!ME_ROLES.admin || divOpen(d, me) || (!DIV_DONE[d] && ((profFull(me).div || []) as string[]).includes(d));
 export const subsOf = (d: string) => DIVS.find(x => x[0] === d)?.[1] || [];
 
 /* colores: [acento, claro, oscuro] — por defecto los medidos del logo oficial; con un logo propio se calculan */

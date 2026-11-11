@@ -33,11 +33,13 @@ export const LS = {
   set(k: string, v: string) {
     if (isLocal(k)) { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } bump(); return; }
     if (!ONLINE || CACHE[k] === v) return;
+    if (PREV.on) { onToast("Vista previa: los cambios no se guardan", "err"); return; }
     CACHE[k] = v; bump(); Sync.push(k);
   },
   del(k: string) {
     if (isLocal(k)) { try { localStorage.removeItem(k); } catch { /* */ } bump(); return; }
     if (!ONLINE || !has(CACHE, k)) return;
+    if (PREV.on) { onToast("Vista previa: los cambios no se guardan", "err"); return; }
     delete CACHE[k]; bump(); Sync.push(k);
   },
   /* lectura cacheada: solo vuelve a parsear si cambió el texto (no mutar lo que devuelve) */
@@ -98,7 +100,7 @@ async function poll() {
       ch = true;
     }
     SYNC_T = Math.max(SYNC_T, r.t || 0);
-    if (r.me) Object.assign(ME_ROLES, r.me);
+    if (r.me) { Object.assign(ME_ROLES, r.me); noRoles(); }
     if (ch) bump();
   } finally { polling = false; }
 }
@@ -117,6 +119,9 @@ function schedule() { clearTimeout(pollT); pollT = window.setTimeout(async () =>
 
 /* cuentas registradas en orden de alta (la posición es el ID público del perfil) */
 export const ACC: { names: string[] } = { names: [] };
+/* vista previa («Ver como»): sin permisos especiales y sin guardar nada en el servidor */
+export const PREV = { on: false };
+const noRoles = () => { if (PREV.on) Object.assign(ME_ROLES, { admin: false, owner: false, six: false, anita: false }); };
 export const ME_ROLES: { admin?: boolean; owner?: boolean; six?: boolean; anita?: boolean } = {};
 export type Me = { n: string; r: string; admin: boolean; owner: boolean; six?: boolean; anita?: boolean };
 export let DEF_ROSTER: Agent[] = [];
@@ -129,7 +134,7 @@ export function loadStore(d: { store: Dict; kt?: Record<string, number>; t?: num
   for (const k of Object.keys(BASE)) delete BASE[k];
   Object.assign(CACHE, d.store); Object.assign(BASE, d.store); Object.assign(KT, d.kt || {});
   SYNC_T = d.t || 0; DEF_ROSTER = d.defRoster || DEF_ROSTER; ONLINE = true;
-  Object.assign(ME_ROLES, { admin: !!d.me?.admin, owner: !!d.me?.owner, six: !!d.me?.six, anita: !!d.me?.anita });
+  Object.assign(ME_ROLES, { admin: !!d.me?.admin, owner: !!d.me?.owner, six: !!d.me?.six, anita: !!d.me?.anita }); noRoles();
   bump(); schedule();
   document.addEventListener("visibilitychange", () => { if (!document.hidden) void poll(); });
   addEventListener("online", () => { void poll(); void Sync.run(); });

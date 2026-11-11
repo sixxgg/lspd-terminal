@@ -72,7 +72,7 @@ let deptUi: Record<string, string> = (() => { try { return JSON.parse(localStora
 export const setDeptUi = (u: Record<string, string>) => { const t = JSON.stringify(u); if (t !== JSON.stringify(deptUi)) { deptUi = u; try { localStorage.setItem(DEPT_CACHE, t); } catch { /* */ } applyAppearance(); } };
 export const deptUiNow = () => deptUi;
 type Pref = { skin: string; skinOwn: boolean; acc: string; crt: string; crtI: number; frame: boolean; neon: boolean; font: string; head: string; cur: string; curOwn: boolean; nav: "top" | "side"; brand: "rgb" | "magenta" | "off"; brandOwn: boolean; brandSpd: number };
-export const BRANDS = ["rgb", "magenta", "off"] as const;
+const BRANDS = ["rgb", "magenta", "off"] as const;
 const isBrand = (v: unknown): v is Pref["brand"] => BRANDS.includes(v as Pref["brand"]);
 function brandOf(own: string | null, spd: string | null) {
   const n = parseFloat(spd || "") || parseFloat(deptUi.brandSpd || "") || 6;

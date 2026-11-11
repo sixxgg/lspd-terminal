@@ -7,6 +7,6 @@ const NICK0: Record<string, string> = { "Ryan Westbrook": "six", "Evelyn Molina"
 export const nickOf = (n: string) => (LS.json<{ nick?: string }>(`lspdt.uprof.${emailOf(n).split("@")[0]}`, {}).nick || "").trim() || NICK0[n] || n;
 
 /* perfiles en BETA: por ahora solo estas cuentas los ven y los usan */
-export const PROF_BETA = ["Ryan Westbrook", "Evelyn Molina", "Liam Campbell", "Kai Jeon-Soo"];
+const PROF_BETA = ["Ryan Westbrook", "Evelyn Molina", "Liam Campbell", "Kai Jeon-Soo"];
 export const PROF = { me: "" };
 export const profOk = (n = PROF.me) => PROF_BETA.includes(n);
