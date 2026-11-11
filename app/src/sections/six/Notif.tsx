@@ -3,10 +3,10 @@ import { useMemo, useState } from "react";
 import { ChevronDown, Inbox, Layers, MessageSquareReply, Trash2 } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
 import { Avatar } from "@/components/agents";
-import { FB_ST, fbSt, fbX, type FbSt } from "@/components/fbnotif";
+import { FB_ST, fbSt, fbX, type FbSt, useTick } from "@/components/fbnotif";
 import { LS, useStoreVersion } from "@/lib/store";
 import { plainOf, safeHtml } from "@/lib/richtext";
-import { fmtDate } from "@/lib/domain";
+import { ago } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 
 export type FbTicket = { id: string; by: string; who?: string; no?: number; t: number; u?: number; html: string; x?: string; imgs: string[]; st: string; nota?: string };
@@ -20,7 +20,7 @@ const OPEN = (s: string) => ["pend", "curso"].includes(fbSt(s)); // los que toda
 type Filt = "rec" | "all" | FbSt;
 
 export function NotifTab() {
-  useStoreVersion();
+  useStoreVersion(); useTick();
   const { confirm, toast } = useFeedback(), [f, setF] = useState<Filt>("rec"), [exp, setExp] = useState<Record<string, boolean>>({}), [nota, setNota] = useState<Record<string, string>>({});
   const L = fbList(), seen = Number(LS.get(FB_SEEN) || 0);
   const shown = useMemo(() => L.filter(x => (f === "all" ? true : f === "rec" ? OPEN(x.st) : fbSt(x.st) === f)), [L, f]);
@@ -45,14 +45,14 @@ export function NotifTab() {
           <button key={x.id} onClick={() => setExp({ ...exp, [x.id]: true })} style={{ ["--k" as string]: S0.c }} className="six-panel flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left font-sans text-sm transition hover:bg-six/5">
             <span className="fb-neon inline-flex items-center gap-1.5 rounded-md border border-[var(--k)] px-2 py-0.5 text-[11px] font-semibold text-[var(--k)]"><S0.I className="size-3.5" />{S0.l}</span>
             <b className="w-32 shrink-0 truncate text-white">{whoOf(x)}</b><span className="min-w-0 flex-1 truncate text-slate-400">{fbX(x.x)}</span>
-            <span className="shrink-0 text-xs text-slate-500">{fmtDate(x.u || x.t)}</span><ChevronDown className="size-4 text-slate-500" /></button>);
+            <span className="shrink-0 text-xs text-slate-500">{ago(x.u || x.t)}</span><ChevronDown className="size-4 text-slate-500" /></button>);
         const html = safeHtml(x.html, el => { const m = /^img:(\d+)$/.exec(el.getAttribute("src") || ""); return m ? LS.get(x.imgs[+m[1]]) || "" : ""; }); return (
         <section key={x.id} className={cn("six-panel relative rounded-2xl p-4", nuevo && "ring-1 ring-six/60")}>
           <i className="six-corner tl" /><i className="six-corner br" />
           <header className="mb-3 flex flex-wrap items-center gap-3">
             {whoOf(x) === "six" ? <span className="grid size-[34px] place-items-center rounded-full border border-six/50 bg-six/10 font-mono text-xs font-black text-six">six</span> : <Avatar n={x.by} size={34} />}
             <div className="min-w-0 font-sans"><p className="font-semibold text-white">{whoOf(x)}{nuevo && <span className="ml-2 rounded bg-six px-1.5 text-[10px] font-bold text-black">NUEVO</span>}</p>
-              <p className="text-xs text-slate-500">{whoOf(x) !== "six" && x.who && x.who !== x.by ? `${x.by} · ` : ""}{fmtDate(x.t)}</p></div>
+              <p className="text-xs text-slate-500">{whoOf(x) !== "six" && x.who && x.who !== x.by ? `${x.by} · ` : ""}{ago(x.t)}</p></div>
             <div className="ml-auto flex flex-wrap gap-1">{ORDER.map(k => { const S = FB_ST[k]; return (
               <button key={k} onClick={() => setSt(x, k)} title={S.l} style={{ ["--k" as string]: S.c }}
                 className={cn("inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-sans text-[11px] font-semibold transition", st === k ? "fb-neon border-[var(--k)] text-[var(--k)]" : "border-six/15 text-slate-500 hover:text-slate-200")}>

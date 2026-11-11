@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.8";
+export const APP_VERSION = "1.9";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,15 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "1.9", f: "11/11/2026", t: "Pizarras, instrucciones y METRO", items: [
+    "Pizarra en todas las divisiones (estilo Miro): lienzo infinito con notas, texto, formas, marcos, flechas, lápiz e imágenes o mapas. Plantillas de operativo, Kanban, mapa mental y diagrama de flujo, y exportación a PNG.",
+    "Instrucciones en todas las divisiones: fecha, tipo (queda guardado), quién la dio (coordinador, instructor o instructor en pruebas según el roster) y lista de implicados con asistencia.",
+    "Metropolitan Division abierta: roster con instructores y pelotones, examen escrito, entrevista de instructor con hoja de puntuación y lista de elegibles.",
+    "PSB de punta a punta: notificación → N° de caso → elevación → Justicia o derivación a SAJD (con el resumen del caso) → resolución. Cada expediente queda abierto, en investigación o cerrado, y se ven los otros casos del agente.",
+    "K-9: nombre y especialidad del perro de cada handler (armas, drogas, explosivos, búsqueda o dinero).",
+    "Comunicados por estructura: firma con rango y placa, confirmar asistencia y una plantilla por bloques para armarlos a medida.",
+    "Notificaciones con tiempo relativo («hace 10 minutos»); pasado el mes, la fecha en tu hora. Los feedback eliminados ya no avisan ni quedan en tu historial.",
+  ] },
   { v: "1.8", f: "11/11/2026", t: "Más liviana", items: [
     "Los nombres largos de los patrullas ya no se cortan (selector y registro). Vapid Tavros con su marca.",
     "La terminal carga menos en cada dispositivo: los estilos y efectos de partes privadas solo se bajan cuando se usan, y las rutas quedaron ordenadas en un solo lugar.",

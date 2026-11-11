@@ -62,7 +62,7 @@ export default wrap(async (req, res) => {
     const ids = (await myIds(u.n)).filter(x => /^[a-z0-9]{1,40}$/.test(x)), list = [];
     const rows = ids.length ? (await q("select v from kv where k = any($1) and v is not null", [ids.map(x => "lspdt.six.fb." + x)])).rows : [];
     for (const r of rows) { let t; try { t = JSON.parse(r.v); } catch { continue; }
-      if (t && t.by === u.n) list.push({ id: t.id, t: t.t, u: t.u || t.t, st: t.st, x: t.x || excerpt(t.html || ""), nota: String(t.nota || "").slice(0, 300) }); }
+      if (t && t.by === u.n && t.st !== "elim") list.push({ id: t.id, t: t.t, u: t.u || t.t, st: t.st, x: t.x || excerpt(t.html || ""), nota: String(t.nota || "").slice(0, 300) }); }
     list.sort((a, b) => b.u - a.u);
     return send(res, 200, { list });
   }

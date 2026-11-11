@@ -15,7 +15,7 @@ export const DIV_DESC: Record<string, string> = {
   "Underwater Dive Unit": "Unidad de buceo de la Metropolitan Division: rescate y búsqueda subacuática, persecución marítima y apoyo en operativos en el agua.",
   "K-9 Division": "Unidad canina: detección de sustancias y explosivos, búsqueda de personas y apoyo en operativos.",
 };
-export const DIV_DONE: Record<string, "rtd" | UnitKey> = { "Recruitment and Training Division": "rtd", "Air Support Division": "asd", "K-9 Division": "k9", "Professional Standards Bureau": "psb" };
+export const DIV_DONE: Record<string, "rtd" | UnitKey> = { "Recruitment and Training Division": "rtd", "Air Support Division": "asd", "K-9 Division": "k9", "Professional Standards Bureau": "psb", "Metropolitan Division": "md" };
 export const divOpen = (d: string, me: string) => { const k = DIV_DONE[d]; return k === "rtd" ? isRTD(me) : k ? isUMem(k, me) : false; };
 export const subsOf = (d: string) => DIVS.find(x => x[0] === d)?.[1] || [];
 

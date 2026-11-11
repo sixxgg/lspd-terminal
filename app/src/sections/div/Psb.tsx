@@ -1,5 +1,5 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { FolderOpen, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Search, Plus, X, Pencil, Trash2, Save, RotateCcw, Lock, Info, Mail, Vote, History, Copy, FolderInput, ChevronDown } from "lucide-react";
+import { Check, ChevronRight, FolderOpen, Bell, ThumbsDown, ThumbsUp, Send, ArrowUpRight, Gavel, FileCheck2, BookMarked, Search, Plus, X, Pencil, Trash2, Save, RotateCcw, Lock, Info, Mail, Vote, History, Copy, FolderInput, ChevronDown } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Checkbox, Field, Input, Segmented, Select, Textarea, SearchInput } from "@/components/ui";
 import { AgentCombo, AgentPicker } from "@/components/agents";
 import { DiscordOutput } from "@/components/output";
@@ -55,7 +55,7 @@ const JUS_ROLE = "1565491805166895224";
 /* estado compartido entre las pestañas (como en la versión clásica, vive mientras la terminal esté abierta) */
 type PXT = { cA: string; cB: string; ag: string; para: string; dv: string; hecho: string; fl: string[]; firma: boolean; _dv?: boolean;
   ele: { cf?: string; para: string; hechos: string; const: string; concl: string; grav: string; enc: string; niv: string; det: string; efe: string; arch: boolean; pend: string };
-  jus: { s: { t: string; p: string }[]; falta: string; fq: string; cons: string[]; consx: string }; res: { modo: string; extra: string; bloque?: boolean };
+  jus: { s: { t: string; p: string }[]; falta: string; fq: string; cons: string[]; consx: string; mode?: string; sum?: boolean }; res: { modo: string; extra: string; bloque?: boolean };
   vot: { intro: string; res: string; cons: string; concl: string; ops: { t: string; d: string }[]; nota: string; conf: boolean } };
 let PX: PXT = { cA: "", cB: "", ag: "", para: "", dv: "IAD", hecho: "", fl: [], firma: true,
   ele: { para: "", hechos: "", const: "", concl: "Sustained", grav: "leve", enc: "", niv: "0", det: "", efe: "", arch: true, pend: "" },
@@ -71,14 +71,56 @@ const usePX = (): [PXT, (fn: (x: PXT) => void) => void] => {
 const casoTxt = (p: PXT) => `CF-${p.cA || "XX"}-${p.cB || "XXXXXX"}`;
 const psbDeOf = (n: string) => { const a = findAgent(n); return a ? `${RK_EN[a.r] || rankES(a.r)} ${a.n}${a.p ? " #" + a.p : ""}` : n; };
 
-export function Psb({ tab }: { tab: string }) {
+type Go = (t: string) => void;
+export function Psb({ tab, go = () => {} }: { tab: string; go?: Go }) {
   useStoreVersion();
   const me = useMe(), [p, up] = usePX();
   if (!p._dv) { const d = psbDivs(me.n); setTimeout(() => up(x => { x._dv = true; if (d.length) x.dv = d[0]; }), 0); }
-  if (tab === "not") return <Notif />;
   if (tab === "cat") return <Catalog />;
-  if (tab === "his") return <Historial />;
-  return <Forms tab={tab} />;
+  if (tab === "his") return <Historial go={go} />;
+  const flow = ["not", "ele", "jus", "res"].includes(tab);
+  return <div className="space-y-5">{flow && <CaseFlow tab={tab} go={go} />}{tab === "not" ? <Notif go={go} /> : <Forms tab={tab} go={go} />}</div>;
+}
+
+/* ---------- recorrido del expediente: Notificación → Elevación → Justicia / SAJD → Resolución ---------- */
+const ST: [string, string, string][] = [["abierto", "Abierto", "#38bdf8"], ["inv", "En investigación", "#f59e0b"], ["cerrado", "Cerrado", "#22c55e"]];
+const stOf = (c: PsbCase) => c.st || (c.docs.some(d => d.t === "res") ? "cerrado" : c.docs.some(d => d.t === "ele" || d.t === "jus" || d.t === "vot") ? "inv" : "abierto");
+function StChip({ c }: { c: PsbCase }) { const s = ST.find(x => x[0] === stOf(c)) || ST[0];
+  return <span className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-semibold" style={{ color: s[2], borderColor: s[2] + "66", background: s[2] + "1a" }}><span className="size-1.5 rounded-full" style={{ background: s[2] }} />{s[1]}</span>; }
+const curCase = () => (PX.cA || PX.cB ? getCases().find(c => c.cf === casoTxt(PX)) : undefined);
+function patchCase(fn: (c: PsbCase) => void) { const cf = casoTxt(PX); LS.setJSON(K_CASES, getCases().map(c => { if (c.cf !== cf) return c; const x = structuredClone(c); fn(x); x.upd = Date.now(); return x; })); }
+const jusLabel = (m?: string) => (m === "sajd" ? "Derivación a SAJD" : "Sanción a Justicia");
+function CaseFlow({ tab, go }: { tab: string; go: Go }) {
+  useStoreVersion();
+  const [p, up] = usePX(), c = curCase(), { toast } = useFeedback();
+  const has = (t: string) => !!c?.docs.some(d => d.t === t);
+  const steps: [string, string, boolean, string?][] = [["not", "Notificación", has("not")], ["ele", "Elevación", has("ele")],
+    ["jus", jusLabel(p.jus.mode), c?.jusOk?.st === "ok", c?.jusOk?.st === "pend" ? "pendiente" : c?.jusOk?.st === "rej" ? "rechazada" : undefined], ["res", "Resolución", has("res")]];
+  const mine = p.ag ? getCases().filter(x => x.ag === p.ag && x.cf !== c?.cf).sort((a, b) => b.upd - a.upd) : [];
+  return (
+    <Card className="p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <FolderOpen className="size-4 text-brand-500" />
+        <b className="font-mono text-sm">{p.cA || p.cB ? casoTxt(p) : "Sin expediente"}</b>
+        {p.ag && <span className="text-sm text-slate-500">· {p.ag}</span>}
+        {c ? <><StChip c={c} /><Select value={stOf(c)} onChange={e => { patchCase(x => { x.st = e.target.value; }); toast("Estado del expediente actualizado"); }} className="h-7 w-auto py-0 text-xs" aria-label="Estado">{ST.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></>
+          : (p.cA || p.cB) && <span className="text-xs text-slate-400">· todavía no se guardó</span>}
+        <button onClick={() => { up(x => { Object.assign(x, { ...blankPX(), _dv: x._dv, dv: x.dv }); }); go("not"); }} className="ml-auto text-xs font-semibold text-brand-600 hover:underline dark:text-brand-300">+ Expediente nuevo</button>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-1">
+        {steps.map(([k, l, ok, sub], i) => (
+          <span key={k} className="contents">
+            {i > 0 && <ChevronRight className="size-4 text-slate-300 dark:text-slate-600" />}
+            <button onClick={() => go(k)} className={cn("inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition", tab === k ? "border-brand-500 bg-brand-500/10 text-brand-700 dark:text-brand-200" : "border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50")}>
+              <span className={cn("grid size-4 place-items-center rounded-full text-[10px]", ok ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-300")}>{ok ? <Check className="size-3" /> : i + 1}</span>{l}{sub && <span className="font-normal text-amber-600 dark:text-amber-300">· {sub}</span>}</button>
+          </span>))}
+      </div>
+      {mine.length > 0 && <div className="mt-3 border-t border-slate-100 pt-2 dark:border-slate-800">
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Otros expedientes de {p.ag} ({mine.length})</p>
+        <div className="flex flex-wrap gap-1.5">{mine.map(x => (
+          <button key={x.id} onClick={() => { up(y => { Object.assign(y, structuredClone({ ...blankPX(), ...x.px })); }); toast(`Expediente ${x.cf} cargado`); }} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-2 py-1 text-xs hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50">
+            <b className="font-mono">{x.cf}</b><StChip c={x} /></button>))}</div></div>}
+    </Card>);
 }
 
 function CaseCard() {
@@ -109,7 +151,7 @@ function CaseInput() {
   );
 }
 
-function Notif() {
+function Notif({ go }: { go: Go }) {
   const { toast: toastN } = useFeedback();
   const me = useMe(), [p, up] = usePX(), F = getFaltas();
   const [g, setG] = useState("all"), [q, setQ] = useState("");
@@ -184,7 +226,8 @@ function Notif() {
           <p className={cn("mt-3 rounded-lg px-3 py-1.5 text-xs font-semibold", miss.length ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300")}>{miss.length ? "Falta: " + miss.join(", ") : "✓ Listo"}</p>
         </Card>
         <DiscordOutput sticky={false} title="Notificación de investigación" tag="Discord" text={text} errors={miss}
-          extra={<Button size="sm" variant="outline" icon={<History />} onClick={() => { const r = saveDoc("not", text, me.n); toastN(r.msg, r.ok ? undefined : "err"); }}>Guardar en historial</Button>} />
+          extra={<div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" icon={<History />} onClick={() => { const r = saveDoc("not", text, me.n); toastN(r.msg, r.ok ? undefined : "err"); }}>Guardar</Button>
+            <Button size="sm" icon={<ChevronRight />} onClick={() => { const r = saveDoc("not", text, me.n); toastN(r.ok ? `Expediente ${casoTxt(PX)} abierto · seguí con la elevación` : r.msg, r.ok ? undefined : "err"); if (r.ok) go("ele"); }}>Abrir expediente y seguir</Button></div>} />
       </Col>
     </Split>
   );
@@ -203,7 +246,7 @@ function medidaLines(E: PXT["ele"], firme: boolean) {
 /* la elevación vale para la resolución solo si es del mismo número de expediente */
 const eleLista = (E: PXT["ele"], cf: string) => !!(E.hechos.trim() || E.const.trim() || E.enc.trim() || E.det.trim()) && (!E.cf || E.cf === cf);
 
-function Forms({ tab }: { tab: string }) {
+function Forms({ tab, go }: { tab: string; go: Go }) {
   const me = useMe(), { toast } = useFeedback(), [p, up] = usePX(), F = getFaltas(), E = p.ele, J = p.jus, Rs = p.res;
   const cf = p.cA || p.cB ? casoTxt(p) : "CF-XX-XXXXXX", firma = `**${me.n}** · ${psbRank(me.n) || "Investigator"} · ${PSB_DIVS_EN[p.dv]}`;
   const text = useMemo(() => {
@@ -226,10 +269,14 @@ function Forms({ tab }: { tab: string }) {
         ...(V.nota.trim() ? [V.nota.trim(), ""] : []), ...(V.conf ? [`🔒 *Recuerden que la información de este expediente es confidencial y no debe comentarse fuera de la ${p.dv}.*`] : [])].join("\n").trim();
     }
     if (tab === "jus") {
-      const a = p.ag ? findAgent(p.ag) : null, f = F.find(x => x.id === J.falta), S = J.s.filter(x => x.t.trim() || x.p.trim());
-      return [`> **Se sanciona ${a && genderOf(a.n) === "f" ? "a la agente" : "al agente"} ${p.ag || "X"}, con número de placa ${(a && a.p) || "X"}, por los siguientes motivos:**`,
+      const a = p.ag ? findAgent(p.ag) : null, f = F.find(x => x.id === J.falta), S = J.s.filter(x => x.t.trim() || x.p.trim()), aal = a && genderOf(a.n) === "f" ? "a la agente" : "al agente";
+      const cl = E.const.trim().split("\n").map(x => x.trim().replace(/^[-•]\s*/, "")).filter(Boolean);
+      const sum = J.sum !== false && eleLista(E, cf) ? ["> **Resumen del expediente " + cf + ":**", ...(E.hechos.trim() ? [`> - **Hechos:** ${E.hechos.trim().replace(/\n+/g, " ")}`] : []), ...(cl.length ? [`> - **Constatado:** ${cl.join("; ")}`] : []),
+        `> - **Conclusión de la PSB:** ${E.concl}${E.concl === "Sustained" ? ` · propuesta: ${NIV_T[E.niv]}` : ""}`, ""] : [];
+      return [J.mode === "sajd" ? `> **Se deriva al SAJD el expediente ${cf} ${a && genderOf(a.n) === "f" ? "de la agente" : "del agente"} ${p.ag || "X"}, con número de placa ${(a && a.p) || "X"}, por los siguientes motivos:**`
+        : `> **Se sanciona ${aal} ${p.ag || "X"}, con número de placa ${(a && a.p) || "X"}, por los siguientes motivos:**`,
         ...(S.length ? S.map((x, i) => `> - ${x.t.trim() || "Sanción " + (i + 1)}${x.p.trim() ? `: ${x.p.trim()}` : ""}`) : ["> - Sanción 1: [Adjuntar pruebas: vídeo, imagen, etc.]"]), "",
-        "> **Publicación de la sanción:**", `> - Sanción: ${f ? `**${f.n}** (${f.g}) — ${f.d}` : "[Falta del catálogo de faltas, copiada literal, con su imagen.]"}`, "",
+        ...sum, "> **Publicación de la sanción:**", `> - Sanción: ${f ? `**${f.n}** (${f.g}) — ${f.d}` : "[Falta del catálogo de faltas, copiada literal, con su imagen.]"}`, "",
         "> **Consecuencias disciplinarias:**", ...(J.cons.length || J.consx.trim() ? [...J.cons, ...(J.consx.trim() ? [J.consx.trim()] : [])].map(x => "> - " + x) : ["> - [Indicar las medidas correspondientes: degradación, suspensión, expulsión, etc.]"]), "",
         `> <@&${JUS_ROLE}>`].join("\n");
     }
@@ -247,7 +294,14 @@ function Forms({ tab }: { tab: string }) {
   const co = Object.keys(uMap("psb")).filter(n => n !== me.n).sort((a, b) => UNITS.psb.R.indexOf(uTop("psb", uMap("psb")[a])) - UNITS.psb.R.indexOf(uTop("psb", uMap("psb")[b])));
   const fq = norm(J.fq), FL = F.filter(x => !fq || norm(x.n + " " + x.d + " " + x.g).includes(fq)).slice(0, 60);
   const ue = (fn: (e: PXT["ele"]) => void) => up(x => { fn(x.ele); x.ele.cf = x.cA || x.cB ? casoTxt(x) : ""; }), uj = (fn: (j: PXT["jus"]) => void) => up(x => fn(x.jus));
-  const title = { ele: "Elevación de caso", jus: "Sanción a Justicia", res: "Notificación de resolución", vot: "Votación" }[tab] || "";
+  const title = { ele: "Elevación de caso", jus: jusLabel(J.mode), res: "Notificación de resolución", vot: "Votación" }[tab] || "";
+  const c = curCase(), jst = c?.jusOk?.st;
+  /* pasa a Justicia con todo lo de la elevación: motivos, falta notificada y medida propuesta */
+  const toJus = () => { up(x => { const El = x.ele, cs = El.const.split("\n").map(t => t.trim().replace(/^[-•]\s*/, "")).filter(Boolean);
+    x.jus.s = (cs.length ? cs : [El.hechos.trim()]).filter(Boolean).map(t => ({ t, p: "" })); if (!x.jus.s.length) x.jus.s = [{ t: "", p: "" }];
+    if (!x.jus.falta && x.fl[0]) x.jus.falta = x.fl[0];
+    if (El.concl === "Sustained" && PSB_CONS[+El.niv]) x.jus.cons = [PSB_CONS[+El.niv]]; if (El.det.trim()) x.jus.consx = El.det.trim(); x.jus.sum = true; }); go("jus"); };
+  const r0 = (r: { ok: boolean; msg: string }) => { toast(r.msg, r.ok ? undefined : "err"); return r.ok; };
   const uv = (fn: (v: PXT["vot"]) => void) => up(x => fn(x.vot)), V = p.vot;
   const saveCase = () => { const r = saveDoc(tab, text, me.n, tab === "vot" ? V.concl : tab === "ele" ? E.concl : ""); toast(r.msg, r.ok ? undefined : "err"); };
   const pill = (on: boolean) => cn("rounded-full border px-3 py-1 text-xs font-medium transition", on ? "border-brand-500 bg-brand-600 text-white dark:bg-brand-500" : "border-slate-200 bg-white text-slate-600 hover:border-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300");
@@ -302,8 +356,12 @@ function Forms({ tab }: { tab: string }) {
           </CardBody>
         </Card>}
         {tab === "jus" && <Card>
-          <CardHeader icon={<Gavel />} title="Sanción a Justicia" />
+          <CardHeader icon={<Gavel />} title={jusLabel(J.mode)} />
           <CardBody>
+            <Field label="Tipo"><Segmented size="sm" value={J.mode || "san"} onChange={v => uj(j => { j.mode = v; })} options={[{ value: "san", label: "Sanción a Justicia" }, { value: "sajd", label: "Derivación a SAJD" }]} /></Field>
+            {jst && <p className={cn("rounded-lg px-3 py-2 text-xs font-semibold", jst === "ok" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : jst === "rej" ? "bg-red-500/10 text-red-700 dark:text-red-300" : "bg-amber-400/15 text-amber-700 dark:text-amber-300")}>
+              {jst === "ok" ? `✓ Aprobado por Justicia · marcado por ${c!.jusOk!.by} el ${fdt(c!.jusOk!.ts)}` : jst === "rej" ? `✗ Rechazado por Justicia (${fdt(c!.jusOk!.ts)}) · corregilo y volvé a enviarlo` : `⏳ Enviado el ${fdt(c!.jusOk!.ts)} · pendiente de aprobación`}</p>}
+            <Checkbox checked={J.sum !== false} onChange={v => uj(j => { j.sum = v; })} label={eleLista(E, cf) ? "Adjuntar el resumen del expediente (hechos, constatado y conclusión de la elevación)" : "Adjuntar el resumen del expediente (completá la elevación de este CF)"} />
             <div className="flex gap-2.5 rounded-xl border border-brand-200 bg-brand-50/60 p-3 text-xs text-brand-900 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-100"><Info className="mt-0.5 size-4 shrink-0" />
               <p><b>Cómo se arma:</b> en <b>Motivos</b> va qué hizo el agente con sus pruebas · en <b>Publicación</b> va la <b>falta del catálogo</b> (lo que figura en el Notion), no la medida · en <b>Consecuencias</b> va la medida que se aplica (por ejemplo, el Notice to Correct Deficiencies).</p></div>
             <Field label="Motivos y pruebas"><div className="space-y-2">{J.s.map((x, i) => (
@@ -337,7 +395,19 @@ function Forms({ tab }: { tab: string }) {
       </Col>
       <DiscordOutput title={title} tag="Discord" text={text} ctx={{ users: Object.fromEntries(co.map(n => [dcIdOf(n), n]).filter(([i]) => i)) }}
         errors={tab === "jus" && !J.falta ? ["la falta del catálogo para la publicación"] : undefined}
-        extra={<Button size="sm" variant="outline" icon={<History />} onClick={saveCase}>Guardar en historial</Button>} />
+        extra={<div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" icon={<History />} onClick={saveCase}>Guardar</Button>
+          {tab === "ele" && (E.concl === "Sustained"
+            ? <Button size="sm" icon={<Gavel />} onClick={() => { if (r0(saveDoc("ele", text, me.n, E.concl, "inv"))) toJus(); }}>Guardar y pasar a Justicia</Button>
+            : <Button size="sm" icon={<ChevronRight />} onClick={() => { if (r0(saveDoc("ele", text, me.n, E.concl, "inv"))) go("res"); }}>Guardar y pasar a la resolución</Button>)}
+          {tab === "jus" && (!jst || jst === "rej"
+            ? <Button size="sm" icon={<Send />} onClick={() => { if (r0(saveDoc("jus", text, me.n, "", "inv"))) { patchCase(x => { x.jusOk = { st: "pend", by: me.n, ts: Date.now(), m: J.mode || "san" }; }); toast("Enviado: queda pendiente de aprobación de Justicia"); } }}>Guardar y enviar a Justicia</Button>
+            : jst === "pend" ? <>
+              <Button size="sm" icon={<ThumbsUp />} onClick={() => { patchCase(x => { x.jusOk = { ...x.jusOk!, st: "ok", by: me.n, ts: Date.now() }; }); toast("Justicia aprobó el caso · seguí con la resolución"); go("res"); }}>Justicia aprobó</Button>
+              <Button size="sm" variant="ghost" className="text-red-600" icon={<ThumbsDown />} onClick={() => { patchCase(x => { x.jusOk = { ...x.jusOk!, st: "rej", by: me.n, ts: Date.now() }; }); toast("Marcado como rechazado: corregilo y volvé a enviarlo"); }}>Rechazó</Button></>
+            : <Button size="sm" icon={<ChevronRight />} onClick={() => go("res")}>Ir a la resolución</Button>)}
+          {tab === "res" && <Button size="sm" icon={<Check />} onClick={() => { if (r0(saveDoc("res", text, me.n, "", "cerrado"))) toast(`Expediente ${cf} resuelto y cerrado`); }}>Guardar y cerrar expediente</Button>}
+        </div>} />
     </Split>
   );
 }
@@ -386,35 +456,37 @@ function Catalog() {
 
 /* ---------- historial de expedientes y comunicados ---------- */
 type PsbDoc = { t: string; txt: string; ts: number; by: string };
-type PsbCase = { id: string; cf: string; ag: string; dv: string; by: string; ts: number; upd: number; concl: string; docs: PsbDoc[]; px: PXT };
+type PsbCase = { id: string; cf: string; ag: string; dv: string; by: string; ts: number; upd: number; concl: string; docs: PsbDoc[]; px: PXT; st?: string; jusOk?: { st: "pend" | "ok" | "rej"; by: string; ts: number; m?: string } };
 const K_CASES = "lspdt.psbCases";
 const getCases = () => LS.json<PsbCase[]>(K_CASES, []);
-function saveDoc(t: string, txt: string, by: string, concl = "") {
+function saveDoc(t: string, txt: string, by: string, concl = "", st = "") {
   const p = PX; if (!p.cA && !p.cB) return { ok: false, msg: "Poné el número de expediente (CF) para guardarlo" };
   const cf = casoTxt(p), L = getCases(), i = L.findIndex(c => c.cf === cf), now = Date.now();
   const c: PsbCase = i >= 0 ? { ...L[i] } : { id: uid(), cf, ag: p.ag, dv: p.dv, by, ts: now, upd: now, concl: "", docs: [], px: p };
   c.ag = p.ag || c.ag; c.dv = p.dv; c.upd = now; c.px = structuredClone(p); if (concl) c.concl = concl;
+  if (st && !(st === "inv" && c.st === "cerrado")) c.st = st; else if (!c.st) c.st = "abierto";
   c.docs = [...c.docs.filter(d => !(d.t === t && d.txt === txt)), { t, txt, ts: now, by }];
   LS.setJSON(K_CASES, i >= 0 ? L.map((x, j) => (j === i ? c : x)) : [...L, c]);
   return { ok: true, msg: `Guardado en el historial · ${cf} (${c.docs.length} ${c.docs.length === 1 ? "comunicado" : "comunicados"})` };
 }
-const DOC_T: Record<string, string> = { not: "Notificación", ele: "Elevación de caso", jus: "Sanción a Justicia", res: "Resolución", vot: "Votación" };
+const DOC_T: Record<string, string> = { not: "Notificación", ele: "Elevación de caso", jus: "Justicia / SAJD", res: "Resolución", vot: "Votación" };
 const fdt = (t: number) => new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
 
-function Historial() {
+function Historial({ go }: { go: Go }) {
   useStoreVersion();
   const { toast, confirm } = useFeedback(), [, up] = usePX();
-  const [q, setQ] = useState(""), [dv, setDv] = useState("all"), [open, setOpen] = useState(""), [doc, setDoc] = useState<string>("");
-  const qn = norm(q.trim());
-  const L = getCases().filter(c => (dv === "all" || c.dv === dv) && (!qn || norm(`${c.cf} ${c.ag} ${c.by} ${c.concl} ${c.docs.map(d => d.txt).join(" ")}`).includes(qn))).sort((a, b) => b.upd - a.upd);
+  const [q, setQ] = useState(""), [dv, setDv] = useState("all"), [st, setSt] = useState("all"), [open, setOpen] = useState(""), [doc, setDoc] = useState<string>("");
+  const qn = norm(q.trim()), all = getCases();
+  const L = all.filter(c => (dv === "all" || c.dv === dv) && (st === "all" || stOf(c) === st) && (!qn || norm(`${c.cf} ${c.ag} ${c.by} ${c.concl} ${c.docs.map(d => d.txt).join(" ")}`).includes(qn))).sort((a, b) => b.upd - a.upd);
   const del = async (c: PsbCase) => { if (await confirm(`¿Eliminar el expediente ${c.cf} y sus ${c.docs.length} comunicados del historial?`, { danger: true })) { LS.setJSON(K_CASES, getCases().filter(x => x.id !== c.id)); toast("Eliminado"); } };
   const delDoc = (c: PsbCase, d: PsbDoc) => LS.setJSON(K_CASES, getCases().map(x => (x.id === c.id ? { ...x, docs: x.docs.filter(y => y !== d && !(y.ts === d.ts && y.t === d.t)) } : x)));
   return (
     <div className="space-y-4">
       <Card className="flex flex-wrap items-center gap-3 p-3">
         <div className="relative min-w-[14rem] flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <Input className="h-9 pl-9 text-sm" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar por expediente, agente o texto de los comunicados…" /></div>
+          <Input className="h-9 pl-9 text-sm" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar por expediente (CF), agente o texto…" /></div>
         <Segmented size="sm" value={dv} onChange={setDv} options={[["all", "Todas"], ["IAD", "IAD"], ["FID", "FID"], ["SOD", "SOD"]].map(([v, l]) => ({ value: v, label: l }))} />
+        <Segmented size="sm" value={st} onChange={setSt} options={[["all", "Todos"], ...ST.map(([k, l]) => [k, l])].map(([v, l]) => ({ value: v, label: `${l} (${v === "all" ? all.length : all.filter(c => stOf(c) === v).length})` }))} />
       </Card>
       {!L.length && <Card className="p-8 text-center text-sm text-slate-500"><History className="mx-auto mb-2 size-6 text-slate-400" />Todavía no hay expedientes guardados. En cada comunicado (notificación, elevación, votación…) usá <b>Guardar en historial</b>.</Card>}
       {L.map(c => { const on = open === c.id; return (
@@ -423,12 +495,13 @@ function Historial() {
             <FolderOpen className="size-5 shrink-0 text-brand-500" />
             <div className="min-w-0 flex-1"><p className="truncate font-mono text-sm font-semibold">{c.cf} <span className="font-sans font-normal text-slate-500">· {c.ag || "sin agente"} · {c.dv}</span></p>
               <p className="truncate text-xs text-slate-500">{c.docs.length} {c.docs.length === 1 ? "comunicado" : "comunicados"} · última modificación {fdt(c.upd)} · abrió {c.by}</p></div>
+            <StChip c={c} />{c.jusOk && <span className="text-[11px] text-slate-500">Justicia: {c.jusOk.st === "ok" ? "aprobado" : c.jusOk.st === "rej" ? "rechazado" : "pendiente"}</span>}
             {c.concl && <span className={cn("rounded-md px-2 py-0.5 text-[11px] font-bold", c.concl === "Sustained" ? "bg-red-500/10 text-red-600 dark:text-red-300" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300")}>{c.concl}</span>}
             <ChevronDown className={cn("size-4 text-slate-400 transition", on && "rotate-180")} />
           </button>
           {on && <div className="space-y-2 border-t border-slate-100 p-3 dark:border-slate-800">
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" icon={<FolderInput />} onClick={() => { up(x => { Object.assign(x, structuredClone({ ...blankPX(), ...c.px })); }); toast(`Expediente ${c.cf} cargado en los formularios`); }}>Abrir en los formularios</Button>
+              <Button size="sm" icon={<FolderInput />} onClick={() => { up(x => { Object.assign(x, structuredClone({ ...blankPX(), ...c.px })); }); toast(`Expediente ${c.cf} cargado en los formularios`); go(stOf(c) === "cerrado" ? "res" : c.jusOk ? c.jusOk.st === "ok" ? "res" : "jus" : c.docs.some(d => d.t === "ele") ? "jus" : "ele"); }}>Abrir y seguir</Button>
               <Button size="sm" variant="ghost" icon={<Trash2 />} onClick={() => del(c)}>Eliminar expediente</Button>
             </div>
             {[...c.docs].sort((a, b) => b.ts - a.ts).map(d => { const k = c.id + d.ts + d.t, sh = doc === k; return (

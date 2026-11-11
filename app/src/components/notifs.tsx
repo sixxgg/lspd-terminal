@@ -4,10 +4,10 @@
    Lo leído se guarda en este navegador. */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, CheckCheck, Heart, Shield, Sparkles, TrendingDown, TrendingUp, type LucideIcon } from "lucide-react";
-import { FB_ST, fbSt, fbX, useMyFeedback } from "@/components/fbnotif";
+import { FB_ST, fbSt, fbX, useMyFeedback, useTick } from "@/components/fbnotif";
 import { LS, useStoreVersion } from "@/lib/store";
 import { uMap } from "@/lib/units";
-import { fmtDate, lvl, rankES } from "@/lib/domain";
+import { ago, lvl, rankES } from "@/lib/domain";
 import { APP_VERSION, hasNews } from "@/sections/Novedades";
 import { cn } from "@/lib/cn";
 
@@ -18,7 +18,7 @@ const lsSet = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.st
 type Case = { id: string; cf: string; ag: string; by: string; ts: number; upd: number; docs: { t: string; ts: number; by: string }[] };
 
 export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: string, s: string) => void }) {
-  useStoreVersion();
+  useStoreVersion(); useTick();
   const fb = useMyFeedback(), [open, setOpen] = useState(false), box = useRef<HTMLDivElement>(null);
   const kSeen = "lspdt.next.nseen:" + me.n, kRk = "lspdt.next.rk:" + me.n, kEv = "lspdt.next.ev:" + me.n;
   const [seen, setSeen] = useState(() => lsGet<number>(kSeen, 0));
@@ -63,7 +63,7 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
               <button key={x.id} onClick={() => { setOpen(false); readAll(); go(...x.go); }} className={cn("flex w-full gap-3 border-b border-slate-100 px-4 py-3 text-left transition last:border-0 hover:bg-slate-50 dark:border-slate-800/70 dark:hover:bg-slate-800/50", x.t > seen && "bg-pink-500/[.04]")}>
                 <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg" style={{ color: x.c, background: x.c + "1f" }}><x.I className="size-4" /></span>
                 <span className="min-w-0 flex-1"><span className="flex items-center gap-2"><b className="truncate text-[13px]">{x.title}</b>{x.t > seen && <span className="size-1.5 shrink-0 rounded-full bg-pink-500" />}</span>
-                  <span className="line-clamp-2 block text-xs text-slate-500 dark:text-slate-400">{x.body}</span><span className="text-[10.5px] text-slate-400">{fmtDate(x.t)}</span></span>
+                  <span className="line-clamp-2 block text-xs text-slate-500 dark:text-slate-400">{x.body}</span><span className="text-[10.5px] text-slate-400">{ago(x.t)}</span></span>
               </button>))}
         </div>
       </div>}

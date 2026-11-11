@@ -1,7 +1,7 @@
 /* Comunicados de división (ASD y UDU): registro de los avisos publicados en Discord.
    Las plantillas son los comunicados reales de la división: misma estructura y redacción, con sus partes variables como campos. */
 import { useMemo, useState } from "react";
-import { CalendarClock, Copy, FilePlus2, Megaphone, Pencil, RefreshCw, Save, Trash2, Wand2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarClock, Copy, FilePlus2, Megaphone, Pencil, Plus, RefreshCw, Save, Trash2, Wand2, X } from "lucide-react";
 import { Button, Card, Empty, Field, Input, Select, Textarea } from "@/components/ui";
 import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
@@ -21,7 +21,7 @@ const INFO: Record<CommDiv, { n: string; ab: string; em: string; roles: [string,
 };
 
 /* ---------- campos ---------- */
-type FT = "text" | "area" | "lines" | "date" | "time" | "role" | "check" | "agent";
+type FT = "text" | "area" | "lines" | "date" | "time" | "role" | "check" | "agent" | "blocks";
 type Fd = { k: string; l: string; t: FT; ph?: string; hint?: string; w?: "half" | "full" };
 type Tpl = { k: string; l: string; d: string; fields: Fd[]; def: (d: CommDiv, me: string) => Record<string, string>; render: (d: CommDiv, v: Record<string, string>) => string };
 
@@ -36,32 +36,51 @@ const join = (o: (string | false | undefined)[]) => o.filter((x): x is string =>
 /* firma «Sgto. I Clarkson» a partir de un agente del roster (o lo escrito tal cual) */
 export const firmaDe = (s: string) => { const a = findAgent(s.trim()); if (!a) return s.trim(); const ab = /^Sergeant/.test(a.r) ? "Sgto. " + a.r.split(" ")[1] : (RK_AB[a.r] || a.r).replace(/\.$/, ""); return `${ab} ${a.n.split(" ").slice(-1)[0]}`; };
 
+/* firma en bloque: «emoji de rango  Nombre | placa», cargo y departamento */
+const RK_EMO: Record<string, string> = { "Sergeant II": "<:SrgtII:1316165711436976169>" };
+const ASIST = "<a:verifiedwhite:1349401777522344018>";
+const firmaBlock = (v: Record<string, string>) => {
+  const n = (v.firma || "").trim(), a = n ? findAgent(n) : null, em = (v.rkem || (a && RK_EMO[a.r]) || "").trim();
+  const L: string[] = [];
+  if (n) L.push(`**${em ? em + " " : ""}${a ? a.n : n}${a && a.p ? ` | ${a.p}` : ""}**`);
+  if (v.cargo) L.push(n ? `*${v.cargo}*` : `**${v.cargo}**`);
+  if (L.length && v.depto !== "0") L.push("*Departamento de Policía de Los Santos*");
+  return L.length ? L.join("\n") : false;
+};
+const SIGN: Fd[] = [{ k: "firma", l: "Firma", t: "agent", w: "half", hint: "(agente del roster: pone la placa sola)" }, { k: "cargo", l: "Cargo", t: "text", w: "half" },
+  { k: "rkem", l: "Emoji de rango", t: "text", w: "half", hint: "(opcional; Sargento II sale solo)", ph: "<:SrgtII:1316165711436976169>" }, { k: "depto", l: "Línea «Departamento de Policía de Los Santos»", t: "check", w: "half" }];
 const COMMON: Fd[] = [{ k: "rol", l: "Mención", t: "role", w: "half" }, { k: "spoiler", l: "Mención oculta (spoiler)", t: "check", w: "half" }, { k: "emoji", l: "Emblema de la división en el título", t: "check", w: "half" }];
 
 const TPLS: Tpl[] = [
   { k: "instruccion", l: "Instrucción / práctica", d: "Como la instrucción de persecución marítima y buceo de la UDU",
     fields: [{ k: "titulo", l: "Título", t: "text" }, { k: "fecha", l: "Día", t: "date", w: "half" }, { k: "hora", l: "Hora", t: "time", w: "half" },
-      { k: "actividad", l: "Qué se va a hacer", t: "area", ph: "una instrucción de…" }, { k: "conjunto", l: "En conjunto con", t: "text", hint: "(opcional)", ph: "la SAED y su unidad marítima" },
-      { k: "detalle", l: "Durante la práctica", t: "area" }, { k: "requisito", l: "Qué deben traer o tener", t: "area", hint: "(opcional, sigue a «Asimismo,»)" },
-      { k: "cierre", l: "Cierre", t: "text" }, ...COMMON],
+      { k: "actividad", l: "Qué se va a hacer", t: "area", ph: "una instrucción de…" }, { k: "conjunto", l: "En conjunto con", t: "text", hint: "(opcional)", ph: "el personal del A.S.D (Instructores y Coordinación)" },
+      { k: "detalle", l: "Durante la práctica", t: "area" }, { k: "uniforme", l: "Uniformidad / equipamiento", t: "area", hint: "(opcional)" },
+      { k: "requisito", l: "Qué deben traer o tener", t: "area", hint: "(opcional, sigue a «Asimismo,»)" }, { k: "sinexc", l: "Agregar «(Sin excepciones)»", t: "check", w: "half" },
+      { k: "cierre", l: "Cierre", t: "text", w: "half" }, { k: "asist", l: "Pedir que confirmen asistencia con el emoji ✅", t: "check", w: "half" }, ...SIGN, ...COMMON],
     def: d => d === "udu"
-      ? { titulo: "Instrucción de Persecución Marítima y Buceo", actividad: "una instrucción de persecución marítima y uso del equipo de buceo", conjunto: "la SAED y su unidad marítima",
+      ? { titulo: "Instrucción de persecución marítima y buceo", actividad: "una instrucción de persecución marítima y uso del equipo de buceo", conjunto: "el personal del A.S.D (Instructores y Coordinación)",
         detalle: "Durante la práctica se efectuará la entrega de materiales y equipamiento a todos los oficiales interesados en formar parte de la división.",
-        requisito: "deberán disponer de embarcaciones aptas para la actividad, las cuales pueden adquirirse en la sede de **METRO**.", cierre: "Los esperamos.", rol: ROLE_LSPD, emoji: "1" }
-      : { titulo: "Instrucción de Vuelo Táctico", actividad: "una instrucción de vuelo táctico y uso del dron policial", conjunto: "",
-        detalle: "Durante la práctica se evaluarán las maniobras básicas y se entregará el equipamiento a todos los oficiales interesados en formar parte de la división.",
-        requisito: "deberán presentarse con el uniforme de vuelo reglamentario en el helipuerto de Mission Row.", cierre: "Los esperamos.", rol: ROLE_LSPD, emoji: "1" },
+        uniforme: "La uniformidad la pueden encontrar en sus taquillas aquellos que reaccionen, ya que enviaremos al personal administrativo para que se la deje.",
+        requisito: "deberán disponer de embarcaciones aptas para la actividad, las cuales pueden adquirirse en la sede que se encuentra en el puerto deportivo.", sinexc: "1",
+        cierre: "Los esperamos.", asist: "1", firma: "Ryan Westbrook", cargo: "Coordinador de Underwater Dive Unit (UDU)", depto: "1", rol: ROLE_LSPD, spoiler: "1", emoji: "1" }
+      : { titulo: "Instrucción de vuelo táctico", actividad: "una instrucción de vuelo táctico y uso del dron policial", conjunto: "",
+        detalle: "Durante la práctica se evaluarán las maniobras básicas y se entregará el equipamiento a todos los oficiales interesados en formar parte de la división.", uniforme: "",
+        requisito: "deberán presentarse con el uniforme de vuelo reglamentario en el helipuerto de Mission Row.", sinexc: "0", cierre: "Los esperamos.", asist: "1",
+        firma: "", cargo: "Coordinación de la Air Support Division (ASD)", depto: "1", rol: ROLE_LSPD, spoiler: "1", emoji: "1" },
     render: (d, v) => { const e = E(d, v), t = Number(v.ts) || unix(v.fecha, v.hora); return join([
       `# ${e ? e + " " : ""}${v.titulo || "[Título]"}${e ? " " + e : ""}`, "",
       `Se informa que el día ${t ? `<t:${t}:D>` : dmyShort(v.fecha)} a las ${t ? `<t:${t}:t>` : "[HORA]"} (${t ? `<t:${t}:R>` : "[cuándo]"}) se llevará a cabo ${v.actividad || "[actividad]"}${v.conjunto ? `, realizada en conjunto con ${v.conjunto}` : ""}.`, "",
-      v.detalle, "", `Se solicita puntualidad a todos los participantes.${v.requisito ? " Asimismo, " + v.requisito : ""}`, "", v.cierre, "", mention(v)]); } },
+      [v.detalle, v.uniforme].filter(Boolean).join(" "), "",
+      `Se solicita **puntualidad a todos los participantes**.${v.requisito ? " Asimismo, " + v.requisito : ""}${v.sinexc === "1" ? " (Sin excepciones)" : ""}`, "",
+      v.cierre, "", v.asist === "1" && `Confirmar asistencia con ${ASIST}`, v.asist === "1" && "", firmaBlock(v), "", mention(v)]); } },
   { k: "licencia", l: "Habilitación / licencia", d: "Como la licencia de dron policial de la ASD",
     fields: [{ k: "titulo", l: "Título", t: "text" }, { k: "habilita", l: "Licencia para", t: "text", ph: "manejar el Dron Policial" },
       { k: "motivo", l: "Motivo de los requisitos", t: "text", hint: "(opcional)", ph: "Al ser material policial sensible" },
       { k: "requisitos", l: "Requisitos", t: "lines", ph: "Uno por línea" }, { k: "aclaracion", l: "Aclaración", t: "area" },
       { k: "reaccion", l: "Pedir que reaccionen con el emoji «Sí» para postularse", t: "check" },
-      { k: "firma", l: "Firma", t: "agent", w: "half", hint: "(agente del roster o texto)" }, { k: "cargo", l: "Cargo", t: "text", w: "half" }, ...COMMON],
-    def: d => ({ titulo: d === "asd" ? "Licencia de Dron Policial" : "Licencia de Buceo Policial", habilita: d === "asd" ? "manejar el Dron Policial" : "utilizar el equipo de buceo policial",
+      ...SIGN, ...COMMON],
+    def: d => ({ depto: "1", titulo: d === "asd" ? "Licencia de Dron Policial" : "Licencia de Buceo Policial", habilita: d === "asd" ? "manejar el Dron Policial" : "utilizar el equipo de buceo policial",
       motivo: "Al ser material policial sensible", requisitos: d === "asd" ? "Pertenecer al Pelotón C o D, o a la DB.\nTener al menos el rango de PO-III." : "Pertenecer a la Metropolitan Division.\nTener al menos el rango de PO-III.",
       aclaracion: "Cumplir los requisitos no garantiza la aceptación de la candidatura; la coordinación se reserva el derecho de aceptar a los candidatos que considere más aptos.",
       reaccion: "1", firma: d === "asd" ? "Sgto. I Clarkson" : "", cargo: `Subcoordinador de la ${INFO[d].n}`, rol: ROLE_LSPD, emoji: "1" }),
@@ -70,13 +89,13 @@ const TPLS: Tpl[] = [
       `Desde la **Coordinación de la ${INFO[d].ab}** abrimos el periodo de habilitación de licencia para ${v.habilita || "[uso]"}.${R.length ? ` ${v.motivo ? v.motivo + ", se" : "Se"} deberán cumplir los siguientes requisitos:` : ""}`, "",
       ...R.map(x => `* ${x}`), R.length ? "" : false, v.aclaracion, "",
       v.reaccion === "1" && "Todos aquellos que quieran postularse deben reaccionar con un <:Si:1316169901450199051>", v.reaccion === "1" && "",
-      (v.firma || v.cargo) && `*Att. ${[firmaDe(v.firma || ""), v.cargo].filter(Boolean).join(" — ")}*`, "", mention(v)]); } },
+      (v.firma || v.cargo) && "Atentamente,", firmaBlock(v), "", mention(v)]); } },
   { k: "instancias", l: "Instancias / convocatoria", d: "Como las instancias de la promoción 004 de la ASD",
     fields: [{ k: "promo", l: "Promoción", t: "text", w: "half", ph: "004" }, { k: "saludo", l: "Saludo", t: "text", w: "half" },
       { k: "plazoF", l: "Plazo: día", t: "date", w: "half" }, { k: "plazoH", l: "Plazo: hora", t: "time", w: "half" },
       { k: "form", l: "Link del formulario", t: "text", ph: "https://forms.gle/…" }, { k: "requisito", l: "Requisito de acceso", t: "text" },
-      { k: "lema", l: "Lema", t: "text", hint: "(opcional)" }, { k: "cargo", l: "Firma (cargo)", t: "text" }, ...COMMON],
-    def: d => ({ promo: "005", saludo: "Buenas noches:", form: "https://", requisito: d === "asd" ? "Para formar parte de la ASD es necesario pertenecer, como mínimo, al **PELOTÓN B** de la **METRO**." : "Para formar parte de la UDU es necesario pertenecer a la **METRO**.",
+      { k: "lema", l: "Lema", t: "text", hint: "(opcional)" }, ...SIGN, ...COMMON],
+    def: d => ({ depto: "1", promo: "005", saludo: "Buenas noches:", form: "https://", requisito: d === "asd" ? "Para formar parte de la ASD es necesario pertenecer, como mínimo, al **PELOTÓN B** de la **METRO**." : "Para formar parte de la UDU es necesario pertenecer a la **METRO**.",
       lema: d === "asd" ? "The mission is the same, only the vehicle has changed." : "", cargo: `Coordinador de la ${INFO[d].n} (${INFO[d].ab})`, rol: ROLE_LSPD, spoiler: "1", emoji: "1" }),
     render: (d, v) => { const e = E(d, v), I = INFO[d], pt = unix(v.plazoF, v.plazoH); return join([
       `# **${e ? e + " " : ""}__INSTANCIAS - (${I.ab}) ${I.n.toUpperCase()} (PROMOCIÓN ${v.promo || "000"})__${e ? " " + e : ""}**`, "",
@@ -85,12 +104,12 @@ const TPLS: Tpl[] = [
       `📅 El plazo máximo para realizar el cuestionario es el ${pt ? `<t:${pt}:D>` : "[DÍA]"} a las ${pt && v.plazoH ? `<t:${pt}:t>` : "[HH:MM]"}${pt && v.plazoH ? ` (<t:${pt}:R>)` : ""}.`, "",
       `📄 [**__Formulario de Acceso__**](${v.form || "https://"})`, "",
       v.requisito && `### __${v.requisito}__`, v.lema && "`" + v.lema.replace(/`/g, "") + "`",
-      "Atentamente,", v.cargo && `**${v.cargo}**`, "*Departamento de Policía de Los Santos*", "", mention(v)]); } },
+      "Atentamente,", firmaBlock(v), "", mention(v)]); } },
   { k: "documentacion", l: "Documentación", d: "Como el recordatorio de documentación de la ASD",
     fields: [{ k: "docs", l: "Documentos", t: "lines", ph: "Título | por qué es obligatorio (uno por línea)" },
       { k: "links", l: "Enlaces", t: "lines", ph: "Nombre | https://… (uno por línea)" }, { k: "aviso", l: "Aviso final ⚠️", t: "text", hint: "(opcional)" },
-      { k: "cargo", l: "Firma (cargo)", t: "text" }, ...COMMON],
-    def: d => ({ docs: d === "asd"
+      ...SIGN, ...COMMON],
+    def: d => ({ depto: "0", docs: d === "asd"
         ? "Manual de la ASD | Es **obligatorio** tener pleno conocimiento del manual, ya que en él se establecen los procedimientos operativos, protocolos de actuación y normativas internas de la unidad.\nManual de uso de drones | Es **obligatorio** tener pleno conocimiento del manual, ya que en él se establecen los procedimientos operativos y protocolos de actuación.\nInforme de Daños | Se recalca que el informe de daños es un elemento **fundamental** en cada intervención. Debe completarse de forma precisa tras los operativos donde existan incidentes o daños materiales."
         : "Manual de la UDU | Es **obligatorio** tener pleno conocimiento del manual, ya que en él se establecen los procedimientos operativos, protocolos de actuación y normativas internas de la unidad.",
       links: d === "asd" ? "Manual de la ASD | https://elevenproject.eu/documents/nreem6gfyynkxcjx\nManual de drones | https://elevenproject.eu/documents/a8yk9zs92o36lgl1\nInforme de Daños | https://elevenproject.eu/forms/dmyz7phnpwiwnoyx" : "Manual de la UDU | https://",
@@ -101,21 +120,66 @@ const TPLS: Tpl[] = [
       `Desde la coordinación de la **${I.n}** se recuerda a todo el personal activo la importancia de manejar y conocer correctamente la documentación esencial de la división.`, "",
       ...pairs(v.docs).flatMap(([t, x]) => [`### ${/informe|formulario/i.test(t) ? "📝" : "📘"} **${t}**`, x, ""]),
       L.length ? "### 🔗 **Enlaces a la documentación:**" : false, ...L.map(([n, u]) => `> *([${n}](${u || "https://"}))*`), L.length ? "" : false,
-      v.aviso && `## ⚠️ ${v.aviso}`, v.aviso ? "" : false, "Atentamente,", v.cargo && `**${v.cargo}**`, "", mention(v)]); } },
+      v.aviso && `## ⚠️ ${v.aviso}`, v.aviso ? "" : false, "Atentamente,", firmaBlock(v), "", mention(v)]); } },
   { k: "libre", l: "Aviso libre", d: "Título, texto y firma a elección",
-    fields: [{ k: "titulo", l: "Título", t: "text" }, { k: "cuerpo", l: "Texto", t: "area" }, { k: "firma", l: "Firma", t: "agent", w: "half", hint: "(opcional)" }, { k: "cargo", l: "Cargo", t: "text", w: "half", hint: "(opcional)" }, ...COMMON],
-    def: d => ({ titulo: "[Título]", cuerpo: "[Texto del comunicado]", cargo: `Coordinación – ${INFO[d].n} (${INFO[d].ab})`, rol: ROLE_LSPD, emoji: "1" }),
+    fields: [{ k: "titulo", l: "Título", t: "text" }, { k: "cuerpo", l: "Texto", t: "area" }, ...SIGN, ...COMMON],
+    def: d => ({ depto: "1", titulo: "[Título]", cuerpo: "[Texto del comunicado]", cargo: `Coordinación – ${INFO[d].n} (${INFO[d].ab})`, rol: ROLE_LSPD, emoji: "1" }),
     render: (d, v) => { const e = E(d, v); return join([`# ${e ? e + " " : ""}${v.titulo}${e ? " " + e : ""}`, "", v.cuerpo, "",
-      (v.firma || v.cargo) && "Atentamente,", v.firma && `**${firmaDe(v.firma)}**`, v.cargo && (v.firma ? `*${v.cargo}*` : `**${v.cargo}**`), "", mention(v)]); } },
+      (v.firma || v.cargo) && "Atentamente,", firmaBlock(v), "", mention(v)]); } },
+  { k: "bloques", l: "Por bloques (estructura libre)", d: "Armalo pieza por pieza: títulos, párrafos, listas, fecha y hora, asistencia, firma",
+    fields: [{ k: "blocks", l: "Estructura", t: "blocks" }, ...SIGN, ...COMMON],
+    def: d => ({ depto: "1", cargo: `Coordinación – ${INFO[d].n} (${INFO[d].ab})`, rol: ROLE_LSPD, spoiler: "1", emoji: "1", blocks: JSON.stringify([
+      { t: "h1", x: "[Título]" }, { t: "when", x: "Se informa que el día {fecha} a las {hora} ({falta}) se llevará a cabo…" }, { t: "p", x: "[Detalle]" }, { t: "asist", x: "" }, { t: "firma", x: "" }] as Blk[]) }),
+    render: (d, v) => { const e = E(d, v); let B: Blk[] = []; try { B = JSON.parse(v.blocks || "[]"); } catch { /* */ }
+      const out = B.flatMap(b => { const x = (b.x || "").trim();
+        switch (b.t) {
+          case "h1": case "h2": case "h3": return [`${"#".repeat(+b.t[1])} ${b.t === "h1" && e ? e + " " : ""}${x || "[Título]"}${b.t === "h1" && e ? " " + e : ""}`, ""];
+          case "list": return [...lines(x).map(l => `* ${l}`), ""];
+          case "quote": return [...lines(x).map(l => `> ${l}`), ""];
+          case "when": { const t = unix(b.d || "", b.h || ""); return [(x || "{fecha} a las {hora} ({falta})").replace(/\{fecha\}/g, t ? `<t:${t}:D>` : "[DÍA]").replace(/\{hora\}/g, t ? `<t:${t}:t>` : "[HORA]").replace(/\{falta\}/g, t ? `<t:${t}:R>` : "[cuándo]"), ""]; }
+          case "asist": return [`Confirmar asistencia con ${ASIST}`, ""];
+          case "sep": return ["_ _", ""];
+          case "firma": { const f = firmaBlock(v); return f ? [f, ""] : []; }
+          default: return x ? [x, ""] : [];
+        } });
+      return join([...out, mention(v)]); } },
 ];
+type Blk = { t: string; x: string; d?: string; h?: string };
+const BLK: [string, string][] = [["h1", "Título grande"], ["h2", "Título"], ["h3", "Subtítulo"], ["p", "Párrafo"], ["list", "Lista"], ["quote", "Cita"], ["when", "Fecha y hora"], ["asist", "Confirmar asistencia"], ["sep", "Espacio"], ["firma", "Firma"]];
+function BlocksEd({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  let B: Blk[] = []; try { B = JSON.parse(value || "[]"); } catch { /* */ }
+  const set = (b: Blk[]) => onChange(JSON.stringify(b)), upd = (i: number, p: Partial<Blk>) => set(B.map((x, j) => (j === i ? { ...x, ...p } : x)));
+  const mv = (i: number, d: number) => { const j = i + d; if (j < 0 || j >= B.length) return; const c = B.slice(); [c[i], c[j]] = [c[j], c[i]]; set(c); };
+  return (
+    <div className="space-y-2">
+      {B.map((b, i) => (
+        <div key={i} className="rounded-xl border border-slate-200 p-2.5 dark:border-slate-700">
+          <div className="flex items-center gap-1.5">
+            <Select value={b.t} onChange={e => upd(i, { t: e.target.value })} className="h-8 w-auto text-xs">{BLK.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
+            <span className="ml-auto" />
+            <button type="button" aria-label="Subir" onClick={() => mv(i, -1)} className="rounded p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white"><ArrowUp className="size-3.5" /></button>
+            <button type="button" aria-label="Bajar" onClick={() => mv(i, 1)} className="rounded p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white"><ArrowDown className="size-3.5" /></button>
+            <button type="button" aria-label="Quitar" onClick={() => set(B.filter((_, j) => j !== i))} className="rounded p-1 text-slate-400 hover:text-red-600"><X className="size-3.5" /></button>
+          </div>
+          {b.t === "when" && <div className="mt-2 grid grid-cols-2 gap-2"><Input type="date" value={b.d || ""} onChange={e => upd(i, { d: e.target.value })} /><Input type="time" value={b.h || ""} onChange={e => upd(i, { h: e.target.value })} /></div>}
+          {!["asist", "sep", "firma"].includes(b.t) && (b.t.startsWith("h")
+            ? <Input className="mt-2" value={b.x} onChange={e => upd(i, { x: e.target.value })} placeholder="Texto del título" />
+            : <Textarea className="mt-2" rows={b.t === "p" ? 3 : 2} value={b.x} onChange={e => upd(i, { x: e.target.value })}
+                placeholder={b.t === "list" || b.t === "quote" ? "Una línea por punto" : b.t === "when" ? "Usá {fecha}, {hora} y {falta} (cuánto falta)" : "Texto (podés usar **negrita**)"} />)}
+        </div>))}
+      <div className="flex flex-wrap items-center gap-1.5"><span className="text-xs text-slate-500">Agregar:</span>
+        {BLK.map(([k, l]) => <button type="button" key={k} onClick={() => set([...B, { t: k, x: "" }])} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2.5 py-0.5 text-xs text-slate-600 transition hover:border-brand-400 hover:text-brand-600 dark:border-slate-700 dark:text-slate-300"><Plus className="size-3" />{l}</button>)}</div>
+    </div>);
+}
 const tplOf = (k: string) => TPLS.find(t => t.k === k) || TPLS[TPLS.length - 1];
 const newForm = (d: CommDiv, k: string, me: string): Form => ({ tpl: k, v: tplOf(k).def(d, me) });
-const build = (d: CommDiv, f: Form) => tplOf(f.tpl).render(d, f.v);
+/* los campos nuevos de una plantilla (firma en bloque, asistencia…) toman su valor por defecto en los comunicados viejos */
+const build = (d: CommDiv, f: Form) => { const t = tplOf(f.tpl); return t.render(d, { ...t.def(d, ""), ...f.v }); };
 
 /* comunicados ya publicados, armados con sus plantillas (se pueden editar campo por campo) */
 const seed = (d: CommDiv, id: string, t: string, by: string, ts: number, tpl: string, v: Record<string, string>): Comm => { const f = { tpl, v: { ...tplOf(tpl).def(d, ""), ...v } }; return { id, t, by, ts, f, body: build(d, f) }; };
 const SEED: Record<CommDiv, Comm[]> = {
-  udu: [seed("udu", "udu-1", "Instrucción de persecución marítima y buceo", "Coordinación UDU", Date.UTC(2026, 5, 3, 12), "instruccion", { fecha: "2026-06-03", hora: "20:00", ts: "1780430400" })],
+  udu: [seed("udu", "udu-1", "Instrucción de persecución marítima y buceo", "Ryan Westbrook", Date.UTC(2026, 10, 11, 4), "instruccion", { fecha: "2026-11-11", hora: "21:00", ts: "1794430800" })],
   asd: [
     seed("asd", "asd-1", "Documentación de la ASD", "Coordinación ASD", Date.UTC(2026, 4, 20, 12), "documentacion", {}),
     seed("asd", "asd-2", "Licencia de dron policial", "Sgto. I Clarkson", Date.UTC(2026, 4, 2, 12), "licencia", { rol: ROLE_LSPD }),
@@ -130,7 +194,7 @@ export function Comunicados({ div, canEdit }: { div: CommDiv; canEdit: boolean }
   useStoreVersion();
   const me = useMe(), { toast, confirm } = useFeedback(), I = INFO[div];
   const [saved, setSaved] = useJSON<Comm[] | null>(`lspdt.comms.${div}`, null);
-  const list = useMemo(() => (saved || SEED[div]).slice().sort((a, b) => b.ts - a.ts), [saved, div]);
+  const list = useMemo(() => (saved || SEED[div]).map(c => (c.id === "udu-1" && c.f && !("firma" in c.f.v) ? SEED.udu[0] : c.f?.tpl ? { ...c, body: build(div, c.f) } : c)).sort((a, b) => b.ts - a.ts), [saved, div]);
   const [sel, setSel] = useState<string>(""), [ed, setEd] = useState<Comm | null>(null);
   const cur = list.find(x => x.id === sel) || list[0];
   const save = (l: Comm[]) => setSaved(l);
@@ -184,6 +248,7 @@ function Editor({ div, init, onSave, onCancel }: { div: CommDiv; init: Comm; onS
       case "lines": return <Textarea rows={4} value={v} placeholder={fd.ph} onChange={e => up(fd.k, e.target.value)} />;
       case "date": return <Input type="date" value={v} onChange={e => up(fd.k, e.target.value)} />;
       case "time": return <Input type="time" value={v} onChange={e => up(fd.k, e.target.value)} />;
+      case "blocks": return <BlocksEd value={v} onChange={x => up(fd.k, x)} />;
       case "agent": return <Input list="cm-names" value={v} placeholder={fd.ph || "Ej: Sgto. I Clarkson"} onChange={e => up(fd.k, e.target.value)} />;
       case "role": return <Select value={v} onChange={e => up(fd.k, e.target.value)}>{I.roles.map(([id, l]) => <option key={id} value={id}>{l}</option>)}<option value="">Sin mención</option></Select>;
       default: return <Input value={v} placeholder={fd.ph} onChange={e => up(fd.k, e.target.value)} />;

@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import { discordHtml } from "@/lib/discord";
 import { uid } from "@/lib/domain";
 import { cn } from "@/lib/cn";
-import { FIRMAS, ILIC_VARS, consultaInteres, ilicText, type IlicForm } from "./ilicito";
+import { FIRMAS, ILIC_VARS, consultaInteres, firmaDe, ilicText, mentions, type IlicForm } from "./ilicito";
 import { NotifTab, fbList, whoOf, FB_SEEN } from "./Notif";
 import { LS, useJSON } from "@/lib/store";
 import { FB_ST, fbSt, fbX } from "@/components/fbnotif";
@@ -240,8 +240,80 @@ function ComTab({ staff, users }: { staff: Staff[]; users: Record<string, string
   );
 }
 
-/* ---------- equipo de ilícitos: respuesta a postulaciones ---------- */
+/* ---------- equipo de ilícitos: postulaciones y sanciones de banda ---------- */
 function IlicTab({ users }: { users: Record<string, string> }) {
+  const [v, setV] = useState<"post" | "sanc">(() => (LS.get("lspdt.next.sixIlic") as "post" | "sanc") || "post");
+  return <div className="space-y-5"><div className="max-w-md"><Seg v={v} set={x => { setV(x); LS.set("lspdt.next.sixIlic", x); }} opts={[["post", "POSTULACIONES"], ["sanc", "AVISOS · STRIKES · DISBAND"]] as const} /></div>
+    {v === "post" ? <PostTab users={users} /> : <SancTab users={users} />}</div>;
+}
+
+type SancT = "aviso" | "strike" | "disband";
+type Sanc = { id: string; ts: number; t: SancT; banda: string; motivo: string; desc: string; cons: string; n: number; st: "act" | "cum" | "ret"; ids: string; txt: string };
+const SANC: Record<SancT, { l: string; h: string; e: string; cons: string; st: string }> = {
+  aviso: { l: "AVISO DE BANDA", h: "# AVISO DE BANDA ⚠️", e: "🟡", cons: "Si se vuelve a dar el mismo aviso, se generará 1 STRIKE.", st: "Aviso" },
+  strike: { l: "STRIKE DE BANDA", h: "# ⚠️ ・STRIKE DE BANDA", e: "🔴", cons: "Si volvemos a ver situaciones parecidas, se os pondrá otro Strike.", st: "Strike" },
+  disband: { l: "DISBAND", h: "# ☠️ ・DISBAND DE BANDA", e: "⚫", cons: "La banda queda disuelta y sus integrantes no podrán volver a postularse con el mismo proyecto.", st: "Disband" },
+};
+const ORD = ["PRIMER", "SEGUNDO", "TERCER", "CUARTO", "QUINTO"];
+const ST_L: Record<Sanc["st"], string> = { act: "Activo", cum: "Cumplido", ret: "Retirado" };
+function sancText(x: Omit<Sanc, "id" | "ts" | "txt">, prevAv: number, strikes: number) {
+  const S = SANC[x.t], est = x.t === "disband" ? "⚫ Banda disuelta" : `${x.st === "act" ? S.e : x.st === "cum" ? "🟢" : "⚪"} ${S.st} ${ST_L[x.st]}`;
+  return [S.h, "_ _", "", ...(x.banda.trim() ? [`🏴 Banda: **${x.banda.trim()}**`, ""] : []),
+    ` 🔨 Sanción aplicada: ${x.t === "strike" ? `**${x.n} Strike${x.n > 1 ? "s" : ""} de Banda**` : x.t === "aviso" ? "**AVISO**" : "**DISBAND**"}`, "",
+    ` 📌 Motivo: ${x.motivo.trim() || "[motivo]"}`, "", ...(x.desc.trim() ? [` 📝 Descripción: ${x.desc.trim()}`, ""] : []),
+    ` 🚨 Consecuencia: ${x.cons.trim() || S.cons}`, "",
+    ...(x.t === "aviso" && prevAv > 0 ? [`**ES EL ${ORD[prevAv] || prevAv + 1 + "º"} AVISO POR LO MISMO, AL TERCERO SE CONVIERTE EN STRIKE**`, ""] : []),
+    ...(x.t === "strike" ? [`**Strikes acumulados: ${strikes}/3**${strikes >= 3 ? " — al tercero corresponde el disband" : ""}`, ""] : []),
+    `**Estado: ${est}**`, "", firmaDe(FIRMAS[0]), ...(mentions(x.ids).length ? ["", mentions(x.ids).join(" ")] : [])].join("\n");
+}
+function SancTab({ users }: { users: Record<string, string> }) {
+  const { toast } = useFeedback(), [L, setL] = useJSON<Sanc[]>("lspdt.six.sanc", []);
+  const blank = { t: "aviso" as SancT, banda: "", motivo: "", desc: "", cons: "", n: 1, st: "act" as Sanc["st"], ids: "" };
+  const [f, setF] = useState(blank), [eid, setEid] = useState(""), set = (p: Partial<typeof blank>) => setF({ ...f, ...p });
+  const same = (x: Sanc) => x.id !== eid && x.banda.trim().toLowerCase() === f.banda.trim().toLowerCase() && !!f.banda.trim();
+  const prevAv = L.filter(x => same(x) && x.t === "aviso" && x.st === "act" && x.motivo.trim().toLowerCase() === f.motivo.trim().toLowerCase()).length;
+  const strikes = L.filter(x => same(x) && x.t === "strike" && x.st === "act").reduce((a, x) => a + x.n, 0) + (f.t === "strike" ? f.n : 0);
+  const txt = sancText(f, prevAv, strikes), bandas = [...new Set(L.map(x => x.banda))];
+  const resumen = (b: string) => { const A = L.filter(x => x.banda === b && x.st === "act"); return { av: A.filter(x => x.t === "aviso").length, sk: A.filter(x => x.t === "strike").reduce((a, x) => a + x.n, 0), db: L.some(x => x.banda === b && x.t === "disband" && x.st !== "ret") }; };
+  return (
+    <div className="grid items-start gap-5 lg:grid-cols-2">
+      <Panel t="Sanciones de banda" icon={<Skull />} d="Aviso, strike o disband en formato Discord. Lleva la cuenta por banda." className="space-y-4">
+        <div className="grid gap-2 sm:grid-cols-3">{(Object.keys(SANC) as SancT[]).map(t => (
+          <button key={t} onClick={() => set({ t, cons: "" })} className={cn("rounded-xl border p-3 text-left text-xs font-bold tracking-[0.12em] transition", f.t === t ? "border-six bg-six/10 text-six six-ico" : "border-six/15 text-slate-500 hover:bg-white/5")}>
+            {SANC[t].e} {SANC[t].l}</button>))}</div>
+        <Lbl t="Banda"><NIn list="six-bandas" value={f.banda} onChange={e => set({ banda: e.target.value })} placeholder="Ej.: Los Vagos" /><datalist id="six-bandas">{bandas.map(b => <option key={b} value={b} />)}</datalist></Lbl>
+        {f.banda.trim() && (() => { const r = resumen(L.find(x => x.banda.toLowerCase() === f.banda.trim().toLowerCase())?.banda || f.banda); return <p className="-mt-2 font-sans text-xs text-slate-400">Activos de esta banda: {r.av} aviso{r.av === 1 ? "" : "s"} · {r.sk} strike{r.sk === 1 ? "" : "s"}{r.db ? " · DISUELTA" : ""}{f.t === "aviso" && prevAv >= 2 ? " · ⚠️ este sería el tercer aviso por lo mismo: corresponde strike" : ""}</p>; })()}
+        <Lbl t="Motivo"><NIn value={f.motivo} onChange={e => set({ motivo: e.target.value })} placeholder="No enviar entorno o enviar entorno mal redactado" /></Lbl>
+        <Lbl t="Descripción" h="(opcional)"><NTa rows={3} value={f.desc} onChange={e => set({ desc: e.target.value })} placeholder="No enviar entorno estando enmascarados, portando armas y cargando a una persona PK." /></Lbl>
+        <Lbl t="Consecuencia" h="(si lo dejás vacío va la de siempre)"><NIn value={f.cons} onChange={e => set({ cons: e.target.value })} placeholder={SANC[f.t].cons} /></Lbl>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {f.t === "strike" && <Lbl t="Cantidad"><NSel v={f.n} set={n => set({ n })} opts={[[1, "1 strike"], [2, "2 strikes"], [3, "3 strikes"]] as const} /></Lbl>}
+          {f.t !== "disband" && <Lbl t="Estado"><NSel v={f.st} set={st => set({ st })} opts={[["act", "Activo"], ["cum", "Cumplido"], ["ret", "Retirado"]] as const} /></Lbl>}
+          <Lbl t="Mencionar" h="(IDs, opcional)"><NIn className="font-mono text-xs" value={f.ids} onChange={e => set({ ids: e.target.value })} placeholder="2318…" /></Lbl>
+        </div>
+        <div className="flex justify-end gap-2">
+          {eid && <NBtn ghost onClick={() => { setEid(""); setF(blank); }}>CANCELAR</NBtn>}
+          <NBtn icon={<Check />} disabled={!f.banda.trim() || !f.motivo.trim()} onClick={() => { const r: Sanc = { ...f, banda: f.banda.trim(), id: eid || uid(), ts: L.find(x => x.id === eid)?.ts || Date.now(), txt };
+            setL([...L.filter(x => x.id !== r.id), r].slice(-300)); void navigator.clipboard?.writeText(txt); toast(eid ? "Actualizado y copiado" : "Copiado y registrado"); setEid(""); setF(blank); }}>{eid ? "GUARDAR Y COPIAR" : "COPIAR Y REGISTRAR"}</NBtn></div>
+      </Panel>
+      <div className="space-y-5">
+        <Preview title={SANC[f.t].l} text={txt} users={users} />
+        {L.length > 0 && <Panel className="p-4"><p className="mb-2 text-[10px] font-bold tracking-[0.2em] text-six/80">REGISTRO · {L.length}</p>
+          <div className="max-h-80 space-y-1 overflow-y-auto">{[...L].sort((a, b) => b.ts - a.ts).map(x => (
+            <div key={x.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 font-sans text-sm hover:bg-white/5">
+              <span className={cn("rounded px-1.5 text-[10px] font-bold", x.t === "aviso" ? "bg-amber-400/15 text-amber-300" : x.t === "strike" ? "bg-[#ff2b4a]/15 text-[#ff2b4a]" : "bg-slate-400/15 text-slate-300")}>{x.t === "strike" ? `${x.n} STRIKE` : x.t.toUpperCase()}</span>
+              <button onClick={() => { setEid(x.id); setF({ t: x.t, banda: x.banda, motivo: x.motivo, desc: x.desc, cons: x.cons, n: x.n, st: x.st, ids: x.ids }); }} className="min-w-0 flex-1 truncate text-left" title="Editar">{x.banda} · <span className="text-slate-500">{x.motivo}</span></button>
+              {x.t !== "disband" && <select value={x.st} onChange={e => setL(L.map(y => (y.id === x.id ? { ...y, st: e.target.value as Sanc["st"] } : y)))} className="rounded border border-six/20 bg-black/40 px-1 text-[11px] text-slate-300">{(["act", "cum", "ret"] as const).map(k => <option key={k} value={k} className="bg-[#0a0d12]">{ST_L[k]}</option>)}</select>}
+              <span className="text-[11px] text-slate-600">{new Date(x.ts).toLocaleDateString()}</span>
+              <button title="Copiar" onClick={() => { void navigator.clipboard?.writeText(x.txt); toast("Copiado"); }} className="text-slate-500 hover:text-six"><Copy className="size-3.5" /></button>
+              <button title="Quitar" onClick={() => setL(L.filter(y => y.id !== x.id))} className="text-slate-600 hover:text-[#ff2b4a]"><Trash2 className="size-3.5" /></button>
+            </div>))}</div></Panel>}
+      </div>
+    </div>
+  );
+}
+
+function PostTab({ users }: { users: Record<string, string> }) {
   const { toast } = useFeedback(), [sent, setSent] = useJSON<Sent[]>("lspdt.six.ilic", []);
   const [f, setF] = useState<IlicForm>({ ids: "", banda: "", res: "aceptada", motivos: "", v: "std", saludo: "auto", firma: FIRMAS[0], seguir: false, norma: true });
   const set = (p: Partial<IlicForm>) => setF({ ...f, ...p });

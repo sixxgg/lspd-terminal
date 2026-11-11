@@ -11,8 +11,8 @@ const uiRaw = async () => ((await q("select v from kv where k='lspdt.ui'")).rows
 const metaList = async k => parseList((await q("select v from meta where k=$1", [k])).rows[0]?.v);
 const setMeta = (k, l) => q("insert into meta(k,v) values($1,$2) on conflict(k) do update set v=excluded.v", [k, JSON.stringify(l)]);
 async function gate(ag) { // ¿puede entrar? (mando, RTD, ASD o aprobado por un administrador)
-  const r = (await q(`select (select v from kv where k='lspdt.ui') ui, (select v from meta where k='approved') ap, (select v from kv where k='lspdt.asdRoster') asd, (select v from kv where k='lspdt.k9Roster') k9`)).rows[0];
-  return canEnter(ag, r.ui, r.ap, r.asd, r.k9);
+  const r = (await q(`select (select v from kv where k='lspdt.ui') ui, (select v from meta where k='approved') ap, (select v from kv where k='lspdt.asdRoster') asd, (select v from kv where k='lspdt.k9Roster') k9, (select v from kv where k='lspdt.mdRoster') md`)).rows[0];
+  return canEnter(ag, r.ui, r.ap, r.asd, r.k9, r.md);
 }
 const PEND_MSG = "Tus credenciales están siendo revisadas por la administración. Intentá más tarde.";
 export default wrap(async (req, res) => {

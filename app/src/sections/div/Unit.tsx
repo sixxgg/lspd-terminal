@@ -1,6 +1,6 @@
 import { Comunicados } from "./Comunicados";
-import { useMemo, useState } from "react";
-import { Megaphone, Users, Pencil, Check, Plus, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History } from "lucide-react";
+import { lazy, Suspense, useMemo, useState } from "react";
+import { Megaphone, Users, Pencil, Check, Plus, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History, Presentation, Dog, ClipboardCheck, MessageCircle, Trophy, Loader2 } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input, Segmented, Select } from "@/components/ui";
 import { AgentCombo, AgentPicker, Avatar } from "@/components/agents";
 import { Helicopter } from "@/components/icons";
@@ -10,11 +10,31 @@ import { Col, Split } from "@/components/layout";
 import { LUGARES, fmtDate, findAgent, lvl, norm, rankES, uid } from "@/lib/domain";
 import { LS, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { K9_PL, UNITS, isUCoord, uMap, uRole, uSaveMap, uTop, type UnitKey } from "@/lib/units";
+import { K9_PL, UNITS, insRole, isUCoord, isUMem, uMap, uRole, uSaveMap, uTop, type UnitKey } from "@/lib/units";
 import { unitPalette } from "@/lib/divisions";
 import { cn } from "@/lib/cn";
 import { Psb, dcIdOf } from "./Psb";
 import { T1080 } from "@/sections/sup/T1080";
+import { Instrucciones } from "./Instrucciones";
+const Pizarra = lazy(() => import("./Pizarra").then(m => ({ default: m.Pizarra })));
+const MetroExam = lazy(() => import("./Metro").then(m => ({ default: m.MetroExam })));
+export const Lazy = ({ children }: { children: React.ReactNode }) => <Suspense fallback={<div className="grid min-h-[30vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{children}</Suspense>;
+
+/* K-9: perro de cada handler y su especialidad */
+export const K9_ESP = ["Armas", "Drogas", "Explosivos", "Búsqueda", "Dinero"];
+type Dog = { dog: string; esp: string };
+export const k9Dogs = () => LS.json<Record<string, Dog>>("lspdt.k9Dogs", {});
+function DogEd({ n, can }: { n: string; can: boolean }) {
+  const d = k9Dogs()[n] || { dog: "", esp: "" }, { toast } = useFeedback();
+  const save = (p: Partial<Dog>) => { const M = k9Dogs(), x = { ...d, ...p }; if (x.dog === d.dog && x.esp === d.esp) return; if (!x.dog && !x.esp) delete M[n]; else M[n] = x; LS.setJSON("lspdt.k9Dogs", M); toast("K-9 guardado"); };
+  if (!can) return d.dog || d.esp ? <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300"><Dog className="size-3" />{d.dog || "Sin nombre"}{d.esp && ` · ${d.esp}`}</span> : null;
+  return <span className="inline-flex items-center gap-1"><Dog className="size-3.5 text-emerald-500" />
+    <Input key={d.dog} defaultValue={d.dog} placeholder="Nombre del perro" className="h-7 w-32 text-xs" onBlur={e => save({ dog: e.target.value.trim() })} onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
+    <Select value={d.esp} onChange={e => save({ esp: e.target.value })} className="h-7 w-auto py-0 text-xs"><option value="">Especialidad…</option>{K9_ESP.map(x => <option key={x}>{x}</option>)}</Select></span>;
+}
+const INS_TIPOS: Record<UnitKey, string[]> = { asd: ["Vuelo táctico", "Búsqueda y rescate (SAR)", "Emergencias críticas", "Uso de dron", "Apoyo a persecución"],
+  k9: ["Detección de drogas", "Detección de armas", "Detección de explosivos", "Detección de dinero", "Búsqueda y rastreo", "Obediencia"],
+  psb: ["Procedimiento de investigación", "Entrevistas", "Redacción de expedientes"], md: ["Entrada táctica", "Tiro", "Conducción táctica", "Rescate de rehenes", "Persecución marítima y buceo"] };
 
 type Log = { id: string; t: number; por2: string; ag: string[]; veh?: string; ae?: string; mat?: string; mo: string; mox?: string; perm?: string; por?: string; dog?: string; zona?: string };
 type F = Omit<Log, "id" | "t" | "por2"> & { mox: string; perm: string; por: string; mat: string; dog: string; zona: string; veh: string };
@@ -25,7 +45,7 @@ function uText(k: UnitKey, F: Partial<F> & { ag: string[]; mo: string }) {
   const u = UNITS[k], ag = F.ag.filter(Boolean);
   let s = ag.length ? ag.map(n => { const a = findAgent(n); return `**Nombre del Agente:** ${n}\n**N° de placa:** ${(a && a.p) || "—"}`; }).join("\n") : "**Nombre del Agente:** —\n**N° de placa:** —";
   if (u.veh) s += `\n**Aeronave que se usó:** ${vehL(k, F.veh)}${F.mat ? ` [${F.mat}]` : ""}`;
-  if (u.dog) s += `\n**K-9:** ${F.dog || "—"}`;
+  if (u.dog) { const e = Object.values(k9Dogs()).find(d => d.dog && d.dog === F.dog)?.esp; s += `\n**K-9:** ${F.dog || "—"}${e ? ` (${e})` : ""}`; }
   if (u.zona) s += `\n**Zona:** ${F.zona || "—"}`;
   s += `\n**Motivo:** ${F.mo === "Otro" ? F.mox || "—" : F.mo}${F.mo !== "Otro" && F.mox ? ` — ${F.mox}` : ""}`;
   s += `\n**Permiso:** ${F.perm ? `${F.perm}${F.por ? ` (autorizado por ${F.por})` : ""}` : "—"}`; return s;
@@ -51,13 +71,18 @@ function asdXText(n: string, X: XRec) {
   return `**Oficial:** ${n}${a && a.p ? ` | ${a.p}` : ""}\n**Estado:** ${l.join(" · ") || "—"}${X._n ? `\n**Nota:** ${X._n}` : ""}`;
 }
 
-const PSB_TABS: [string, string, typeof Bell][] = [["not", "Notificación", Bell], ["ele", "Elevación de caso", ArrowUpRight], ["jus", "Sanción a Justicia", Gavel], ["res", "Resolución", FileCheck2], ["vot", "Votaciones", Vote], ["his", "Historial", History], ["cat", "Catálogo de faltas", BookMarked], ["cit", "Citación 10-80", Radio]];
+const PSB_TABS: [string, string, typeof Bell][] = [["not", "Notificación", Bell], ["ele", "Elevación de caso", ArrowUpRight], ["jus", "Justicia / SAJD", Gavel], ["res", "Resolución", FileCheck2], ["vot", "Votaciones", Vote], ["his", "Expedientes", History], ["cat", "Catálogo de faltas", BookMarked], ["cit", "Citación 10-80", Radio]];
 
 export function Unit({ k }: { k: UnitKey }) {
   useStoreVersion();
   const me = useMe(), u = UNITS[k], co = isUCoord(k, me.n), pal = unitPalette(k);
-  const tabs0: [string, string, typeof Bell][] = k === "psb" ? [["ros", "Roster", Users], ...PSB_TABS]
-    : [["ros", "Roster", Users], ["reg", u.reg!, ClipboardPen], ["log", `${u.regs} (${uLog(k).length})`, ListChecks], ...(k === "asd" ? [["com", "Comunicados", Megaphone] as [string, string, typeof Bell]] : []), ...(k === "asd" && co ? [["exa", "Exámenes", GraduationCap] as [string, string, typeof Bell]] : [])];
+  type TB = [string, string, typeof Bell];
+  const mdIns = k === "md" && (co || ["inst", "instp"].includes(insRole("md", me.n)));
+  const tabs0: TB[] = [["ros", "Roster", Users], ...(k === "psb" ? PSB_TABS : u.reg ? [["reg", u.reg, ClipboardPen], ["log", `${u.regs} (${uLog(k).length})`, ListChecks]] as TB[] : []),
+    ...(k === "asd" ? [["com", "Comunicados", Megaphone] as TB] : []), ...(k === "asd" && co ? [["exa", "Exámenes", GraduationCap] as TB] : []),
+    ...(mdIns ? [["mde", "Examen escrito", ClipboardCheck], ["mdi", "Entrevista de instructor", MessageCircle], ["mdl", "Lista de elegibles", Trophy]] as TB[] : []),
+    ["ins", "Instrucciones", GraduationCap], ["piz", "Pizarra", Presentation]];
+  const mem = isUMem(k, me.n), names = Object.keys(uMap(k)).filter(n => findAgent(n)).sort((a, b) => a.localeCompare(b, "es"));
   /* Roster siempre primero; el resto de la A a la Z */
   const tabs = [tabs0[0], ...tabs0.slice(1).sort((a, b) => a[1].localeCompare(b[1], "es", { numeric: true }))];
   const [tab, setTab] = useState(() => LS.get(`lspdt.next.utab.${k}`) || "ros");
@@ -66,8 +91,12 @@ export function Unit({ k }: { k: UnitKey }) {
   return (
     <div className="space-y-5" style={{ ["--uacc" as string]: pal.acc }}>
       <Segmented value={t} onChange={go} options={tabs.map(([v, l, I]) => ({ value: v, label: l, icon: <I /> }))} />
-      {t === "ros" ? <Roster k={k} pal={pal.roles} /> : t === "reg" ? <RegForm k={k} onSaved={() => go("log")} /> : t === "log" ? <LogView k={k} /> : t === "exa" ? <Exams pal={pal.roles} /> : t === "com" ? <Comunicados div="asd" canEdit={co} />
-        : t === "cit" ? <T1080 psbOnly /> : <Psb tab={t} />}
+      {t === "ros" ? <Roster k={k} pal={pal.roles} />
+        : t === "ins" ? <Instrucciones div={k} ab={u.ab} names={names} roleOf={n => insRole(k, n)} tipos={INS_TIPOS[k]} canEdit={mem} isCoord={co} />
+        : t === "piz" ? <Lazy><Pizarra div={k} canEdit={mem} /></Lazy>
+        : t === "mde" || t === "mdi" || t === "mdl" ? <Lazy><MetroExam tab={t === "mde" ? "exa" : t === "mdi" ? "ent" : "list"} /></Lazy>
+        : t === "reg" ? <RegForm k={k} onSaved={() => go("log")} /> : t === "log" ? <LogView k={k} /> : t === "exa" ? <Exams pal={pal.roles} /> : t === "com" ? <Comunicados div="asd" canEdit={co} />
+        : t === "cit" ? <T1080 psbOnly /> : <Psb tab={t} go={go} />}
     </div>
   );
 }
@@ -120,6 +149,7 @@ function Roster({ k, pal }: { k: UnitKey; pal: Record<string, string> }) {
                       <button aria-label={`Quitar a ${n}`} onClick={async () => { if (await confirm(`¿Quitar a ${n} de la ${u.ab}?`, { danger: true })) save(y => { delete y[n]; }); }} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><X className="size-4" /></button>
                     </div>
                   ) : <div className="flex flex-wrap gap-1"><Tag k={k} x={kk} main pal={pal} />{r.filter(x => x !== kk).map(x => <Tag key={x} k={k} x={x} pal={pal} />)}
+                    {k === "k9" && <DogEd n={n} can={co || n === me.n} />}
                     {k === "asd" && asdSusp(n) && <span title={asdSuspTxt(n)} className="inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-300">Patrullaje aéreo suspendido</span>}</div>}
                 </div>); }) : <p className="px-4 py-3 text-xs text-slate-400">Sin integrantes.</p>}
             </div>);
@@ -154,7 +184,7 @@ function RegForm({ k, onSaved }: { k: UnitKey; onSaved: () => void }) {
                 <span className="leading-tight"><b className="block text-xs">{n}</b><small className="text-[10.5px] text-slate-500">{a ? (a.p ? "#" + a.p + " · " : "") + rankES(a.r) : ""}</small>{k === "asd" && asdSusp(n) && <small className="block text-[10.5px] font-semibold text-red-600 dark:text-red-400">Patrullaje aéreo suspendido</small>}</span>
                 <button aria-label={`Quitar a ${n}`} onClick={() => up({ ag: F.ag.filter(x => x !== n) })} className="rounded p-0.5 text-slate-400 hover:text-red-600"><X className="size-3.5" /></button></span>); })
               : <p className="text-sm text-slate-400">Elegí abajo quiénes participaron.</p>}</div>
-            <AgentPicker value="" onChange={n => up({ ag: [...F.ag, n] })} filter={a => lvl(a.r) > 0 && !F.ag.includes(a.n) && (all || !!m[a.n])} empty="No quedan agentes para agregar" />
+            <AgentPicker value="" onChange={n => up({ ag: [...F.ag, n], ...(u.dog && !F.dog && k9Dogs()[n]?.dog ? { dog: k9Dogs()[n].dog } : {}) })} filter={a => lvl(a.r) > 0 && !F.ag.includes(a.n) && (all || !!m[a.n])} empty="No quedan agentes para agregar" />
             <Checkbox checked={all} onChange={setAll} label={`Mostrar todo el roster (no solo la ${u.ab})`} />
           </CardBody>
         </Card>

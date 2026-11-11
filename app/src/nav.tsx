@@ -51,12 +51,12 @@ const RAW_AREAS: Area[] = [
   ] },
   { k: "div", l: "Divisiones", icon: Landmark, min: 0, sec: [
     { k: "dv_asb", l: "Administration Services Bureau", d: "Próximamente", icon: Building2, ready: true },
-    { k: "dv_asd", l: "Air Support Division", d: "Roster, vuelos y exámenes", icon: Helicopter, ready: true },
+    { k: "dv_asd", l: "Air Support Division", d: "Roster, vuelos, exámenes, instrucciones y pizarra", icon: Helicopter, ready: true },
     { k: "dv_db", l: "Detective Bureau", d: "Próximamente", icon: Search, ready: true },
     { k: "dv_hsiu", l: "High Speed Interception Unit", d: "Próximamente", icon: Gauge, ready: true },
-    { k: "dv_kd", l: "K-9 Division", d: "Roster y patrullajes", icon: Dog, ready: true },
-    { k: "dv_md", l: "Metropolitan Division", d: "Próximamente", icon: Crosshair, ready: true },
-    { k: "dv_psb", l: "Professional Standards Bureau", d: "Roster, notificaciones y expedientes", icon: Shield, ready: true },
+    { k: "dv_kd", l: "K-9 Division", d: "Roster, perros, patrullajes, instrucciones y pizarra", icon: Dog, ready: true },
+    { k: "dv_md", l: "Metropolitan Division", d: "Roster, instrucciones, exámenes de instructor y pizarra", icon: Crosshair, ready: true },
+    { k: "dv_psb", l: "Professional Standards Bureau", d: "Expedientes de principio a fin: notificación, elevación, Justicia/SAJD y resolución", icon: Shield, ready: true },
     { k: "dv_rtd", l: "Recruitment and Training Division", d: "Entrevistas de aspirantes", icon: GraduationCap, ready: true },
   ] },
   { k: "adm", l: "Administración", icon: Settings, min: 0, admin: true, sec: [

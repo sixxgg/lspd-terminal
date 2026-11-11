@@ -81,6 +81,14 @@ export const pad2 = (n: number) => String(n).padStart(2, "0");
 export const hoyDMY = () => { const d = new Date(); return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`; };
 export const isDMY = (s: string) => /^\d{2}\/\d{2}\/\d{4}$/.test(s);
 export const fmtDate = (t: number) => new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
+/* tiempo relativo: «hace 10 minutos», «hace 3 días»; pasado el mes, fecha y hora en la zona de quien lo mira */
+export const ago = (t: number, now = Date.now()) => {
+  const m = Math.floor((now - t) / 60000);
+  if (m < 1) return "recién"; if (m < 60) return `hace ${m} ${m === 1 ? "minuto" : "minutos"}`;
+  const h = Math.floor(m / 60); if (h < 24) return `hace ${h} ${h === 1 ? "hora" : "horas"}`;
+  const d = Math.floor(h / 24); if (d <= 30) return `hace ${d} ${d === 1 ? "día" : "días"}`;
+  return new Date(t).toLocaleString(undefined, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+};
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 /* escritura guiada de fechas y horas */
 export const maskDMY = (v: string) => { const d = v.replace(/\D/g, "").slice(0, 8); return d.length > 4 ? `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}` : d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d; };

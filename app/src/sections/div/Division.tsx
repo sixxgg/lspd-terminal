@@ -1,5 +1,12 @@
 import { useState, type ReactNode } from "react";
-import { Lock, Megaphone } from "lucide-react";
+import { GraduationCap, Lock, Megaphone, Presentation } from "lucide-react";
+import { Segmented } from "@/components/ui";
+import { Instrucciones } from "./Instrucciones";
+import { Lazy } from "./Unit";
+import { lazy } from "react";
+import { findAgent } from "@/lib/domain";
+import { insRole, isUMem, uMap } from "@/lib/units";
+const Pizarra = lazy(() => import("./Pizarra").then(m => ({ default: m.Pizarra })));
 import { Card } from "@/components/ui";
 import { DivLogo } from "@/sections/sup/Agentes";
 import { DIV_DESC, DIV_DONE, divOpen, heroColors, subsOf, useDivColors } from "@/lib/divisions";
@@ -58,6 +65,21 @@ function SubTile({ s, on, onClick }: { s: string; on: boolean; onClick?: () => v
     </button>);
 }
 
+/* subdivisión (UDU): comunicados, instrucciones y pizarra; el roster es el de la METRO */
+function SubBody({ sub, div }: { sub: string; div: CommDiv }) {
+  const me = useMe(), [t, setT] = useState(() => LS.get("lspdt.next.subtab." + div) || "com"), can = !!ME_ROLES.admin || lvl(me.r) >= lvl("Sargento I") || isUMem("md", me.n);
+  const go = (v: string) => { setT(v); LS.set("lspdt.next.subtab." + div, v); };
+  const names = Object.keys(uMap("md")).filter(n => findAgent(n)).sort((a, b) => a.localeCompare(b, "es"));
+  return (
+    <div className="space-y-5">
+      <DivHero d={sub} />
+      <Segmented value={t} onChange={go} options={[{ value: "com", label: "Comunicados", icon: <Megaphone /> }, { value: "ins", label: "Instrucciones", icon: <GraduationCap /> }, { value: "piz", label: "Pizarra", icon: <Presentation /> }]} />
+      {t === "ins" ? <Instrucciones div={div} ab={div.toUpperCase()} names={names} roleOf={n => insRole("md", n)} tipos={["Persecución marítima", "Buceo", "Rescate subacuático", "Navegación"]} canEdit={can} isCoord={!!ME_ROLES.admin || insRole("md", me.n) === "coord"} />
+        : t === "piz" ? <Lazy><Pizarra div={div} canEdit={can} /></Lazy>
+        : <Comunicados div={div} canEdit={can} />}
+    </div>);
+}
+
 export function Division({ d }: { d: string }) {
   useStoreVersion();
   const me = useMe(), k = DIV_DONE[d], open = divOpen(d, me.n);
@@ -73,10 +95,6 @@ export function Division({ d }: { d: string }) {
   else if (k === "rtd") body = <Rtd />;
   else body = <Unit k={k} />;
   const subDiv = SUB_OPEN[sub];
-  if (subDiv && subsOf(d).includes(sub)) body = (
-    <div className="space-y-5">
-      <DivHero d={sub} />
-      <Comunicados div={subDiv} canEdit={!!ME_ROLES.admin || lvl(me.r) >= lvl("Sargento I")} />
-    </div>);
+  if (subDiv && subsOf(d).includes(sub)) body = <SubBody sub={sub} div={subDiv} />;
   return <div className={cn("space-y-5")}><DivHero d={d} /><SubTiles d={d} sel={sub} onSel={s => { setSub(s); LS.set("lspdt.next.dsub." + d, s); }} />{body}</div>;
 }

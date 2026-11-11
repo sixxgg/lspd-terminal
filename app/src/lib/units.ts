@@ -17,20 +17,29 @@ export const K9_PL: Record<string, string> = { "Logan Barrett": "884", "Ethan Ro
 export const PSB_DEF: Record<string, string[]> = { "Madison Wells": ["co", "iad", "fid", "sod"], "Vega Chambers": ["co", "iad", "fid", "sod"], "Derek McGarrett": ["inv", "iad", "fid"],
   "Ryan Westbrook": ["jinv", "iad", "fid", "sod"], "Liam Campbell": ["jinv", "iad", "fid", "sod"], "Evelyn Molina": ["jinv", "iad", "fid", "sod"] };
 
-export const UNITS: Record<"asd" | "k9" | "psb", Unit> = {
+export const MD_DEF: Record<string, string[]> = { "Ryan Westbrook": ["coord"] };
+/* roles de instrucción que se suman a cualquier unidad (además de los propios) */
+const INS_SUB: Role[] = [["inst", "Instructor", "#2fbf68", "Instr."], ["instp", "Instructor en pruebas", "#8fd9a8", "Instr. pruebas"]];
+export const UNITS: Record<"asd" | "k9" | "psb" | "md", Unit> = {
   asd: { d: "Air Support Division", ab: "A.S.D", rk: "lspdt.asdRoster", lk: "lspdt.asdVuelos", def: ASD_DEF, acc: "#e2c66a",
     R: [["coord", "Coordinación A.S.D", "#e2c66a", "Coord."], ["sup", "Supervisor Aéreo", "#2fa4d6", "Sup."], ["tfo", "Tactical Flight Officer", "#e05a52", "TFO"], ["pexp", "Piloto experimentado", "#9fd3ea", "P. exp."], ["piloto", "Piloto", "#5b93b8", "Piloto"], ["asp", "Aspirante A.S.D", "#8a8f97", "Asp."]],
     reg: "Registro de vuelo", regs: "Vuelos registrados", one: "vuelo", ones: "vuelos", crew: "Tripulación", save: "Guardar vuelo",
     veh: { l: "Aeronave", o: [["polmav", "Polmav", "Normal · patrullaje"], ["as332", "AS332 Super Puma", "Rescate"], ["mh60s", "MH-60S Blackhawk", "Blackhawk"]] }, mat: true,
+    SUB: INS_SUB,
     mo: ["Patrullaje Ordinario", "Prácticas METRO", "Ammunation", "Rescate SAR", "Apoyo a persecución", "Traslado", "Formación / examen", "Operativo táctico", "Otro"] },
   k9: { d: "K-9 Division", ab: "K-9", rk: "lspdt.k9Roster", lk: "lspdt.k9Reg", def: K9_DEF, acc: "#e6c65a", seedV: 2,
     R: [["coord", "Coordinación K-9", "#e6c65a", "Coord."], ["subcoord", "Sub Coordinación K-9", "#f3dc95", "Sub coord."], ["inst", "Instructor", "#2fbf68", "Instr."], ["senior", "Senior handler", "#a3d94e", "Senior"], ["handler", "Handler K9", "#3fae8c", "Handler"], ["prac", "Handler en prácticas", "#8fd9a8", "Prác."], ["asp", "Aspirante", "#8a8f97", "Asp."]],
+    SUB: [INS_SUB[1]],
     reg: "Registro de patrullaje", regs: "Patrullajes registrados", one: "patrullaje", ones: "patrullajes", crew: "Handlers", save: "Guardar patrullaje", dog: true, zona: true,
     mo: ["Patrullaje ordinario", "Detección de sustancias", "Detección de explosivos", "Búsqueda y rastreo de personas", "Apoyo a operativo", "Control de vehículos", "Entrenamiento", "Formación / examen", "Otro"] },
   psb: { d: "Professional Standards Bureau", ab: "PSB", rk: "lspdt.psbRoster", lk: "", def: PSB_DEF, acc: "#d9b45a", seedV: 1,
     R: [["co", "Commanding Officer", "#d9b45a", "CO"], ["aco", "Assistant Commanding Officer", "#ecd08a", "ACO"], ["dc", "Division Commander", "#c7ced9", "Div. Cmdr."], ["ss", "Section Supervisor", "#9fb4d6", "Sect. Sup."],
       ["lead", "Lead Investigator", "#7c9fe0", "Lead"], ["senior", "Senior Investigator", "#6b8fd6", "Senior"], ["inv", "Investigator", "#5b82c9", "Inv."], ["jinv", "Junior Investigator", "#8ea3c2", "Junior"]],
-    SUB: [["iad", "IAD", "#8fb3ff", "IAD"], ["fid", "FID", "#e0a3a3", "FID"], ["sod", "SOD", "#b7a6e8", "SOD"]] },
+    SUB: [["iad", "IAD", "#8fb3ff", "IAD"], ["fid", "FID", "#e0a3a3", "FID"], ["sod", "SOD", "#b7a6e8", "SOD"], ...INS_SUB] },
+  md: { d: "Metropolitan Division", ab: "METRO", rk: "lspdt.mdRoster", lk: "", def: MD_DEF, acc: "#1f6fb0",
+    R: [["coord", "Coordinación METRO", "#1f6fb0", "Coord."], ["subcoord", "Sub Coordinación METRO", "#5aa0d8", "Sub coord."], ["inst", "Instructor", "#2fbf68", "Instr."], ["instp", "Instructor en pruebas", "#8fd9a8", "Instr. pruebas"],
+      ["miembro", "Miembro METRO", "#9fb4d6", "Miembro"], ["asp", "Aspirante", "#8a8f97", "Asp."]],
+    SUB: [["pa", "Pelotón A", "#7c9fe0", "Pel. A"], ["pb", "Pelotón B", "#6b8fd6", "Pel. B"], ["pc", "Pelotón C", "#5b82c9", "Pel. C"], ["pd", "Pelotón D", "#8ea3c2", "Pel. D"], ["swat", "SWAT", "#e05a52", "SWAT"]] },
 };
 export type UnitKey = keyof typeof UNITS;
 export const COORD_R = ["coord", "subcoord", "co", "aco"];
@@ -52,6 +61,8 @@ export const uTop = (k: UnitKey, r?: string[]) => UNITS[k].R.find(x => (r || [])
 export const uRole = (k: UnitKey, x: string): Role => UNITS[k].R.find(r => r[0] === x) || UNITS[k].SUB?.find(r => r[0] === x) || [x, x, "#94a3b8", x];
 export const isUMem = (k: UnitKey, n: string) => !!ME_ROLES.admin || !!uMap(k)[n];
 export const isUCoord = (k: UnitKey, n: string) => !!ME_ROLES.admin || (uMap(k)[n] || []).some(x => COORD_R.includes(x));
+/* rol en las instrucciones según el roster: coordinador, instructor o instructor en pruebas */
+export const insRole = (k: UnitKey, n: string): "coord" | "inst" | "instp" | "" => { const r = uMap(k)[n] || []; return r.some(x => COORD_R.includes(x)) ? "coord" : r.includes("inst") ? "inst" : r.includes("instp") ? "instp" : ""; };
 export const isPSB = (n: string) => !!uMap("psb")[n];
 export const rtdMem = (): string[] => { const l = LS.json<Record<string, unknown>>("lspdt.ui", {}).rtd; return Array.isArray(l) ? (l as string[]) : RTD_DEF; };
 export const RTD_DEF = ["Charles Jhonson Smith", "Daniel López", "Derek McGarrett", "Elioth Smith", "Evelyn Molina", "Kai Jeon-Soo", "Kane Anderson", "Khalan Smith", "Lara Calloway",
