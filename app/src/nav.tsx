@@ -18,7 +18,7 @@ const RAW_AREAS: Area[] = [
   { k: "age", l: "Agentes", icon: Users, min: 6, req: "Sargento I", sec: [{ k: "prof", l: "Agentes", d: "Planilla del departamento por rango: Jefatura, Capitanía, Supervisores, Detectives y Patrulleros", icon: Users, ready: true }] },
   { k: "inf", l: "Informes", icon: FileText, min: 0, sec: [{ k: "inf", l: "Informes policiales", d: "Redactar, registrar y buscar informes", icon: FileText, ready: true }] },
   /* oculta del menú: se entra desde el nombre del encabezado (por ahora solo six, BETA) */
-  { k: "me", l: "Mi perfil", icon: UserRound, min: 0, hidden: true, sec: [{ k: "perfil", l: "Mi perfil", d: "Tu perfil OOC en la terminal (BETA)", icon: UserRound, ready: true }] },
+  { k: "me", l: "Mi perfil", icon: UserRound, min: 0, hidden: true, sec: [{ k: "perfil", l: "Mi perfil", d: "Perfiles de la terminal (BETA)", icon: UserRound, ready: true }] },
   { k: "fb", l: "Feedback", icon: Heart, min: 0, sec: [{ k: "env", l: "Feedback", d: "Errores, ideas o mejoras: escribilo como quieras y sumá fotos si ayudan", icon: Heart, ready: true }] },
   { k: "leg", l: "Legal", icon: Scale, min: 0, sec: [{ k: "ley", l: "Leyes", d: "Infracciones administrativas y delitos por capítulo, con favoritos", icon: Scale, ready: true }] },
   { k: "sup", l: "Supervisores", icon: ClipboardList, min: 6, req: "Sargento I", sec: [
@@ -73,7 +73,7 @@ export const AREAS: Area[] = RAW_AREAS
   .map(a => (a.k === "ini" ? a : { ...a, sec: a.sec.slice().sort(byLabel) }))
   .sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
 
-export const canArea = (a: Area, r?: string) => (a.k === "me" ? !!ME_ROLES.six : a.admin ? !!ME_ROLES.admin : lvl(r) >= a.min);
+export const canArea = (a: Area, r?: string) => (a.k === "me" ? true : a.admin ? !!ME_ROLES.admin : lvl(r) >= a.min);
 /* áreas del menú (sin las ocultas) */
 export const menuAreas = (r?: string) => AREAS.filter(a => !a.hidden && canArea(a, r));
 /* secciones bloqueadas para ese rango (se muestran con candado) */

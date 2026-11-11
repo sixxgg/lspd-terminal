@@ -9,6 +9,7 @@ import { discordHtml } from "@/lib/discord";
 import { uid } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 import { FIRMAS, ILIC_VARS, consultaInteres, firmaDe, ilicText, mentions, type IlicForm } from "./ilicito";
+import { Catalogo } from "./Robos";
 import { NotifTab, fbList, whoOf, FB_SEEN } from "./Notif";
 import { LS, useJSON } from "@/lib/store";
 import { FB_ST, fbSt, fbX } from "@/components/fbnotif";
@@ -135,8 +136,12 @@ function HomeTab({ go, unread, staff }: { go: (t: Tab) => void; unread: number; 
     ["com", "Comunicados", Megaphone, `${com.length} guardados`, six ? "Próximamente" : "Armalos y copialos"],
     ["adm", "Administración", Settings2, "Tema, efectos e intro", six ? "Avisos de Discord" : "Colores y efectos"],
   ];
+  const [sub, setSub] = useState<"res" | "rob">(() => (LS.get(K("homeSub")) === "rob" && six ? "rob" : "res"));
+  const pick = (v: "res" | "rob") => { setSub(v); LS.set(K("homeSub"), v); };
   return (
     <div className="space-y-5">
+      {six && <div className="max-w-md"><Seg v={sub} set={pick} opts={[["res", "RESUMEN"], ["rob", "CATÁLOGO DE ROBOS"]] as const} /></div>}
+      {sub === "rob" ? <Catalogo /> : <>
       <Panel><p className="font-sans text-sm text-slate-500">{new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}</p>
         <h1 className="six-h mt-1 font-sans text-2xl font-bold">{saludo}, {NAME()}.</h1>
         {six && <p className="mt-1 font-sans text-sm text-slate-400">{abiertos ? `Tenés ${abiertos} feedback ${abiertos === 1 ? "abierto" : "abiertos"} por revisar.` : "No hay feedback pendiente."}</p>}</Panel>
@@ -150,6 +155,7 @@ function HomeTab({ go, unread, staff }: { go: (t: Tab) => void; unread: number; 
           <button key={x.id} onClick={() => go("not")} className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left font-sans text-sm transition hover:bg-six/5">
             <S.I className="size-4 shrink-0" style={{ color: S.c }} /><span className="w-28 shrink-0 truncate font-semibold text-white">{whoOf(x)}</span>
             <span className="min-w-0 flex-1 truncate text-slate-400">{fbX(x.x)}</span></button>); })}</div></Panel>}
+      </>}
     </div>
   );
 }

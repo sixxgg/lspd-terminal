@@ -17,7 +17,7 @@ import { AREAS, canArea, secsOf } from "./nav";
 import { api, authApi } from "./lib/api";
 import { BootScreen } from "./components/boot";
 import { LS, ME_ROLES, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
-import { findAgent, getRoster, rankES } from "./lib/domain";
+import { emailOf, findAgent, getRoster, rankES } from "./lib/domain";
 import { useFeedback } from "./components/feedback";
 
 type Boot = { me: string | null; names: string[]; brand?: Record<string, string>; roster?: PubInfo["roster"]; data?: Parameters<typeof loadStore>[0] };
@@ -58,9 +58,17 @@ function Main() {
   useEffect(() => { if (nav.a !== "six" && nav.a !== "anita") try { localStorage.setItem("lspdt.next.nav", JSON.stringify(nav)); } catch { /* */ } }, [nav]); /* six nunca queda como página de inicio */
 
   useEffect(() => { if (!me) return; const t = setTimeout(() => { void import("./sections/Informes"); void import("./sections/Legal"); }, 2500); return () => clearTimeout(t); }, [me]);
-  useEffect(() => { /* favicon editable desde Administración → Marca e imágenes */
+  useEffect(() => { /* favicon editable desde Administración → Marca e imágenes (en el ingreso va la calavera) */
+    if (!me) return;
     const src = LS.get("lspdt.fav") || boot?.brand?.["lspdt.fav"] || LS.get("lspdt.logo") || boot?.brand?.["lspdt.logo"] || "/next/logo.svg";
     document.querySelectorAll<HTMLLinkElement>('link[rel="icon"],link[rel="apple-touch-icon"]').forEach(l => { if (l.getAttribute("href") !== src) l.href = src; }); });
+  /* perfil: fecha de ingreso (una vez) y última visita (cada 30 min); a six se le pasa lo que tenía en su perfil viejo */
+  useEffect(() => { if (!me) return; const k = `lspdt.uprof.${emailOf(me.n).split("@")[0]}`, p = LS.json<{ since?: number; seen?: number; bio?: string }>(k, {}), now = Date.now();
+    if (p.since && p.seen && now - p.seen < 30 * 60e3) return;
+    const old = ME_ROLES.six && !p.bio ? LS.json<{ bio?: string }>("lspdt.six.profile", {}).bio : undefined, ban = ME_ROLES.six && !LS.get(k + ".ban") ? LS.get("lspdt.six.pban") : null;
+    if (ban) LS.set(k + ".ban", ban);
+    const save = (since?: number) => LS.setJSON(k, { ...LS.json(k, {}), seen: now, ...(since ? { since } : {}), ...(old ? { bio: old } : {}) });
+    if (p.since) save(); else void authApi({ a: "info" }).then(r => save(r.__s === 200 ? r.c : now)); }, [me]);
   useEffect(() => { if (me) setDeptUi(LS.json<Record<string, string>>("lspdt.ui", {})); });
   if (!boot) return <Device><div className="grid min-h-[var(--app-h,100dvh)] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div></Device>;
   if (!me) return <Device brand={boot.brand}><UpdateBar /><Login pub={boot} onDone={r => enter((r as { data: Parameters<typeof loadStore>[0] }).data, true)} /></Device>;

@@ -13,12 +13,11 @@ import { APP_VERSION } from "@/sections/Novedades";
 import { NotifBell } from "@/components/notifs";
 
 /* versión actual: con fuego y NEW mientras haya novedades sin ver; abre el registro de cambios */
-/* nombre del encabezado: abre «Mi cuenta»; para six además «Mi perfil (BETA)» */
+/* nombre del encabezado: «Mi perfil (BETA)» y «Mi cuenta» */
 function UserMenu({ children, onAcc, go, up, wide }: { children: ReactNode; onAcc: () => void; go: (a: string, s: string) => void; up?: boolean; wide?: boolean }) {
   const [o, setO] = useState(false), box = useRef<HTMLDivElement>(null);
   useEffect(() => { if (!o) return; const f = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setO(false); }; document.addEventListener("mousedown", f); return () => document.removeEventListener("mousedown", f); }, [o]);
   const btn = cn("flex items-center gap-2 rounded-xl p-1 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800/70 sm:pr-2.5", wide && "min-w-0 flex-1 gap-3 p-2", focusRing);
-  if (!ME_ROLES.six) return <button onClick={onAcc} title="Mi cuenta" className={btn}>{children}</button>;
   const it = "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-800 [&>svg]:size-4 [&>svg]:text-slate-400";
   return (
     <div ref={box} className={cn("relative", wide && "min-w-0 flex-1")}>

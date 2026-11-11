@@ -1,139 +1,122 @@
-/* Mi perfil (BETA, por ahora solo six): perfil OOC con banner, foto, medallas, roles, información y secciones desplegables.
-   Se guarda en lspdt.six.* (solo lo ve su dueño). Inspirado en el perfil del panel de Eleven, adaptado a la terminal. */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Activity, BookOpen, Camera, ChevronDown, Clock, FileText, Fingerprint, Heart, ImagePlus, Info, Lock, Pencil, Plus, Save, Star, Users, X, Car, Calendar, AtSign, Hash } from "lucide-react";
-import { Button, Card, Input, Textarea } from "@/components/ui";
+/* Perfil (BETA) estilo comunidad: portada, foto, contadores, seguidores, «acerca de», visitantes recientes y pestañas
+   Actividad · Logros (condecoraciones) · Comentarios. Cualquiera puede ver un perfil y dejar comentarios; el dueño recibe la notificación.
+   Datos: lspdt.uprof.<slug> (solo el dueño), lspdt.uprof.<slug>.ban (portada), lspdt.ucom.<slug> (comentarios), lspdt.uvis.<slug> (visitas), lspdt.ufol.<slug> (seguidores). */
+import { useEffect, useRef, useState } from "react";
+import { Activity, Award as AwardI, Camera, Eye, MessageSquare, Pencil, Save, Send, Trash2, UserCheck, UserPlus, Users, X } from "lucide-react";
+import { Button, Card, Textarea } from "@/components/ui";
 import { Avatar, RankBadge } from "@/components/agents";
+import { Ribbon } from "@/components/ribbon";
 import { useFeedback } from "@/components/feedback";
-import { FbList, useMyFeedback } from "@/components/fbnotif";
-import { authApi } from "@/lib/api";
-import { LS, useJSON, useStoreVersion } from "@/lib/store";
+import { useTick } from "@/components/fbnotif";
+import { LS, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { readImg } from "@/lib/patrol";
-import { findAgent, fmtDate, rankES } from "@/lib/domain";
+import { ago, emailOf, findAgent, fmtDate, rankES, uid } from "@/lib/domain";
+import { decorOf, type Award } from "@/lib/decor";
+import { profFull, takePreset } from "@/lib/profiles";
 import { cn } from "@/lib/cn";
 
-type Rol = { l: string; c: string };
-type Pj = { n: string; d: string };
-type Prof = { nick: string; handle: string; dc: string; bio: string; medals: string; roles: Rol[]; info: string[]; pjs: Pj[]; showDc: boolean };
-const KEY = "lspdt.six.profile", BAN = "lspdt.six.pban", AV = "lspdt.six.pav";
-const DEF: Prof = { nick: "six", handle: "@sixxgg", dc: "335538916662968320", bio: "", medals: "🇦🇷 👑 💗", roles: [{ l: "Administración", c: "#ef4444" }, { l: "Desarrollo", c: "#a855f7" }, { l: "SAPD", c: "#3b82f6" }], info: [], pjs: [], showDc: true };
-const ROL_C = ["#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#a855f7", "#ec4899", "#06b6d4", "#94a3b8"];
-const dur = (ms: number) => { const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5), m = Math.floor((ms % 36e5) / 6e4); return d ? `${d}d ${h}h` : `${h}h ${m}m`; };
-
-function Sec({ icon, t, n, children, open: o0 = false }: { icon: ReactNode; t: string; n?: number | string; children: ReactNode; open?: boolean }) {
-  const [o, setO] = useState(o0);
-  return (
-    <Card className={cn("overflow-hidden transition", o && "ring-1 ring-brand-500/40")}>
-      <button onClick={() => setO(!o)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left [&>svg]:size-4 [&>svg]:text-slate-400">
-        {icon}<b className="flex-1 text-[15px]">{t}</b>{n !== undefined && <span className="rounded-md bg-slate-100 px-1.5 text-xs tabular-nums text-slate-500 dark:bg-slate-800">{n}</span>}
-        <ChevronDown className={cn("transition-transform", o && "rotate-180")} /></button>
-      {o && <div className="border-t border-slate-100 p-4 dark:border-slate-800">{children}</div>}
-    </Card>);
-}
+export type UProf = { bio?: string; since?: number; seen?: number; col?: string };
+export type UCom = { id: string; by: string; t: number; x: string };
+type UVis = { c: number; l: { n: string; t: number }[] };
+export const slugOf = (n: string) => emailOf(n).split("@")[0];
+export const K = { prof: (n: string) => `lspdt.uprof.${slugOf(n)}`, ban: (n: string) => `lspdt.uprof.${slugOf(n)}.ban`, com: (n: string) => `lspdt.ucom.${slugOf(n)}`, vis: (n: string) => `lspdt.uvis.${slugOf(n)}`, fol: (n: string) => `lspdt.ufol.${slugOf(n)}` };
+const COLS = ["#0f7a3a", "#1e3a8a", "#7c3aed", "#b91c1c", "#0e7490", "#be185d", "#334155"];
+const dmy = (t?: number) => (t ? new Date(t).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" }) : "—");
 
 export function Perfil() {
-  useStoreVersion();
-  const me = useMe(), { toast } = useFeedback(), fb = useMyFeedback(), ag = findAgent(me.n);
-  const [P, setP] = useJSON<Prof>(KEY, DEF), p = { ...DEF, ...P };
-  const [ed, setEd] = useState(false), [d, setD] = useState<Prof>(p), [acc, setAcc] = useState<{ c: number; no: number; last: number } | null>(null), [nr, setNr] = useState(""), [np, setNp] = useState<Pj>({ n: "", d: "" }), [now, setNow] = useState(Date.now());
-  const fBan = useRef<HTMLInputElement>(null), fAv = useRef<HTMLInputElement>(null);
-  useEffect(() => { void authApi({ a: "info" }).then(r => { if (r.__s === 200) setAcc({ c: r.c, no: r.no, last: r.last }); }); const i = setInterval(() => setNow(Date.now()), 60000); return () => clearInterval(i); }, []);
-  const ban = LS.get(BAN), av = LS.get(AV);
-  const pic = async (k: string, f?: File) => { if (!f) return; LS.set(k, await readImg(f, k === BAN ? 1800 : 600)); toast("Imagen actualizada"); };
-  /* actividad en la terminal (sale de lo que ya está guardado) */
-  const act = useMemo(() => {
-    const inf = LS.ro<{ por?: string }[]>("lspdt.informes", []).filter(x => x.por === me.n).length;
-    const pat = LS.ro<{ por: { n: string } }[]>("lspdt.patHist", []).filter(x => x.por?.n === me.n).length;
-    const hue = LS.ro<{ por?: string }[]>("lspdt.huellas", []).filter(x => x.por === me.n).length;
-    return [[FileText, "Informes registrados", inf], [Car, "Revisiones de patrullas", pat], [Fingerprint, "Huellas cargadas", hue], [Heart, "Feedback enviados", fb.list.length]] as const;
-  }, [me.n, fb.list.length]);
-  const save = () => { setP(d); setEd(false); toast("Perfil guardado"); };
-  const show = ed ? d : p, pjs = [ag ? { n: ag.n, d: `${rankES(ag.r)}${ag.p ? ` · placa #${ag.p}` : ""} · LSPD` } : null, ...show.pjs].filter(Boolean) as Pj[];
-
+  useStoreVersion(); useTick();
+  const me = useMe(), { toast, confirm } = useFeedback();
+  const [who, setWho] = useState(() => takePreset<{ n: string }>()?.n || me.n), own = who === me.n, ag = findAgent(who);
+  const P = LS.json<UProf>(K.prof(who), {}), ban = LS.get(K.ban(who)) || "", coms = LS.json<UCom[]>(K.com(who), []), vis = LS.json<UVis>(K.vis(who), { c: 0, l: [] }), fol = LS.json<string[]>(K.fol(who), []);
+  const prof = profFull(who), cond = ((prof.cond || []) as unknown as Award[]).slice().sort((a, b) => (b.f || "").localeCompare(a.f || ""));
+  const [tab, setTab] = useState<"act" | "log" | "com">("com"), [ed, setEd] = useState(false), [bio, setBio] = useState(P.bio || ""), [txt, setTxt] = useState(""), fBan = useRef<HTMLInputElement>(null);
+  useEffect(() => { setBio(P.bio || ""); setEd(false); setTab("com"); }, [who]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* visita: una por sesión y por perfil (no cuenta la propia) */
+  useEffect(() => { if (own) return; const sk = "lspdt.next.vis." + slugOf(who); try { if (sessionStorage.getItem(sk)) return; sessionStorage.setItem(sk, "1"); } catch { /* */ }
+    const v = LS.json<UVis>(K.vis(who), { c: 0, l: [] }); LS.setJSON(K.vis(who), { c: v.c + 1, l: [{ n: me.n, t: Date.now() }, ...v.l.filter(x => x.n !== me.n)].slice(0, 12) }); }, [who, own, me.n]);
+  const saveP = (p: Partial<UProf>) => LS.setJSON(K.prof(who), { ...LS.json<UProf>(K.prof(who), {}), ...p });
+  const post = () => { const x = txt.trim(); if (!x) return; LS.setJSON(K.com(who), [...LS.json<UCom[]>(K.com(who), []), { id: uid(), by: me.n, t: Date.now(), x: x.slice(0, 1500) }].slice(-200)); setTxt(""); toast(own ? "Publicado" : `Comentario enviado a ${who}`); };
+  const following = fol.includes(me.n);
+  /* actividad: ascensos/traslados del perfil del agente, condecoraciones y comentarios que dejó en su perfil */
+  const act = [...(prof.movs || []).map(m => ({ t: m.t, x: `${m.tipo}${m.de ? ` · ${m.de}` : ""}${m.a ? ` → ${m.a}` : ""}`, by: m.por?.n })),
+    ...cond.filter(c => c.f).map(c => ({ t: new Date(c.f!).getTime(), x: `Recibió «${c.t}»`, by: c.by })),
+    ...coms.filter(c => c.by === who).map(c => ({ t: c.t, x: `Escribió en su perfil: «${c.x.slice(0, 80)}${c.x.length > 80 ? "…" : ""}»`, by: undefined }))].filter(a => a.t).sort((a, b) => b.t - a.t).slice(0, 30);
+  const TABS: ["act" | "log" | "com", string, typeof Activity, number][] = [["act", "Actividad", Activity, act.length], ["log", "Logros", AwardI, cond.length], ["com", "Comentarios", MessageSquare, coms.length]];
+  const people = (L: string[]) => <div className="grid grid-cols-5 gap-2">{L.slice(0, 15).map(n => <button key={n} title={n} onClick={() => setWho(n)} className="justify-self-center"><Avatar n={n} size={36} /></button>)}</div>;
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      {/* banner */}
-      <div className="group relative h-44 overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600/40 via-slate-800 to-pink-500/30 sm:h-56">
-        {ban && <img src={ban} alt="" className="absolute inset-0 size-full object-cover" />}
-        <button onClick={() => fBan.current?.click()} className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-lg bg-black/55 px-2.5 py-1.5 text-xs font-semibold text-white backdrop-blur transition hover:bg-black/75"><ImagePlus className="size-3.5" />Editar banner</button>
-        <input ref={fBan} type="file" accept="image/*" hidden onChange={e => { void pic(BAN, e.target.files?.[0]); e.target.value = ""; }} />
-        <span className="absolute left-3 top-3 rounded-md bg-pink-500 px-2 py-0.5 text-[10px] font-black tracking-wider text-white">BETA</span>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
-        {/* columna izquierda */}
-        <div className="space-y-5">
-          <div className="relative -mt-20 w-36">
-            <div className="size-36 overflow-hidden rounded-2xl border-4 border-slate-50 bg-slate-200 shadow-lg dark:border-slate-950 dark:bg-slate-800">
-              {av ? <img src={av} alt="" className="size-full object-cover" /> : <div className="grid size-full place-items-center"><Avatar n={me.n} size={96} /></div>}</div>
-            <button onClick={() => fAv.current?.click()} title="Cambiar foto" className="absolute bottom-1 right-1 grid size-8 place-items-center rounded-full bg-brand-600 text-white shadow"><Camera className="size-4" /></button>
-            <input ref={fAv} type="file" accept="image/*" hidden onChange={e => { void pic(AV, e.target.files?.[0]); e.target.value = ""; }} />
+    <div className="space-y-4">
+      {/* portada */}
+      <Card className="overflow-hidden p-0">
+        <div className="relative h-40 sm:h-48" style={{ background: ban ? undefined : `linear-gradient(135deg, ${P.col || COLS[0]}, ${P.col || COLS[0]}99)` }}>
+          {ban && <img src={ban} alt="" className="absolute inset-0 size-full object-cover" />}
+          {own && <div className="absolute right-3 top-3 flex gap-1.5">
+            {COLS.map(c => <button key={c} aria-label="Color de portada" onClick={() => { saveP({ col: c }); if (ban) LS.del(K.ban(who)); }} className="size-5 rounded-full ring-2 ring-white/60" style={{ background: c }} />)}
+            <button onClick={() => fBan.current?.click()} className="inline-flex items-center gap-1 rounded-lg bg-black/50 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur hover:bg-black/70"><Camera className="size-3.5" />Portada</button></div>}
+          <input ref={fBan} type="file" accept="image/*" hidden onChange={async e => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; LS.set(K.ban(who), await readImg(f, 1400)); toast("Portada actualizada"); }} />
+        </div>
+        <div className="flex flex-wrap items-end gap-4 px-5 pb-4">
+          <div className="-mt-12 rounded-full ring-4 ring-white dark:ring-slate-900"><Avatar n={who} size={104} /></div>
+          <div className="min-w-0 flex-1 pt-2">
+            <h1 className="truncate text-2xl font-bold">{who}</h1>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">{ag && <RankBadge r={ag.r} />}{ag?.p && <span className="font-mono text-xs">#{ag.p}</span>}{prof.cs && <span className="font-mono text-xs text-red-500">{prof.cs}</span>}</div>
           </div>
-          {ed ? <div className="space-y-2">
-            <Input value={d.nick} onChange={e => setD({ ...d, nick: e.target.value })} placeholder="Nombre OOC" />
-            <Input value={d.handle} onChange={e => setD({ ...d, handle: e.target.value })} placeholder="@usuario" />
-            <Input value={d.dc} onChange={e => setD({ ...d, dc: e.target.value.replace(/\D/g, "") })} placeholder="ID de Discord" className="font-mono" />
-          </div> : <div>
-            <h1 className="text-2xl font-bold">{p.nick}{acc?.no ? <span className="ml-1.5 text-slate-400">({acc.no})</span> : null}</h1>
-            <p className="text-sm text-slate-500">{p.handle}{p.showDc && p.dc ? ` · ${p.dc}` : ""}</p>
-          </div>}
-          {ed ? <div className="flex gap-2"><Button variant="ghost" className="flex-1" icon={<X />} onClick={() => { setD(p); setEd(false); }}>Cancelar</Button><Button className="flex-1" icon={<Save />} onClick={save}>Guardar</Button></div>
-            : <Button variant="secondary" className="w-full" icon={<Pencil />} onClick={() => { setD(p); setEd(true); }}>Editar perfil</Button>}
-
-          <div><p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">Medallas</p>
-            {ed ? <Input value={d.medals} onChange={e => setD({ ...d, medals: e.target.value })} placeholder="Emojis separados por espacio" />
-              : <p className="flex flex-wrap gap-1.5 text-2xl leading-none">{p.medals.split(/\s+/).filter(Boolean).map((m, i) => <span key={i} className="transition hover:scale-125">{m}</span>)}</p>}</div>
-
-          <div><p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">Roles</p>
-            <div className="flex flex-wrap gap-1.5">{show.roles.map((r, i) => (
-              <span key={i} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2 py-0.5 text-xs font-semibold dark:border-slate-700"><span className="size-2 rounded-full" style={{ background: r.c }} />{r.l}
-                {ed && <button aria-label={`Quitar ${r.l}`} onClick={() => setD({ ...d, roles: d.roles.filter((_, j) => j !== i) })}><X className="size-3 text-slate-400" /></button>}</span>))}</div>
-            {ed && <div className="mt-2 flex gap-1"><Input value={nr} onChange={e => setNr(e.target.value)} placeholder="Nuevo rol" className="h-8 text-xs" />
-              <Button size="sm" icon={<Plus />} disabled={!nr.trim()} onClick={() => { setD({ ...d, roles: [...d.roles, { l: nr.trim(), c: ROL_C[d.roles.length % ROL_C.length] }] }); setNr(""); }} /></div>}</div>
-
-          <div className="space-y-2 text-sm"><p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Info</p>
-            {acc && <p className="flex items-center gap-2 text-slate-600 dark:text-slate-300"><Calendar className="size-4 text-slate-400" />En la terminal desde el {fmtDate(acc.c).split(",")[0]}</p>}
-            {ag && <p className="flex items-center gap-2 text-slate-600 dark:text-slate-300"><Users className="size-4 text-slate-400" />Personaje: {ag.n}</p>}
-            {p.dc && p.showDc && <p className="flex items-center gap-2 text-slate-600 dark:text-slate-300"><AtSign className="size-4 text-slate-400" />Discord {p.dc}</p>}
-            {ed ? <Textarea rows={3} value={d.info.join("\n")} onChange={e => setD({ ...d, info: e.target.value.split("\n") })} placeholder="Una línea por dato (ej: VIP · Whitelist aprobada)" />
-              : p.info.filter(Boolean).map((x, i) => <p key={i} className="flex items-center gap-2 text-slate-600 dark:text-slate-300"><Hash className="size-4 text-slate-400" />{x}</p>)}
+          <div className="flex gap-2">
+            {!own && <Button size="sm" variant={following ? "outline" : "primary"} icon={following ? <UserCheck /> : <UserPlus />} onClick={() => { LS.setJSON(K.fol(who), following ? fol.filter(x => x !== me.n) : [...fol, me.n]); }}>{following ? "Siguiendo" : "Seguir"}</Button>}
+            {!own && <Button size="sm" variant="outline" onClick={() => setWho(me.n)}>Ir a mi perfil</Button>}
           </div>
         </div>
+        <div className="grid grid-cols-3 border-t border-slate-100 text-center dark:border-slate-800 sm:max-w-xl sm:text-left">
+          {([["Comentarios", String(coms.length)], ["Ingreso", dmy(P.since)], ["Última visita", P.seen ? ago(P.seen) : "—"]] as const).map(([l, v]) => (
+            <div key={l} className="px-5 py-3"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{l}</p><p className="text-sm font-semibold">{v}</p></div>))}
+        </div>
+      </Card>
 
-        {/* columna derecha */}
+      <div className="grid items-start gap-4 lg:grid-cols-[17rem_minmax(0,1fr)]">
+        {/* columna lateral */}
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            {([[Users, "Personajes", String(pjs.length), "#6366f1"], [Clock, "Tiempo en la terminal", acc ? dur(now - acc.c) : "—", "#10b981"], [Star, "Actividad", String(act.reduce((n, a) => n + a[2], 0)), "#f59e0b"]] as const).map(([I, l, v, c]) => (
-              <Card key={l} className="flex items-center gap-3 p-4"><span className="grid size-10 place-items-center rounded-xl" style={{ color: c, background: c + "1f" }}><I className="size-5" /></span>
-                <div><p className="text-xs text-slate-500">{l}</p><p className="text-2xl font-bold tabular-nums">{v}</p></div></Card>))}
-          </div>
-          <Sec icon={<Info />} t="Información" open>
-            {ed ? <Textarea rows={4} value={d.bio} onChange={e => setD({ ...d, bio: e.target.value })} placeholder="Algo sobre vos…" />
-              : <p className="whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">{p.bio || "Todavía no escribiste nada. Tocá «Editar perfil»."}</p>}
-          </Sec>
-          <Sec icon={<Users />} t="Personajes" n={pjs.length}>
-            <div className="grid gap-2 sm:grid-cols-2">{pjs.map((x, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-800"><Avatar n={x.n} size={36} />
-                <div className="min-w-0 flex-1"><p className="truncate font-semibold">{x.n}</p><p className="truncate text-xs text-slate-500">{x.d}</p></div>
-                {i === 0 && ag ? <RankBadge r={ag.r} /> : ed && <button aria-label="Quitar" onClick={() => setD({ ...d, pjs: d.pjs.filter((_, j) => j !== i - (ag ? 1 : 0)) })}><X className="size-4 text-slate-400" /></button>}</div>))}</div>
-            {ed && <div className="mt-3 flex flex-wrap gap-2"><Input value={np.n} onChange={e => setNp({ ...np, n: e.target.value })} placeholder="Nombre del personaje" className="h-9 w-48" />
-              <Input value={np.d} onChange={e => setNp({ ...np, d: e.target.value })} placeholder="Facción o rol (opcional)" className="h-9 min-w-[10rem] flex-1" />
-              <Button size="sm" variant="outline" icon={<Plus />} disabled={!np.n.trim()} onClick={() => { setD({ ...d, pjs: [...d.pjs, { n: np.n.trim(), d: np.d.trim() }] }); setNp({ n: "", d: "" }); }}>Agregar</Button></div>}
-          </Sec>
-          <Sec icon={<Activity />} t="Actividad en la terminal">
-            <div className="grid gap-2 sm:grid-cols-2">{act.map(([I, l, n]) => (
-              <div key={l} className="flex items-center gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50"><I className="size-4 text-slate-400" /><span className="flex-1 text-sm">{l}</span><b className="tabular-nums">{n}</b></div>))}</div>
-            {acc?.last ? <p className="mt-3 text-xs text-slate-400">Último ingreso: {fmtDate(acc.last)}</p> : null}
-          </Sec>
-          <Sec icon={<Heart />} t="Sugerencias y bugs" n={fb.list.length}><FbList list={fb.list} /></Sec>
-          <Sec icon={<BookOpen />} t="Historias"><p className="text-sm text-slate-400">Próximamente.</p></Sec>
-          <Sec icon={<Lock />} t="Privacidad">
-            <label className="flex items-center gap-3 text-sm"><input type="checkbox" className="size-4 accent-brand-600" checked={p.showDc} onChange={e => setP({ ...p, showDc: e.target.checked })} />Mostrar mi ID de Discord en el perfil</label>
-            <p className="mt-2 text-xs text-slate-400">Por ahora el perfil solo lo ves vos (BETA).</p>
-          </Sec>
+          <Card className="p-4"><p className="mb-3 flex items-center gap-2 text-sm font-semibold"><Users className="size-4 text-slate-400" />{fol.length} {fol.length === 1 ? "seguidor" : "seguidores"}</p>
+            {fol.length ? people(fol) : <p className="text-xs text-slate-400">Todavía nadie.</p>}</Card>
+          <Card className="p-4"><div className="mb-2 flex items-center"><p className="flex-1 text-sm font-semibold">Acerca de {own ? "mí" : who.split(" ")[0]}</p>
+            {own && !ed && <button aria-label="Editar" onClick={() => setEd(true)} className="text-slate-400 hover:text-brand-500"><Pencil className="size-3.5" /></button>}</div>
+            {ed ? <div className="space-y-2"><Textarea rows={4} value={bio} onChange={e => setBio(e.target.value)} placeholder="Contá algo sobre vos…" />
+              <div className="flex justify-end gap-1.5"><Button size="sm" variant="ghost" icon={<X />} onClick={() => { setBio(P.bio || ""); setEd(false); }}>Cancelar</Button><Button size="sm" icon={<Save />} onClick={() => { saveP({ bio: bio.trim().slice(0, 1000) }); setEd(false); toast("Guardado"); }}>Guardar</Button></div></div>
+              : <p className="whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-300">{P.bio || <span className="text-slate-400">{own ? "Escribí algo sobre vos." : "Sin información."}</span>}</p>}</Card>
+          <Card className="p-4"><p className="mb-1 flex items-center gap-2 text-sm font-semibold"><Eye className="size-4 text-slate-400" />Visitantes recientes</p>
+            <p className="mb-2 text-xs text-slate-400">{vis.c.toLocaleString("es-AR")} visitas al perfil</p>
+            {vis.l.length ? <div className="divide-y divide-slate-100 dark:divide-slate-800">{vis.l.slice(0, 6).map(v => (
+              <button key={v.n} onClick={() => setWho(v.n)} className="flex w-full items-center gap-2.5 py-2 text-left"><Avatar n={v.n} size={28} /><span className="min-w-0"><b className="block truncate text-sm">{v.n}</b><small className="text-xs text-slate-400">{ago(v.t)}</small></span></button>))}</div>
+              : <p className="text-xs text-slate-400">Sin visitas todavía.</p>}</Card>
         </div>
+
+        {/* pestañas */}
+        <Card className="overflow-hidden p-0">
+          <div className="grid grid-cols-3 border-b border-slate-100 dark:border-slate-800">{TABS.map(([k, l, I, n]) => (
+            <button key={k} onClick={() => setTab(k)} className={cn("relative flex items-center justify-center gap-2 py-3 text-sm font-semibold transition", tab === k ? "text-brand-600 dark:text-brand-300" : "text-slate-500 hover:text-slate-800 dark:hover:text-white")}>
+              <I className="size-4" />{l}<span className="rounded-md bg-slate-100 px-1.5 text-[11px] tabular-nums dark:bg-slate-800">{n}</span>
+              {tab === k && <span className="absolute inset-x-6 bottom-0 h-0.5 rounded-full bg-brand-500" />}</button>))}</div>
+          <div className="p-5">
+            {tab === "com" && <div className="space-y-4">
+              <div className="flex gap-3"><Avatar n={me.n} size={36} /><div className="flex-1 space-y-2"><Textarea rows={2} value={txt} onChange={e => setTxt(e.target.value)} placeholder={own ? "Escribí algo en tu perfil…" : `Dejale un comentario a ${who.split(" ")[0]}…`}
+                onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) post(); }} />
+                <div className="flex justify-end"><Button size="sm" icon={<Send />} disabled={!txt.trim()} onClick={post}>Publicar</Button></div></div></div>
+              {!coms.length ? <p className="py-6 text-center text-sm text-slate-400">Sin comentarios todavía.</p> : <div className="space-y-3">{coms.slice().reverse().map(c => (
+                <div key={c.id} className="flex gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <button onClick={() => setWho(c.by)}><Avatar n={c.by} size={36} /></button>
+                  <div className="min-w-0 flex-1"><p className="text-sm"><button onClick={() => setWho(c.by)} className="font-semibold hover:underline">{c.by}</button> <span className="text-xs text-slate-400">· {ago(c.t)}</span></p>
+                    <p className="whitespace-pre-wrap break-words text-sm text-slate-600 dark:text-slate-300">{c.x}</p></div>
+                  {(c.by === me.n || own) && <button aria-label="Borrar comentario" onClick={async () => { if (await confirm("¿Borrar este comentario?", { danger: true })) LS.setJSON(K.com(who), LS.json<UCom[]>(K.com(who), []).filter(x => x.id !== c.id)); }} className="self-start text-slate-400 hover:text-red-500"><Trash2 className="size-3.5" /></button>}
+                </div>))}</div>}
+            </div>}
+            {tab === "log" && (!cond.length ? <p className="py-6 text-center text-sm text-slate-400">Sin condecoraciones todavía.</p> : <div className="divide-y divide-slate-100 dark:divide-slate-800">{cond.map(c => { const d = decorOf(c.k); return (
+              <div key={c.id} className="flex gap-4 py-3"><span className="w-24 shrink-0 pt-1">{d && <Ribbon d={d} />}</span>
+                <div className="min-w-0"><b className="block">{c.t}</b><p className="text-xs text-slate-500">Otorgada {c.f ? fmtDate(new Date(c.f).getTime()).split(",")[0] : ""}{c.by ? `, por ${c.by}` : ""}</p>{c.m && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{c.m}</p>}</div></div>); })}</div>)}
+            {tab === "act" && (!act.length ? <p className="py-6 text-center text-sm text-slate-400">Sin actividad registrada.</p> : <ol className="relative space-y-3 border-l border-slate-200 pl-5 dark:border-slate-800">{act.map((a, i) => (
+              <li key={i}><span className="absolute -left-1.5 mt-1.5 size-3 rounded-full border-2 border-white bg-brand-500 dark:border-slate-900" /><p className="text-sm">{a.x}</p><p className="text-xs text-slate-400">{ago(a.t)}{a.by ? ` · por ${a.by}` : ""}</p></li>))}</ol>)}
+          </div>
+        </Card>
       </div>
+      {!own && <p className="text-center text-xs text-slate-400">Estás viendo el perfil de {who} · {ag ? rankES(ag.r) : ""}</p>}
     </div>
   );
 }

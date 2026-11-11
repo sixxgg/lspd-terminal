@@ -3,10 +3,11 @@
    - para la PSB: expedientes nuevos o resueltos, - versión nueva de la terminal.
    Lo leído se guarda en este navegador. */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, CheckCheck, Heart, Shield, Sparkles, TrendingDown, TrendingUp, type LucideIcon } from "lucide-react";
+import { Bell, CheckCheck, Heart, MessageSquare, Shield, Sparkles, TrendingDown, TrendingUp, type LucideIcon } from "lucide-react";
 import { FB_ST, fbSt, fbX, useMyFeedback, useTick } from "@/components/fbnotif";
 import { LS, useStoreVersion } from "@/lib/store";
 import { uMap } from "@/lib/units";
+import { emailOf } from "@/lib/domain";
 import { ago, lvl, rankES } from "@/lib/domain";
 import { APP_VERSION, hasNews } from "@/sections/Novedades";
 import { cn } from "@/lib/cn";
@@ -18,7 +19,7 @@ const lsSet = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.st
 type Case = { id: string; cf: string; ag: string; by: string; ts: number; upd: number; docs: { t: string; ts: number; by: string }[] };
 
 export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: string, s: string) => void }) {
-  useStoreVersion(); useTick();
+  const ver = useStoreVersion(); useTick();
   const fb = useMyFeedback(), [open, setOpen] = useState(false), box = useRef<HTMLDivElement>(null);
   const kSeen = "lspdt.next.nseen:" + me.n, kRk = "lspdt.next.rk:" + me.n, kEv = "lspdt.next.ev:" + me.n;
   const [seen, setSeen] = useState(() => lsGet<number>(kSeen, 0));
@@ -42,9 +43,12 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
       if (c.by !== me.n && Date.now() - c.ts < 14 * 864e5) L.push({ id: `psb:n:${c.id}`, t: c.ts, I: Shield, c: "#818cf8", title: `PSB · expediente nuevo ${c.cf}`, body: `${c.ag || "Agente sin cargar"} · abierto por ${c.by}`, go: ["div", "dv_psb"] });
       const r = c.docs.filter(d => d.t === "res").sort((a, b) => b.ts - a.ts)[0];
       if (r && r.by !== me.n) L.push({ id: `psb:r:${c.id}:${r.ts}`, t: r.ts, I: Shield, c: "#22c55e", title: `PSB · ${c.cf} resuelto`, body: `${c.ag || ""} · resolución de ${r.by}`, go: ["div", "dv_psb"] }); }
+    /* comentarios que otros dejaron en mi perfil */
+    for (const c of LS.ro<{ id: string; by: string; t: number; x: string }[]>(`lspdt.ucom.${emailOf(me.n).split("@")[0]}`, [])) if (c.by !== me.n)
+      L.push({ id: "com:" + c.id, t: c.t, I: MessageSquare, c: "#38bdf8", title: `${c.by} comentó en tu perfil`, body: c.x, go: ["me", "perfil"] });
     if (hasNews()) L.push({ id: "ver:" + APP_VERSION, t: lsGet<number>("lspdt.next.verT:" + APP_VERSION, 0) || (lsSet("lspdt.next.verT:" + APP_VERSION, Date.now()), Date.now()), I: Sparkles, c: "#f472b6", title: `Versión ${APP_VERSION} disponible`, body: "Mirá las novedades de la terminal.", go: ["ini", "nov"] });
     return L.sort((a, b) => b.t - a.t).slice(0, 30);
-  }, [fb.list, cases, psb, me.n, kEv]);
+  }, [fb.list, cases, psb, me.n, kEv, ver]); // eslint-disable-line react-hooks/exhaustive-deps
   const unread = items.filter(x => x.t > seen).length;
   const readAll = () => { const n = Date.now(); setSeen(n); lsSet(kSeen, n); fb.markSeen(); };
 

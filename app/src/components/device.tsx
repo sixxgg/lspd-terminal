@@ -36,11 +36,17 @@ function Signal({ off }: { off: boolean }) {
   const c = (navigator as unknown as { connection?: { effectiveType?: string } }).connection?.effectiveType?.toUpperCase();
   return <span className={cn("sig", off && "off")} title={off ? "Sin conexión" : `Señal ${n}/4${ms != null ? ` · ${ms} ms` : ""}${c ? ` · ${c}` : ""}`}>{[1, 2, 3, 4].map(i => <i key={i} className={i <= n ? "on" : ""} style={{ height: 3 + i * 2 }} />)}</span>;
 }
-/* línea de datos estilo consola: nodo, cifrado y un código que cambia */
+/* línea de datos estilo consola: nodo, canal, cifrado, sesión y paquetes; cambian despacio y cada dato a su ritmo */
+const NODES = ["MR-10", "VB-04", "DP-02", "SD-07", "PB-01", "MW-12", "LM-03", "RH-05"], CIPH = ["AES-256-GCM", "CHACHA20-P1305", "AES-256-CBC", "TWOFISH-256", "SERPENT-256"], CHAN = ["TAC-1", "TAC-2", "DISP", "CMD", "OPS-3", "SEC-9"];
+const hx = (n = 4) => Array.from({ length: n }, () => "0123456789ABCDEF"[Math.floor(Math.random() * 16)]).join("");
+const pick = <T,>(L: T[]) => L[Math.floor(Math.random() * L.length)];
 function Uplink() {
-  useTick(1800);
-  const hex = () => Math.floor(Math.random() * 0xffff).toString(16).toUpperCase().padStart(4, "0");
-  return <span className="uplink hidden 2xl:inline-flex" aria-hidden><b>LSPD-NET</b>▸ NODO MR-10 ▸ AES-256 ▸ <span className="hx">0x{hex()}·{hex()}</span><span className="cur">▮</span></span>;
+  const [v, setV] = useState(() => ({ node: NODES[0], ch: CHAN[0], ci: CIPH[0], ses: `${hx()}·${hx()}·${hx()}`, sig: hx(8), pk: 4096, ttl: 64 }));
+  useEffect(() => { let k = 0; const i = setInterval(() => { if (document.hidden) return; k++;
+    setV(o => ({ ...o, sig: hx(8), pk: o.pk + 7 + Math.floor(Math.random() * 60), ...(k % 3 === 0 ? { ses: `${hx()}·${hx()}·${hx()}`, ttl: 48 + Math.floor(Math.random() * 80) } : {}),
+      ...(k % 6 === 0 ? { ch: pick(CHAN) } : {}), ...(k % 9 === 0 ? { node: pick(NODES), ci: pick(CIPH) } : {}) })); }, 2500); return () => clearInterval(i); }, []);
+  return <span className="uplink hidden xl:inline-flex" aria-hidden><b>LSPD-NET</b>▸ NODO {v.node} ▸ CANAL {v.ch} ▸ {v.ci} ▸ SESIÓN <span className="hx">0x{v.ses}</span> ▸ FIRMA <span className="hx">{v.sig}</span>
+    <span className="hidden 2xl:inline">▸ PKT {v.pk.toLocaleString("es-AR")} ▸ TTL {v.ttl}</span><span className="cur">▮</span></span>;
 }
 
 /* marco de tablet + efecto de pantalla; sin marco, el efecto cubre la ventana */

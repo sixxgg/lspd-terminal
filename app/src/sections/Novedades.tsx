@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.9.5";
+export const APP_VERSION = "1.9.6";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,11 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "1.9.6", f: "11/11/2026", t: "Perfiles, pizarra más en vivo", items: [
+    "Perfiles nuevos (BETA): portada, avatar, «Acerca de», seguidores, visitantes recientes, actividad, logros y comentarios. Si te comentan el perfil te llega una notificación.",
+    "Pizarra: las imágenes se colocan fijas para escribir y dibujar encima (botón Fijar/Desbloquear). Cursores y movimientos ajenos mucho más rápidos.",
+    "Barra superior con más datos de enlace que cambian a distintos ritmos.",
+  ] },
   { v: "1.9.5", f: "11/11/2026", t: "Invitaciones", items: [
     "Las invitaciones para registrarse las generan solo los dueños de la terminal desde su panel privado, con el registro de quién usó cada una.",
   ] },
