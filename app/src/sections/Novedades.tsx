@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.7";
+export const APP_VERSION = "1.8";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,11 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "1.8", f: "11/11/2026", t: "Más liviana", items: [
+    "Los nombres largos de los patrullas ya no se cortan (selector y registro). Vapid Tavros con su marca.",
+    "La terminal carga menos en cada dispositivo: los estilos y efectos de partes privadas solo se bajan cuando se usan, y las rutas quedaron ordenadas en un solo lugar.",
+    "Buscador unificado en todas las listas.",
+  ] },
   { v: "1.7", f: "09/11/2026", t: "Notificaciones y patrullas con su marca", items: [
     "Campanita de notificaciones (desplegable): el estado de tus feedback y su respuesta, cambios de rango, expedientes nuevos o resueltos de la PSB (para sus miembros) y versiones nuevas.",
     "Patrullas ONX con su marca: Bravado Buffalo, Vapid Scout, Vapid Monarch, Declasse Granger, etc.",

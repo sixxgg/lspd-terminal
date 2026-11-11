@@ -1,7 +1,7 @@
 import { scrollTopApp } from "@/lib/appearance";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FileText, Search, Plus, X, Users, UserRound, Shield, Package, ScrollText, ChevronDown, Pencil, Trash2, Copy, Save, FilePlus2, Info, Star, Car, ListChecks, Radio, Check, GripVertical, ArrowDownUp } from "lucide-react";
-import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Select, Textarea } from "@/components/ui";
+import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Select, Textarea, SearchInput } from "@/components/ui";
 import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { Col, Split } from "@/components/layout";
@@ -280,7 +280,7 @@ function InfList({ open, setOpen, onEdit }: { open: string | null; setOpen: (id:
   return (
     <Card>
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-4 dark:border-slate-800">
-        <div className="relative min-w-[14rem] flex-1 sm:max-w-sm"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input className="pl-9" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar por sujeto, ID, artículo o lugar…" /></div>
+        <SearchInput className="min-w-[14rem] flex-1 sm:max-w-sm" value={q} onChange={setQ} placeholder="Buscar por sujeto, ID, artículo o lugar…" />
         <Select value={ag} onChange={e => setAg(e.target.value)} className="w-auto text-sm" title="Agente que redactó el informe"><option value="">Todos los agentes</option><option value={me.n}>Mis informes</option>{AGS.filter(a => a !== me.n).map(a => <option key={a}>{a}</option>)}</Select>
         <Input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="w-auto text-sm" title="Desde" />
         <Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-auto text-sm" title="Hasta" />

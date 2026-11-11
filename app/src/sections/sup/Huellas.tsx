@@ -1,7 +1,7 @@
 /* Supervisión · Registro de huellas: lo que cada agente registra en el laboratorio (nuevo registro o coincidencia), cargado a mano o pegando las filas copiadas. */
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ClipboardPaste, Fingerprint, Plus, Search, Trash2, Users } from "lucide-react";
-import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Select, Textarea } from "@/components/ui";
+import { ArrowDown, ArrowUp, ClipboardPaste, Fingerprint, Plus, Trash2, Users } from "lucide-react";
+import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Select, Textarea, SearchInput } from "@/components/ui";
 import { AgentCombo, Avatar } from "@/components/agents";
 import { useFeedback } from "@/components/feedback";
 import { LS, useJSON } from "@/lib/store";
@@ -117,7 +117,7 @@ export function Huellas() {
 
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-4 dark:border-slate-800">
-          <div className="relative min-w-[14rem] flex-1 sm:max-w-sm"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input className="pl-9" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar por ciudadano, agente o ID" /></div>
+          <SearchInput className="min-w-[14rem] flex-1 sm:max-w-sm" value={q} onChange={setQ} placeholder="Buscar por ciudadano, agente o ID" />
           <Select value={ag} onChange={e => setAg(e.target.value)} className="w-auto text-sm"><option value="">Todos los agentes</option>{stats.map(([a]) => <option key={a}>{a}</option>)}</Select>
           <Select value={stF} onChange={e => setStF(e.target.value)} className="w-auto text-sm"><option value="">Todos los estados</option><option value="nuevo">Nuevo registro</option><option value="coinc">Coincidencia</option></Select>
           <span className="ml-auto text-xs text-slate-400">{rows.length} de {L.length} registros</span>

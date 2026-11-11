@@ -1,14 +1,14 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
-  Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, Award, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint,
+  Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, Award, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint, UserRound,
 } from "lucide-react";
 import { ME_ROLES } from "./lib/store";
 import { Helicopter } from "./components/icons";
 import { lvl } from "./lib/domain";
 
 export type Sec = { k: string; l: string; sl?: string; d: string; icon: LucideIcon; ready?: boolean; min?: number };
-export type Area = { k: string; l: string; icon?: LucideIcon; min: number; req?: string; admin?: boolean; sec: Sec[] };
+export type Area = { k: string; l: string; icon?: LucideIcon; min: number; req?: string; admin?: boolean; hidden?: boolean; sec: Sec[] };
 
 /* áreas y secciones de la terminal */
 const RAW_AREAS: Area[] = [
@@ -17,6 +17,8 @@ const RAW_AREAS: Area[] = [
     { k: "nov", l: "Novedades", d: "Registro de cambios por versión y la primera versión de la terminal", icon: ScrollText, ready: true }] },
   { k: "age", l: "Agentes", icon: Users, min: 6, req: "Sargento I", sec: [{ k: "prof", l: "Agentes", d: "Planilla del departamento por rango: Jefatura, Capitanía, Supervisores, Detectives y Patrulleros", icon: Users, ready: true }] },
   { k: "inf", l: "Informes", icon: FileText, min: 0, sec: [{ k: "inf", l: "Informes policiales", d: "Redactar, registrar y buscar informes", icon: FileText, ready: true }] },
+  /* oculta del menú: se entra desde el nombre del encabezado (por ahora solo six, BETA) */
+  { k: "me", l: "Mi perfil", icon: UserRound, min: 0, hidden: true, sec: [{ k: "perfil", l: "Mi perfil", d: "Tu perfil OOC en la terminal (BETA)", icon: UserRound, ready: true }] },
   { k: "fb", l: "Feedback", icon: Heart, min: 0, sec: [{ k: "env", l: "Feedback", d: "Errores, ideas o mejoras: escribilo como quieras y sumá fotos si ayudan", icon: Heart, ready: true }] },
   { k: "leg", l: "Legal", icon: Scale, min: 0, sec: [{ k: "ley", l: "Leyes", d: "Infracciones administrativas y delitos por capítulo, con favoritos", icon: Scale, ready: true }] },
   { k: "sup", l: "Supervisión", icon: ClipboardList, min: 6, req: "Sargento I", sec: [
@@ -70,7 +72,9 @@ export const AREAS: Area[] = RAW_AREAS
   .map(a => (a.k === "ini" ? a : { ...a, sec: a.sec.slice().sort(byLabel) }))
   .sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
 
-export const canArea = (a: Area, r?: string) => (a.admin ? !!ME_ROLES.admin : lvl(r) >= a.min);
+export const canArea = (a: Area, r?: string) => (a.k === "me" ? !!ME_ROLES.six : a.admin ? !!ME_ROLES.admin : lvl(r) >= a.min);
+/* áreas del menú (sin las ocultas) */
+export const menuAreas = (r?: string) => AREAS.filter(a => !a.hidden && canArea(a, r));
 /* secciones que ve cada uno dentro de un área (algunas piden más rango que el área) */
 export const secsOf = (a: Area, r?: string) => a.sec.filter(s => !s.min || lvl(r) >= s.min || !!ME_ROLES.admin);
 

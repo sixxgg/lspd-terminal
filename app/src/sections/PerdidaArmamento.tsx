@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { UserRound, Crosshair, MapPin, Users, PenLine, Plus, Trash2, Search, FilePlus2, Save, Copy, Pencil, ChevronDown, ShieldAlert, Inbox } from "lucide-react";
-import { Badge, Button, Card, CardBody, CardHeader, Checkbox, Chip, Empty, Field, Input, Segmented, Textarea } from "@/components/ui";
+import { UserRound, Crosshair, MapPin, Users, PenLine, Plus, Trash2, FilePlus2, Save, Copy, Pencil, ChevronDown, ShieldAlert, Inbox } from "lucide-react";
+import { Badge, Button, Card, CardBody, CardHeader, Checkbox, Chip, Empty, Field, Input, Segmented, Textarea, SearchInput } from "@/components/ui";
 import { AgentPicker, Avatar, RankBadge } from "@/components/agents";
 import { DiscordOutput, copyText } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
@@ -170,7 +170,7 @@ function Registro({ list, me, onEdit, onDelete }: { list: PerdArm[]; me: { n: st
   return (
     <Card>
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 p-4 dark:border-slate-800">
-        <div className="relative w-full max-w-sm"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input className="pl-9" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar agente, serie, lugar…" /></div>
+        <SearchInput className="w-full max-w-sm" value={q} onChange={setQ} placeholder="Buscar agente, serie, lugar…" />
         <span className="text-xs text-slate-400">{L.length} de {list.length}</span>
       </div>
       {!L.length ? <Empty icon={<ShieldAlert />} title={list.length ? "Nada coincide con la búsqueda" : "Todavía no hay informes"} desc={list.length ? undefined : "Los informes que registres aparecen acá, con buscador y para copiar de nuevo."} /> : (

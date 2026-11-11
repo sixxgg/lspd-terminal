@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { MessagesSquare, Search, ChevronDown, Copy, StickyNote } from "lucide-react";
-import { Button, Card, CardBody, CardHeader, Empty, Input, Segmented, Select, Textarea } from "@/components/ui";
+import { Button, Card, CardBody, CardHeader, Empty, Input, Segmented, Select, Textarea, SearchInput } from "@/components/ui";
 import { Avatar, RankBadge } from "@/components/agents";
 import { useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
@@ -69,7 +69,7 @@ export function Entrevistas() {
       </Card>
       <Card>
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 p-4 dark:border-slate-800">
-          <div className="relative min-w-[14rem] flex-1 sm:max-w-xs"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input className="pl-9" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar agente o placa…" /></div>
+          <SearchInput className="min-w-[14rem] flex-1 sm:max-w-xs" value={q} onChange={setQ} placeholder="Buscar agente o placa…" />
           <Segmented size="sm" value={f} onChange={setF} options={[{ value: "all", label: "Todas" }, { value: "si", label: "Realizadas" }, { value: "no", label: "No realizadas" }, { value: "pen", label: "Pendientes" }, { value: "vac", label: "Sin marcar" }]} />
           <Select className="h-10 w-auto text-sm" value={rf} onChange={e => setRf(e.target.value)}><option value="">Todas las ramas</option><option value="sgt">Sargentos</option><option value="det">Detectives</option><option value="ind">Indecisos</option><option value="-">Sin rama</option></Select>
         </div>

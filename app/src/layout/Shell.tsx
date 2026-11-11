@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, Flame } from "lucide-react";
-import { AREAS, canArea, secsOf, type Area, type Sec } from "@/nav";
+import { Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, Flame, UserRound, KeyRound } from "lucide-react";
+import { AREAS, canArea, menuAreas, secsOf, type Area, type Sec } from "@/nav";
 import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
 import { rankES } from "@/lib/domain";
@@ -13,6 +13,22 @@ import { APP_VERSION } from "@/sections/Novedades";
 import { NotifBell } from "@/components/notifs";
 
 /* versión actual: con fuego y NEW mientras haya novedades sin ver; abre el registro de cambios */
+/* nombre del encabezado: abre «Mi cuenta»; para six además «Mi perfil (BETA)» */
+function UserMenu({ children, onAcc, go, up, wide }: { children: ReactNode; onAcc: () => void; go: (a: string, s: string) => void; up?: boolean; wide?: boolean }) {
+  const [o, setO] = useState(false), box = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (!o) return; const f = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setO(false); }; document.addEventListener("mousedown", f); return () => document.removeEventListener("mousedown", f); }, [o]);
+  const btn = cn("flex items-center gap-2 rounded-xl p-1 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800/70 sm:pr-2.5", wide && "min-w-0 flex-1 gap-3 p-2", focusRing);
+  if (!ME_ROLES.six) return <button onClick={onAcc} title="Mi cuenta" className={btn}>{children}</button>;
+  const it = "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-800 [&>svg]:size-4 [&>svg]:text-slate-400";
+  return (
+    <div ref={box} className={cn("relative", wide && "min-w-0 flex-1")}>
+      <button onClick={() => setO(!o)} title="Mi cuenta" aria-expanded={o} className={cn(btn, "w-full")}>{children}</button>
+      {o && <div className={cn("absolute z-50 w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900", up ? "bottom-full left-0 mb-2" : "right-0 top-full mt-2")}>
+        <button className={it} onClick={() => { setO(false); go("me", "perfil"); }}><UserRound />Mi perfil<span className="ml-auto rounded bg-pink-500/15 px-1.5 text-[10px] font-bold text-pink-600 dark:text-pink-300">BETA</span></button>
+        <button className={it} onClick={() => { setO(false); onAcc(); }}><KeyRound />Mi cuenta</button>
+      </div>}
+    </div>);
+}
 const VersionBadge = ({ go }: { go: (a: string, s: string) => void }) => (
   <button onClick={() => go("ini", "nov")} title={`Versión ${APP_VERSION} · ver novedades`} className={cn("ver-new", focusRing)}>
     <span className="ver-flame" aria-hidden><Flame className="size-3" /></span>v{APP_VERSION}<b>NEW</b></button>);
@@ -56,7 +72,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
       <div className="min-w-0"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand-600 dark:text-brand-300">{area.l}</p><h1 className="text-2xl font-bold tracking-tight">{sec.l}</h1><p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{sec.d}</p></div>
     </div>);
   const modals = <><AccountModal me={me} open={acc} onClose={() => setAcc(false)} /><AppearanceModal open={ap} onClose={() => setAp(false)} /></>;
-  const areas = AREAS.filter(a => canArea(a, me.r));
+  const areas = menuAreas(me.r);
   const goArea = (a: Area) => { const l = LS.get("lspdt.sec." + a.k); const S = secsOf(a, me.r); go(a.k, S.some(s => s.k === l) ? l! : S[0].k); };
 
   /* menú arriba, por áreas (como la versión clásica) */
@@ -81,10 +97,10 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
           </nav>
           <div className="flex shrink-0 items-center gap-1">
             {sync}<NotifBell me={me} go={go} />{tools}
-            <button onClick={() => setAcc(true)} title="Mi cuenta" className={cn("flex items-center gap-2 rounded-xl p-1 transition hover:bg-slate-100 dark:hover:bg-slate-800/70 sm:pr-2.5", focusRing)}>
+            <UserMenu onAcc={() => setAcc(true)} go={go} up={false}>
               <Avatar n={me.n} size={32} />
               <span className="hidden text-left leading-tight min-[1850px]:block"><span className="block max-w-[10rem] truncate text-xs font-semibold">{me.n}</span><span className="block text-[11px] text-slate-500 dark:text-slate-400">{rankES(me.r)}</span></span>
-            </button>
+            </UserMenu>
             <button onClick={onLogout} title="Cerrar sesión" aria-label="Cerrar sesión" className={cn("rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400", focusRing)}><LogOut className="size-4" /></button>
           </div>
         </div>
@@ -108,7 +124,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
 
   const nav = (
     <nav className="scrollbar-thin flex-1 space-y-5 overflow-y-auto px-3 py-4" aria-label="Secciones">
-      {AREAS.filter(a => !a.admin || canArea(a, me.r)).map(a => {
+      {AREAS.filter(a => !a.hidden && (!a.admin || canArea(a, me.r))).map(a => {
         const ok = canArea(a, me.r);
         return (
           <div key={a.k}>
@@ -156,10 +172,10 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
         {nav}
         <div className="border-t border-slate-200 p-3 dark:border-slate-800">
           <div className="flex items-center gap-1 rounded-xl">
-            <button onClick={() => setAcc(true)} title="Mi cuenta" className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800/70", focusRing)}>
+            <UserMenu onAcc={() => setAcc(true)} go={go} up wide>
               <Avatar n={me.n} size={36} />
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{me.n}</p><p className="truncate text-xs text-slate-500 dark:text-slate-400">{rankES(me.r)}{me.p ? ` · #${me.p}` : ""}</p></div>
-            </button>
+            </UserMenu>
             <button onClick={onLogout} title="Cerrar sesión" aria-label="Cerrar sesión" className={cn("rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400", focusRing)}><LogOut className="size-4" /></button>
           </div>
         </div>

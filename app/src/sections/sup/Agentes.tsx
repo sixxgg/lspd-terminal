@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type PointerEvent as PE } from "react";
-import { Users, Search, LayoutGrid, Rows3, UserPlus, BadgeCheck, Trophy, Shield, Radio, Clock, TrendingUp, IdCard, AtSign, Mail, Activity, Home as HomeI,
+import { Users, LayoutGrid, Rows3, UserPlus, BadgeCheck, Trophy, Shield, Radio, Clock, TrendingUp, IdCard, AtSign, Mail, Activity, Home as HomeI,
   Pencil, Star, Plus, X, Camera, Move, Trash2, FileText, Award, StickyNote, Car, History, Check, UserMinus, ImagePlus } from "lucide-react";
-import { Button, Card, Empty, Field, Input, Select, Segmented, Textarea } from "@/components/ui";
+import { Button, Card, Empty, Field, Input, Select, Segmented, Textarea, SearchInput } from "@/components/ui";
 import { RankBadge } from "@/components/agents";
 import { Ribbon } from "@/components/ribbon";
 import { DECOR, decorOf, type Award as AwardT } from "@/lib/decor";
@@ -89,7 +89,7 @@ export function Agentes() {
   return (
     <div className="space-y-5">
       <Card className="flex flex-wrap items-center gap-2 p-3">
-        <div className="relative min-w-[14rem] flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input className="pl-9" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar por nombre, placa o State ID…" /></div>
+        <SearchInput className="min-w-[14rem] flex-1" value={q} onChange={setQ} placeholder="Buscar por nombre, placa o State ID…" />
         <Select className="w-auto text-sm" value={g} onChange={e => setG(e.target.value)}><option value="">LSPD · Todos</option>{Object.entries(GROUPS).filter(([, x]) => R.some(a => x.r.includes(a.r))).map(([k, x]) => <option key={k} value={k}>{x.l}</option>)}</Select>
         <Select className="w-auto max-w-[16rem] text-sm" value={d} onChange={e => setD(e.target.value)}><option value="">Todas las divisiones</option><option value="-">Sin división</option>{ALL_DIVS.map(x => <option key={x} value={x}>{SUBDIVS.has(x) ? "— " : ""}{x}</option>)}</Select>
         <Segmented size="sm" value={view} onChange={v => { setView(v); LS.set("lspdt.agView", v); }} options={[{ value: "grid", label: <LayoutGrid className="size-4" aria-label="Tarjetas" /> }, { value: "list", label: <Rows3 className="size-4" aria-label="Lista" /> }]} />

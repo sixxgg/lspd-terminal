@@ -1,7 +1,7 @@
 /* Pack policial ONX del servidor (código de spawn, nombre). Liviano: lo usa la revisión de patrullas sin cargar todos los modelos del juego. */
 export const ONX: [string, string][] = [
   ["ONX_POLBUFF", "Bravado Buffalo"], ["ONX_POLBUFFHF", "Bravado Buffalo Hellfire Interceptor"], ["ONX_POLMONAR", "Vapid Monarch"], ["onx_polmerit", "Declasse Merit"], ["ONX_POLMERIT2", "Declasse Merit PPV"],
-  ["ONX_POLMERIT3", "Declasse Merit Classic Modkit"], ["ONX_POLTULIP", "Declasse Tulip M-100"], ["ONX_POLTAVROS", "Tavros"], ["ONX_POLALEU", "Vapid Aleutian"], ["ONX_POLSCOUT", "Vapid Scout"],
+  ["ONX_POLMERIT3", "Declasse Merit Classic Modkit"], ["ONX_POLTULIP", "Declasse Tulip M-100"], ["ONX_POLTAVROS", "Vapid Tavros"], ["ONX_POLALEU", "Vapid Aleutian"], ["ONX_POLSCOUT", "Vapid Scout"],
   ["ONX_POLSCOUT2", "Vapid Scout Classic"], ["ONX_POLDORADO", "Bravado Dorado"], ["ONX_POLDORADO2", "Bravado Dorado ST"], ["ONX_POLTERM", "Canis Terminus"], ["ONX_POLTERM2", "Canis Terminus Overland"],
   ["ONX_POLCAVA", "Albany Cavalcade"], ["ONX_POLSTALK", "Dundreary Landstalker"], ["ONX_POLGRANG", "Declasse Granger 3600LX"], ["ONX_POLGRANG2", "Declasse Granger 3700LX"], ["ONX_POLALAMO", "Alamo 2700LX"],
   ["ONX_POLSEM", "Canis Seminole Frontier"], ["ONX_POLREGENT", "Regent"], ["ONX_POLREGENTXL", "Regent XL"], ["ONX_POLCARA", "Vapid Caracara Raid"],

@@ -85,8 +85,8 @@ export default wrap(async (req, res) => {
   if (!me) return send(res, 401, { error: "auth", msg: "Tu sesión expiró. Volvé a iniciar sesión." });
 
   if (a === "info") {
-    const r = (await q("select email,created,last from accounts where name=$1", [me.n])).rows[0];
-    return send(res, 200, { e: r.email, c: +r.created, last: +r.last });
+    const r = (await q("select email,created,last,(select count(*) from accounts b where b.created <= a.created) as no from accounts a where name=$1", [me.n])).rows[0];
+    return send(res, 200, { e: r.email, c: +r.created, last: +r.last, no: +r.no });
   }
   if (a === "passwd") {
     const r = (await q("select hash from accounts where name=$1", [me.n])).rows[0];

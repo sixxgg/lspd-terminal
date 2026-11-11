@@ -38,7 +38,7 @@ export function Home({ me, go }: { me: { n: string; r: string }; go: (a: string,
         ))}
       </div>
 
-      {AREAS.filter(a => canArea(a, me.r) && secsOf(a, me.r).some(s => s.k !== "home")).map(a => (
+      {AREAS.filter(a => !a.hidden && canArea(a, me.r) && secsOf(a, me.r).some(s => s.k !== "home")).map(a => (
         <section key={a.k}>
           <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{a.l}</h3>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

@@ -1,49 +1,16 @@
 import { scrollTopApp, setDeptUi } from "@/lib/appearance";
 import { Device } from "./components/device";
-import { ErrorScreen, readCfg } from "./sections/six/fx";
+import { ErrorScreen } from "./sections/six/ErrorScreen";
+import { readCfg } from "./sections/six/cfg";
 import { UpdateBar } from "./components/update";
-import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ComponentType } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Login, type PubInfo } from "./layout/Login";
 import { Shell } from "./layout/Shell";
 import { Home } from "./sections/Home";
 import { MeCtx } from "./lib/me";
-const lz = <T extends Record<string, unknown>>(f: () => Promise<T>, n: keyof T) => lazy(() => f().then(m => ({ default: m[n] as ComponentType<any> }))); // eslint-disable-line @typescript-eslint/no-explicit-any
-const PerdidaArmamento = lz(() => import("./sections/PerdidaArmamento"), "PerdidaArmamento");
-const Ascensos = lz(() => import("./sections/sup/Ascensos"), "Ascensos");
-const T1080 = lz(() => import("./sections/sup/T1080"), "T1080");
-const Alerta = lz(() => import("./sections/sup/Alerta"), "Alerta");
-const Bodycam = lz(() => import("./sections/sup/Bodycam"), "Bodycam");
-const Sargentos = lz(() => import("./sections/sgt/Sargentos"), "Sargentos");
+import { Division, PerdidaArmamento, VIEWS, lz } from "./routes";
 const Six = lz(() => import("./sections/six/Six"), "Six");
-const Timestamps = lz(() => import("./sections/Timestamps"), "Timestamps");
-const Novedades = lz(() => import("./sections/Novedades"), "Novedades");
-const Condecoraciones = lz(() => import("./sections/sup/Condecoraciones"), "Condecoraciones");
-const Entrevistas = lz(() => import("./sections/sup/Entrevistas"), "Entrevistas");
-const Votaciones = lz(() => import("./sections/sup/Votaciones"), "Votaciones");
-const Feedback = lz(() => import("./sections/sup/Feedback"), "Feedback");
-const Agentes = lz(() => import("./sections/sup/Agentes"), "Agentes");
-const Informes = lz(() => import("./sections/Informes"), "Informes");
-const Legal = lz(() => import("./sections/Legal"), "Legal");
-const Division = lz(() => import("./sections/div/Division"), "Division");
-const Permisos = lz(() => import("./sections/cap/Permisos"), "Permisos");
-const EstadoRoster = lz(() => import("./sections/jef/Jefatura"), "EstadoRoster");
-const HistorialVotaciones = lz(() => import("./sections/jef/Jefatura"), "HistorialVotaciones");
-const AdmAccesos = lz(() => import("./sections/adm/Admin"), "AdmAccesos");
-const AdmDatos = lz(() => import("./sections/adm/Admin"), "AdmDatos");
-const AdmMarca = lz(() => import("./sections/adm/Admin"), "AdmMarca");
-const Patrullas = lz(() => import("./sections/sup/Patrullas"), "Patrullas");
-const FeedbackApp = lz(() => import("./sections/FeedbackApp"), "FeedbackApp");
-const Huellas = lz(() => import("./sections/sup/Huellas"), "Huellas");
-const RegistroPatrullas = lz(() => import("./sections/sup/RegistroPatrullas"), "RegistroPatrullas");
-const Equipamiento = lz(() => import("./sections/cap/Equipamiento"), "Equipamiento");
-
-import type { ReactNode } from "react";
-
-export const VIEWS: Record<string, () => ReactNode> = {
-  "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/cond": () => <Condecoraciones />, "sgt/exa": () => <Sargentos tab="exa" />, "sgt/ent": () => <Sargentos tab="ent" />, "sgt/list": () => <Sargentos tab="list" />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "sup/fbk": () => <Feedback />, "cap/vot": () => <Votaciones />, "sup/pat": () => <Patrullas />, "sup/prof": () => <Agentes />, "age/prof": () => <Agentes />, "ini/nov": () => <Novedades />, "ini/ts": () => <Timestamps />, "inf/inf": () => <Informes />, "leg/ley": () => <Legal />, "sup/preg": () => <RegistroPatrullas />, "fb/env": () => <FeedbackApp />, "sup/hue": () => <Huellas />, "cap/equ": () => <Equipamiento />, "cap/perm": () => <Permisos />, "jef/ros": () => <EstadoRoster />, "jef/his": () => <HistorialVotaciones />,
-  "adm/acc": () => <AdmAccesos />, "adm/brand": () => <AdmMarca />, "adm/data": () => <AdmDatos />,
-};
 import { AREAS, canArea, secsOf } from "./nav";
 import { api, authApi } from "./lib/api";
 import { BootScreen } from "./components/boot";
@@ -69,6 +36,9 @@ export default function App() {
     if (LS.get("lspdt.penal") != null) LS.del("lspdt.penal"); }, []);
   const lost = useCallback(() => { goOffline(); setMe(null); toast("La sesión se cerró. Volvé a ingresar.", "err"); void api("/api/auth").then(r => setBoot(r as unknown as Boot)); }, [toast]);
   useEffect(() => { storeHooks(toast, lost); }, [toast, lost]);
+  /* enlace directo desde Discord (?ir=six-not): abre six en Notificaciones */
+  useEffect(() => { if (!me) return; const ir = new URLSearchParams(location.search).get("ir"); if (!ir) return;
+    if (ir === "six-not" && ME_ROLES.six) setNav({ a: "six", s: "not" }); history.replaceState(null, "", location.pathname); }, [me]);
   /* six: aviso cuando llega un feedback nuevo (lo trae la sincronización cada 5 s) */
   const fbKnown = useRef<Set<string> | null>(null);
   useEffect(() => { if (!me || !ME_ROLES.six) return; const ks = LS.keys("lspdt.six.fb.");
@@ -89,7 +59,7 @@ export default function App() {
   if (!me) return <Device brand={boot.brand}><UpdateBar /><Login pub={boot} onDone={r => enter((r as { data: Parameters<typeof loadStore>[0] }).data, true)} /></Device>;
 
   const ag = findAgent(me.n), user = { n: me.n, r: ag?.r || me.r, p: ag?.p };
-  if (nav.a === "six" && ME_ROLES.six) return <MeCtx.Provider value={user}><Suspense fallback={<div className="min-h-[100dvh] bg-black" />}><Six onExit={() => { setNav({ a: "ini", s: "home" }); scrollTopApp(); }} /></Suspense></MeCtx.Provider>;
+  if (nav.a === "six" && ME_ROLES.six) return <MeCtx.Provider value={user}><Suspense fallback={<div className="min-h-[100dvh] bg-black" />}><Six start={nav.s === "not" ? "not" : "ini"} onExit={() => { setNav({ a: "ini", s: "home" }); scrollTopApp(); }} /></Suspense></MeCtx.Provider>;
   let area = AREAS.find(a => a.k === nav.a) || AREAS[0];
   if (!canArea(area, user.r)) area = AREAS[0];
   const SS = secsOf(area, user.r), sec = SS.find(s => s.k === nav.s) || SS[0];

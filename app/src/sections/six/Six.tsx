@@ -1,5 +1,6 @@
 /* six: apartado privado (solo su dueño), con interfaz y temas propios, sin nada de la MDT.
    Pestañas: Inicio y, de la A a la Z, Administración · Comunicados · Equipo de ilícitos · Gestión de staff · Notificaciones. Los datos van en lspdt.six.* (el servidor no se los muestra a nadie más). */
+import "./six.css";
 import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
 import { AtSign, Bell, Check, ChevronRight, Copy, FileText, Home, Lock, Megaphone, Plus, Power, RotateCcw, Save, Settings2, Skull, Trash2, Users, X } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
@@ -8,7 +9,7 @@ import { discordHtml } from "@/lib/discord";
 import { uid } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 import { FIRMAS, ILIC_VARS, consultaInteres, ilicText, type IlicForm } from "./ilicito";
-import { NotifTab, fbList, FB_SEEN } from "./Notif";
+import { NotifTab, fbList, whoOf, FB_SEEN } from "./Notif";
 import { LS, useJSON } from "@/lib/store";
 import { FB_ST, fbSt, fbX } from "@/components/fbnotif";
 import { Boot, CFG0, CFG_KEY, Rain, THEMES, colorOf, hex, vars, type SixCfg } from "./fx";
@@ -65,9 +66,9 @@ function Preview({ title, text, users }: { title: string; text: string; users: R
 }
 
 /* ---------- panel ---------- */
-export function Six({ onExit }: { onExit: () => void }) {
+export function Six({ onExit, start = "ini" }: { onExit: () => void; start?: "ini" | "not" }) {
   const [cfg, setCfg] = useJSON<SixCfg>(CFG_KEY, CFG0), c = { ...CFG0, ...cfg };
-  const [tab, setTab] = useState<Tab>("ini"), [out, setOut] = useState(false), [booted, setBooted] = useState(c.intro === "no"), [replay, setReplay] = useState(0);
+  const [tab, setTab] = useState<Tab>(start), [out, setOut] = useState(false), [booted, setBooted] = useState(c.intro === "no"), [replay, setReplay] = useState(0);
   const [staff, setStaff] = useJSON<Staff[]>("lspdt.six.staff", []);
   const unread = fbList().filter(x => x.t > Number(LS.get(FB_SEEN) || 0)).length;
   const users = useMemo(() => Object.fromEntries(staff.filter(s => isId(s.dc)).map(s => [s.dc.trim(), s.n])), [staff]);
@@ -145,7 +146,7 @@ function HomeTab({ go, unread, staff }: { go: (t: Tab) => void; unread: number; 
       {fb.length > 0 && <Panel t="Últimos feedback" icon={<Bell />}>
         <div className="space-y-1.5">{fb.slice(0, 5).map(x => { const S = FB_ST[fbSt(x.st)]; return (
           <button key={x.id} onClick={() => go("not")} className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left font-sans text-sm transition hover:bg-six/5">
-            <S.I className="size-4 shrink-0" style={{ color: S.c }} /><span className="w-28 shrink-0 truncate font-semibold text-white">{x.who || x.by}</span>
+            <S.I className="size-4 shrink-0" style={{ color: S.c }} /><span className="w-28 shrink-0 truncate font-semibold text-white">{whoOf(x)}</span>
             <span className="min-w-0 flex-1 truncate text-slate-400">{fbX(x.x)}</span></button>); })}</div></Panel>}
     </div>
   );

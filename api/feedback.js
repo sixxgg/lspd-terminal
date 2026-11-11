@@ -1,5 +1,5 @@
 /* Feedback de los usuarios: cualquier cuenta envía un ticket (texto con formato + fotos). Se guarda en lspdt.six.fb.* (solo lo ve six)
-   y avisa por Discord al canal configurado. El token del bot va en la variable DISCORD_BOT_TOKEN de Vercel (nunca en el código). */
+   y avisa por Discord al canal configurado (sin adjuntos, con botón a la terminal). El token del bot va en la variable DISCORD_BOT_TOKEN de Vercel (nunca en el código). */
 import crypto from "node:crypto";
 import { q } from "../lib/db.js";
 import { send, body, wrap, requireUser, isSix } from "../lib/core.js";
@@ -24,30 +24,43 @@ async function whoOf(u) {
 /* limpieza básica en el servidor (al mostrarlo, la terminal vuelve a filtrar todo con una lista blanca) */
 const clean = h => String(h).replace(/<(script|style|iframe|object|embed|link|meta)[\s\S]*?(<\/\1>|$)/gi, "").replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "").replace(/javascript:/gi, "");
 
-async function notify(t) {
+/* aviso a Discord: texto corto, sin adjuntar las fotos (solo se cuentan) y un botón que abre la terminal en six → Notificaciones */
+async function notify(t, site) {
   const tok = (process.env.DISCORD_BOT_TOKEN || "").trim().replace(/^Bot\s+/i, ""); if (!tok) return "falta la variable DISCORD_BOT_TOKEN en Vercel (y un Redeploy después de crearla)";
-  const nI = (String(t.html).match(/<img[^>]*>/gi) || []).length, txt = `${nI ? `[📷 ${nI} ${nI === 1 ? "foto" : "fotos"}]\n` : ""}${plain(String(t.html).replace(/<img[^>]*>/gi, ""))}`, head = `<@${PING}> 💗 **Nuevo feedback** de **${t.who}**${t.who !== t.by ? ` · ${t.by}` : ""}`;
-  const content = `${head}\n>>> ${txt.length > 1700 ? txt.slice(0, 1700) + "…" : txt || "(sin texto)"}`;
-  const fd = new FormData();
-  fd.append("payload_json", JSON.stringify({ content, allowed_mentions: { users: [PING] } }));
-  let size = 0;
-  t.raw.forEach((d, i) => { const m = /^data:image\/(\w+);base64,(.*)$/.exec(d); if (!m) return; const b = Buffer.from(m[2], "base64"); if (size + b.length > 7.5e6) return; size += b.length;
-    fd.append(`files[${i}]`, new Blob([b], { type: "image/" + m[1] }), `foto${i + 1}.${m[1] === "jpeg" ? "jpg" : m[1]}`); });
+  const nI = (String(t.html).match(/<img[^>]*>/gi) || []).length, txt = plain(String(t.html).replace(/<img[^>]*>/gi, ""));
+  const head = `<@${PING}> 💗 **Nuevo feedback** de **${t.who}**${t.who !== "six" && t.who !== t.by ? ` · ${t.by}` : ""}${nI ? ` · 📷 ${nI} ${nI === 1 ? "foto" : "fotos"}` : ""}`;
+  const content = `${head}\n>>> ${txt.length > 1500 ? txt.slice(0, 1500) + "…" : txt || "(solo fotos)"}`;
+  const url = `${site}/?ir=six-not`, go = (body) => fetch(`https://discord.com/api/v10/channels/${CHANNEL}/messages`, { method: "POST", headers: { Authorization: "Bot " + tok, "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(8000) });
   try {
-    const r = await fetch(`https://discord.com/api/v10/channels/${CHANNEL}/messages`, { method: "POST", headers: { Authorization: "Bot " + tok }, body: fd, signal: AbortSignal.timeout(8000) });
+    let r = await go({ content, allowed_mentions: { users: [PING] }, components: [{ type: 1, components: [{ type: 2, style: 5, label: "Abrir en la terminal", url }] }] });
+    if (r.status === 400) r = await go({ content: `${content}\n[Abrir en la terminal](<${url}>)`, allowed_mentions: { users: [PING] } }); // por si el botón no se acepta
     if (r.ok) return "";
     let m = ""; try { m = (await r.json()).message || ""; } catch {}
     const hint = r.status === 401 ? "el token no es válido (¿se reseteó? copiá el nuevo en DISCORD_BOT_TOKEN y hacé Redeploy)"
-      : r.status === 403 ? "el bot no tiene permiso en ese canal (Ver canal, Enviar mensajes y Adjuntar archivos)"
+      : r.status === 403 ? "el bot no tiene permiso en ese canal (Ver canal y Enviar mensajes)"
       : r.status === 404 ? "no existe el canal o el bot no está en ese servidor" : m;
     return `Discord respondió ${r.status}: ${hint}`;
   } catch { return "no se pudo contactar a Discord"; }
+}
+/* dirección pública de la terminal (para el botón del aviso) */
+const siteOf = req => process.env.SITE_URL || `https://${String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim()}`;
+/* índice de feedback por usuario (meta «fbu:nombre» = ids), así «Mis feedback» no recorre todos */
+const IX = n => "fbu:" + n;
+async function myIds(n) {
+  const r = (await q("select v from meta where k=$1", [IX(n)])).rows[0];
+  if (r) return String(r.v || "").split(",").filter(Boolean);
+  /* primera vez: se arma una sola vez con los feedback viejos */
+  const ids = [];
+  for (const x of (await q("select v from kv where k like 'lspdt.six.fb.%' and v is not null")).rows) { try { const t = JSON.parse(x.v); if (t && t.by === n) ids.push(t.id); } catch {} }
+  await q("insert into meta(k,v) values($1,$2) on conflict(k) do nothing", [IX(n), ids.join(",")]);
+  return ids;
 }
 
 export default wrap(async (req, res) => {
   const u = await requireUser(req, res); if (!u) return;
   if (req.method === "GET") { // los feedback propios y su estado (para las notificaciones de cada usuario)
-    const rows = (await q("select v from kv where k like 'lspdt.six.fb.%' and v is not null")).rows, list = [];
+    const ids = (await myIds(u.n)).filter(x => /^[a-z0-9]{1,40}$/.test(x)), list = [];
+    const rows = ids.length ? (await q("select v from kv where k = any($1) and v is not null", [ids.map(x => "lspdt.six.fb." + x)])).rows : [];
     for (const r of rows) { let t; try { t = JSON.parse(r.v); } catch { continue; }
       if (t && t.by === u.n) list.push({ id: t.id, t: t.t, u: t.u || t.t, st: t.st, x: t.x || excerpt(t.html || ""), nota: String(t.nota || "").slice(0, 300) }); }
     list.sort((a, b) => b.u - a.u);
@@ -57,7 +70,7 @@ export default wrap(async (req, res) => {
   const b = await body(req);
   if (b.test) { // prueba del aviso (solo six)
     if (!isSix(u)) return send(res, 403, { msg: "Solo six" });
-    const dc = await notify({ by: u.n, who: "six", html: "✅ Prueba del aviso de feedback de la terminal.", raw: [] });
+    const dc = await notify({ by: u.n, who: "six", html: "✅ Prueba del aviso de feedback de la terminal." }, siteOf(req));
     return send(res, 200, dc ? { ok: false, msg: dc } : { ok: true });
   }
   const html = clean(typeof b.html === "string" ? b.html : "").slice(0, 30000), imgs = Array.isArray(b.imgs) ? b.imgs : [];
@@ -74,7 +87,9 @@ export default wrap(async (req, res) => {
     await q("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do nothing", [k, imgs[i], u.n, now]); }
   const t = { id, by: u.n, ...(await whoOf(u)), t: now, u: now, html, x: excerpt(html), imgs: keys, st: "pend" };
   await q("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do nothing", [`lspdt.six.fb.${id}`, JSON.stringify(t), u.n, now]);
-  const dc = await notify({ ...t, raw: imgs });
+  const prevIds = await myIds(u.n);
+  await q("insert into meta(k,v) values($1,$2) on conflict(k) do update set v=excluded.v", [IX(u.n), [...new Set([...prevIds, id])].slice(-200).join(",")]);
+  const dc = await notify(t, siteOf(req));
   if (dc) console.warn("feedback: aviso a Discord no enviado:", dc);
   return send(res, 200, { ok: true, id });
 });

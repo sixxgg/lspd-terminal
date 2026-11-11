@@ -1,6 +1,6 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { FolderOpen, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Search, Plus, X, Pencil, Trash2, Save, RotateCcw, Lock, Info, Mail, Vote, History, Copy, FolderInput, ChevronDown } from "lucide-react";
-import { Button, Card, CardBody, CardHeader, Checkbox, Field, Input, Segmented, Select, Textarea } from "@/components/ui";
+import { Button, Card, CardBody, CardHeader, Checkbox, Field, Input, Segmented, Select, Textarea, SearchInput } from "@/components/ui";
 import { AgentCombo, AgentPicker } from "@/components/agents";
 import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
@@ -151,7 +151,7 @@ function Notif() {
           <CardBody>
             {sel.length > 0 && <div className="flex flex-wrap gap-1.5">{sel.map(f => <span key={f.id} className="inline-flex items-center gap-1 rounded-full bg-brand-50 py-0.5 pl-2.5 pr-1 text-xs font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-200">{f.n} · {f.g}<button aria-label="Quitar" onClick={() => up(x => { x.fl = x.fl.filter(y => y !== f.id); })} className="rounded-full p-0.5 hover:bg-brand-100 dark:hover:bg-brand-500/25"><X className="size-3" /></button></span>)}</div>}
             <div className="flex flex-wrap gap-2">
-              <div className="relative min-w-[12rem] flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input className="pl-9" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar falta…" /></div>
+              <SearchInput className="min-w-[12rem] flex-1" value={q} onChange={setQ} placeholder="Buscar falta…" />
               <Segmented size="sm" value={g} onChange={setG} options={[["all", "Todas"], ["leve", "Leves"], ["grave", "Graves"], ["muy grave", "Muy graves"]].map(([v, l]) => ({ value: v, label: `${l} (${F.filter(f => v === "all" || f.g === v).length})` }))} />
             </div>
             <div className="scrollbar-thin max-h-80 space-y-1 overflow-y-auto pr-1">

@@ -10,6 +10,8 @@ import { fmtDate } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 
 export type FbTicket = { id: string; by: string; who?: string; no?: number; t: number; u?: number; html: string; x?: string; imgs: string[]; st: string; nota?: string };
+/* nombre OOC: six (sin asociarlo al personaje) o «Usuario N° X» */
+export const whoOf = (x: FbTicket) => (x.who === "six" || (!x.who && x.by === "Ryan Westbrook") ? "six" : x.who || x.by);
 export const FB_PREFIX = "lspdt.six.fb.", FB_SEEN = "lspdt.six.fbSeen";
 export const fbList = (): FbTicket[] => LS.keys(FB_PREFIX).map(k => LS.ro<FbTicket | null>(k, null)).filter((x): x is FbTicket => !!x && !!x.id && x.st !== "elim")
   .map(x => (x.x != null ? x : { ...x, x: (x.imgs.length ? `[📷 ${x.imgs.length} ${x.imgs.length === 1 ? "foto" : "fotos"}] ` : "") + plainOf(x.html.replace(/<img[^>]*>/gi, "")).replace(/\s+/g, " ").slice(0, 160) })).sort((a, b) => b.t - a.t);
@@ -25,7 +27,7 @@ export function NotifTab() {
   const save = (x: FbTicket, p: Partial<FbTicket>) => LS.setJSON(FB_PREFIX + x.id, { ...x, ...p, u: Date.now() });
   const setSt = (x: FbTicket, st: FbSt) => { save(x, { st }); setExp({ ...exp, [x.id]: false }); toast(`Marcado como «${FB_ST[st].l}». Se le avisa a quien lo mandó.`); };
   /* eliminar: se borran el texto y las fotos; queda solo el aviso «Eliminado» para quien lo mandó */
-  const del = async (x: FbTicket) => { if (!(await confirm(`¿Eliminar el feedback de ${x.who || x.by}? Se borran el texto y las fotos.`, { danger: true, ok: "Eliminar" }))) return;
+  const del = async (x: FbTicket) => { if (!(await confirm(`¿Eliminar el feedback de ${whoOf(x)}? Se borran el texto y las fotos.`, { danger: true, ok: "Eliminar" }))) return;
     x.imgs.forEach(k => LS.del(k)); save(x, { st: "elim", html: "", imgs: [] }); };
   return (
     <div className="space-y-4">
@@ -42,15 +44,15 @@ export function NotifTab() {
         if (!OPEN(x.st) && !exp[x.id]) return (
           <button key={x.id} onClick={() => setExp({ ...exp, [x.id]: true })} style={{ ["--k" as string]: S0.c }} className="six-panel flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left font-sans text-sm transition hover:bg-six/5">
             <span className="fb-neon inline-flex items-center gap-1.5 rounded-md border border-[var(--k)] px-2 py-0.5 text-[11px] font-semibold text-[var(--k)]"><S0.I className="size-3.5" />{S0.l}</span>
-            <b className="w-32 shrink-0 truncate text-white">{x.who || x.by}</b><span className="min-w-0 flex-1 truncate text-slate-400">{fbX(x.x)}</span>
+            <b className="w-32 shrink-0 truncate text-white">{whoOf(x)}</b><span className="min-w-0 flex-1 truncate text-slate-400">{fbX(x.x)}</span>
             <span className="shrink-0 text-xs text-slate-500">{fmtDate(x.u || x.t)}</span><ChevronDown className="size-4 text-slate-500" /></button>);
         const html = safeHtml(x.html, el => { const m = /^img:(\d+)$/.exec(el.getAttribute("src") || ""); return m ? LS.get(x.imgs[+m[1]]) || "" : ""; }); return (
         <section key={x.id} className={cn("six-panel relative rounded-2xl p-4", nuevo && "ring-1 ring-six/60")}>
           <i className="six-corner tl" /><i className="six-corner br" />
           <header className="mb-3 flex flex-wrap items-center gap-3">
-            <Avatar n={x.by} size={34} />
-            <div className="min-w-0 font-sans"><p className="font-semibold text-white">{x.who || x.by}{nuevo && <span className="ml-2 rounded bg-six px-1.5 text-[10px] font-bold text-black">NUEVO</span>}</p>
-              <p className="text-xs text-slate-500">{x.who && x.who !== x.by ? `${x.by} · ` : ""}{fmtDate(x.t)}</p></div>
+            {whoOf(x) === "six" ? <span className="grid size-[34px] place-items-center rounded-full border border-six/50 bg-six/10 font-mono text-xs font-black text-six">six</span> : <Avatar n={x.by} size={34} />}
+            <div className="min-w-0 font-sans"><p className="font-semibold text-white">{whoOf(x)}{nuevo && <span className="ml-2 rounded bg-six px-1.5 text-[10px] font-bold text-black">NUEVO</span>}</p>
+              <p className="text-xs text-slate-500">{whoOf(x) !== "six" && x.who && x.who !== x.by ? `${x.by} · ` : ""}{fmtDate(x.t)}</p></div>
             <div className="ml-auto flex flex-wrap gap-1">{ORDER.map(k => { const S = FB_ST[k]; return (
               <button key={k} onClick={() => setSt(x, k)} title={S.l} style={{ ["--k" as string]: S.c }}
                 className={cn("inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-sans text-[11px] font-semibold transition", st === k ? "fb-neon border-[var(--k)] text-[var(--k)]" : "border-six/15 text-slate-500 hover:text-slate-200")}>

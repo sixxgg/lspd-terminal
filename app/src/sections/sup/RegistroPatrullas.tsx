@@ -1,8 +1,8 @@
 /* Registro de patrullas: todo sale de las revisiones guardadas en «Revisión de patrullas» (lspdt.patHist).
    Tres vistas: por revisión (con su detalle), por agente (último estado de cada patrulla) y por patrulla (cómo viene cada modelo). */
 import { useMemo, useState } from "react";
-import { Car, ChevronDown, ClipboardList, Copy, Search, Trash2, Users, CalendarDays } from "lucide-react";
-import { Button, Card, Empty, Input, Segmented, Select } from "@/components/ui";
+import { Car, ChevronDown, ClipboardList, Copy, Trash2, Users, CalendarDays } from "lucide-react";
+import { Button, Card, Empty, Input, Segmented, Select, SearchInput } from "@/components/ui";
 import { Avatar, RankBadge } from "@/components/agents";
 import { useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
@@ -20,7 +20,7 @@ function CarCard({ k, c, cap }: { k: string; c: Cell; cap: string }) {
   return (
     <div className={cn("w-[16rem] rounded-xl border p-2.5", c.s === "no" ? "border-red-300/60 bg-red-500/[.04] dark:border-red-500/30" : c.s === "ok" ? "border-emerald-300/60 bg-emerald-500/[.04] dark:border-emerald-500/25" : "border-slate-200 dark:border-slate-800")}>
       <div className="flex items-center gap-2"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800"><Car className="size-4" /></span>
-        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold" title={k}>{n}</p><p className="text-[10.5px] text-slate-400">{carType(k, n)}</p></div><StatusPill s={c.s} /></div>
+        <div className="min-w-0 flex-1"><p className="text-sm font-semibold leading-snug" title={k}>{n}</p><p className="text-[10.5px] text-slate-400">{carType(k, n)}</p></div><StatusPill s={c.s} /></div>
       {ms.length > 0 && <p className="mt-2 text-[11.5px] leading-snug text-red-600 dark:text-red-400"><b>Falta:</b> {ms.join(" · ")}</p>}
       {c.by && <p className="mt-1.5 text-[10.5px] text-slate-400">Inspeccionó: {c.by}</p>}
       <Thumbs ids={c.f} cap={cap} />
@@ -57,7 +57,7 @@ export function RegistroPatrullas() {
       <Card>
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-4 dark:border-slate-800">
           <Segmented size="sm" value={view} onChange={setView} options={[{ value: "rev", label: "Revisiones", icon: <CalendarDays /> }, { value: "ag", label: "Agentes", icon: <Users /> }, { value: "car", label: "Patrullas", icon: <Car /> }]} />
-          <div className="relative min-w-[13rem] flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input className="pl-9" value={q} onChange={x => setQ(x.target.value)} placeholder="Buscar agente, placa o patrulla…" /></div>
+          <SearchInput className="min-w-[13rem] flex-1" value={q} onChange={setQ} placeholder="Buscar agente, placa o patrulla…" />
           <Select className="w-auto text-sm" value={by} onChange={x => setBy(x.target.value)}><option value="">Revisado por: todos</option>{who.map(n => <option key={n}>{n}</option>)}</Select>
           <Input type="date" className="w-auto" value={d1} onChange={x => setD1(x.target.value)} aria-label="Desde" title="Desde" />
           <Input type="date" className="w-auto" value={d2} onChange={x => setD2(x.target.value)} aria-label="Hasta" title="Hasta" />
@@ -98,7 +98,7 @@ export function RegistroPatrullas() {
           : <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">{byCar.map(([k, v]) => { const tot = v.ok + v.no, top = Object.entries(v.miss).sort((a, b) => b[1] - a[1]).slice(0, 3); return (
             <div key={k} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
               <div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800"><Car className="size-4" /></span>
-                <div className="min-w-0 flex-1"><p className="truncate font-semibold">{vName(k)}</p><p className="text-[11px] text-slate-400">{carType(k, vName(k))} · última {dmy(v.last)}</p></div></div>
+                <div className="min-w-0 flex-1"><p className="font-semibold leading-snug">{vName(k)}</p><p className="text-[11px] text-slate-400">{carType(k, vName(k))} · última {dmy(v.last)}</p></div></div>
               <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-red-500/20"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${(v.ok * 100) / tot}%` }} /></div>
               <p className="mt-1.5 text-xs text-slate-500">{tot} {tot === 1 ? "revisión" : "revisiones"} · <span className="text-emerald-600 dark:text-emerald-400">{v.ok} preparados</span> · <span className="text-red-600 dark:text-red-400">{v.no} no</span></p>
               {top.length > 0 && <p className="mt-1 text-[11px] text-slate-400">Suele faltar: {top.map(([n, c]) => `${n} (${c})`).join(", ")}</p>}

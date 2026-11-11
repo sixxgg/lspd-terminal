@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { MessageSquareWarning, UserRound, FileText, Save, Search, ChevronDown, Copy, Trash2, Pencil, ListChecks, X } from "lucide-react";
-import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input, Segmented, Textarea } from "@/components/ui";
+import { MessageSquareWarning, UserRound, FileText, Save, ChevronDown, Copy, Trash2, Pencil, ListChecks, X } from "lucide-react";
+import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input, Segmented, Textarea, SearchInput } from "@/components/ui";
 import { AgentPicker, Avatar, RankBadge } from "@/components/agents";
 import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
@@ -126,7 +126,7 @@ function FbList({ open, setOpen, onEdit }: { open: string | null; setOpen: (v: s
           <p className="text-xl font-bold tabular-nums">{L.filter(r => r.tipo === k).length}</p><p className="flex items-center gap-1.5 truncate text-[11px] text-slate-500"><i className="size-2 shrink-0 rounded-full" style={{ background: c }} />{l.split(" / ")[0].replace(" Feedback", "")}</p></button>))}</div>
       <Card>
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 p-4 dark:border-slate-800">
-          <div className="relative min-w-[14rem] flex-1 sm:max-w-sm"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input className="pl-9" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar agente, supervisor, informe…" /></div>
+          <SearchInput className="min-w-[14rem] flex-1 sm:max-w-sm" value={q} onChange={setQ} placeholder="Buscar agente, supervisor, informe…" />
           {t && <button onClick={() => setT("")} className="inline-flex items-center gap-1"><TipoPill k={t} /><X className="size-3.5 text-slate-400" /></button>}
           <span className="text-xs text-slate-400">{F.length} de {L.length}</span>
         </div>
