@@ -2,7 +2,7 @@
    subrayado, H1–H3), formas, marcos, flechas, lápiz e imágenes; plantillas y exportación a PNG.
    Moverse: arrastrar el fondo, la rueda o dos dedos; zoom con Ctrl + rueda, pellizco o los botones. Enlace temporal en vivo para ver sin cuenta.
    Datos: lspdt.board.<ámbito>.<id> y el índice lspdt.boards.<ámbito> (ámbito: gen o una división). */
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as RPE } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPE } from "react";
 import { AlignCenter, AlignLeft, ArrowUpRight, Bold, Circle, Copy, Diamond, Download, Frame, Hand, ImagePlus, Italic, LayoutTemplate, Link2, Loader2, Maximize, Minus, MousePointer2, PenLine, Plus, Presentation, Redo2, Square, StickyNote, Trash2, Type, Underline, Undo2, X, Pencil } from "lucide-react";
 import { Button, Card, Empty, Input, Select } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
@@ -150,6 +150,12 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, full: full0 }: { 
   const wrapRef = useRef<HTMLDivElement>(null), fileRef = useRef<HTMLInputElement>(null), act = useRef<Act | null>(null), ptrs = useRef(new Map<number, { x: number; y: number }>());
   const [marq, setMarq] = useState<null | { x: number; y: number; w: number; h: number }>(null), [ghost, setGhost] = useState<null | { a: string; x: number; y: number }>(null);
   const hist = useRef<{ u: It[][]; r: It[][] }>({ u: [], r: [] }), saved = useRef(JSON.stringify(items)), space = useRef(false), timer = useRef(0);
+  /* alto justo para que la pizarra entre en pantalla, sin barra de desplazamiento en la página */
+  const [hh, setHh] = useState(0);
+  useLayoutEffect(() => { if (full) return; const fitH = () => { const el = wrapRef.current; if (!el) return; const sc = document.getElementById("app-scroll");
+      const bottom = sc ? sc.getBoundingClientRect().bottom : window.innerHeight, top = el.getBoundingClientRect().top + (sc ? sc.scrollTop : window.scrollY) - (sc ? sc.getBoundingClientRect().top : 0) + (sc ? sc.getBoundingClientRect().top : 0);
+      setHh(Math.max(360, Math.floor(bottom - top - 34))); };
+    fitH(); window.addEventListener("resize", fitH); return () => window.removeEventListener("resize", fitH); }, [full]);
   const M = useMemo(() => new Map(items.map(i => [i.id, i])), [items]), itRef = useRef(items); itRef.current = items;
 
   const persist = useCallback((L: It[]) => { if (!k) return; window.clearTimeout(timer.current); timer.current = window.setTimeout(() => { const s = JSON.stringify(L); if (s === saved.current) return; saved.current = s; LS.setJSON(k, { items: L }); onMeta?.(() => ({ upd: Date.now() })); }, 500); }, [k, onMeta]);
@@ -270,8 +276,8 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, full: full0 }: { 
         <Button size="sm" variant="outline" icon={<Download />} onClick={async () => { if (!(await exportPng(items, title))) toast("La pizarra está vacía", "err"); }}>Exportar PNG</Button>
         {!full0 && <button onClick={() => setFull(!full)} title={full ? "Salir de pantalla completa" : "Pantalla completa"} className="rounded-lg p-2 text-slate-400 hover:bg-white/10"><Maximize className="size-4" /></button>}
       </div>
-      <div ref={wrapRef} className={cn("relative touch-none select-none overflow-hidden", full ? "h-[calc(100%-49px)]" : "h-[74vh] min-h-[28rem]", tool === "sel" ? "cursor-grab active:cursor-grabbing" : tool === "hand" ? "cursor-grab" : "cursor-crosshair")}
-        style={{ background: BG, backgroundImage: `radial-gradient(circle, ${DOT} ${dot}px, transparent ${dot}px)`, backgroundSize: `${grid}px ${grid}px`, backgroundPosition: `${view.x}px ${view.y}px` }}
+      <div ref={wrapRef} className={cn("relative touch-none select-none overflow-hidden", full && "h-[calc(100%-49px)]", tool === "sel" ? "cursor-grab active:cursor-grabbing" : tool === "hand" ? "cursor-grab" : "cursor-crosshair")}
+        style={{ ...(!full && { height: hh || "70vh" }), background: BG, backgroundImage: `radial-gradient(circle, ${DOT} ${dot}px, transparent ${dot}px)`, backgroundSize: `${grid}px ${grid}px`, backgroundPosition: `${view.x}px ${view.y}px` }}
         onPointerDown={e => down(e)} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onContextMenu={e => e.preventDefault()}>
         <div className="absolute left-0 top-0 origin-top-left will-change-transform" style={{ transform: `translate3d(${view.x}px,${view.y}px,0) scale(${view.z})` }}>
           {items.filter(i => i.k === "frame").map(i => <ItemV key={i.id} i={i} sel={selIds.includes(i.id)} edit={edit === i.id} canEdit={canEdit} onDown={down} onEdit={() => canEdit && setEdit(i.id)} onText={tx => { if (tx !== i.tx) commit(items.map(x => (x.id === i.id ? { ...x, tx } : x))); setEdit(""); }} />)}

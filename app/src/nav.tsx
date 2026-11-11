@@ -21,7 +21,7 @@ const RAW_AREAS: Area[] = [
   { k: "me", l: "Mi perfil", icon: UserRound, min: 0, hidden: true, sec: [{ k: "perfil", l: "Mi perfil", d: "Tu perfil OOC en la terminal (BETA)", icon: UserRound, ready: true }] },
   { k: "fb", l: "Feedback", icon: Heart, min: 0, sec: [{ k: "env", l: "Feedback", d: "Errores, ideas o mejoras: escribilo como quieras y sumá fotos si ayudan", icon: Heart, ready: true }] },
   { k: "leg", l: "Legal", icon: Scale, min: 0, sec: [{ k: "ley", l: "Leyes", d: "Infracciones administrativas y delitos por capítulo, con favoritos", icon: Scale, ready: true }] },
-  { k: "sup", l: "Supervisión", icon: ClipboardList, min: 6, req: "Sargento I", sec: [
+  { k: "sup", l: "Supervisores", icon: ClipboardList, min: 6, req: "Sargento I", sec: [
     { k: "asc", l: "Ascensos / Descensos", sl: "Ascensos", d: "Contratos y resoluciones con /me y /do", icon: TrendingUp, ready: true },
     { k: "t1080", l: "10-80", d: "Citación por radio con vestimenta Clase A", icon: Radio, ready: true },
     { k: "alt", l: "Alerta Táctica", d: "Solicitud de elevación o ampliación de la alerta", icon: Siren, ready: true },
@@ -77,7 +77,7 @@ export const canArea = (a: Area, r?: string) => (a.k === "me" ? !!ME_ROLES.six :
 /* áreas del menú (sin las ocultas) */
 export const menuAreas = (r?: string) => AREAS.filter(a => !a.hidden && canArea(a, r));
 /* secciones bloqueadas para ese rango (se muestran con candado) */
-export const lockedOf = (a: Area, r?: string) => (ME_ROLES.admin ? [] : a.sec.filter(s => s.min && lvl(r) < s.min));
+export const lockedOf = (a: Area, r?: string) => a.sec.filter(s => s.min && lvl(r) < s.min);
 /* secciones que ve cada uno dentro de un área (algunas piden más rango que el área) */
-export const secsOf = (a: Area, r?: string) => a.sec.filter(s => !s.min || lvl(r) >= s.min || !!ME_ROLES.admin);
+export const secsOf = (a: Area, r?: string) => a.sec.filter(s => !s.min || lvl(r) >= s.min); /* el rango manda también para los administradores */
 

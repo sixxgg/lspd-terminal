@@ -44,12 +44,12 @@ export function Condecoraciones() {
         {tab === "cond" && <h3 className="font-display text-sm font-semibold uppercase tracking-wider">{s}</h3>}
         {groups.map(({ g, l }) => <div key={g} className="space-y-3">
           <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{g} ({l.length})<span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" /></div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {l.map(d => { const n = H.get(d.k)?.length || 0; return (
-              <button key={d.k} onClick={() => setOpen(d)} className="group flex flex-col items-start gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-brand-400/60 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/60">
-                <Ribbon d={d} />
-                <div className="mt-1 min-w-0"><p className="font-display text-[15px] font-semibold leading-tight">{d.t}</p><p className="text-xs text-slate-500 dark:text-slate-400">{d.c}</p></div>
-                <p className={"mt-auto text-xs " + (n ? "font-semibold text-brand-600 dark:text-brand-300" : "text-slate-400")}>{n ? `${n} ${n === 1 ? "condecorado" : "condecorados"}` : "Sin condecorados"}</p>
+              <button key={d.k} onClick={() => setOpen(d)} title={`${d.t} · ${d.c}`} className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition hover:border-brand-400/60 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/60">
+                <span className="shrink-0"><Ribbon d={d} /></span>
+                <span className="min-w-0 flex-1"><b className="font-display block truncate text-[13px] font-semibold leading-tight">{d.t}</b>
+                  <small className="block truncate text-[11px] text-slate-500 dark:text-slate-400">{d.c}{n > 0 && <span className="font-semibold text-brand-600 dark:text-brand-300"> · {n} {n === 1 ? "condecorado" : "condecorados"}</span>}</small></span>
               </button>); })}
           </div>
         </div>)}

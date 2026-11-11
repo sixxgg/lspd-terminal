@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.9.2";
+export const APP_VERSION = "1.9.3";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,12 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "1.9.3", f: "11/11/2026", t: "Supervisores", items: [
+    "Supervisión pasa a llamarse Supervisores.",
+    "Las tareas que tu rango no habilita quedan con candado rojo, también para los administradores.",
+    "La pizarra entra justa en la pantalla, sin barra de desplazamiento.",
+    "Condecoraciones más compactas: entran muchas más por pantalla.",
+  ] },
   { v: "1.9.2", f: "11/11/2026", t: "Ajustes de Capitanía y Códigos", items: [
     "Capitanía: los Sargentos II ven las tareas de Teniente bloqueadas con candado; las del ascenso a Sargento I quedan con su nombre completo en una sola línea.",
     "Códigos: Lectura de derechos actualizada y nueva sección Rotura de negociaciones. Menos texto de relleno.",
