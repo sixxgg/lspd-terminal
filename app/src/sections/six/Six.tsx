@@ -69,6 +69,13 @@ function Preview({ title, text, users }: { title: string; text: string; users: R
 }
 
 /* ---------- panel ---------- */
+/* texto que se actualiza solo cada segundo sin re-renderizar todo el panel */
+function Ticker({ f }: { f: () => string }) {
+  const [v, setV] = useState(f), r = useRef(f); r.current = f;
+  useEffect(() => { const i = setInterval(() => { if (!document.hidden) setV(r.current()); }, 1000); return () => clearInterval(i); }, []);
+  return <>{v}</>;
+}
+
 export function Six({ onExit, start = "ini", who = "six" }: { onExit: () => void; start?: "ini" | "not"; who?: Who }) {
   NS.id = who; /* todo lo que sigue usa el espacio de este panel */
   const C0 = cfg0(who), [cfg, setCfg] = useJSON<SixCfg>(cfgKey(who), C0), c = { ...C0, ...cfg }, tabs = TABS.filter(t => who === "six" || t[0] !== "not");
@@ -76,8 +83,6 @@ export function Six({ onExit, start = "ini", who = "six" }: { onExit: () => void
   const [staff, setStaff] = useJSON<Staff[]>(K("staff"), []);
   const unread = who !== "six" ? 0 : fbList().filter(x => x.t > Number(LS.get(FB_SEEN) || 0)).length;
   const users = useMemo(() => Object.fromEntries(staff.filter(s => isId(s.dc)).map(s => [s.dc.trim(), s.n])), [staff]);
-  const [clock, setClock] = useState(""), [sig, setSig] = useState(hex(8));
-  useEffect(() => { const f = () => { setClock(new Date().toLocaleTimeString("es-AR", { hour12: false })); setSig(hex(8)); }; f(); const i = setInterval(f, 1000); return () => clearInterval(i); }, []);
   /* pestaña cifrada: ícono y color elegidos en Administración (six: calavera roja) */
   useTabFx(k => { const col = c.tabCol === "tema" ? colorOf(c.tema) : c.tabCol === "arcoiris" ? `hsl(${(k * 24) % 360} 100% 62%)` : c.tabCol;
     return { title: `${k % 10 < 2 ? NAME().toUpperCase() : glyphs(NAME().length)} ▸ ${cipher(3, 4)}`, icon: tabIcon(c.tabIco, col, k % 7 !== 0) }; }, 280, [c.tabIco, c.tabCol, c.tema]);
@@ -95,11 +100,11 @@ export function Six({ onExit, start = "ini", who = "six" }: { onExit: () => void
       <header className="sticky top-0 z-30 border-b border-six/25 bg-black/70 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-4 px-4">
           <span className="six-logo text-3xl font-black" data-t={NAME()}>{NAME()}</span>
-          <div className="hidden text-[10px] leading-tight text-slate-500 md:block"><p>SESIÓN PRIVADA · <span className="text-six">CIFRADA</span></p><p>FIRMA {sig.toUpperCase()}</p></div>
+          <div className="hidden text-[10px] leading-tight text-slate-500 md:block"><p>SESIÓN PRIVADA · <span className="text-six">CIFRADA</span></p><p>FIRMA <Ticker f={() => hex(8).toUpperCase()} /></p></div>
           <nav className="mx-auto flex gap-1 rounded-xl border border-six/10 bg-black/40 p-1">{tabs.map(([k, l, I]) => (
             <button key={k} onClick={() => setTab(k)} title={l} className={cn("six-tab inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-[11px] font-bold tracking-[0.14em] transition",
               tab === k ? "on text-six" : "text-slate-500 hover:text-six")}><I className="size-4 shrink-0" /><span className={tab === k ? "hidden sm:inline" : "hidden min-[1700px]:inline"}>{l}</span>{LOCKED().includes(k) && <Lock className="size-3 opacity-60" />}{k === "not" && unread > 0 && <span className="rounded-full bg-six px-1.5 text-[10px] font-black text-black">{unread}</span>}</button>))}</nav>
-          <span className="hidden tabular-nums text-sm text-six six-txt xl:inline">{clock}</span>
+          <span className="hidden tabular-nums text-sm text-six six-txt xl:inline"><Ticker f={() => new Date().toLocaleTimeString("es-AR", { hour12: false })} /></span>
           <NBtn ghost icon={<Power />} onClick={exit} title="Volver a la MDT"><span className="hidden sm:inline">SALIR</span></NBtn>
         </div>
         <div className="six-line h-px" />

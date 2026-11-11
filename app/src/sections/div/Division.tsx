@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { GraduationCap, Lock, Megaphone } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import { Instrucciones } from "./Instrucciones";
+import { DivAdmin, Uniformidad, divTabs, uniTab, type DivTab } from "./DivTools";
 import { findAgent } from "@/lib/domain";
 import { insRole, isUMem, uMap } from "@/lib/units";
 import { Card } from "@/components/ui";
@@ -64,14 +65,17 @@ function SubTile({ s, on, onClick }: { s: string; on: boolean; onClick?: () => v
 
 /* subdivisión (UDU): comunicados e instrucciones; el roster es el de la METRO */
 function SubBody({ sub, div }: { sub: string; div: CommDiv }) {
-  const me = useMe(), [t, setT] = useState(() => LS.get("lspdt.next.subtab." + div) || "com"), can = !!ME_ROLES.admin || lvl(me.r) >= lvl("Sargento I") || isUMem("md", me.n);
+  const me = useMe(), [t0, setT] = useState(() => LS.get("lspdt.next.subtab." + div) || "com"), can = !!ME_ROLES.admin || lvl(me.r) >= lvl("Sargento I") || isUMem("md", me.n);
+  const co = !!ME_ROLES.admin || insRole("md", me.n) === "coord";
+  const base: DivTab[] = [{ value: "com", label: "Comunicados", icon: <Megaphone />, txt: "Comunicados" }, { value: "ins", label: "Instrucciones", icon: <GraduationCap />, txt: "Instrucciones" }, uniTab()], opts = divTabs(div, base, co);
+  const t = opts.some(x => x.value === t0) ? t0 : opts[0]?.value || "com";
   const go = (v: string) => { setT(v); LS.set("lspdt.next.subtab." + div, v); };
   const names = Object.keys(uMap("md")).filter(n => findAgent(n)).sort((a, b) => a.localeCompare(b, "es"));
   return (
     <div className="space-y-5">
       <DivHero d={sub} />
-      <Segmented value={t} onChange={go} options={[{ value: "com", label: "Comunicados", icon: <Megaphone /> }, { value: "ins", label: "Instrucciones", icon: <GraduationCap /> }]} />
-      {t === "ins" ? <Instrucciones div={div} ab={div.toUpperCase()} names={names} roleOf={n => insRole("md", n)} tipos={["Persecución marítima", "Buceo", "Rescate subacuático", "Navegación"]} canEdit={can} isCoord={!!ME_ROLES.admin || insRole("md", me.n) === "coord"} />
+      <Segmented value={t} onChange={go} options={opts} />
+      {t === "adm" ? <DivAdmin id={div} ab={div.toUpperCase()} tabs={base} /> : t === "uni" ? <Uniformidad id={div} ab={div.toUpperCase()} canEdit={co} /> : t === "ins" ? <Instrucciones div={div} ab={div.toUpperCase()} names={names} roleOf={n => insRole("md", n)} tipos={["Persecución marítima", "Buceo", "Rescate subacuático", "Navegación"]} canEdit={can} isCoord={!!ME_ROLES.admin || insRole("md", me.n) === "coord"} />
         : <Comunicados div={div} canEdit={can} />}
     </div>);
 }
@@ -88,6 +92,8 @@ export function Division({ d }: { d: string }) {
       <p className="mt-1 max-w-sm text-sm text-slate-500">{k ? "Solo los miembros autorizados de la división pueden entrar." : "Esta división todavía no tiene contenido en la terminal."}</p>
       {k && <p className="mt-3 text-xs text-slate-400">Estás ingresado como {rankES(me.r)} {me.n}.</p>}
     </Card>);
+  /* divisiones todavía sin contenido: igual tienen su uniformidad (la carga la administración o Capitanía) */
+  if (!k) body = <div className="space-y-5">{body}<Uniformidad id={"x-" + d.toLowerCase().replace(/[^a-z0-9]+/g, "-")} ab={divAb(d)[0] || d} canEdit={!!ME_ROLES.admin || lvl(me.r) >= 8} /></div>;
   else if (k === "rtd") body = <Rtd />;
   else body = <Unit k={k} />;
   const subDiv = SUB_OPEN[sub];

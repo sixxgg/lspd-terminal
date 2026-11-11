@@ -3,7 +3,7 @@
    solo la ven los miembros de esa división.
    Datos: lspdt.uprof.<slug> (solo el dueño), .ban (portada), lspdt.ucom.<slug> (comentarios), lspdt.uvis.<slug> (visitas), lspdt.ufol.<slug> (seguidores). */
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Activity, BadgeCheck, Check, Bold, Camera, ChevronsUp, Crown, Eye, Gem, Heading1, Heading2, Heading3, IdCard, Italic, List, Lock, MessageSquare, Pencil, Quote, Save, Scale, Send, Strikethrough, Trash2, Trophy, Underline, UserCheck, UserPlus, Users, X, type LucideIcon } from "lucide-react";
+import { Activity, BadgeCheck, Bomb, Check, Bold, Camera, ChevronsUp, Crown, Eye, Gem, Heading1, Heading2, Heading3, IdCard, Italic, List, Lock, MessageSquare, Pencil, Quote, Save, Scale, Send, Strikethrough, Trash2, Trophy, Underline, UserCheck, UserPlus, Users, X, type LucideIcon } from "lucide-react";
 import { Button, Card, Textarea } from "@/components/ui";
 import { Avatar, RankBadge } from "@/components/agents";
 import { Ribbon } from "@/components/ribbon";
@@ -17,6 +17,7 @@ import { decorOf, type Award } from "@/lib/decor";
 import { profFull, takePreset } from "@/lib/profiles";
 import { isPSB, rtdMem, uMap, type UnitKey } from "@/lib/units";
 import { mdHtml } from "@/lib/discord";
+import { TAB_ICONS } from "@/lib/tabfx";
 import { nickOf } from "@/lib/nick";
 import { cn } from "@/lib/cn";
 
@@ -38,13 +39,25 @@ const TIER = {
   mitico: { l: "Mítico", c: "#f43f5e", bg: "conic-gradient(from 0deg,#f43f5e,#f59e0b,#22c55e,#06b6d4,#8b5cf6,#f43f5e)" },
 } as const;
 type Tier = keyof typeof TIER;
-const LOGROS: { k: string; t: string; d: string; tier: Tier; I: LucideIcon; ok: (n: string, r: string) => boolean }[] = [
+/* íconos propios de los logros únicos */
+type IcoP = { className?: string; style?: React.CSSProperties };
+const BananaI = ({ className, style }: IcoP) => <svg viewBox="0 0 64 64" className={className} style={style} fill="currentColor"><path d={TAB_ICONS.banana[1]} /></svg>;
+const TurkeyI = ({ style }: IcoP) => <svg viewBox="0 0 30 20" style={{ ...style, width: (style?.width as number) * 1.25 || undefined, color: undefined }}><rect width="30" height="20" rx="2" fill="#e30a17" /><circle cx="11.5" cy="10" r="5" fill="#fff" /><circle cx="12.75" cy="10" r="4" fill="#e30a17" />
+  <path fill="#fff" d="m16.6 10 3.7-1.2-2.3 3.15V8.05l2.3 3.15z" /></svg>;
+const WatchI = ({ className, style }: IcoP) => <svg viewBox="0 0 64 64" className={className} style={style}><path fill="currentColor" d="M32 4 52 12v18c0 14-9 25-20 30C21 55 12 44 12 30V12z" /><path fill="#0b0f17" d="M32 9.5 47 16v14c0 11-6.6 19.8-15 24-8.4-4.2-15-13-15-24V16z" />
+  <text x="32" y="38" textAnchor="middle" fontSize="15" fontWeight="900" fill="currentColor" fontFamily="sans-serif">WC</text></svg>;
+const LOGROS: { k: string; t: string; d: string; tier: Tier; I: LucideIcon; ok: (n: string, r: string) => boolean; only?: string }[] = [
   { k: "reg", t: "Registrado", d: "Tiene cuenta en la terminal.", tier: "comun", I: UserCheck, ok: n => ACC.names.includes(n) },
   { k: "ofi", t: "Oficial", d: "Forma parte del LSPD.", tier: "comun", I: BadgeCheck, ok: (_n, r) => lvl(r) >= 1 },
   { k: "sgt", t: "Sargento", d: "Llegó a Sargento I.", tier: "raro", I: ChevronsUp, ok: (_n, r) => lvl(r) >= 6 },
   { k: "psb", t: "Miembro de la PSB", d: "Integra el Professional Standards Bureau.", tier: "epico", I: Scale, ok: n => isPSB(n) },
   { k: "sgt2", t: "Sargento II", d: "Llegó a Sargento II.", tier: "legend", I: Crown, ok: (_n, r) => lvl(r) >= 7 },
   { k: "fnd", t: "Fundador", d: "Creó la terminal.", tier: "mitico", I: Gem, ok: n => n === FOUNDER },
+  /* únicos: solo aparecen en el perfil de su dueño */
+  { k: "bomba", t: "Mister Bomba", d: "Explotó más de 3 veces.", tier: "legend", I: Bomb, ok: n => n === "Evelyn Molina", only: "Evelyn Molina" },
+  { k: "banana", t: "Bananita", d: "Logro exclusivo de Aniita.", tier: "mitico", I: BananaI as unknown as LucideIcon, ok: n => n === "Evelyn Molina", only: "Evelyn Molina" },
+  { k: "wc", t: "Watch Commander", d: "Fue Watch Commander durante 4 días.", tier: "legend", I: WatchI as unknown as LucideIcon, ok: n => n === "Liam Campbell", only: "Liam Campbell" },
+  { k: "tr", t: "Türkiye", d: "Logro exclusivo de TURKO.", tier: "mitico", I: TurkeyI as unknown as LucideIcon, ok: n => n === "Liam Campbell", only: "Liam Campbell" },
 ];
 function Medal({ tier, I, on = true, size = 56 }: { tier: Tier; I: LucideIcon; on?: boolean; size?: number }) {
   const T = TIER[tier];
@@ -132,13 +145,13 @@ export function Perfil() {
   const saveP = (p: Partial<UProf>) => LS.setJSON(K.prof(who), { ...LS.json<UProf>(K.prof(who), {}), ...p });
   const post = () => { const x = txt.trim(); if (!x) return; LS.setJSON(K.com(who), [...LS.json<UCom[]>(K.com(who), []), { id: uid(), by: me.n, t: Date.now(), x: x.slice(0, 1500) }].slice(-200)); setTxt(""); toast(own ? "Publicado" : `Comentario enviado a ${nickOf(who)}`); };
   const following = fol.includes(me.n), idx = ACC.names.indexOf(who), id = idx >= 0 ? idx + 1 : 0;
-  const logros = LOGROS.map(l => ({ ...l, on: l.ok(who, r) })), got = logros.filter(l => l.on);
+  const logros = LOGROS.filter(l => !l.only || l.only === who).map(l => ({ ...l, on: l.ok(who, r) })), got = logros.filter(l => l.on);
   const best = got.slice().reverse().slice(0, 3);
   /* actividad general (OOC) y la policial privada */
   const act: (Ev & { by?: string })[] = [...(P.since ? [{ t: P.since, x: "Se registró en la terminal" }] : []),
     ...coms.filter(c => c.by === who).map(c => ({ t: c.t, x: `Escribió en su perfil: «${c.x.slice(0, 80)}${c.x.length > 80 ? "…" : ""}»` }))].sort((a, b) => b.t - a.t).slice(0, 20);
   const pol = policeAct(who, me);
-  const TABS: ["act" | "log" | "com" | "pj", string, LucideIcon, number | string][] = [["act", "Actividad", Activity, act.length + pol.reduce((s, g) => s + g.ev.length, 0)], ["log", "Logros", Trophy, `${got.length}/${LOGROS.length}`], ["com", "Comentarios", MessageSquare, coms.length], ["pj", "Personaje", IdCard, ""]];
+  const TABS: ["act" | "log" | "com" | "pj", string, LucideIcon, number | string][] = [["act", "Actividad", Activity, act.length + pol.reduce((s, g) => s + g.ev.length, 0)], ["log", "Logros", Trophy, `${got.length}/${logros.length}`], ["com", "Comentarios", MessageSquare, coms.length], ["pj", "Personaje", IdCard, ""]];
   const people = (L: string[]) => <div className="grid grid-cols-5 gap-2">{L.slice(0, 15).map(n => <button key={n} title={N(n)} onClick={() => setWho(n)} className="justify-self-center"><Avatar n={n} size={36} /></button>)}</div>;
   const stats: [string, string][] = [["Comentarios", String(coms.length)], ["Ingreso", dmy(P.since)], ["Última visita", P.seen ? ago(P.seen) : "—"]];
   return (

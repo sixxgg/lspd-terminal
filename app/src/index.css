@@ -74,6 +74,8 @@ html.neon.dark header.sticky { box-shadow: 0 1px 0 rgb(var(--b-500) / .2), 0 10p
 .tablet[data-brand="magenta"] .tb-brand { text-shadow: 0 0 5px #ff2bd6, 0 0 14px #ff2bd6, 0 0 28px #b5179e; }
 .tablet[data-brand="magenta"] .tb-brand svg { filter: drop-shadow(0 0 4px #ff2bd6) drop-shadow(0 0 12px #b5179e); }
 .tb-glow { position: absolute; inset: 31px 27px 27px; border-radius: 12px; pointer-events: none; border: 1.5px solid currentColor; opacity: .55; box-shadow: 0 0 10px currentColor, inset 0 0 8px currentColor; }
+/* los efectos de color corren en su propia capa (GPU): el filtro no repinta la pantalla en cada cuadro */
+.tb-brand, .tb-glow { will-change: filter, opacity; transform: translateZ(0); }
 .tablet[data-brand="off"] .tb-glow { display: none; }
 @keyframes tb-hue { to { filter: hue-rotate(360deg); } }
 @keyframes tb-pulse { 0%,100% { opacity: 1; } 50% { opacity: .7; } }

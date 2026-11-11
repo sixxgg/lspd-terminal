@@ -1,6 +1,7 @@
+import { DivAdmin, Uniformidad, divTabs, type DivTab } from "./DivTools";
 import { Comunicados } from "./Comunicados";
 import { lazy, Suspense, useMemo, useState } from "react";
-import { Megaphone, Users, Pencil, Check, Plus, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History, Dog, ClipboardCheck, MessageCircle, Trophy, Loader2 } from "lucide-react";
+import { Megaphone, Shirt, Users, Pencil, Check, Plus, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History, Dog, ClipboardCheck, MessageCircle, Trophy, Loader2 } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input, Segmented, Select } from "@/components/ui";
 import { AgentCombo, AgentPicker, Avatar } from "@/components/agents";
 import { Helicopter } from "@/components/icons";
@@ -82,17 +83,19 @@ export function Unit({ k }: { k: UnitKey }) {
   const tabs0: TB[] = [["ros", "Roster", Users], ...(k === "psb" ? PSB_TABS : u.reg ? [["reg", u.reg, ClipboardPen], ["log", `${u.regs} (${uLog(k).length})`, ListChecks]] as TB[] : []),
     ...(k === "asd" ? [["com", "Comunicados", Megaphone] as TB] : []), ...(k === "asd" && co ? [["exa", "Exámenes", GraduationCap] as TB] : []),
     ...(mdIns ? [["mde", "Examen escrito", ClipboardCheck], ["mdi", "Entrevista de instructor", MessageCircle], ["mdl", "Lista de elegibles", Trophy]] as TB[] : []),
-    ["ins", "Instrucciones", GraduationCap]];
+    ["ins", "Instrucciones", GraduationCap], ["uni", "Uniformidad", Shirt]];
   const mem = isUMem(k, me.n), names = Object.keys(uMap(k)).filter(n => findAgent(n)).sort((a, b) => a.localeCompare(b, "es"));
   /* Roster siempre primero; el resto de la A a la Z */
   const tabs = [tabs0[0], ...tabs0.slice(1).sort((a, b) => a[1].localeCompare(b[1], "es", { numeric: true }))];
   const [tab, setTab] = useState(() => LS.get(`lspdt.next.utab.${k}`) || "ros");
-  const t = tabs.some(x => x[0] === tab) ? tab : "ros";
+  /* pestañas que la coordinación dejó visibles para los miembros (+ Administración para la coordinación) */
+  const base: DivTab[] = tabs.map(([v, l, I]) => ({ value: v, label: l, icon: <I />, txt: l })), opts = divTabs(k, base, co);
+  const t = opts.some(x => x.value === tab) ? tab : opts[0]?.value || "ros";
   const go = (v: string) => { setTab(v); LS.set(`lspdt.next.utab.${k}`, v); };
   return (
     <div className="space-y-5" style={{ ["--uacc" as string]: pal.acc }}>
-      <Segmented value={t} onChange={go} options={tabs.map(([v, l, I]) => ({ value: v, label: l, icon: <I /> }))} />
-      {t === "ros" ? <Roster k={k} pal={pal.roles} />
+      <Segmented value={t} onChange={go} options={opts} />
+      {t === "adm" ? <DivAdmin id={k} ab={u.ab} tabs={base} /> : t === "uni" ? <Uniformidad id={k} ab={u.ab} canEdit={co} /> : t === "ros" ? <Roster k={k} pal={pal.roles} />
         : t === "ins" ? <Instrucciones div={k} ab={u.ab} names={names} roleOf={n => insRole(k, n)} tipos={INS_TIPOS[k]} canEdit={mem} isCoord={co} />
         : t === "mde" || t === "mdi" || t === "mdl" ? <Lazy><MetroExam tab={t === "mde" ? "exa" : t === "mdi" ? "ent" : "list"} /></Lazy>
         : t === "reg" ? <RegForm k={k} onSaved={() => go("log")} /> : t === "log" ? <LogView k={k} /> : t === "exa" ? <Exams pal={pal.roles} /> : t === "com" ? <Comunicados div="asd" canEdit={co} />

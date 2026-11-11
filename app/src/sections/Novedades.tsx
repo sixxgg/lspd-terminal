@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.9.9";
+export const APP_VERSION = "1.9.10";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,13 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "1.9.10", f: "11/11/2026", t: "Uniformidad y administración por división", items: [
+    "Todas las divisiones tienen la pestaña Uniformidad: atuendos con nombre y código que se copian con un clic.",
+    "Coordinación y subcoordinación tienen la pestaña Administración (en rojo) para elegir qué pestañas ven los miembros de la división.",
+    "Logros únicos nuevos en algunos perfiles.",
+    "La marca del marco ya no aparece un instante al abrir la página si la administración la apagó.",
+    "Menos trabajo en segundo plano: el panel privado ya no se redibuja entero cada segundo y los efectos de color usan la GPU.",
+  ] },
   { v: "1.9.9", f: "11/11/2026", t: "Catálogo de robos vigente", items: [
     "El catálogo de robos de six toma el Excel de misiones como lo vigente: corrige los límites de la normativa vieja y suma los robos nuevos en su categoría.",
     "Catálogo: policías en binomios y uniones, dinero separado de lo que también da (ítems, piezas), filtros rápidos (actualizados, nuevos, pendientes) y FOTO 4K por sección.",

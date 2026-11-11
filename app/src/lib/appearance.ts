@@ -65,8 +65,11 @@ export const CURS: Record<string, { l: string; h?: [number, number] }> = {
 /* ---- lectura de preferencias (locales de cada navegador; las del departamento llegan por lspdt.ui) ---- */
 const lsGet = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k: string, v: string | null) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { /* */ } };
-let deptUi: Record<string, string> = {};
-export const setDeptUi = (u: Record<string, string>) => { const t = JSON.stringify(u); if (t !== JSON.stringify(deptUi)) { deptUi = u; applyAppearance(); } };
+/* apariencia por defecto del depto: se guarda una copia local para que el primer render (antes de sincronizar)
+   ya use el tema, el puntero y la marca del marco correctos y no parpadee lo que viene por defecto */
+const DEPT_CACHE = "lspdt.next.deptUi";
+let deptUi: Record<string, string> = (() => { try { return JSON.parse(localStorage.getItem(DEPT_CACHE) || "{}") || {}; } catch { return {}; } })();
+export const setDeptUi = (u: Record<string, string>) => { const t = JSON.stringify(u); if (t !== JSON.stringify(deptUi)) { deptUi = u; try { localStorage.setItem(DEPT_CACHE, t); } catch { /* */ } applyAppearance(); } };
 export const deptUiNow = () => deptUi;
 type Pref = { skin: string; skinOwn: boolean; acc: string; crt: string; crtI: number; frame: boolean; neon: boolean; font: string; head: string; cur: string; curOwn: boolean; nav: "top" | "side"; brand: "rgb" | "magenta" | "off"; brandOwn: boolean; brandSpd: number };
 export const BRANDS = ["rgb", "magenta", "off"] as const;
