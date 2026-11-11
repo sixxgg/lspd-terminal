@@ -255,3 +255,9 @@ html:is([data-head="rajdhani"], [data-head="teko"]) h1.text-2xl { font-size: 1.7
 @keyframes holo-shift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 @keyframes holo-sweep { from { background-position: 160% 0; } to { background-position: -60% 0; } }
 @media (prefers-reduced-motion: reduce) { .holo, .holo::after, .holo-text, .holo-card { animation: none !important; } }
+
+/* aviso de actualización */
+.upd-pill { background: linear-gradient(135deg, rgb(var(--b-500, 99 102 241)) 0%, #7c3aed 55%, #db2777 100%); border: 1px solid rgba(255,255,255,.22); backdrop-filter: blur(8px); }
+.upd-in { animation: upd-in .45s cubic-bezier(.2,.9,.3,1.2) both; } .upd-out { animation: upd-out .28s ease-in both; }
+@keyframes upd-in { from { transform: translateY(-140%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes upd-out { to { transform: translateY(-140%); opacity: 0; } }

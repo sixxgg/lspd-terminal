@@ -102,6 +102,15 @@ async function poll() {
     if (ch) bump();
   } finally { polling = false; }
 }
+/* recarga todo del servidor (lo borrado desaparece aunque se haya perdido el aviso); respeta lo que se está guardando */
+export async function reloadAll(): Promise<boolean> {
+  if (!ONLINE) return false;
+  const r = await api("/api/data"); if (r.__s !== 200 || !r.store) return false;
+  const st = r.store as Dict, kt = (r.kt || {}) as Record<string, number>;
+  for (const k of Object.keys(CACHE)) if (!has(st, k) && !Sync.q.has(k) && Sync.cur !== k) { delete CACHE[k]; delete BASE[k]; }
+  for (const [k, v] of Object.entries(st)) { if (Sync.q.has(k) || Sync.cur === k) continue; CACHE[k] = v; BASE[k] = v; KT[k] = kt[k] || KT[k] || 0; }
+  SYNC_T = Math.max(SYNC_T, Number(r.t) || 0); bump(); return true;
+}
 /* sincroniza ya (la pizarra la usa cada 2 s mientras está abierta) */
 export const syncNow = () => { if (!document.hidden) void poll(); };
 function schedule() { clearTimeout(pollT); pollT = window.setTimeout(async () => { if (!document.hidden) await poll(); schedule(); }, 5000); }

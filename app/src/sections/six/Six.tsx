@@ -2,7 +2,7 @@
    Pestañas: Inicio y, de la A a la Z, Administración · Comunicados · Equipo de ilícitos · Gestión de staff · Notificaciones. Los datos van en lspdt.six.* (el servidor no se los muestra a nadie más). */
 import "./six.css";
 import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
-import { AtSign, Bell, Check, ChevronRight, Copy, FileText, Home, Lock, Megaphone, Plus, Power, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X } from "lucide-react";
+import { AtSign, Bell, Check, ChevronRight, Copy, FileText, Home, Lock, Megaphone, Plus, Power, RefreshCw, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
 import { api, authApi } from "@/lib/api";
 import { discordHtml } from "@/lib/discord";
@@ -12,7 +12,7 @@ import { TAB_ICONS, cipher, glyphs, tabIcon, useTabFx } from "@/lib/tabfx";
 import { FIRMAS, ILIC_VARS, consultaInteres, firmaDe, ilicText, mentions, type IlicForm } from "./ilicito";
 import { Catalogo } from "./Robos";
 import { NotifTab, fbList, whoOf, FB_SEEN } from "./Notif";
-import { LS, useJSON } from "@/lib/store";
+import { LS, reloadAll, useJSON } from "@/lib/store";
 import { FB_ST, fbSt, fbX } from "@/components/fbnotif";
 import { Boot, NS, K, cfg0, cfgKey, Rain, THEMES, colorOf, hex, vars, type SixCfg, type Who } from "./fx";
 
@@ -134,6 +134,7 @@ const Soon = ({ t }: { t: string }) => (
 /* ---------- administración: temas y efectos de six ---------- */
 /* ---------- inicio: resumen de todo lo de six ---------- */
 function HomeTab({ go, unread, staff }: { go: (t: Tab) => void; unread: number; staff: number }) {
+  const [rf, setRf] = useState(false), refresh = async () => { setRf(true); await reloadAll(); setRf(false); };
   const six = NS.id === "six", fb = six ? fbList() : [], sent = LS.ro<Sent[]>(K("ilic"), []), com = LS.ro<Com[]>(K("com"), []);
   const abiertos = fb.filter(x => ["pend", "curso"].includes(fbSt(x.st))).length, h = new Date().getHours();
   const saludo = h >= 6 && h < 13 ? "Buenos días" : h >= 13 && h < 20 ? "Buenas tardes" : "Buenas noches";
@@ -158,11 +159,13 @@ function HomeTab({ go, unread, staff }: { go: (t: Tab) => void; unread: number; 
           <span className="grid size-11 place-items-center rounded-xl border border-six/40 bg-six/10 text-six six-ico"><I className="size-5" /></span>
           <span className="min-w-0 flex-1 font-sans"><b className="block text-white">{l}{LOCKED().includes(k) && <Lock className="ml-1.5 inline size-3 opacity-50" />}</b><span className="block text-sm text-six">{a}</span><span className="block truncate text-xs text-slate-500">{b}</span></span>
           <ChevronRight className="size-4 text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-six" /></button>))}</div>
-      {fb.length > 0 && <Panel t="Últimos feedback" icon={<Bell />}>
-        <div className="space-y-1.5">{fb.slice(0, 5).map(x => { const S = FB_ST[fbSt(x.st)]; return (
+      {six && <Panel t="Últimos feedback" icon={<Bell />}>
+        <div className="mb-2 flex justify-end"><button onClick={refresh} disabled={rf} className="inline-flex items-center gap-1.5 rounded-lg border border-six/30 px-2.5 py-1 font-sans text-xs font-semibold text-six transition hover:bg-six/10 disabled:opacity-50"><RefreshCw className={cn("size-3.5", rf && "animate-spin")} />{rf ? "Refrescando…" : "Refrescar"}</button></div>
+        {!fb.length ? <p className="py-4 text-center font-sans text-sm text-slate-500">No hay feedback por ahora.</p>
+        : <div className="space-y-1.5">{fb.slice(0, 5).map(x => { const S = FB_ST[fbSt(x.st)]; return (
           <button key={x.id} onClick={() => go("not")} className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left font-sans text-sm transition hover:bg-six/5">
             <S.I className="size-4 shrink-0" style={{ color: S.c }} /><span className="w-28 shrink-0 truncate font-semibold text-white">{whoOf(x)}</span>
-            <span className="min-w-0 flex-1 truncate text-slate-400">{fbX(x.x)}</span></button>); })}</div></Panel>}
+            <span className="min-w-0 flex-1 truncate text-slate-400">{fbX(x.x)}</span></button>); })}</div>}</Panel>}
       </>}
     </div>
   );

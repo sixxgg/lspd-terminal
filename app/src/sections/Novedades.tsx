@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.9.12";
+export const APP_VERSION = "1.9.13";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,11 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "1.9.13", f: "11/11/2026", t: "Uniformes por rango", items: [
+    "Uniformidad agrupada por rango de la división: cada uno accede a los atuendos de su rango y de los de abajo; los de arriba aparecen bloqueados.",
+    "Alta y edición de atuendos en una ventana chica, y tarjetas más compactas.",
+    "Aviso de versión nueva rediseñado: aparece arriba, con el número de versión y el botón Actualizar.",
+  ] },
   { v: "1.9.12", f: "11/11/2026", t: "Links temporales y uniformidad por género", items: [
     "Uniformidad: cada atuendo lleva nombre, género (Hombre / Mujer) y código para copiar y pegar; se puede filtrar por género.",
     "Links temporales: la coordinación crea un link de solo lectura de la uniformidad que vence solo (de 1 hora a 7 días), ve cuántas veces se abrió y lo puede revocar.",

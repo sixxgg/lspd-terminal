@@ -3,7 +3,7 @@
    · Administración (solo coordinación / subcoordinación): qué pestañas ven los miembros (lspdt.divacc.<div>) y links temporales
    · Links temporales de solo lectura (api/share) y su vista pública (?ver=<token>) */
 import { useEffect, useState, type ReactNode } from "react";
-import { Check, Copy, Eye, EyeOff, Link2, Pencil, Plus, Shirt, ShieldAlert, Trash2, X } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, Link2, Lock, Pencil, Plus, Shirt, ShieldAlert, Trash2 } from "lucide-react";
 import { Button, Card, Empty, Field, Input, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { api } from "@/lib/api";
@@ -13,7 +13,7 @@ import { useMe } from "@/lib/me";
 import { uid } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 
-type Unif = { id: string; n: string; g?: "h" | "m"; code: string; nota?: string; by?: string; t?: number };
+type Unif = { id: string; n: string; g?: "h" | "m"; r?: string; rl?: string; rc?: string; code: string; nota?: string; by?: string; t?: number };
 type Acc = { hide?: string[] };
 export type DivTab = { value: string; label: ReactNode; icon?: ReactNode; txt?: string };
 
@@ -30,51 +30,74 @@ export const uniTab = (): DivTab => ({ value: "uni", label: "Uniformidad", icon:
 const GEN = { h: { l: "Hombre", s: "♂", c: "border-sky-400/40 bg-sky-500/10 text-sky-700 dark:text-sky-300" }, m: { l: "Mujer", s: "♀", c: "border-pink-400/40 bg-pink-500/10 text-pink-700 dark:text-pink-300" } } as const;
 const GenTag = ({ g }: { g?: "h" | "m" }) => g ? <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold", GEN[g].c)}><span className="text-sm leading-none">{GEN[g].s}</span>{GEN[g].l}</span> : null;
 function useCopy() { const { toast } = useFeedback(); return (s: string, what = "Código copiado") => { void navigator.clipboard?.writeText(s).then(() => toast(what), () => toast("No se pudo copiar")); }; }
-function UnifCard({ u, copy, tools }: { u: Unif; copy: (s: string) => void; tools?: ReactNode }) {
+export type URole = [string, string, string]; /* [clave, nombre, color] de mayor a menor jerarquía */
+function UnifCard({ u, copy, tools, locked }: { u: Unif; copy: (s: string) => void; tools?: ReactNode; locked?: string }) {
   return (
-    <Card className="flex flex-col gap-2 p-4">
-      <div className="flex items-start gap-2"><Shirt className="mt-0.5 size-4 shrink-0 text-brand-500" /><b className="flex-1 leading-tight">{u.n}</b>{tools}</div>
-      {u.g && <div><GenTag g={u.g} /></div>}
-      <button onClick={() => copy(u.code)} title="Copiar código" className="group flex items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-left font-mono text-sm transition hover:border-brand-500 dark:border-slate-700 dark:bg-slate-900/60">
-        <span className="min-w-0 flex-1 break-all">{u.code}</span><Copy className="size-4 shrink-0 text-slate-400 group-hover:text-brand-500" /></button>
-      {u.nota && <p className="text-xs text-slate-500">{u.nota}</p>}
-    </Card>);
+    <div className={cn("group relative flex flex-col gap-1.5 overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition dark:border-slate-800 dark:bg-slate-900/70", !locked && "hover:-translate-y-0.5 hover:shadow-md")}
+      style={{ boxShadow: u.rc ? `inset 3px 0 0 ${u.rc}` : undefined }}>
+      <div className="flex items-start gap-2"><b className="min-w-0 flex-1 truncate text-sm leading-tight">{u.n}</b>{tools}</div>
+      <div className="flex flex-wrap items-center gap-1"><GenTag g={u.g} />{u.rl && <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: (u.rc || "#64748b") + "22", color: u.rc || undefined }}>{u.rl}</span>}</div>
+      {locked ? <div className="flex items-center gap-2 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs text-slate-500 dark:bg-slate-800/70"><Lock className="size-3.5 shrink-0" /><span className="truncate">{locked}</span></div>
+        : <button onClick={() => copy(u.code)} title="Copiar código" className="flex items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-2.5 py-1.5 text-left font-mono text-xs transition hover:border-brand-500 dark:border-slate-700 dark:bg-slate-950/60">
+          <span className="line-clamp-2 min-w-0 flex-1 break-all">{u.code}</span><Copy className="size-3.5 shrink-0 text-slate-400" /></button>}
+      {u.nota && !locked && <p className="line-clamp-2 text-[11px] text-slate-500">{u.nota}</p>}
+    </div>);
 }
 const GenFilter = ({ v, set, L }: { v: "" | "h" | "m"; set: (v: "" | "h" | "m") => void; L: Unif[] }) => (
   <div className="flex gap-1">{([["", "Todos"], ["h", "Hombre"], ["m", "Mujer"]] as const).map(([k, l]) => (
     <button key={k} onClick={() => set(k)} className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold transition", v === k ? "border-brand-500 bg-brand-500/10 text-brand-700 dark:text-brand-300" : "border-slate-200 text-slate-500 hover:text-slate-800 dark:border-slate-700 dark:hover:text-white")}>
       {k && GEN[k].s} {l} <span className="opacity-60">{k ? L.filter(u => u.g === k).length : L.length}</span></button>))}</div>);
+/* atuendos agrupados por rango (de mayor a menor) y al final los generales */
+function groups(L: Unif[], roles: URole[]) {
+  const G = roles.map(([k, l, c]) => ({ k, l, c, L: L.filter(u => u.r === k) })).filter(g => g.L.length);
+  const gen = L.filter(u => !u.r || !roles.some(r => r[0] === u.r));
+  if (gen.length) G.push({ k: "", l: "General · todos los rangos", c: "#64748b", L: gen });
+  return G;
+}
 
-export function Uniformidad({ id, ab, canEdit }: { id: string; ab: string; canEdit: boolean }) {
+export function Uniformidad({ id, ab, canEdit, roles = [], mine = [] }: { id: string; ab: string; canEdit: boolean; roles?: URole[]; mine?: string[] }) {
   const me = useMe(), { toast, confirm } = useFeedback(), copy = useCopy(), [L, setL] = useJSON<Unif[]>(`lspdt.unif.${id}`, []);
   const [ed, setEd] = useState<Unif | null>(null), [g, setG] = useState<"" | "h" | "m">(""), [sh, setSh] = useState(false);
-  const save = () => { if (!ed) return; const x = { ...ed, n: ed.n.trim(), code: ed.code.trim(), nota: ed.nota?.trim(), by: me.n, t: Date.now() };
+  /* acceso por jerarquía: cada uno ve los de su rango y los de abajo; la coordinación ve todo */
+  const myIdx = Math.min(...mine.map(r => roles.findIndex(x => x[0] === r)).filter(i => i >= 0), Infinity);
+  const lockOf = (u: Unif) => { if (canEdit || !u.r) return ""; const i = roles.findIndex(x => x[0] === u.r); return i < 0 || i >= myIdx ? "" : `Solo ${roles[i][1]} o superior`; };
+  const save = () => { if (!ed) return; const R = roles.find(x => x[0] === ed.r);
+    const x: Unif = { ...ed, n: ed.n.trim(), code: ed.code.trim(), nota: ed.nota?.trim(), r: R ? R[0] : "", rl: R ? R[1] : "", rc: R ? R[2] : "", by: me.n, t: Date.now() };
     if (!x.n || !x.code) { toast("Completá nombre y código"); return; } if (!x.g) { toast("Elegí el género"); return; }
     setL(L.some(y => y.id === x.id) ? L.map(y => y.id === x.id ? x : y) : [...L, x]); setEd(null); toast("Atuendo guardado"); };
-  const V = L.filter(u => !g || u.g === g);
+  const V = L.filter(u => !g || u.g === g), G = groups(V, roles);
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-sm text-slate-500"><b className="text-slate-900 dark:text-white">{L.length}</b> atuendo{L.length === 1 ? "" : "s"} de la {ab}</p>
         {L.length > 0 && <GenFilter v={g} set={setG} L={L} />}
         <span className="mr-auto" />
-        {V.length > 1 && <Button size="sm" variant="outline" icon={<Copy />} onClick={() => copy(V.map(u => `${u.n}${u.g ? ` (${GEN[u.g].l})` : ""}: ${u.code}`).join("\n"), "Todos los códigos copiados")}>Copiar todos</Button>}
         {canEdit && <Button size="sm" variant="outline" icon={<Link2 />} onClick={() => setSh(true)}>Link temporal</Button>}
-        {canEdit && !ed && <Button size="sm" icon={<Plus />} onClick={() => setEd({ id: uid(), n: "", code: "" })}>Nuevo atuendo</Button>}
+        {canEdit && <Button size="sm" icon={<Plus />} onClick={() => setEd({ id: uid(), n: "", code: "", r: "" })}>Nuevo atuendo</Button>}
       </div>
-      {ed && <Card className="grid gap-4 p-4 sm:grid-cols-2">
-        <Field label="Nombre"><Input autoFocus value={ed.n} onChange={e => setEd({ ...ed, n: e.target.value })} placeholder="Ej.: Uniforme de patrulla" maxLength={60} /></Field>
-        <Field label="Género"><div className="flex gap-2">{(["h", "m"] as const).map(k => (
-          <button key={k} type="button" onClick={() => setEd({ ...ed, g: k })} className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-bold transition", ed.g === k ? GEN[k].c + " ring-2 ring-current/30" : "border-slate-200 text-slate-500 hover:text-slate-800 dark:border-slate-700 dark:hover:text-white")}>
-            <span className="text-base leading-none">{GEN[k].s}</span>{GEN[k].l}</button>))}</div></Field>
-        <Field label="Código (copiá y pegá)" className="sm:col-span-2"><Textarea rows={2} value={ed.code} onChange={e => setEd({ ...ed, code: e.target.value })} placeholder="Pegá acá el código del atuendo" className="font-mono" maxLength={800} /></Field>
-        <Field label="Nota (opcional)" className="sm:col-span-2"><Input value={ed.nota || ""} onChange={e => setEd({ ...ed, nota: e.target.value })} placeholder="Cuándo se usa, rango, accesorios…" /></Field>
-        <div className="flex justify-end gap-2 sm:col-span-2"><Button size="sm" variant="ghost" icon={<X />} onClick={() => setEd(null)}>Cancelar</Button><Button size="sm" icon={<Check />} onClick={save}>Guardar</Button></div>
-      </Card>}
-      {!L.length && !ed ? <Empty icon={<Shirt />} title="Sin atuendos cargados" desc={canEdit ? "Creá el primero con su nombre, género y el código para copiar." : "La coordinación todavía no cargó la uniformidad."} />
-        : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{V.map(u => <UnifCard key={u.id} u={u} copy={copy} tools={canEdit && <>
-            <button aria-label="Editar" onClick={() => setEd(u)} className="text-slate-400 hover:text-brand-500"><Pencil className="size-3.5" /></button>
-            <button aria-label="Borrar" onClick={async () => { if (await confirm(`¿Borrar «${u.n}»?`, { danger: true })) setL(L.filter(x => x.id !== u.id)); }} className="text-slate-400 hover:text-red-500"><Trash2 className="size-3.5" /></button></>} />)}</div>}
+      {!L.length ? <Empty icon={<Shirt />} title="Sin atuendos cargados" desc={canEdit ? "Creá el primero con su nombre, rango, género y el código para copiar." : "La coordinación todavía no cargó la uniformidad."} />
+        : G.map(gr => (
+          <section key={gr.k || "_"} className="space-y-2">
+            <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider" style={{ color: gr.c }}><span className="size-2 rounded-full" style={{ background: gr.c }} />{gr.l}<span className="font-semibold text-slate-400">· {gr.L.length}</span></h4>
+            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{gr.L.map(u => <UnifCard key={u.id} u={u} copy={copy} locked={lockOf(u)} tools={canEdit && <span className="flex gap-1.5 opacity-60 transition group-hover:opacity-100">
+              <button aria-label="Editar" onClick={() => setEd(u)} className="text-slate-400 hover:text-brand-500"><Pencil className="size-3.5" /></button>
+              <button aria-label="Borrar" onClick={async () => { if (await confirm(`¿Borrar «${u.n}»?`, { danger: true })) setL(L.filter(x => x.id !== u.id)); }} className="text-slate-400 hover:text-red-500"><Trash2 className="size-3.5" /></button></span>} />)}</div>
+          </section>))}
+      {/* alta y edición en un modal chico */}
+      <Modal open={!!ed} onClose={() => setEd(null)} size="sm" icon={<Shirt />} title={ed && L.some(y => y.id === ed.id) ? "Editar atuendo" : "Nuevo atuendo"} desc={`Uniformidad de la ${ab}`}
+        footer={<><Button size="sm" variant="ghost" onClick={() => setEd(null)}>Cancelar</Button><Button size="sm" icon={<Check />} onClick={save}>Guardar</Button></>}>
+        {ed && <div className="space-y-3">
+          <Field label="Nombre"><Input autoFocus value={ed.n} onChange={e => setEd({ ...ed, n: e.target.value })} placeholder="Ej.: Uniforme de patrulla" maxLength={60} /></Field>
+          {roles.length > 0 && <Field label="Rango"><div className="flex flex-wrap gap-1.5">{([["", "Todos los rangos", "#64748b"] as URole, ...roles]).map(([k, l, c]) => (
+            <button key={k || "_"} type="button" onClick={() => setEd({ ...ed, r: k })} className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold transition", (ed.r || "") === k ? "text-white" : "text-slate-600 hover:brightness-110 dark:text-slate-300")}
+              style={(ed.r || "") === k ? { background: c, borderColor: c } : { borderColor: c + "66" }}>{l}</button>))}</div></Field>}
+          <Field label="Género"><div className="grid grid-cols-2 gap-2">{(["h", "m"] as const).map(k => (
+            <button key={k} type="button" onClick={() => setEd({ ...ed, g: k })} className={cn("flex items-center justify-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-bold transition", ed.g === k ? GEN[k].c + " ring-2 ring-offset-1 ring-current dark:ring-offset-slate-900" : "border-slate-200 text-slate-500 hover:text-slate-800 dark:border-slate-700 dark:hover:text-white")}>
+              <span className="text-base leading-none">{GEN[k].s}</span>{GEN[k].l}</button>))}</div></Field>
+          <Field label="Código (copiá y pegá)"><Textarea rows={2} value={ed.code} onChange={e => setEd({ ...ed, code: e.target.value })} placeholder="Pegá acá el código del atuendo" className="!min-h-0 h-16 font-mono text-xs" maxLength={800} /></Field>
+          <Field label="Nota (opcional)"><Input value={ed.nota || ""} onChange={e => setEd({ ...ed, nota: e.target.value })} placeholder="Cuándo se usa, accesorios…" /></Field>
+        </div>}
+      </Modal>
       <Modal open={sh} onClose={() => setSh(false)} icon={<Link2 />} title={`Link temporal · Uniformidad ${ab}`} desc="Quien tenga el link ve la uniformidad sin iniciar sesión, solo lectura, hasta que venza o lo revoques.">
         <ShareLinks k={`lspdt.unif.${id}`} title={`Uniformidad · ${ab}`} />
       </Modal>
@@ -122,7 +145,9 @@ export function PublicSection({ tok }: { tok: string }) {
           {L.length > 0 && <GenFilter v={g} set={setG} L={L} />}</header>
         {!D ? <p className="py-16 text-center text-slate-400">Cargando…</p> : !D.ok ? <Card className="p-10 text-center"><p className="font-semibold">{D.msg}</p><p className="mt-1 text-sm text-slate-400">Pedile un link nuevo a la coordinación de la división.</p></Card>
           : !L.length ? <p className="py-16 text-center text-slate-400">Todavía no hay atuendos cargados.</p>
-          : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{V.map(u => <UnifCard key={u.id} u={u} copy={copy} />)}</div>}
+          : groups(V, [...new Map(V.filter(u => u.r).map(u => [u.r!, [u.r!, u.rl || u.r!, u.rc || "#64748b"] as URole])).values()]).map(gr => (
+            <section key={gr.k || "_"} className="space-y-2"><h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider" style={{ color: gr.c }}><span className="size-2 rounded-full" style={{ background: gr.c }} />{gr.l}</h4>
+              <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">{gr.L.map(u => <UnifCard key={u.id} u={u} copy={copy} />)}</div></section>))}
       </div>
     </div>);
 }

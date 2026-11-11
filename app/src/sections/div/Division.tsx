@@ -2,9 +2,9 @@ import { useState, type ReactNode } from "react";
 import { GraduationCap, Lock, Megaphone } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import { Instrucciones } from "./Instrucciones";
-import { DivAdmin, Uniformidad, divTabs, uniTab, type DivTab } from "./DivTools";
+import { DivAdmin, Uniformidad, divTabs, uniTab, type DivTab, type URole } from "./DivTools";
 import { findAgent } from "@/lib/domain";
-import { insRole, isUMem, uMap } from "@/lib/units";
+import { UNITS, insRole, isUMem, uMap } from "@/lib/units";
 import { Card } from "@/components/ui";
 import { DivLogo } from "@/sections/sup/Agentes";
 import { DIV_DESC, DIV_DONE, divOpen, heroColors, subsOf, useDivColors } from "@/lib/divisions";
@@ -75,7 +75,7 @@ function SubBody({ sub, div }: { sub: string; div: CommDiv }) {
     <div className="space-y-5">
       <DivHero d={sub} />
       <Segmented value={t} onChange={go} options={opts} />
-      {t === "adm" ? <DivAdmin id={div} ab={div.toUpperCase()} tabs={base} /> : t === "uni" ? <Uniformidad id={div} ab={div.toUpperCase()} canEdit={co} /> : t === "ins" ? <Instrucciones div={div} ab={div.toUpperCase()} names={names} roleOf={n => insRole("md", n)} tipos={["Persecución marítima", "Buceo", "Rescate subacuático", "Navegación"]} canEdit={can} isCoord={!!ME_ROLES.admin || insRole("md", me.n) === "coord"} />
+      {t === "adm" ? <DivAdmin id={div} ab={div.toUpperCase()} tabs={base} /> : t === "uni" ? <Uniformidad id={div} ab={div.toUpperCase()} canEdit={co} roles={UNITS.md.R.map(r => [r[0], r[1], r[2]] as URole)} mine={uMap("md")[me.n] || []} /> : t === "ins" ? <Instrucciones div={div} ab={div.toUpperCase()} names={names} roleOf={n => insRole("md", n)} tipos={["Persecución marítima", "Buceo", "Rescate subacuático", "Navegación"]} canEdit={can} isCoord={!!ME_ROLES.admin || insRole("md", me.n) === "coord"} />
         : <Comunicados div={div} canEdit={can} />}
     </div>);
 }
