@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.9.13";
+export const APP_VERSION = "1.9.14";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,10 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "1.9.14", f: "11/11/2026", t: "Links con el emblema real y ventanas con luz", items: [
+    "Los links temporales muestran el emblema actual de la división, el logo del departamento y el nombre completo de la división.",
+    "Ventanas y campos de texto con borde de luz, halo de neón y foco más visible.",
+  ] },
   { v: "1.9.13", f: "11/11/2026", t: "Uniformes por rango", items: [
     "Uniformidad agrupada por rango de la división: cada uno accede a los atuendos de su rango y de los de abajo; los de arriba aparecen bloqueados.",
     "Alta y edición de atuendos en una ventana chica, y tarjetas más compactas.",

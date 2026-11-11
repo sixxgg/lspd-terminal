@@ -75,7 +75,7 @@ function SubBody({ sub, div }: { sub: string; div: CommDiv }) {
     <div className="space-y-5">
       <DivHero d={sub} />
       <Segmented value={t} onChange={go} options={opts} />
-      {t === "adm" ? <DivAdmin id={div} ab={div.toUpperCase()} tabs={base} /> : t === "uni" ? <Uniformidad id={div} ab={div.toUpperCase()} canEdit={co} roles={UNITS.md.R.map(r => [r[0], r[1], r[2]] as URole)} mine={uMap("md")[me.n] || []} /> : t === "ins" ? <Instrucciones div={div} ab={div.toUpperCase()} names={names} roleOf={n => insRole("md", n)} tipos={["Persecución marítima", "Buceo", "Rescate subacuático", "Navegación"]} canEdit={can} isCoord={!!ME_ROLES.admin || insRole("md", me.n) === "coord"} />
+      {t === "adm" ? <DivAdmin id={div} ab={div.toUpperCase()} dn={sub} tabs={base} /> : t === "uni" ? <Uniformidad id={div} ab={div.toUpperCase()} dn={sub} canEdit={co} roles={UNITS.md.R.map(r => [r[0], r[1], r[2]] as URole)} mine={uMap("md")[me.n] || []} /> : t === "ins" ? <Instrucciones div={div} ab={div.toUpperCase()} names={names} roleOf={n => insRole("md", n)} tipos={["Persecución marítima", "Buceo", "Rescate subacuático", "Navegación"]} canEdit={can} isCoord={!!ME_ROLES.admin || insRole("md", me.n) === "coord"} />
         : <Comunicados div={div} canEdit={can} />}
     </div>);
 }
@@ -93,9 +93,9 @@ export function Division({ d }: { d: string }) {
       {k && <p className="mt-3 text-xs text-slate-400">Estás ingresado como {rankES(me.r)} {me.n}.</p>}
     </Card>);
   /* divisiones todavía sin contenido: igual tienen su uniformidad (la carga la administración o Capitanía) */
-  if (!k) body = <div className="space-y-5">{body}<Uniformidad id={"x-" + d.toLowerCase().replace(/[^a-z0-9]+/g, "-")} ab={divAb(d)[0] || d} canEdit={!!ME_ROLES.admin || lvl(me.r) >= 8} /></div>;
-  else if (k === "rtd") body = <Rtd />;
-  else body = <Unit k={k} />;
+  if (!k) body = <div className="space-y-5">{body}<Uniformidad id={"x-" + d.toLowerCase().replace(/[^a-z0-9]+/g, "-")} ab={divAb(d)[0] || d} dn={d} canEdit={!!ME_ROLES.admin || lvl(me.r) >= 8} /></div>;
+  else if (k === "rtd") body = <Rtd dn={d} />;
+  else body = <Unit k={k} dn={d} />;
   const subDiv = SUB_OPEN[sub];
   if (subDiv && subsOf(d).includes(sub)) body = <SubBody sub={sub} div={subDiv} />;
   return <div className={cn("space-y-5")}><DivHero d={d} /><SubTiles d={d} sel={sub} onSel={s => { setSub(s); LS.set("lspdt.next.dsub." + d, s); }} />{body}</div>;

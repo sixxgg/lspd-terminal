@@ -23,7 +23,7 @@ const NEW = (me?: string): R => ({ asp: "", cid: "", fnac: "", edad: "", lugar: 
 const RES: Record<string, [string, string]> = { apto: ["Apto", "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"], noapto: ["No apto", "bg-red-500/10 text-red-700 dark:text-red-300"], pend: ["Pendiente", "bg-amber-400/15 text-amber-700 dark:text-amber-300"] };
 const CMP_C: Record<string, string> = { ok: "border-emerald-400/40 bg-emerald-500/5", mid: "border-amber-400/40 bg-amber-500/5", no: "border-red-400/40 bg-red-500/5", nd: "border-slate-200 dark:border-slate-800" };
 
-export function Rtd() {
+export function Rtd({ dn }: { dn?: string }) {
   const me = useMe();
   const [tab, setTab] = useState<string>("new"), [edit, setEdit] = useState<R | null>(null), [open, setOpen] = useState<string | null>(null);
   const [L] = useJSON<R[]>("lspdt.rtdEnt", []);
@@ -35,7 +35,7 @@ export function Rtd() {
   return (
     <div className="space-y-5">
       <Segmented value={t} onChange={setTab} options={opts} />
-      {t === "adm" ? <DivAdmin id="rtd" ab="RTD" tabs={base} /> : t === "uni" ? <Uniformidad id="rtd" ab="RTD" canEdit={co} /> : t === "ins" ? <Instrucciones div="rtd" ab="RTD" names={rtdMem().slice().sort()} roleOf={() => "inst"} tipos={["Academia", "Procedimientos de patrulla", "Código penal", "Uso de la radio", "Conducción"]} canEdit={isRTD(me.n)} isCoord={!!me.admin} />
+      {t === "adm" ? <DivAdmin id="rtd" ab="RTD" dn={dn} tabs={base} /> : t === "uni" ? <Uniformidad id="rtd" ab="RTD" dn={dn} canEdit={co} /> : t === "ins" ? <Instrucciones div="rtd" ab="RTD" names={rtdMem().slice().sort()} roleOf={() => "inst"} tipos={["Academia", "Procedimientos de patrulla", "Código penal", "Uso de la radio", "Conducción"]} canEdit={isRTD(me.n)} isCoord={!!me.admin} />
         : t === "new" ? <RtdForm key={edit?.id || "n"} init={edit} onSaved={id => { setEdit(null); setOpen(id); setTab("list"); }} />
         : <RtdList open={open} setOpen={setOpen} onEdit={r => { setEdit(r); setTab("new"); scrollTopApp(); }} />}
     </div>

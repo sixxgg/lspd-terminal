@@ -20,7 +20,11 @@ export default wrap(async (req, res) => {
     /* cada apertura nueva del enlace suma una vista (los refrescos no) */
     if (!Number(qs.since)) { s.views = (s.views || 0) + 1; await q("update meta set v=$2 where k=$1", ["share:" + t, JSON.stringify(s)]); }
     if (Number(qs.since) >= kt) return send(res, 200, { same: true, exp: s.exp, live: L, now: Date.now() });
-    return send(res, 200, { v: r ? r.v : null, t: kt, title: s.title || "Pizarra", kind: s.kind || "board", by: s.by, exp: s.exp, live: L, now: Date.now() });
+    /* uniformidad: emblema de la división y logo del departamento actuales (la vista pública no tiene sesión para pedirlos) */
+    let img;
+    if (s.kind === "unif" && !Number(qs.since)) { const R = (await q("select k, v from kv where k = any($1) and v is not null", [[`lspdt.divlogo.${s.div || ""}`, "lspdt.logo"]])).rows;
+      img = { div: (R.find(x => x.k.startsWith("lspdt.divlogo.")) || {}).v || null, brand: (R.find(x => x.k === "lspdt.logo") || {}).v || null }; }
+    return send(res, 200, { v: r ? r.v : null, t: kt, title: s.title || "Pizarra", kind: s.kind || "board", div: s.div, ab: s.ab, img, by: s.by, exp: s.exp, live: L, now: Date.now() });
   }
   const u = await requireUser(req, res); if (!u) return;
   const b = await body(req);
@@ -35,6 +39,6 @@ export default wrap(async (req, res) => {
   const kind = typeof b.k === "string" ? kindOf(b.k) : "";
   if (!kind) return send(res, 400, { msg: "Sección inválida" });
   const h = Math.min(168, Math.max(1, Number(b.h) || 24)), t = randomBytes(16).toString("hex"), exp = Date.now() + h * 3600e3;
-  await q("insert into meta(k,v) values($1,$2)", ["share:" + t, JSON.stringify({ k: b.k, kind, exp, by: u.n, views: 0, title: String(b.title || "Pizarra").slice(0, 80) })]);
+  await q("insert into meta(k,v) values($1,$2)", ["share:" + t, JSON.stringify({ k: b.k, kind, exp, by: u.n, views: 0, title: String(b.title || "Pizarra").slice(0, 80), div: typeof b.div === "string" ? b.div.slice(0, 80) : undefined, ab: typeof b.ab === "string" ? b.ab.slice(0, 20) : undefined })]);
   return send(res, 200, { t, exp });
 });

@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { useFeedback } from "@/components/feedback";
 import { LS, useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { uid } from "@/lib/domain";
+import { divEmblem, uid } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 
 type Unif = { id: string; n: string; g?: "h" | "m"; r?: string; rl?: string; rc?: string; code: string; nota?: string; by?: string; t?: number };
@@ -55,7 +55,7 @@ function groups(L: Unif[], roles: URole[]) {
   return G;
 }
 
-export function Uniformidad({ id, ab, canEdit, roles = [], mine = [] }: { id: string; ab: string; canEdit: boolean; roles?: URole[]; mine?: string[] }) {
+export function Uniformidad({ id, ab, dn, canEdit, roles = [], mine = [] }: { id: string; ab: string; dn?: string; canEdit: boolean; roles?: URole[]; mine?: string[] }) {
   const me = useMe(), { toast, confirm } = useFeedback(), copy = useCopy(), [L, setL] = useJSON<Unif[]>(`lspdt.unif.${id}`, []);
   const [ed, setEd] = useState<Unif | null>(null), [g, setG] = useState<"" | "h" | "m">(""), [sh, setSh] = useState(false);
   /* acceso por jerarquía: cada uno ve los de su rango y los de abajo; la coordinación ve todo */
@@ -99,19 +99,19 @@ export function Uniformidad({ id, ab, canEdit, roles = [], mine = [] }: { id: st
         </div>}
       </Modal>
       <Modal open={sh} onClose={() => setSh(false)} icon={<Link2 />} title={`Link temporal · Uniformidad ${ab}`} desc="Quien tenga el link ve la uniformidad sin iniciar sesión, solo lectura, hasta que venza o lo revoques.">
-        <ShareLinks k={`lspdt.unif.${id}`} title={`Uniformidad · ${ab}`} />
+        <ShareLinks k={`lspdt.unif.${id}`} title={`Uniformidad · ${ab}`} div={dn} ab={ab} />
       </Modal>
     </div>);
 }
 
 /* links temporales de una sección: crear (con vencimiento), copiar, ver vistas y revocar */
 const DUR: [number, string][] = [[1, "1 hora"], [6, "6 horas"], [24, "1 día"], [72, "3 días"], [168, "7 días"]];
-export function ShareLinks({ k, title }: { k: string; title: string }) {
+export function ShareLinks({ k, title, div, ab }: { k: string; title: string; div?: string; ab?: string }) {
   const { toast } = useFeedback(), copy = useCopy(), [h, setH] = useState(24), [L, setL] = useState<{ t: string; exp: number; by: string; views: number }[] | null>(null), [busy, setBusy] = useState(false);
   const url = (t: string) => `${location.origin}/next/?ver=${t}`;
   const load = async () => { const r = await api("/api/share", { list: k }); setL(r.__s === 200 ? (r.list as typeof L) || [] : []); };
   useEffect(() => { void load(); }, [k]); // eslint-disable-line react-hooks/exhaustive-deps
-  const create = async () => { setBusy(true); const r = await api("/api/share", { k, h, title }); setBusy(false);
+  const create = async () => { setBusy(true); const r = await api("/api/share", { k, h, title, div, ab }); setBusy(false);
     if (r.__s !== 200) { toast((r.msg as string) || "No se pudo crear el link", "err"); return; } copy(url(r.t as string), "Link creado y copiado"); void load(); };
   const revoke = async (t: string) => { const r = await api("/api/share", { del: t }); if (r.__s !== 200) { toast((r.msg as string) || "No se pudo revocar", "err"); return; } toast("Link revocado"); void load(); };
   const left = (exp: number) => { const m = Math.max(0, Math.round((exp - Date.now()) / 60000)); return m >= 1440 ? `${Math.round(m / 1440)} d` : m >= 60 ? `${Math.round(m / 60)} h` : `${m} min`; };
@@ -132,27 +132,43 @@ export function ShareLinks({ k, title }: { k: string; title: string }) {
     </div>);
 }
 
-/* vista pública (sin sesión) de un link temporal de uniformidad: ?ver=<token> */
+/* vista pública (sin sesión) de un link temporal de uniformidad: ?ver=<token>
+   Usa el emblema actual de la división y el logo del departamento que manda el servidor */
+type PubD = { v?: string | null; title?: string; div?: string; ab?: string; exp?: number; img?: { div?: string | null; brand?: string | null }; msg?: string; ok?: boolean };
 export function PublicSection({ tok }: { tok: string }) {
-  const copy = useCopy(), [D, setD] = useState<{ v?: string | null; title?: string; exp?: number; msg?: string; ok?: boolean } | null>(null), [g, setG] = useState<"" | "h" | "m">("");
-  useEffect(() => { document.title = "Uniformidad · LSPD"; void api(`/api/share?t=${tok}`).then(r => setD(r.__s === 200 ? { ...(r as object), ok: true } : { msg: (r.msg as string) || "El link no es válido" })); }, [tok]);
+  const copy = useCopy(), [D, setD] = useState<PubD | null>(null), [g, setG] = useState<"" | "h" | "m">("");
+  useEffect(() => { document.documentElement.classList.add("dark"); void api(`/api/share?t=${tok}`).then(r => setD(r.__s === 200 ? { ...(r as PubD), ok: true } : { msg: (r.msg as string) || "El link no es válido" })); }, [tok]);
   const L: Unif[] = (() => { try { return D?.v ? JSON.parse(D.v) : []; } catch { return []; } })(), V = L.filter(u => !g || u.g === g);
+  const ab = D?.ab || (D?.title || "").replace(/^Uniformidad · /, ""), emb = D?.img?.div || (D?.div ? divEmblem(D.div) : "") || D?.img?.brand || "/next/logo.svg";
+  useEffect(() => { document.title = `Uniformidad${ab ? " · " + ab : ""} · LSPD`; }, [ab]);
+  const left = D?.exp ? Math.max(0, D.exp - Date.now()) : 0, lt = left > 864e5 ? `${Math.round(left / 864e5)} d` : left > 36e5 ? `${Math.round(left / 36e5)} h` : `${Math.max(1, Math.round(left / 6e4))} min`;
   return (
-    <div className="min-h-dvh bg-slate-950 px-4 py-8 text-slate-100 dark">
-      <div className="mx-auto max-w-5xl space-y-5">
-        <header className="flex flex-wrap items-center gap-3"><img src="/next/logo.svg" alt="" className="size-10" />
-          <div className="flex-1"><h1 className="text-xl font-bold">{D?.title || "Uniformidad"}</h1><p className="text-xs text-slate-400">Los Santos Police Department · vista temporal de solo lectura{D?.exp ? ` · vence el ${new Date(D.exp).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}` : ""}</p></div>
-          {L.length > 0 && <GenFilter v={g} set={setG} L={L} />}</header>
-        {!D ? <p className="py-16 text-center text-slate-400">Cargando…</p> : !D.ok ? <Card className="p-10 text-center"><p className="font-semibold">{D.msg}</p><p className="mt-1 text-sm text-slate-400">Pedile un link nuevo a la coordinación de la división.</p></Card>
+    <div className="pub-bg min-h-dvh px-4 py-8 text-slate-100">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <header className="pub-hero relative overflow-hidden rounded-2xl p-5 sm:p-6">
+          <div className="relative flex flex-wrap items-center gap-4 sm:gap-5">
+            <div className="pub-emb grid size-20 shrink-0 place-items-center sm:size-24"><img src={emb} alt="" className="size-full object-contain" /></div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-brand-300">{D?.img?.brand ? <img src={D.img.brand} alt="" className="mr-1.5 inline size-4 align-[-3px]" /> : null}Los Santos Police Department</p>
+              <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">Uniformidad{ab && <span className="pub-neon"> · {ab}</span>}</h1>
+              {D?.div && <p className="text-sm text-slate-400">{D.div}</p>}
+            </div>
+            {D?.ok && <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300"><span className="size-1.5 animate-pulse rounded-full bg-emerald-400" />Solo lectura · vence en {lt}</span>}
+          </div>
+        </header>
+        {D?.ok && L.length > 0 && <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm text-slate-400"><b className="text-white">{L.length}</b> atuendos · tocá un código para copiarlo</p><GenFilter v={g} set={setG} L={L} /></div>}
+        {!D ? <p className="py-16 text-center text-slate-400">Cargando…</p>
+          : !D.ok ? <div className="pub-hero rounded-2xl p-10 text-center"><Lock className="mx-auto mb-3 size-8 text-slate-400" /><p className="font-semibold">{D.msg}</p><p className="mt-1 text-sm text-slate-400">Pedile un link nuevo a la coordinación de la división.</p></div>
           : !L.length ? <p className="py-16 text-center text-slate-400">Todavía no hay atuendos cargados.</p>
           : groups(V, [...new Map(V.filter(u => u.r).map(u => [u.r!, [u.r!, u.rl || u.r!, u.rc || "#64748b"] as URole])).values()]).map(gr => (
-            <section key={gr.k || "_"} className="space-y-2"><h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider" style={{ color: gr.c }}><span className="size-2 rounded-full" style={{ background: gr.c }} />{gr.l}</h4>
-              <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">{gr.L.map(u => <UnifCard key={u.id} u={u} copy={copy} />)}</div></section>))}
+            <section key={gr.k || "_"} className="space-y-2.5"><h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em]" style={{ color: gr.c, textShadow: `0 0 12px ${gr.c}88` }}><span className="size-2 rounded-full" style={{ background: gr.c, boxShadow: `0 0 10px ${gr.c}` }} />{gr.l}</h4>
+              <div className="pub-cards grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{gr.L.map(u => <UnifCard key={u.id} u={u} copy={copy} />)}</div></section>))}
+        <p className="pt-4 text-center text-[11px] uppercase tracking-[0.2em] text-slate-600">LSPD · Terminal de Mando</p>
       </div>
     </div>);
 }
 
-export function DivAdmin({ id, ab, tabs }: { id: string; ab: string; tabs: DivTab[] }) {
+export function DivAdmin({ id, ab, dn, tabs }: { id: string; ab: string; dn?: string; tabs: DivTab[] }) {
   const { toast } = useFeedback(), [A, setA] = useJSON<Acc>(accKey(id), {}), hide = new Set(A.hide || []);
   const flip = (v: string, txt: string) => { const h = new Set(hide); if (h.has(v)) h.delete(v); else h.add(v); setA({ ...A, hide: [...h] }); toast(h.has(v) ? `«${txt}» ahora es solo para la coordinación` : `«${txt}» visible para toda la ${ab}`); };
   return (
@@ -171,6 +187,6 @@ export function DivAdmin({ id, ab, tabs }: { id: string; ab: string; tabs: DivTa
       </div>
       <div className="border-t border-red-500/20 p-5"><p className="mb-1 text-sm font-semibold">Links temporales · Uniformidad</p>
         <p className="mb-3 text-xs text-slate-500">Para que alguien sin cuenta vea la uniformidad un tiempo limitado. Podés ver cuántas veces se abrió y revocarlo cuando quieras.</p>
-        <ShareLinks k={`lspdt.unif.${id}`} title={`Uniformidad · ${ab}`} /></div>
+        <ShareLinks k={`lspdt.unif.${id}`} title={`Uniformidad · ${ab}`} div={dn} ab={ab} /></div>
     </Card>);
 }

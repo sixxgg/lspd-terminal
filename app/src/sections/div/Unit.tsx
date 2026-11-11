@@ -75,7 +75,7 @@ function asdXText(n: string, X: XRec) {
 
 const PSB_TABS: [string, string, typeof Bell][] = [["not", "Notificación", Bell], ["ele", "Elevación de caso", ArrowUpRight], ["jus", "Aprobación SAJD", Gavel], ["res", "Resolución", FileCheck2], ["vot", "Votaciones", Vote], ["his", "Expedientes", History], ["cat", "Catálogo de faltas", BookMarked], ["cit", "Citación 10-80", Radio]];
 
-export function Unit({ k }: { k: UnitKey }) {
+export function Unit({ k, dn }: { k: UnitKey; dn?: string }) {
   useStoreVersion();
   const me = useMe(), u = UNITS[k], co = isUCoord(k, me.n), pal = unitPalette(k);
   type TB = [string, string, typeof Bell];
@@ -95,7 +95,7 @@ export function Unit({ k }: { k: UnitKey }) {
   return (
     <div className="space-y-5" style={{ ["--uacc" as string]: pal.acc }}>
       <Segmented value={t} onChange={go} options={opts} />
-      {t === "adm" ? <DivAdmin id={k} ab={u.ab} tabs={base} /> : t === "uni" ? <Uniformidad id={k} ab={u.ab} canEdit={co} roles={u.R.map(r => [r[0], r[1], r[2]] as URole)} mine={uMap(k)[me.n] || []} /> : t === "ros" ? <Roster k={k} pal={pal.roles} />
+      {t === "adm" ? <DivAdmin id={k} ab={u.ab} dn={dn} tabs={base} /> : t === "uni" ? <Uniformidad id={k} ab={u.ab} dn={dn} canEdit={co} roles={u.R.map(r => [r[0], r[1], r[2]] as URole)} mine={uMap(k)[me.n] || []} /> : t === "ros" ? <Roster k={k} pal={pal.roles} />
         : t === "ins" ? <Instrucciones div={k} ab={u.ab} names={names} roleOf={n => insRole(k, n)} tipos={INS_TIPOS[k]} canEdit={mem} isCoord={co} />
         : t === "mde" || t === "mdi" || t === "mdl" ? <Lazy><MetroExam tab={t === "mde" ? "exa" : t === "mdi" ? "ent" : "list"} /></Lazy>
         : t === "reg" ? <RegForm k={k} onSaved={() => go("log")} /> : t === "log" ? <LogView k={k} /> : t === "exa" ? <Exams pal={pal.roles} /> : t === "com" ? <Comunicados div="asd" canEdit={co} />
