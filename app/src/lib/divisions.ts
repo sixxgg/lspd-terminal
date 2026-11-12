@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { DIVS, divAb, divEmblem } from "./domain";
 import { LS, ME_ROLES } from "./store";
-import { profFull } from "./profiles";
 import { GEN, UNITS, isGMem, isRTD, isUMem, roleOv, type UnitKey } from "./units";
 
 export const DIV_DESC: Record<string, string> = {
@@ -24,12 +23,11 @@ export const DIV_DESC: Record<string, string> = {
   "K-9 Division": "Unidad canina: detección de sustancias y explosivos, búsqueda de personas y apoyo en operativos.",
 };
 export const DIV_DONE: Record<string, "rtd" | UnitKey> = { "Recruitment and Training Division": "rtd", "Air Support Division": "asd", "K-9 Division": "k9", "Professional Standards Bureau": "psb", "Metropolitan Division": "md" };
-/* división con roster genérico: entra quien está cargado en su roster o la tiene en su perfil */
-const inProf = (d: string, me: string) => ((profFull(me).div || []) as string[]).includes(d);
-export const divOpen = (d: string, me: string) => { const k = DIV_DONE[d]; if (k) return k === "rtd" ? isRTD(me) : isUMem(k, me); const g = GEN[d]; return !!ME_ROLES.admin || (!!g && (isGMem(g.id, me) || inProf(d, me))); };
+/* división con roster genérico: entra solo quien está cargado en su roster (también lo controla el servidor) */
+export const divOpen = (d: string, me: string) => { const k = DIV_DONE[d]; if (k) return k === "rtd" ? isRTD(me) : isUMem(k, me); const g = GEN[d]; return !!ME_ROLES.admin || (!!g && isGMem(g.id, me)); };
 /* qué divisiones aparecen en el menú: las que tienen contenido, solo para quien está cargado en su roster;
    las que todavía no tienen contenido, solo para quien la tiene en su perfil. La administración ve todas. */
-export const divVisible = (d: string, me: string) => !!ME_ROLES.admin || divOpen(d, me) || (!DIV_DONE[d] && inProf(d, me));
+export const divVisible = (d: string, me: string) => !!ME_ROLES.admin || divOpen(d, me);
 export const subsOf = (d: string) => DIVS.find(x => x[0] === d)?.[1] || [];
 
 /* colores: [acento, claro, oscuro] — por defecto los medidos del logo oficial; con un logo propio se calculan */

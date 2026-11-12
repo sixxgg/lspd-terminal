@@ -12,7 +12,7 @@ import { copyText } from "@/components/output";
 import { findAgent, hoyISO, rankES, uid } from "@/lib/domain";
 import { LS, ME_ROLES, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { GEN, gMap, gRoleOf, gRoles, gSave, isGCo, isGMem, saveRoles, type GRole } from "@/lib/units";
+import { GEN, gCall, gMap, gRoleOf, gRoles, gSave, gSaveCall, isGCo, isGMem, saveRoles, type GRole } from "@/lib/units";
 import { cn } from "@/lib/cn";
 import { DivAdmin, DivNav, Uniformidad, divTabs, type DivTab, type URole } from "./DivTools";
 import { Comunicados } from "./Comunicados";
@@ -83,9 +83,12 @@ function GenRoster({ id, ab, canEdit }: { id: string; ab: string; canEdit: boole
                   <div className="flex min-w-[14rem] flex-1 items-center gap-2.5"><Avatar n={n} size={32} />
                     <div><p className="text-sm font-semibold">{n}</p><p className="text-xs text-slate-500">{a ? `${a.p ? `#${a.p} · ` : ""}${rankES(a.r)}` : "No figura en el roster cargado"}</p></div></div>
                   {edit ? <div className="flex items-center gap-1.5">
+                    <Input defaultValue={gCall(id, n)} placeholder="Indicativo" className="h-8 w-32 font-mono text-xs uppercase"
+                      onBlur={e => { const v = e.target.value.trim().toUpperCase(); if (v !== gCall(id, n)) { gSaveCall(id, n, v); toast("Indicativo guardado"); } }} />
                     <Select value={top(m[n])} onChange={e => save(x => { x[n] = e.target.value; })} className="h-8 w-auto py-0 text-xs">{R.map(x => <option key={x.k} value={x.k}>{x.l}</option>)}</Select>
                     <button aria-label={`Quitar a ${n}`} onClick={async () => { if (await confirm(`¿Quitar a ${n} de la ${ab}?`, { danger: true })) save(x => { delete x[n]; }); }} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><X className="size-4" /></button>
                   </div> : <span style={{ ["--c" as string]: r.c }} className="inline-flex items-center rounded-md border border-[color:var(--c)] bg-[color:var(--c)]/15 px-1.5 py-0.5 text-[11px] font-semibold"><span className="mr-1.5 size-1.5 rounded-full" style={{ background: r.c }} />{r.l}</span>}
+                  {!edit && gCall(id, n) && <span className="rounded-md bg-red-500/10 px-1.5 py-0.5 font-mono text-[11px] font-bold text-red-600 dark:text-red-400">{gCall(id, n)}</span>}
                 </div>); }) : <p className="px-4 py-3 text-xs text-slate-400">Sin integrantes.</p>}
             </div>);
         })}</Card>)}

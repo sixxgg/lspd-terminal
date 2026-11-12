@@ -1,5 +1,5 @@
 import { q, tx } from "../lib/db.js";
-import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, privOk, isSix } from "../lib/core.js";
+import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, privOk, canRead, isSix } from "../lib/core.js";
 
 async function downloadImg(url) {
   const fail = m => Object.assign(new Error(m), { status: 400 });
@@ -33,7 +33,7 @@ export default wrap(async (req, res) => {
     const qs = query(req), since = Number(qs.since);
     if (qs.since !== undefined && qs.since !== "" && Number.isFinite(since) && since >= 0) {
       // cambios desde la última consulta (con margen, el cliente descarta lo que ya tiene)
-      const rows = (await q(SEL + " where t > $1 order by t", [since - 50])).rows.filter(r => privOk(r.k, u));
+      const rows = (await q(SEL + " where t > $1 order by t", [since - 50])).rows.filter(r => canRead(r.k, u));
       const ch = rows.map(r => [r.k, r.img ? imgUrl(r.k, r.t) : r.v, +r.t]);
       const t = rows.length ? Math.max(since, ...rows.map(r => +r.t)) : since;
       return send(res, 200, { ch, t, me: { admin: u.admin, owner: u.owner, six: isSix(u), anita: !!u.anita } });
@@ -84,7 +84,7 @@ export default wrap(async (req, res) => {
     const t = (await c.query("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do update set v=excluded.v, t=excluded.t, by=excluded.by, at=excluded.at returning t", [k, v, u.n, Date.now()])).rows[0].t;
     return { v, t: +t };
   });
-  if (k === "lspdt.roster") invalidate(); // el rango de alguien pudo cambiar
+  if (k === "lspdt.roster" || k === "lspdt.ui" || /^lspdt\.(asd|k9|psb|md)Roster$|^lspdt\.(groster|groles|divacc)\./.test(k)) invalidate(); // cambió el rango o las divisiones de alguien
   const r = { t: out.t };
   if (out.v !== mine || b.url || b.from) r.v = out.v && out.v.startsWith("data:") ? imgUrl(k, out.t) : out.v; // devuelve el resultado solo si cambió por la fusión
   return send(res, 200, r);

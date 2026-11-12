@@ -51,7 +51,8 @@ function uText(k: UnitKey, F: Partial<F> & { ag: string[]; mo: string }) {
   if (u.dog) { const e = Object.values(k9Dogs()).find(d => d.dog && d.dog === F.dog)?.esp; s += `\n**K-9:** ${F.dog || "—"}${e ? ` (${e})` : ""}`; }
   if (u.zona) s += `\n**Zona:** ${F.zona || "—"}`;
   s += `\n**Motivo:** ${F.mo === "Otro" ? F.mox || "—" : F.mo}${F.mo !== "Otro" && F.mox ? ` — ${F.mox}` : ""}`;
-  s += `\n**Permiso:** ${F.perm ? `${F.perm}${F.por ? ` (autorizado por ${F.por})` : ""}` : "—"}`; return s;
+  const pa = F.por ? findAgent(F.por) : null;
+  s += `\n**Permiso:** ${F.perm ? `${F.perm}${F.por ? ` (autorizado por ${pa ? rankES(pa.r) + " " : ""}${F.por}${pa?.p ? " #" + pa.p : ""})` : ""}` : "—"}`; return s;
 }
 const newF = (k: UnitKey, me: string): F => { const u = UNITS[k]; return { ag: me ? [me] : [], veh: u.veh ? u.veh.o[0][0] : "", mat: "", mo: u.mo?.[0] || "", mox: "", perm: "", por: "", dog: "", zona: "" }; };
 
@@ -210,8 +211,18 @@ function RegForm({ k, onSaved }: { k: UnitKey; onSaved: () => void }) {
               <button key={x} onClick={() => up({ mo: x })} className={cn("rounded-full border px-3 py-1 text-xs font-medium transition", F.mo === x ? "border-brand-500 bg-brand-600 text-white dark:bg-brand-500" : "border-slate-200 bg-white text-slate-600 hover:border-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300")}>{x}</button>))}</div>
               <Input className="mt-2" value={F.mox} onChange={e => up({ mox: e.target.value })} placeholder={F.mo === "Otro" ? "Escribí el motivo" : "Detalle (opcional)"} /></Field>
             <Field label="Permiso" hint={`(opcional${u.veh ? ", si se autoriza una aeronave distinta" : ""})`}>
-              <div className="flex gap-2"><Input value={F.perm} onChange={e => up({ perm: e.target.value })} placeholder={u.veh ? "Ej: Uso del MH-60S Blackhawk autorizado" : "Ej: Salida autorizada fuera de turno"} />
-                <AgentCombo className="w-60" value={F.por} onChange={n => up({ por: n })} names={auth} placeholder="Autorizado por…" /></div></Field>
+              <Input value={F.perm} onChange={e => up({ perm: e.target.value })} placeholder={u.veh ? "Ej: Uso del MH-60S Blackhawk autorizado" : "Ej: Salida autorizada fuera de turno"} /></Field>
+            {F.perm.trim() && <Field label="Autorizado por" hint="(coordinación, supervisores e instructores de la división)">
+              <div className="grid gap-2 sm:grid-cols-2">{auth.sort((a, b) => a.localeCompare(b, "es")).map(n => { const on = F.por === n, a = findAgent(n), r = uTop(k, m[n]); return (
+                <button key={n} type="button" onClick={() => up({ por: on ? "" : n })} aria-pressed={on}
+                  className={cn("flex items-center gap-2.5 rounded-xl border p-2 text-left transition", on ? "border-brand-500 bg-brand-500/10 ring-1 ring-brand-500/40" : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600")}>
+                  <Avatar n={n} size={32} />
+                  <span className="min-w-0 flex-1"><b className="block truncate text-[13px]">{n}</b>
+                    <small className="block truncate text-[11px] text-slate-500">{r[1]}{a?.p ? ` · #${a.p}` : ""}</small></span>
+                  {on && <Check className="size-4 shrink-0 text-brand-500" />}
+                </button>); })}</div>
+              {!auth.length && <p className="text-sm text-slate-400">No hay coordinación ni supervisores cargados en el roster.</p>}
+            </Field>}
           </CardBody>
         </Card>
       </Col>

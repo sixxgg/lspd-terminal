@@ -1,7 +1,7 @@
 /* Presencia en vivo de la pizarra: cada uno manda su cursor y lo que está moviendo (cada ~200 ms mientras hay actividad)
    y recibe lo de los demás, más la última versión guardada de la pizarra para traerla al instante. */
 import { q } from "../lib/db.js";
-import { send, body, wrap, requireUser } from "../lib/core.js";
+import { send, body, wrap, requireUser, canRead } from "../lib/core.js";
 
 export const BOARD = /^lspdt\.board\.[a-z0-9]+\.[a-z0-9]+$/;
 export async function liveOf(b, not = "") {
@@ -14,6 +14,7 @@ export default wrap(async (req, res) => {
   const u = await requireUser(req, res); if (!u) return;
   const b = await body(req);
   if (typeof b.b !== "string" || !BOARD.test(b.b)) return send(res, 400, { msg: "Pizarra inválida" });
+  if (!canRead(b.b, u)) return send(res, 403, { msg: "Solo los miembros de la división" });
   const now = Date.now();
   if (b.s === null) await q("delete from live where b=$1 and n=$2", [b.b, u.n]);
   else if (b.s && typeof b.s === "object") { const v = JSON.stringify(b.s); if (v.length < 80000) await q("insert into live(b,n,v,t) values($1,$2,$3,$4) on conflict(b,n) do update set v=excluded.v, t=excluded.t", [b.b, u.n, v, now]); }

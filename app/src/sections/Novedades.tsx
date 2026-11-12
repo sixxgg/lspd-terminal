@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "2.1";
+export const APP_VERSION = "2.1.1";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,12 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "2.1.1", f: "12/11/2026", t: "Rosters cargados y datos protegidos", items: [
+    "Rosters cargados: ASB (coordinación Lara Calloway y Evelyn Molina, agentes y administrativos), HSIU y Detective Bureau.",
+    "Indicativos en los rosters de las subdivisiones de la METRO y de la Detective Bureau (WHISKEY-01, 02, 03…), editables por la coordinación.",
+    "Registro de vuelo de la A.S.D: «Autorizado por» ahora es una lista clara con foto, rol y placa de cada uno.",
+    "Los datos de cada división (registros, uniformidad, instrucciones, comunicados, pizarras) solo los recibe quien está en su roster, y las pestañas «Solo coordinación» tampoco llegan al resto: lo controla el servidor, no solo la pantalla.",
+  ] },
   { v: "2.1", f: "12/11/2026", t: "Rosters para todos y nuevas divisiones", items: [
     "Todas las divisiones y subdivisiones tienen roster. La coordinación define los roles (nombre, color, orden y si coordinan) desde Administración, y suma o quita gente en un paso.",
     "Subdivisiones abiertas (SWAT, Bomb Squad, CNT, UDU y las de la Detective Bureau) con Roster, Uniformidad y Administración.",
