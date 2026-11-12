@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "2.5.3";
+export const APP_VERSION = "2.5.4";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,11 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "2.5.4", f: "12/11/2026", t: "METRO · Armas", items: [
+    "Nueva pestaña Armas para la coordinación de la METRO, separada en Pistolas, Subfusiles, Rifles, Francotiradores y Lanzagranadas.",
+    "Cada arma con su munición, accesorios por ranura (los del inventario del servidor), para quién está autorizada, notas y si está en dotación.",
+    "«Copiar kit» (por arma o el kit completo): comandos listos con el ID del jugador y la plantilla editable, lista de ítems o texto para Discord; cada línea se copia sola o todo junto.",
+  ] },
   { v: "2.5.3", f: "12/11/2026", t: "Avisos como notificaciones push", items: [
     "Todos los avisos de la terminal (foto cargada, cambios guardados, eliminado, errores…) bajan desde arriba de la pantalla como una notificación del teléfono: se apilan, se cierran solos y se pueden deslizar hacia arriba o tocar para cerrarlos.",
     "Las confirmaciones («¿Borrar…?», «¿Quitar la foto?») también llegan como notificación push con Cancelar / Confirmar y la pantalla de fondo desenfocada.",

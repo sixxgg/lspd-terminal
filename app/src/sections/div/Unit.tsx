@@ -1,7 +1,7 @@
 import { DivAdmin, DivNav, Uniformidad, divTabs, type DivTab, type URole } from "./DivTools";
 import { Comunicados } from "./Comunicados";
 import { lazy, Suspense, useMemo, useState } from "react";
-import { CalendarDays, Megaphone, Shirt, Users, Check, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History, Dog, ClipboardCheck, MessageCircle, Trophy, Loader2 } from "lucide-react";
+import { CalendarDays, Megaphone, Shirt, Users, Check, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History, Dog, ClipboardCheck, MessageCircle, Trophy, Loader2, Crosshair } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input, Segmented, Select } from "@/components/ui";
 import { AgentCombo, AgentPicker, Avatar } from "@/components/agents";
 import { Helicopter } from "@/components/icons";
@@ -20,6 +20,7 @@ import { RosterBoard } from "./Roster";
 import { T1080 } from "@/sections/sup/T1080";
 import { Instrucciones } from "./Instrucciones";
 import { DivCal } from "./DivCal";
+const Armas = lazy(() => import("./Armas").then(m => ({ default: m.Armas })));
 const MetroExam = lazy(() => import("./Metro").then(m => ({ default: m.MetroExam })));
 const Lazy = ({ children }: { children: React.ReactNode }) => <Suspense fallback={<div className="grid min-h-[30vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{children}</Suspense>;
 
@@ -88,6 +89,7 @@ export function Unit({ k, dn }: { k: UnitKey; dn?: string }) {
   const mdIns = k === "md" && (co || !!insRole("md", me.n));
   const tabs0: TB[] = [["ros", "Roster", Users], ...(k === "psb" ? PSB_TABS : u.reg ? [["reg", u.reg, ClipboardPen], ["log", `${u.regs} (${uLog(k).length})`, ListChecks]] as TB[] : []),
     ...(k === "asd" ? [["com", "Comunicados", Megaphone] as TB] : []), ...(k === "asd" && co ? [["exa", "Exámenes", GraduationCap] as TB] : []),
+    ...(k === "md" && co ? [["arm", "Armas", Crosshair] as TB] : []),
     ...(mdIns ? [["mde", "Examen escrito", ClipboardCheck], ["mdi", "Entrevista de instructor", MessageCircle], ["mdl", "Lista de elegibles", Trophy]] as TB[] : []),
     ["ins", "Instrucciones", GraduationCap], ["uni", "Uniformidad", Shirt], ["cal", "Calendario", CalendarDays]];
   const mem = isUMem(k, me.n), names = Object.keys(uMap(k)).filter(n => findAgent(n)).sort((a, b) => a.localeCompare(b, "es"));
@@ -103,6 +105,7 @@ export function Unit({ k, dn }: { k: UnitKey; dn?: string }) {
       <DivNav value={t} onChange={go} options={opts} />
       {t === "adm" ? <DivAdmin id={k} ab={u.ab} dn={dn} tabs={base} extra={<RoleEditor id={k} roles={unitRoles(k)} coFlag={false} locked={["coord", "subcoord", "co", "aco", "inst", "instp"]} />} /> : t === "uni" ? <Uniformidad id={k} ab={u.ab} dn={dn} canEdit={co} roles={u.R.map(r => [r[0], r[1], r[2]] as URole)} mine={uMap(k)[me.n] || []} /> : t === "ros" ? <Roster k={k} pal={pal.roles} />
         : t === "cal" ? <DivCal id={k} ab={u.ab} />
+        : t === "arm" && k === "md" && co ? <Lazy><Armas /></Lazy>
         : t === "ins" ? <Instrucciones div={k} ab={u.ab} names={names} roleOf={n => insRole(k, n)} tipos={INS_TIPOS[k]} canEdit={mem} isCoord={co} />
         : t === "mde" || t === "mdi" || t === "mdl" ? <Lazy><MetroExam tab={t === "mde" ? "exa" : t === "mdi" ? "ent" : "list"} /></Lazy>
         : t === "reg" ? <RegForm k={k} onSaved={() => go("log")} /> : t === "log" ? <LogView k={k} /> : t === "exa" ? <Exams pal={pal.roles} /> : t === "com" ? <Comunicados div="asd" canEdit={co} />
