@@ -127,7 +127,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
     <div className="flex min-h-[var(--app-h,100dvh)] flex-col bg-slate-50 dark:bg-slate-950">
       {modals}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/80">
-        <div className="mx-auto flex h-[4.5rem] max-w-[2100px] items-center gap-3 px-3 sm:px-5">
+        <div className="mx-auto flex h-[5.25rem] max-w-[2100px] items-center gap-3 px-3 sm:px-5">
           <div className="flex shrink-0 flex-col items-center gap-0.5"><button onClick={logoClick} title="Inicio" className={cn("flex shrink-0 items-center gap-2.5 rounded-xl p-0.5 text-left", focusRing)}>
             {logo}
             <span className="hidden min-w-0 min-[2300px]:block"><span className="block truncate text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">{kicker}</span>
@@ -148,10 +148,10 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
             <nav aria-label="Secciones" className="scrollbar-none mx-auto flex max-w-[1760px] gap-0.5 overflow-x-auto px-3 py-2 sm:px-5 [&>*:first-child]:ml-auto [&>*:last-child]:mr-auto">
               {secsOf(area, me.r).map(s => { const on = s.k === sec.k, I = s.icon; return (
                 <button key={s.k} onClick={() => go(area.k, s.k)} title={s.d} aria-current={on ? "page" : undefined}
-                  className={cn("inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition min-[1800px]:px-2.5 min-[1800px]:text-[11.5px]", focusRing,
+                  className={cn("inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-[12.5px] font-semibold uppercase tracking-wide transition min-[1800px]:px-3.5 min-[1800px]:text-[13px]", focusRing,
                     on ? "bg-brand-500/15 text-brand-700 ring-1 ring-inset ring-brand-500/40 dark:text-brand-200" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-white")}>
-                  <I className="size-3.5 shrink-0" />{area.k === "div" ? <><span className="hidden min-[1700px]:inline">{s.l}</span><span className="min-[1700px]:hidden">{divShort(s.l)}</span></> : s.sl || s.l}</button>); })}
-              {lockedOf(area, me.r).map(s => <span key={s.k} title="Bloqueada para tu rango" className="inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-red-500/70 dark:text-red-400/70 min-[1800px]:px-2.5 min-[1800px]:text-[11.5px]"><Lock className="size-3.5 shrink-0" />{s.sl || s.l}</span>)}
+                  <I className="size-4 shrink-0" />{area.k === "div" ? <><span className="hidden min-[1700px]:inline">{s.l}</span><span className="min-[1700px]:hidden">{divShort(s.l)}</span></> : s.sl || s.l}</button>); })}
+              {lockedOf(area, me.r).map(s => <span key={s.k} title="Bloqueada para tu rango" className="inline-flex shrink-0 cursor-not-allowed items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-[12.5px] font-semibold uppercase tracking-wide text-red-500/70 dark:text-red-400/70 min-[1800px]:px-3.5 min-[1800px]:text-[13px]"><Lock className="size-3.5 shrink-0" />{s.sl || s.l}</span>)}
             </nav>
           </div>)}
       </header>

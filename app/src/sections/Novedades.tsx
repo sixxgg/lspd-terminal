@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "2.5.1";
+export const APP_VERSION = "2.5.2";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,9 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "2.5.2", f: "12/11/2026", t: "Menú más grande", items: [
+    "Menú de áreas y de secciones más grandes (íconos y nombres), y la barra de estado de arriba ya no se parte en dos líneas en pantallas chicas.",
+  ] },
   { v: "2.5.1", f: "12/11/2026", t: "Feedback más prolijo", items: [
     "Feedback más compacto: categorías completas con ícono, editor más bajo y encabezado con los pasos (enviás → six lo revisa → se trabaja → te avisa la campanita).",
     "«Mis feedback»: los estados pasan a una grilla con contadores que también sirve de filtro (ya no se cortan) y un vacío más claro.",
