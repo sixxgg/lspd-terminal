@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "2.3.1";
+export const APP_VERSION = "2.3.2";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,11 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "2.3.2", f: "12/11/2026", t: "Notificaciones dentro de la tablet", items: [
+    "El aviso de actualización baja desde el borde de arriba de la pantalla de la tablet.",
+    "Apariencia: desenfoque de la pantalla al recibir una notificación, con deslizante para regularlo o apagarlo (de fábrica, apagado) y botón para probarlo.",
+    "El dueño de la terminal puede editar todos los rosters.",
+  ] },
   { v: "2.3.1", f: "12/11/2026", t: "Rosters solo para la coordinación", items: [
     "El roster de cada división lo modifica únicamente su coordinación (también lo controla el servidor). La administración solo puede cargarlo mientras la división no tenga coordinación.",
     "RTD con roster propio: Coordinación, Subcoordinador, Master Field Training Officer, Field Training Officer y Miembro de la RTD, con los 17 FTO cargados.",

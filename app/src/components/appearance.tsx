@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Palette, MonitorSmartphone, Sparkles, Type, MousePointer2, Check, Tv } from "lucide-react";
+import { Palette, MonitorSmartphone, Sparkles, Type, MousePointer2, Check, Tv, BellRing } from "lucide-react";
+import { ME_ROLES } from "@/lib/store";
 import { Checkbox, Field, Segmented, Select } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { ACCENTS, CRT_V, CURS, HEADS, SKINS, curSvg, deptUiNow, setPref, usePref } from "@/lib/appearance";
@@ -57,6 +58,13 @@ export function AppearanceModal({ open, onClose }: { open: boolean; onClose: () 
         <Field label="Marca «Bananita» del marco"><Segmented size="sm" value={p.brandOwn ? p.brand : "dep"} onChange={v => setPref("brand", v === "dep" ? null : v)} options={[{ value: "dep", label: "Del depto." }, { value: "rgb", label: "RGB" }, { value: "magenta", label: "Magenta" }, { value: "off", label: "Apagada" }]} /></Field>
         <Field label={`Velocidad del RGB · ${p.brandSpd} s por vuelta`}><input type="range" min={1} max={20} step={0.5} value={p.brandSpd} disabled={p.brand !== "rgb"} onChange={e => setPref("brandSpd", +e.target.value)} className="mt-3 w-full accent-brand-600 disabled:opacity-40" /></Field>
       </div>}
+      {(() => { const b = p.updBlur ?? (ME_ROLES.six ? 10 : 0); return (
+        <div className="flex items-start gap-2.5 rounded-xl border border-slate-200 p-3 dark:border-slate-800"><BellRing className="mt-0.5 size-4 text-slate-400" />
+          <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Desenfoque al recibir una notificación · {b ? `${b} px` : "apagado"}</p>
+            <p className="text-xs text-slate-500">Cuando llega un aviso del sistema (por ejemplo, una actualización), la pantalla de la tablet se desenfoca detrás.</p>
+            <div className="mt-2 flex items-center gap-3"><input type="range" min={0} max={24} step={1} value={b} onChange={e => setPref("updBlur", +e.target.value)} className="w-full accent-brand-600" aria-label="Desenfoque" />
+              <button type="button" onClick={() => window.dispatchEvent(new Event("lspdt:testupd"))} className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">Probar</button></div></div>
+        </div>); })()}
       <Field label="Menú"><Segmented size="sm" value={p.nav} onChange={v => setPref("nav", v)} options={[{ value: "top", label: "Arriba, por áreas" }, { value: "side", label: "Lateral" }]} /></Field>
       <Field label="Tipografía"><div className="flex items-center gap-2"><Type className="size-4 text-slate-400" />
         <Segmented size="sm" value={p.font} onChange={v => setPref("font", v)} options={[{ value: "inter", label: "Moderna (Inter)" }, { value: "public", label: "Clásica (Public Sans)" }]} /></div></Field>

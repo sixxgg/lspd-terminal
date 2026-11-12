@@ -90,12 +90,13 @@ export const gSaveCall = (id: string, n: string, v: string) => LS.setJSON(`lspdt
 export const gRoleOf = (id: string, x: string): GRole => gRoles(id).find(r => r.k === x) || gRoles(id)[gRoles(id).length - 1] || { k: x, l: x, c: "#94a3b8" };
 export const isGMem = (id: string, n: string) => !!gMap(id)[n];
 const parentCo = (c: GenCfg, n: string): boolean => !!c.parent && (c.parent === "Metropolitan Division" ? isUCoord("md", n) : GEN[c.parent] ? isGCo(GEN[c.parent].id, n) : false);
-/* quién edita el roster: solo la coordinación de esa misma división; la administración, solo si todavía no tiene coordinación */
+/* quién edita el roster: la coordinación de esa misma división y el dueño; el resto de la administración, solo si todavía no tiene coordinación */
 export function rosterCo(id: string, n: string): boolean {
   const m = gMap(id), co = (r: string) => !!gRoles(id).find(x => x.k === r)?.co;
-  return co(m[n] || "") || (!!ME_ROLES.admin && !Object.values(m).some(co));
+  return !!ME_ROLES.owner || co(m[n] || "") || (!!ME_ROLES.admin && !Object.values(m).some(co));
 }
-export const uRosterCo = (k: UnitKey, n: string) => (uMap(k)[n] || []).some(x => COORD_R.includes(x));
+/* el dueño de la terminal (six) puede editar todo */
+export const uRosterCo = (k: UnitKey, n: string) => !!ME_ROLES.owner || (uMap(k)[n] || []).some(x => COORD_R.includes(x));
 export function isGCo(id: string, n: string): boolean {
   if (ME_ROLES.admin) return true;
   const r = gMap(id)[n]; if (r && gRoleOf(id, r).co) return true;
