@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "2.3.2";
+export const APP_VERSION = "2.3.3";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,8 +13,9 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
-  { v: "2.3.2", f: "12/11/2026", t: "Notificaciones dentro de la tablet", items: [
+  { v: "2.3.3", f: "12/11/2026", t: "Notificaciones dentro de la tablet", items: [
     "El aviso de actualización baja desde el borde de arriba de la pantalla de la tablet.",
+    "Al tocar «Reiniciar ahora» se ve la pantalla «Actualización en curso» mientras se descarga la versión nueva; al volver, un aviso confirma que la terminal quedó actualizada.",
     "Apariencia: desenfoque de la pantalla al recibir una notificación, con deslizante para regularlo o apagarlo (de fábrica, apagado) y botón para probarlo.",
     "El dueño de la terminal puede editar todos los rosters.",
   ] },
