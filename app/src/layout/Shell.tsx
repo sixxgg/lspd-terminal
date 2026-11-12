@@ -1,7 +1,7 @@
 import { profOk } from "@/lib/nick";
 import { cipher, onlineIcons, useTabFx } from "@/lib/tabfx";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, Flame, UserRound, KeyRound } from "lucide-react";
+import { Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, Flame, UserRound, KeyRound, BellRing } from "lucide-react";
 import { AREAS, canArea, lockedOf, menuAreas, secsOf, type Area, type Sec } from "@/nav";
 import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
@@ -27,6 +27,7 @@ function UserMenu({ children, onAcc, go, up, wide }: { children: ReactNode; onAc
       {o && <div className={cn("absolute z-50 w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900", up ? "bottom-full left-0 mb-2" : "right-0 top-full mt-2")}>
         {profOk() && <button className={it} onClick={() => { setO(false); go("me", "perfil"); }}><UserRound />Mi perfil<span className="ml-auto rounded bg-pink-500/15 px-1.5 text-[10px] font-bold text-pink-600 dark:text-pink-300">BETA</span></button>}
         <button className={it} onClick={() => { setO(false); onAcc(); }}><KeyRound />Mi cuenta</button>
+        {ME_ROLES.six && <button className={it} onClick={() => { setO(false); window.dispatchEvent(new Event("lspdt:testupd")); }}><BellRing />Probar actualización</button>}
       </div>}
     </div>);
 }

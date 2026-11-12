@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 export function Modal({ open, onClose, title, desc, icon, children, footer, size = "md" }: {
-  open: boolean; onClose: () => void; title: ReactNode; desc?: ReactNode; icon?: ReactNode; children: ReactNode; footer?: ReactNode; size?: "sm" | "md" | "lg" | "xl";
+  open: boolean; onClose: () => void; title: ReactNode; desc?: ReactNode; icon?: ReactNode; children: ReactNode; footer?: ReactNode; size?: "xs" | "sm" | "md" | "lg" | "xl";
 }) {
   useEffect(() => {
     if (!open) return; const k = (e: KeyboardEvent) => e.key === "Escape" && onClose(); document.addEventListener("keydown", k);
@@ -15,14 +15,14 @@ export function Modal({ open, onClose, title, desc, icon, children, footer, size
   return createPortal(
     <div className="fx-modal-bg fixed inset-0 z-[65] grid place-items-center bg-slate-950/50 p-3 backdrop-blur-sm animate-fade-in sm:p-6" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div role="dialog" aria-modal="true" className={cn("fx-modal flex max-h-[calc(100dvh-1.5rem)] w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900",
-        { sm: "max-w-md", md: "max-w-xl", lg: "max-w-3xl", xl: "max-w-5xl" }[size])}>
-        <div className="fx-modal-h flex items-start gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+        { xs: "max-w-[23rem]", sm: "max-w-md", md: "max-w-xl", lg: "max-w-3xl", xl: "max-w-5xl" }[size])}>
+        <div className={cn("fx-modal-h flex items-start gap-3 border-b border-slate-100 dark:border-slate-800", size === "xs" ? "px-4 py-3" : "px-5 py-4")}>
           {icon && <div className="fx-modal-i grid size-9 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300 [&_svg]:size-[18px]">{icon}</div>}
           <div className="min-w-0 flex-1"><h3 className="font-semibold">{title}</h3>{desc && <p className="mt-0.5 text-xs text-slate-500">{desc}</p>}</div>
           <button aria-label="Cerrar" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:bg-slate-800 dark:hover:text-white"><X className="size-4" /></button>
         </div>
-        <div className="scrollbar-thin flex-1 space-y-4 overflow-y-auto p-5">{children}</div>
-        {footer && <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/60 px-5 py-3 dark:border-slate-800 dark:bg-slate-900">{footer}</div>}
+        <div className={cn("scrollbar-thin flex-1 overflow-y-auto", size === "xs" ? "space-y-3 p-4" : "space-y-4 p-5")}>{children}</div>
+        {footer && <div className={cn("flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900", size === "xs" ? "px-4 py-2.5" : "px-5 py-3")}>{footer}</div>}
       </div>
     </div>, document.body);
 }

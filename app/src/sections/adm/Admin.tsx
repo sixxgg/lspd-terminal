@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Scale, UserCheck, Crown, ShieldPlus, ImagePlus, Type, Save, Trash2, Check, X, Upload, Download, FileSpreadsheet, RotateCcw, GraduationCap, Shield, Database, Eye } from "lucide-react";
+import { Scale, UserCheck, Crown, ShieldPlus, ImagePlus, Type, Save, Check, X, Upload, Download, FileSpreadsheet, RotateCcw, Shield, Database, Eye } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Select } from "@/components/ui";
 import { prevStart } from "@/lib/preview";
 import { AgentCombo, Avatar } from "@/components/agents";
 import { ImagePicker, imgSpec } from "@/components/imagepick";
 import { useFeedback } from "@/components/feedback";
-import { ALL_DIVS, findAgent, fmtDate, getRoster, lvl, norm, rankES, RANK_COLOR } from "@/lib/domain";
+import { ALL_DIVS, findAgent, fmtDate, getRoster, norm, rankES, RANK_COLOR } from "@/lib/domain";
 import { authApi } from "@/lib/api";
 import { DEF_ROSTER, LS, ME_ROLES, syncIdle, useJSON, useStoreVersion } from "@/lib/store";
-import { uMap, uSaveMap, rtdMem } from "@/lib/units";
 import { parseCSV } from "@/lib/csv";
 import { DivLogo } from "@/sections/sup/Agentes";
 import { CursorGrid, SkinGrid } from "@/components/appearance";
@@ -82,32 +81,10 @@ export function AdmAccesos() {
             <Button icon={<ShieldPlus />} disabled={!sel} onClick={() => setAdmin(sel, true)}>Dar administrador</Button></div></CardBody>}
         </>}
       </Card>
-      <UnitAccess />
+      
     </div>
   );
 }
-function UnitAccess() {
-  useStoreVersion();
-  const { toast, confirm } = useFeedback();
-  const rtd = rtdMem(), psb = Object.keys(uMap("psb")), R = getRoster().filter(a => lvl(a.r) > 0).sort((a, b) => lvl(b.r) - lvl(a.r) || a.n.localeCompare(b.n));
-  const [sr, setSr] = useState(""), [sp, setSp] = useState("");
-  const setRtd = (L: string[]) => { const c = LS.json<Record<string, unknown>>("lspdt.ui", {}); c.rtd = L; LS.setJSON("lspdt.ui", c); };
-  const setPsb = (L: string[]) => { const m = structuredClone(uMap("psb")); L.forEach(n => { if (!m[n]) m[n] = ["jinv", "iad"]; }); Object.keys(m).forEach(n => { if (!L.includes(n)) delete m[n]; }); uSaveMap("psb", m); };
-  const Box = ({ t, icon, L, sel, setSel, add, del, tag }: { t: string; icon: React.ReactNode; L: string[]; sel: string; setSel: (v: string) => void; add: () => void; del: (n: string) => void; tag: string }) => (
-    <Card>
-      <CardHeader icon={icon} title={t} desc={`${L.length} con acceso`} />
-      <div className="scrollbar-thin max-h-80 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">{L.length ? L.map(n => <Row key={n} n={n}><span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{tag}</span><Button size="sm" variant="ghost" className="text-red-600" icon={<Trash2 />} aria-label="Quitar" onClick={() => del(n)} /></Row>)
-        : <p className="p-4 text-sm text-slate-400">Nadie tiene acceso.</p>}</div>
-      <CardBody><div className="flex gap-2"><AgentCombo className="flex-1" value={sel} onChange={setSel} names={R.filter(a => !L.includes(a.n)).map(a => a.n)} /><Button onClick={add}>Agregar</Button></div></CardBody>
-    </Card>);
-  return <>
-    <Box t="Acceso a la RTD" icon={<GraduationCap />} tag="RTD" L={rtd} sel={sr} setSel={setSr} add={() => { if (!sr) { toast("Elegí un agente", "err"); return; } setRtd([...rtd, sr]); toast(sr + " ahora tiene acceso a la RTD"); setSr(""); }}
-      del={async n => { if (await confirm(`¿Quitar a ${n} de la RTD?`, { danger: true })) { setRtd(rtd.filter(x => x !== n)); toast(n + " ya no tiene acceso a la RTD"); } }} />
-    <Box t="Acceso a la PSB" icon={<Shield />} tag="PSB" L={psb} sel={sp} setSel={setSp} add={() => { if (!sp) { toast("Elegí un agente", "err"); return; } setPsb([...psb, sp]); toast(sp + " ahora tiene acceso a la PSB"); setSp(""); }}
-      del={async n => { if (await confirm(`¿Quitar a ${n} de la PSB? Deja de ver Professional Standards Bureau, el catálogo de faltas y la Conference Room del 10-80.`, { danger: true })) { setPsb(psb.filter(x => x !== n)); toast(n + " ya no tiene acceso a la PSB"); } }} />
-  </>;
-}
-
 /* ---------- imágenes, textos y emblemas ---------- */
 const BRAND: [string, string, string, number, boolean, "sq" | "bg", string][] = [
   ["lspdt.logo", "Logo general", "El de los lugares que no tienen un casillero propio.", 512, true, "sq", "Logos"],

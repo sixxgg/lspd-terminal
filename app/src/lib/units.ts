@@ -90,6 +90,12 @@ export const gSaveCall = (id: string, n: string, v: string) => LS.setJSON(`lspdt
 export const gRoleOf = (id: string, x: string): GRole => gRoles(id).find(r => r.k === x) || gRoles(id)[gRoles(id).length - 1] || { k: x, l: x, c: "#94a3b8" };
 export const isGMem = (id: string, n: string) => !!gMap(id)[n];
 const parentCo = (c: GenCfg, n: string): boolean => !!c.parent && (c.parent === "Metropolitan Division" ? isUCoord("md", n) : GEN[c.parent] ? isGCo(GEN[c.parent].id, n) : false);
+/* quién edita el roster: solo la coordinación de esa misma división; la administración, solo si todavía no tiene coordinación */
+export function rosterCo(id: string, n: string): boolean {
+  const m = gMap(id), co = (r: string) => !!gRoles(id).find(x => x.k === r)?.co;
+  return co(m[n] || "") || (!!ME_ROLES.admin && !Object.values(m).some(co));
+}
+export const uRosterCo = (k: UnitKey, n: string) => (uMap(k)[n] || []).some(x => COORD_R.includes(x));
 export function isGCo(id: string, n: string): boolean {
   if (ME_ROLES.admin) return true;
   const r = gMap(id)[n]; if (r && gRoleOf(id, r).co) return true;
@@ -102,7 +108,7 @@ export function uMap(k: UnitKey, me?: string): Record<string, string[]> {
   if (!o || typeof o !== "object" || Array.isArray(o)) return u.def;
   if (u.seedV && (Number(o._v) || 0) < u.seedV) {
     const m = { ...o, ...u.def, _v: u.seedV } as Record<string, unknown>;
-    if (me && (ME_ROLES.admin || ((m[me] as string[]) || []).some(x => COORD_R.includes(x))))
+    if (me && ((m[me] as string[]) || []).some(x => COORD_R.includes(x)))
       setTimeout(() => { if ((Number(LS.json<Record<string, unknown>>(u.rk, {})._v) || 0) < (u.seedV || 0)) LS.setJSON(u.rk, m); }, 0);
     return clean(m);
   }
@@ -116,7 +122,8 @@ export const isUCoord = (k: UnitKey, n: string) => !!ME_ROLES.admin || (uMap(k)[
 /* rol en las instrucciones según el roster: coordinador, instructor o instructor en pruebas */
 export const insRole = (k: UnitKey, n: string): "coord" | "inst" | "instp" | "" => { const r = uMap(k)[n] || []; return r.some(x => COORD_R.includes(x) || x === "oic") ? "coord" : r.includes("inst") ? "inst" : r.includes("instp") ? "instp" : ""; };
 export const isPSB = (n: string) => !!uMap("psb")[n];
-export const rtdMem = (): string[] => { const l = LS.json<Record<string, unknown>>("lspdt.ui", {}).rtd; return Array.isArray(l) ? (l as string[]) : RTD_DEF; };
+/* RTD: su roster (lspdt.groster.rtd); si todavía no se cargó, la lista anterior */
+export const rtdMem = (): string[] => { const g = Object.keys(gMap("rtd")); if (g.length) return g; const l = LS.json<Record<string, unknown>>("lspdt.ui", {}).rtd; return Array.isArray(l) ? (l as string[]) : RTD_DEF; };
 const RTD_DEF = ["Charles Jhonson Smith", "Daniel López", "Derek McGarrett", "Elioth Smith", "Evelyn Molina", "Kai Jeon-Soo", "Kane Anderson", "Khalan Smith", "Lara Calloway",
   "Liam Campbell", "Madison Pierce", "Madison Wells", "Matthew Coleman", "Miles Campbell", "Ryan Westbrook", "William Weston", "Yooa Baek-Harrington"];
 export const isRTD = (n: string) => !!ME_ROLES.admin || rtdMem().includes(n);

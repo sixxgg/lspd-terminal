@@ -11,7 +11,7 @@ import { Col, Split } from "@/components/layout";
 import { LUGARES, fmtDate, findAgent, lvl, norm, rankES, uid } from "@/lib/domain";
 import { LS, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { K9_PL, MD_CALLS, UNITS, unitRoles, insRole, isUCoord, isUMem, uMap, uSaveMap, uTop, type UnitKey } from "@/lib/units";
+import { K9_PL, MD_CALLS, UNITS, uRosterCo, unitRoles, insRole, isUCoord, isUMem, uMap, uSaveMap, uTop, type UnitKey } from "@/lib/units";
 import { unitPalette } from "@/lib/divisions";
 import { cn } from "@/lib/cn";
 import { Psb, dcIdOf } from "./Psb";
@@ -110,7 +110,7 @@ export function Unit({ k, dn }: { k: UnitKey; dn?: string }) {
 }
 
 function Roster({ k, pal }: { k: UnitKey; pal: Record<string, string> }) {
-  const me = useMe(), u = UNITS[k], co = isUCoord(k, me.n), m = uMap(k, me.n);
+  const me = useMe(), u = UNITS[k], co = uRosterCo(k, me.n), m = uMap(k, me.n);
   return <RosterBoard ab={u.ab} roles={u.R.map(([x, l]) => ({ k: x, l, c: pal[x] }))} subs={(u.SUB || []).map(([x, l]) => ({ k: x, l, c: pal[x] || "#94a3b8" }))} map={m} canEdit={co} onSave={x => uSaveMap(k, x)}
     call={k === "md" ? { l: "Indicativo", ph: "R20D", get: callOf, set: (n, v) => LS.setJSON("lspdt.mdCalls", { ...MD_CALLS, ...LS.json<Record<string, string>>("lspdt.mdCalls", {}), [n]: v }) } : undefined}
     disc={k === "psb" ? { l: "Discord ID", ph: "123456789012345678", get: n => LS.json<Record<string, string>>("lspdt.psbIds", {})[n] || dcIdOf(n), set: (n, v) => { const M = LS.json<Record<string, string>>("lspdt.psbIds", {}); if (v) M[n] = v; else delete M[n]; LS.setJSON("lspdt.psbIds", M); } } : undefined}

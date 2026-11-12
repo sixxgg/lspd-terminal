@@ -12,7 +12,7 @@ import { useCopyMsg } from "@/components/output";
 import { findAgent, hoyISO, rankES, uid } from "@/lib/domain";
 import { LS, ME_ROLES, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { GEN, gCall, gMap, gRoleOf, gRoles, gSave, gSaveCall, isGCo, isGMem, saveRoles, type GRole } from "@/lib/units";
+import { GEN, rosterCo, gCall, gMap, gRoleOf, gRoles, gSave, gSaveCall, isGCo, isGMem, saveRoles, type GRole } from "@/lib/units";
 import { cn } from "@/lib/cn";
 import { DivAdmin, DivNav, Uniformidad, divTabs, type DivTab, type URole } from "./DivTools";
 import { RosterBoard } from "./Roster";
@@ -52,11 +52,11 @@ export function RoleEditor({ id, roles, coFlag = true, locked = [] }: { id: stri
 }
 
 /* ---------- roster genérico ---------- */
-function GenRoster({ id, ab, canEdit }: { id: string; ab: string; canEdit: boolean }) {
+export function GenRoster({ id, ab, canEdit }: { id: string; ab: string; canEdit: boolean }) {
   useStoreVersion();
   const R = gRoles(id), map = Object.fromEntries(Object.entries(gMap(id)).map(([n, r]) => [n, [r]]));
   return <RosterBoard ab={ab} roles={R} map={map} canEdit={canEdit} onSave={m => gSave(id, Object.fromEntries(Object.entries(m).map(([n, r]) => [n, r[0]])))}
-    call={{ l: "Indicativo", ph: "Ej.: WHISKEY-04", get: n => gCall(id, n), set: (n, v) => gSaveCall(id, n, v) }} />;
+    call={{ l: "Indicativo", ph: id === "db" ? "WHISKEY-04" : "Indicativo", get: n => gCall(id, n), set: (n, v) => gSaveCall(id, n, v) }} />;
 }
 
 /* ---------- fichas genéricas (licencias, tareas, convenios…) ---------- */
@@ -213,7 +213,7 @@ export function GenDiv({ d }: { d: string }) {
   const rec = (s: string, f: FDef[], noun: string, icon: ReactNode, o: { add?: boolean; tpl?: (r: Rec) => string } = {}) =>
     <RecList k={`lspdt.drec.${id}.${s}`} fields={f} noun={noun} icon={icon} canAdd={o.add ?? mem} canAll={co} tpl={o.tpl} />;
   const body = t === "adm" ? <DivAdmin id={id} ab={ab} dn={d} tabs={base} extra={<RoleEditor id={id} roles={R} />} />
-    : t === "ros" ? <GenRoster id={id} ab={ab} canEdit={co} />
+    : t === "ros" ? <GenRoster id={id} ab={ab} canEdit={rosterCo(id, me.n)} />
     : t === "uni" ? <Uniformidad id={c.uni} ab={ab} dn={d} canEdit={co} roles={uRoles} mine={mine} />
     : t === "lic" ? rec("lic", F_LIC, "Licencia", <BadgeCheck />, { add: co })
     : t === "tom" ? rec("tom", F_TOM, "Registro", <Car />, { tpl: tomTxt })

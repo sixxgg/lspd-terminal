@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "2.3";
+export const APP_VERSION = "2.3.1";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,12 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "2.3.1", f: "12/11/2026", t: "Rosters solo para la coordinación", items: [
+    "El roster de cada división lo modifica únicamente su coordinación (también lo controla el servidor). La administración solo puede cargarlo mientras la división no tenga coordinación.",
+    "RTD con roster propio: Coordinación, Subcoordinador, Master Field Training Officer, Field Training Officer y Miembro de la RTD, con los 17 FTO cargados.",
+    "CNT con sus rangos: Coordinador, Negociador (5) y Aspirante C.N.T.",
+    "Ventana de alta y edición del roster más compacta.",
+  ] },
   { v: "2.3", f: "12/11/2026", t: "Rosters nuevos y divisiones protegidas", items: [
     "Rosters rediseñados en todas las divisiones y subdivisiones: tarjetas por rol con su color, indicativo y especialidades; alta y edición en una ventana chica como la de uniformidad.",
     "Rosters cargados: ASB (coordinación Lara Calloway y Evelyn Molina, agentes y administrativos), HSIU y Detective Bureau (WHISKEY-01, 02, 03…). Indicativos también en las subdivisiones de la METRO.",

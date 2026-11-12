@@ -33,7 +33,7 @@ export function RosterBoard({ ab, roles, subs = [], map, canEdit, onSave, call, 
     toast(ed.nuevo ? `${ed.n} agregado como ${roleOf(ed.main).l}` : "Integrante actualizado"); setEd(null);
   };
   const remove = async () => { if (!ed || !(await confirm(`¿Quitar a ${ed.n} de la ${ab}?`, { danger: true }))) return; const m = { ...map }; delete m[ed.n]; onSave(m); toast(`${ed.n} ya no está en la ${ab}`); setEd(null); };
-  const pill = (on: boolean) => cn("rounded-full border px-2.5 py-1 text-xs font-semibold transition", on ? "text-white" : "text-slate-600 hover:brightness-110 dark:text-slate-300", on && "shadow-[0_0_12px_-2px_var(--c)]");
+  const pill = (on: boolean) => cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold transition", on ? "text-white" : "text-slate-600 hover:brightness-110 dark:text-slate-300", on && "shadow-[0_0_12px_-2px_var(--c)]");
   const pillS = (on: boolean, c: string) => ({ ["--c" as string]: c, ...(on ? { background: c, borderColor: c, color: ink(c) } : { borderColor: c + "66" }) });
 
   return (
@@ -70,18 +70,18 @@ export function RosterBoard({ ab, roles, subs = [], map, canEdit, onSave, call, 
                 </div>); })}</div>
             </section>);
         })}
-      <Modal open={!!ed} onClose={() => setEd(null)} size="sm" icon={<Users />} title={ed?.nuevo ? "Nuevo integrante" : "Editar integrante"} desc={`Roster de la ${ab}`}
+      <Modal open={!!ed} onClose={() => setEd(null)} size="xs" icon={<Users />} title={ed?.nuevo ? "Nuevo integrante" : "Editar integrante"} desc={`Roster de la ${ab}`}
         footer={<>{ed && !ed.nuevo && <Button size="sm" variant="ghost" className="mr-auto text-red-500" icon={<Trash2 />} onClick={remove}>Quitar</Button>}
           <Button size="sm" variant="ghost" onClick={() => setEd(null)}>Cancelar</Button><Button size="sm" icon={<Check />} onClick={save}>Guardar</Button></>}>
-        {ed && <div className="space-y-3">
+        {ed && <div className="space-y-2.5 [&_label]:text-xs">
           <Field label="Agente">{ed.nuevo ? <AgentCombo value={ed.n} onChange={n => setEd({ ...ed, n, call: call?.get(n) || "" })} filter={a => !map[a.n]} placeholder={`Buscar agente para la ${ab}…`} />
-            : <div className="flex items-center gap-2.5 rounded-xl border border-slate-200 p-2 dark:border-slate-800"><Avatar n={ed.n} size={34} /><div><b className="block text-sm">{ed.n}</b><span className="text-xs text-slate-500">{(() => { const a = findAgent(ed.n); return a ? `${rankES(a.r)}${a.p ? ` · #${a.p}` : ""}` : ""; })()}</span></div></div>}</Field>
+            : <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-2 py-1.5 dark:border-slate-800"><Avatar n={ed.n} size={28} /><div><b className="block text-sm">{ed.n}</b><span className="text-xs text-slate-500">{(() => { const a = findAgent(ed.n); return a ? `${rankES(a.r)}${a.p ? ` · #${a.p}` : ""}` : ""; })()}</span></div></div>}</Field>
           <Field label="Rol"><div className="flex flex-wrap gap-1.5">{roles.map(r => <button key={r.k} type="button" onClick={() => setEd({ ...ed, main: r.k })} className={pill(ed.main === r.k)} style={pillS(ed.main === r.k, r.c)}>{r.l}</button>)}</div></Field>
           {subs.length > 0 && <Field label="Subdivisiones y especialidades"><div className="flex flex-wrap gap-1.5">{subs.map(r => { const on = ed.subs.includes(r.k); return (
             <button key={r.k} type="button" onClick={() => setEd({ ...ed, subs: on ? ed.subs.filter(x => x !== r.k) : [...ed.subs, r.k] })} className={pill(on)} style={pillS(on, r.c)}>{r.l}</button>); })}</div></Field>}
           {(call || disc) && <div className="grid gap-3 sm:grid-cols-2">
-            {call && <Field label={call.l}><Input value={ed.call} onChange={e => setEd({ ...ed, call: e.target.value })} placeholder={call.ph} className="font-mono uppercase" /></Field>}
-            {disc && <Field label={disc.l}><Input value={ed.disc} onChange={e => setEd({ ...ed, disc: e.target.value })} placeholder={disc.ph} inputMode="numeric" className="font-mono" /></Field>}
+            {call && <Field label={call.l}><Input value={ed.call} onChange={e => setEd({ ...ed, call: e.target.value })} placeholder={call.ph} className="h-9 font-mono uppercase" /></Field>}
+            {disc && <Field label={disc.l}><Input value={ed.disc} onChange={e => setEd({ ...ed, disc: e.target.value })} placeholder={disc.ph} inputMode="numeric" className="h-9 font-mono" /></Field>}
           </div>}
           {!ed.nuevo && editExtra?.(ed.n)}
         </div>}

@@ -1,15 +1,16 @@
 import { DivAdmin, DivNav, Uniformidad, divTabs, uniTab, type DivTab } from "./DivTools";
 import { scrollTopApp } from "@/lib/appearance";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { GraduationCap, UserRound, Check, X, Plus, Shuffle, PenLine, FileUp, Wand2, Trash2, Save, ClipboardList, ChevronDown, Pencil, Copy, Scale } from "lucide-react";
+import { Users, GraduationCap, UserRound, Check, X, Plus, Shuffle, PenLine, FileUp, Wand2, Trash2, Save, ClipboardList, ChevronDown, Pencil, Copy, Scale } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Textarea } from "@/components/ui";
 import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { Col, Split } from "@/components/layout";
-import { hoyISO, initials, isoToDMY, joinY, lvl, maskDMY, uid , myKey } from "@/lib/domain";
+import { hoyISO, initials, isoToDMY, joinY, maskDMY, uid , myKey } from "@/lib/domain";
 import { LS, useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { isRTD, rtdMem } from "@/lib/units";
+import { isGCo, isRTD, rosterCo, rtdMem } from "@/lib/units";
+import { GenRoster } from "./Gen";
 import { Instrucciones } from "./Instrucciones";
 
 import { dcParts, fileText } from "@/lib/penal";
@@ -25,17 +26,17 @@ const CMP_C: Record<string, string> = { ok: "border-emerald-400/40 bg-emerald-50
 
 export function Rtd({ dn }: { dn?: string }) {
   const me = useMe();
-  const [tab, setTab] = useState<string>("new"), [edit, setEdit] = useState<R | null>(null), [open, setOpen] = useState<string | null>(null);
+  const [tab, setTab] = useState<string>("ros"), [edit, setEdit] = useState<R | null>(null), [open, setOpen] = useState<string | null>(null);
   const [L] = useJSON<R[]>("lspdt.rtdEnt", []);
   /* coordinación de la RTD: administración o miembros desde Sargento I */
-  const co = !!me.admin || (rtdMem().includes(me.n) && lvl(me.r) >= lvl("Sargento I"));
-  const base: DivTab[] = [{ value: "new", label: "Entrevista de aspirante", icon: <GraduationCap />, txt: "Entrevista de aspirante" }, { value: "list", label: `Entrevistas registradas (${L.length})`, icon: <ClipboardList />, txt: "Entrevistas registradas" },
+  const co = isGCo("rtd", me.n);
+  const base: DivTab[] = [{ value: "ros", label: "Roster", icon: <Users />, txt: "Roster" }, { value: "new", label: "Entrevista de aspirante", icon: <GraduationCap />, txt: "Entrevista de aspirante" }, { value: "list", label: `Entrevistas registradas (${L.length})`, icon: <ClipboardList />, txt: "Entrevistas registradas" },
     { value: "ins", label: "Instrucciones", icon: <GraduationCap />, txt: "Instrucciones" }, uniTab()], opts = divTabs("rtd", base, co);
   const t = opts.some(x => x.value === tab) ? tab : opts[0]?.value || "new";
   return (
     <div className="space-y-4">
       <DivNav value={t} onChange={setTab} options={opts} />
-      {t === "adm" ? <DivAdmin id="rtd" ab="RTD" dn={dn} tabs={base} /> : t === "uni" ? <Uniformidad id="rtd" ab="RTD" dn={dn} canEdit={co} /> : t === "ins" ? <Instrucciones div="rtd" ab="RTD" names={rtdMem().slice().sort()} roleOf={() => "inst"} tipos={["Academia", "Procedimientos de patrulla", "Código penal", "Uso de la radio", "Conducción"]} canEdit={isRTD(me.n)} isCoord={!!me.admin} />
+      {t === "ros" ? <GenRoster id="rtd" ab="RTD" canEdit={rosterCo("rtd", me.n)} /> : t === "adm" ? <DivAdmin id="rtd" ab="RTD" dn={dn} tabs={base} /> : t === "uni" ? <Uniformidad id="rtd" ab="RTD" dn={dn} canEdit={co} /> : t === "ins" ? <Instrucciones div="rtd" ab="RTD" names={rtdMem().slice().sort()} roleOf={() => "inst"} tipos={["Academia", "Procedimientos de patrulla", "Código penal", "Uso de la radio", "Conducción"]} canEdit={isRTD(me.n)} isCoord={!!me.admin} />
         : t === "new" ? <RtdForm key={edit?.id || "n"} init={edit} onSaved={id => { setEdit(null); setOpen(id); setTab("list"); }} />
         : <RtdList open={open} setOpen={setOpen} onEdit={r => { setEdit(r); setTab("new"); scrollTopApp(); }} />}
     </div>

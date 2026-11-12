@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, RotateCw } from "lucide-react";
 import { LS } from "@/lib/store";
+import { APP_VERSION } from "@/sections/Novedades";
 
 /* aviso de versión nueva: notificación del sistema de la tablet que baja desde arriba, como en un teléfono.
    «Reiniciar» recarga sin caché; «Más tarde» o deslizarla hacia arriba la guarda hasta que salga otra versión. */
@@ -16,12 +17,15 @@ export function UpdateBar() {
         if (alive && j.b && j.b !== __BUILD__ && localStorage.getItem(SKIP) !== j.b) setNueva({ b: j.b, v: j.v }); } catch { /* sin conexión */ }
     };
     void check(); const i = setInterval(check, 120000);
+    /* six: «Probar actualización» en su menú muestra el aviso sin que haya una versión nueva */
+    const test = () => { setOut(false); setDy(0); setBusy(false); setNueva({ b: "test", v: APP_VERSION }); }; window.addEventListener("lspdt:testupd", test);
     const vis = () => { if (!document.hidden) void check(); }; document.addEventListener("visibilitychange", vis);
-    return () => { alive = false; clearInterval(i); document.removeEventListener("visibilitychange", vis); };
+    return () => { alive = false; clearInterval(i); document.removeEventListener("visibilitychange", vis); window.removeEventListener("lspdt:testupd", test); };
   }, []);
   if (!nueva) return null;
-  const later = () => { setOut(true); try { localStorage.setItem(SKIP, nueva.b); } catch { /* */ } setTimeout(() => { setNueva(null); setOut(false); setDy(0); }, 320); };
-  const restart = () => { setBusy(true); setTimeout(reloadFresh, 900); };
+  const test = nueva.b === "test";
+  const later = () => { setOut(true); if (!test) try { localStorage.setItem(SKIP, nueva.b); } catch { /* */ } setTimeout(() => { setNueva(null); setOut(false); setDy(0); }, 320); };
+  const restart = () => { setBusy(true); setTimeout(test ? later : reloadFresh, test ? 1600 : 900); };
   const logo = LS.get("lspdt.logo") || "/next/logo.svg";
   return (
     <div className="pointer-events-none fixed inset-x-0 top-2 z-[95] flex justify-center px-3" role="alertdialog" aria-live="polite" aria-label="Actualización disponible">
