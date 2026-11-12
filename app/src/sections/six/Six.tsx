@@ -2,7 +2,7 @@
    Pestañas: Inicio y, de la A a la Z, Administración · Comunicados · Equipo de ilícitos · Gestión de staff · Notificaciones. Los datos van en lspdt.six.* (el servidor no se los muestra a nadie más). */
 import "./six.css";
 import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
-import { AtSign, Bell, Check, ChevronRight, Copy, FileText, Home, Lock, Megaphone, Plus, Power, RefreshCw, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X } from "lucide-react";
+import { AtSign, Bell, Check, KeyRound, ChevronRight, Copy, FileText, Home, Lock, Megaphone, Plus, Power, RefreshCw, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
 import { api, authApi } from "@/lib/api";
 import { discordHtml } from "@/lib/discord";
@@ -204,6 +204,7 @@ function AdmTab({ c, set, replay }: { c: SixCfg; set: (p: Partial<SixCfg>) => vo
       </Panel>
       <Panel t="Invitaciones" icon={<Ticket />} d="Para registrarse en la terminal hace falta un código. Un solo uso, vence a las 72 h." className="space-y-3"><Invites /></Panel>
       {NS.id === "six" && <Panel t="Avisos de Discord" icon={<Bell />} d="Cada feedback nuevo llega a NOTIFICACIONES y al canal de Discord con mención." className="space-y-3"><DcTest /></Panel>}
+      {NS.id === "six" && <Panel t="Contraseñas" icon={<KeyRound />} d="Restablecé la contraseña de quien la olvidó. Le das la temporal y al entrar la tiene que cambiar sí o sí." className="space-y-3 lg:col-span-2"><Accounts /></Panel>}
       {NS.id === "six" && <Panel t="Acceso de Anita" icon={<Users />} d="Qué cuenta abre el panel de Anita (sus datos son solo suyos; vos no los ves)." className="space-y-3"><AnitaAcc /></Panel>}
     </div>
   );
@@ -224,6 +225,36 @@ function Invites() {
       <button title="Revocar" onClick={async () => { const r = await authApi({ a: "uninvite", c: x.c }); if (r.__s !== 200) { toast(r.msg || "No se pudo revocar", "err"); return; } load(); }} className="text-slate-600 hover:text-[#ff2b4a]"><Trash2 className="size-3.5" /></button></div>)}
     {U.length > 0 && <div className="pt-1"><p className="mb-1 text-[10px] font-bold tracking-[0.2em] text-slate-500">USADAS</p>
       {U.slice().reverse().map(x => <p key={x.c} className="font-sans text-xs text-slate-500"><span className="font-mono">{x.c}</span> → <b className="text-slate-300">{x.u}</b>{x.ut ? ` · ${f(x.ut)}` : ""}</p>)}</div>}
+  </div>;
+}
+/* six: restablecer contraseñas de las cuentas registradas */
+type Acc = { n: string; c: number; last: number | null; must: boolean };
+function Accounts() {
+  const { toast, confirm } = useFeedback(), [L, setL] = useState<Acc[] | null>(null), [q, setQ] = useState(""), [tmp, setTmp] = useState<{ n: string; p: string } | null>(null);
+  const load = async () => { const r = await authApi({ a: "sixaccs" }); if (r.__s === 200) setL(r.list as Acc[]); else toast(r.msg || "No se pudieron cargar las cuentas", "err"); };
+  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const reset = async (n: string) => {
+    if (!(await confirm(`¿Restablecer la contraseña de ${n}? Se le cierran las sesiones abiertas y al entrar con la temporal va a tener que elegir una nueva.`, { danger: true, ok: "Restablecer" }))) return;
+    const r = await authApi({ a: "sixreset", n }); if (r.__s !== 200) { toast(r.msg || "No se pudo restablecer", "err"); return; }
+    setTmp({ n, p: r.tmp as string }); void load();
+  };
+  const f = (t: number | null) => (t ? new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "nunca");
+  if (!L) return <p className="font-sans text-xs text-slate-500">Cargando…</p>;
+  const V = L.filter(a => !q || a.n.toLowerCase().includes(q.toLowerCase()));
+  return <div className="space-y-3">
+    {tmp && <div className="rounded-xl border border-six/40 bg-six/10 p-3 font-sans">
+      <p className="text-xs text-slate-300">Contraseña temporal de <b className="text-white">{tmp.n}</b> — pasásela por privado:</p>
+      <div className="mt-2 flex items-center gap-2"><code className="flex-1 rounded-lg bg-black/50 px-3 py-2 font-mono text-base tracking-wider text-six">{tmp.p}</code>
+        <NBtn icon={<Copy />} onClick={() => { void navigator.clipboard?.writeText(tmp.p).then(() => toast("Contraseña copiada")); }}>COPIAR</NBtn><NBtn ghost icon={<X />} onClick={() => setTmp(null)}>LISTO</NBtn></div>
+      <p className="mt-1.5 text-[11px] text-slate-500">No se vuelve a mostrar. Al entrar con esta contraseña, la terminal le pide cambiarla antes de dejarla usar.</p></div>}
+    <div className="flex flex-wrap items-center gap-2"><NIn value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar cuenta…" className="max-w-xs" />
+      <span className="font-sans text-xs text-slate-500">{L.length} cuentas · {L.filter(a => a.must).length} con cambio pendiente</span></div>
+    <div className="six-scroll max-h-80 divide-y divide-white/5 overflow-y-auto rounded-xl border border-white/10">{V.map(a => (
+      <div key={a.n} className="flex items-center gap-3 px-3 py-2 font-sans">
+        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-slate-200">{a.n}</p><p className="text-[11px] text-slate-500">Último ingreso: {f(a.last)}</p></div>
+        {a.must && <span className="rounded-md border border-amber-400/40 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">DEBE CAMBIARLA</span>}
+        <NBtn ghost icon={<KeyRound />} onClick={() => void reset(a.n)}>RESTABLECER</NBtn>
+      </div>))}</div>
   </div>;
 }
 function AnitaAcc() {

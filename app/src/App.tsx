@@ -17,6 +17,8 @@ const PublicSection = lz(() => import("./sections/div/DivTools"), "PublicSection
 import { AREAS, canArea, secsOf } from "./nav";
 import { api, authApi } from "./lib/api";
 import { BootScreen } from "./components/boot";
+import { ForcePw } from "./layout/ForcePw";
+import { createPortal } from "react-dom";
 import { rosterDivs } from "./lib/units";
 import { PROF, profOk } from "./lib/nick";
 import { prevGet, prevStop } from "./lib/preview";
@@ -55,7 +57,7 @@ function Main() {
   const enter = useCallback((d: Parameters<typeof loadStore>[0], fresh?: boolean) => {
     /* «Ver como» (solo administración): otra identidad sin divisiones ni permisos */
     const pv = prevGet(); if (pv && d.me?.admin) { PREV.on = true; d = { ...d, me: { n: "Vista previa", r: pv.r, admin: false, owner: false, six: false, anita: false } }; }
-    loadStore(d); setMe(d.me!);
+    PREV.must = !!d.me?.must; loadStore(d); setMe(d.me!);
     let seen = false; try { seen = !!sessionStorage.getItem("lspdt.next.booted"); sessionStorage.setItem("lspdt.next.booted", "1"); } catch { /* */ }
     if (fresh || !seen) setFx(fresh ? "full" : "short");
     /* limpieza: el código penal viejo guardado en la base ya no se usa (Legal es la única fuente); se borra una sola vez */
@@ -93,8 +95,8 @@ function Main() {
   if (!me) return <Device brand={boot.brand}><UpdateBar /><Login pub={boot} onDone={r => enter((r as { data: Parameters<typeof loadStore>[0] }).data, true)} /></Device>;
 
   const ag = findAgent(me.n), user = { n: me.n, r: ag?.r || me.r, p: ag?.p };
-  if (nav.a === "anita" && ME_ROLES.anita) return <MeCtx.Provider value={user}><Suspense fallback={<div className="min-h-[100dvh] bg-black" />}><Six who="anita" onExit={() => { setNav({ a: "ini", s: "home" }); scrollTopApp(); }} /></Suspense></MeCtx.Provider>;
-  if (nav.a === "six" && ME_ROLES.six) return <MeCtx.Provider value={user}><Suspense fallback={<div className="min-h-[100dvh] bg-black" />}><Six start={nav.s === "not" ? "not" : "ini"} onExit={() => { setNav({ a: "ini", s: "home" }); scrollTopApp(); }} /></Suspense></MeCtx.Provider>;
+  if (nav.a === "anita" && ME_ROLES.anita && !me.must) return <MeCtx.Provider value={user}><Suspense fallback={<div className="min-h-[100dvh] bg-black" />}><Six who="anita" onExit={() => { setNav({ a: "ini", s: "home" }); scrollTopApp(); }} /></Suspense></MeCtx.Provider>;
+  if (nav.a === "six" && ME_ROLES.six && !me.must) return <MeCtx.Provider value={user}><Suspense fallback={<div className="min-h-[100dvh] bg-black" />}><Six start={nav.s === "not" ? "not" : "ini"} onExit={() => { setNav({ a: "ini", s: "home" }); scrollTopApp(); }} /></Suspense></MeCtx.Provider>;
   let area = AREAS.find(a => a.k === nav.a) || AREAS[0];
   if (!canArea(area, user.r)) area = AREAS[0];
   const SS = secsOf(area, user.r), sec = SS.find(s => s.k === nav.s) || SS[0];
@@ -107,5 +109,11 @@ function Main() {
   else if (area.k === "div") view = <Division d={sec.l} />;
   else if (VIEWS[`${area.k}/${sec.k}`]) view = VIEWS[`${area.k}/${sec.k}`]();
   else view = null;
-  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in"><Suspense fallback={<div className="grid min-h-[40vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{view}</Suspense></div></Shell><UpdateBar />{PREV.on && <PrevBar r={user.r} />}</MeCtx.Provider>{fx && <BootScreen name={me.n} rank={rankES(user.r)} badge={user.p} agents={getRoster().length} no={ACC.names.indexOf(me.n) + 1 || undefined} divs={rosterDivs(me.n)} short={fx === "short"} onDone={() => setFx("")} />}{breach && <ErrorScreen onDone={endBreach} />}</Device>;
+  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in"><Suspense fallback={<div className="grid min-h-[40vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{view}</Suspense></div></Shell><UpdateBar />{PREV.on && <PrevBar r={user.r} />}</MeCtx.Provider>{fx && <BootScreen name={me.n} rank={rankES(user.r)} badge={user.p} agents={getRoster().length} no={ACC.names.indexOf(me.n) + 1 || undefined} divs={rosterDivs(me.n)} short={fx === "short"} onDone={() => setFx("")} />}{breach && <ErrorScreen onDone={endBreach} />}{me.must && !PREV.on && <ForcePwPortal n={me.n} onDone={() => { PREV.must = false; setMe({ ...me, must: false }); toast("Contraseña actualizada. ¡Listo!"); }} onLogout={logout} />}</Device>;
+}
+
+/* el cambio obligatorio de contraseña va dentro de la pantalla de la tablet (o arriba de todo sin marco) */
+function ForcePwPortal(p: { n: string; onDone: () => void; onLogout: () => void }) {
+  const host = document.querySelector<HTMLElement>(".tab-screen");
+  return createPortal(<div className={host ? "absolute inset-0 z-[90]" : "fixed inset-0 z-[90]"}><ForcePw {...p} /></div>, host || document.body);
 }

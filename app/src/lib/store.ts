@@ -34,12 +34,14 @@ export const LS = {
     if (isLocal(k)) { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } bump(); return; }
     if (!ONLINE || CACHE[k] === v) return;
     if (PREV.on) { onToast("Vista previa: los cambios no se guardan", "err"); return; }
+    if (PREV.must) return; /* contraseña restablecida: nada se guarda hasta cambiarla */
     CACHE[k] = v; bump(); Sync.push(k);
   },
   del(k: string) {
     if (isLocal(k)) { try { localStorage.removeItem(k); } catch { /* */ } bump(); return; }
     if (!ONLINE || !has(CACHE, k)) return;
     if (PREV.on) { onToast("Vista previa: los cambios no se guardan", "err"); return; }
+    if (PREV.must) return; /* contraseña restablecida: nada se guarda hasta cambiarla */
     delete CACHE[k]; bump(); Sync.push(k);
   },
   /* lectura cacheada: solo vuelve a parsear si cambió el texto (no mutar lo que devuelve) */
@@ -120,10 +122,10 @@ function schedule() { clearTimeout(pollT); pollT = window.setTimeout(async () =>
 /* cuentas registradas en orden de alta (la posición es el ID público del perfil) */
 export const ACC: { names: string[] } = { names: [] };
 /* vista previa («Ver como»): sin permisos especiales y sin guardar nada en el servidor */
-export const PREV = { on: false };
+export const PREV = { on: false, must: false };
 const noRoles = () => { if (PREV.on) Object.assign(ME_ROLES, { admin: false, owner: false, six: false, anita: false }); };
 export const ME_ROLES: { admin?: boolean; owner?: boolean; six?: boolean; anita?: boolean } = {};
-export type Me = { n: string; r: string; admin: boolean; owner: boolean; six?: boolean; anita?: boolean };
+export type Me = { n: string; r: string; admin: boolean; owner: boolean; six?: boolean; anita?: boolean; must?: boolean };
 export let DEF_ROSTER: Agent[] = [];
 export type Agent = { n: string; p?: string; r: string; e?: string; s?: string; i?: string; d?: string; a?: string; c?: string };
 

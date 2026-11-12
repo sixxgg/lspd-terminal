@@ -135,12 +135,30 @@ export default wrap(async (req, res) => {
     await setMeta("invites", all.filter(x => x !== i)); return send(res, 200, { ok: 1 });
   }
   if (a === "passwd") {
+    /* si six la restableció, cambiarla es obligatorio y no pide la actual (ya entró con la temporal) */
+    const must = (await metaList("mustpw")).includes(me.n);
     const r = (await q("select hash from accounts where name=$1", [me.n])).rows[0];
-    if (!r || !checkPw(b.old, r.hash)) return send(res, 403, { msg: "La contraseña actual no es correcta" });
+    if (!r || (!must && !checkPw(b.old, r.hash))) return send(res, 403, { msg: "La contraseña actual no es correcta" });
+    if (must && checkPw(b.nw || "", r.hash)) return send(res, 400, { msg: "Elegí una contraseña distinta a la temporal" });
     if (tooShort(b.nw)) return send(res, 400, { msg: "La nueva contraseña tiene que tener al menos 8 caracteres" });
     await q("update accounts set hash=$2 where name=$1", [me.n, hashPw(b.nw)]);
     await q("delete from sessions where name=$1 and token<>$2", [me.n, tokenHash(sessionToken(req))]); invalidate(); // cierra las otras sesiones
+    if (must) await setMeta("mustpw", (await metaList("mustpw")).filter(x => x !== me.n));
     return send(res, 200, { ok: 1 });
+  }
+
+  /* six: cuentas registradas y restablecer contraseñas (al entrar, la persona tiene que cambiarla sí o sí) */
+  if (a === "sixaccs" || a === "sixreset") {
+    if (!isSix(me)) return send(res, 403, { msg: "Solo six" });
+    if (a === "sixaccs") { const must = await metaList("mustpw");
+      const rows = (await q("select name,created,last from accounts")).rows.sort((x, y) => x.name.localeCompare(y.name, "es"));
+      return send(res, 200, { list: rows.map(r => ({ n: r.name, c: +r.created, last: r.last ? +r.last : null, must: must.includes(r.name) })) }); }
+    if (b.n === me.n) return send(res, 400, { msg: "Tu propia contraseña la cambiás desde Mi cuenta" });
+    const tmp = randomPw(), r = await q("update accounts set hash=$2 where name=$1 returning name", [b.n, hashPw(tmp)]);
+    if (!r.rows[0]) return send(res, 404, { msg: "No existe esa cuenta" });
+    await setMeta("mustpw", [...new Set([...(await metaList("mustpw")), b.n])]);
+    await q("delete from sessions where name=$1", [b.n]); invalidate();
+    return send(res, 200, { tmp });
   }
 
   /* six elige qué cuenta es la de Anita (su espacio privado) */
@@ -197,6 +215,7 @@ export default wrap(async (req, res) => {
     const tmp = randomPw();
     const r = await q("update accounts set hash=$2 where name=$1 returning name", [b.n, hashPw(tmp)]);
     if (!r.rows[0]) return send(res, 404, { msg: "No existe esa cuenta" });
+    await setMeta("mustpw", [...new Set([...(await metaList("mustpw")), b.n])]);
     await q("delete from sessions where name=$1", [b.n]); invalidate();
     return send(res, 200, { tmp });
   }

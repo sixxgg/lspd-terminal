@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "2.3.3";
+export const APP_VERSION = "2.3.4";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,9 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "2.3.4", f: "12/11/2026", t: "Restablecer contraseñas", items: [
+    "Se pueden restablecer contraseñas de cuentas registradas: se entrega una temporal y, al entrar, la terminal obliga a elegir una nueva antes de usar cualquier cosa.",
+  ] },
   { v: "2.3.3", f: "12/11/2026", t: "Notificaciones dentro de la tablet", items: [
     "El aviso de actualización baja desde el borde de arriba de la pantalla de la tablet.",
     "Al tocar «Reiniciar ahora» se ve la pantalla «Actualización en curso» mientras se descarga la versión nueva; al volver, un aviso confirma que la terminal quedó actualizada.",

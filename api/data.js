@@ -50,6 +50,8 @@ export default wrap(async (req, res) => {
 
   if (req.method !== "POST") return send(res, 405, { error: "method" });
   const b = await body(req), k = b.k;
+  /* contraseña restablecida: hasta que la cambie no puede guardar nada */
+  try { if (JSON.parse((await q("select v from meta where k='mustpw'")).rows[0]?.v || "[]").includes(u.n)) return send(res, 403, { error: "perm", msg: "Primero cambiá tu contraseña" }); } catch { /* */ }
   let why = canWrite(u, k);
   if (why === PSB_DENY) { // miembros de la PSB definidos en el panel de administración
     try { const r = await q("select v from kv where k='lspdt.ui'"); const l = JSON.parse(r.rows[0].v).psb; if (Array.isArray(l) && l.includes(u.n)) why = null; } catch {}
