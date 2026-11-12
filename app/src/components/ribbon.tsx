@@ -18,7 +18,7 @@ function ServiceBars({ n, className }: { n: number; className?: string }) {
 }
 
 export const Ribbon = memo(function Ribbon({ d, size = "md", className }: { d: Decor; size?: "sm" | "md"; className?: string }) {
-  if (d.tab === "fra") return <span title={d.t} className={cn("inline-grid place-items-center rounded bg-slate-900", size === "sm" ? "h-[18px] w-[46px]" : "h-[26px] w-[92px]", className)}><ServiceBars n={d.n || 1} className={size === "sm" ? "h-4 w-4" : ""} /></span>;
+  if (d.tab === "fra") return <span title={d.t} className={cn("inline-grid shrink-0 place-items-center overflow-hidden rounded-[3px] bg-slate-900 shadow-[inset_0_0_0_1px_rgba(201,162,39,.85)]", size === "sm" ? "h-[18px] w-[46px]" : "h-[26px] w-[92px]", className)}><ServiceBars n={d.n || 1} className="!h-[92%] !w-auto" /></span>;
   return (
     <span title={d.t} className={cn("relative inline-block shrink-0 overflow-hidden rounded-[3px] shadow-[inset_0_0_0_1px_rgba(201,162,39,.85),0_1px_2px_rgba(0,0,0,.35)]", size === "sm" ? "h-[18px] w-[46px]" : "h-[26px] w-[92px]", className)}
       style={{ background: ribbonBg(d) }}>
@@ -26,3 +26,14 @@ export const Ribbon = memo(function Ribbon({ d, size = "md", className }: { d: D
     </span>
   );
 });
+
+/* pasador de cintas como en el uniforme: medallas primero, filas de `per` y la fila incompleta arriba, centrada */
+const ORD = { med: 0, cond: 1, fra: 2 } as const;
+const RK = { xs: "!h-[10px] !w-[26px] !rounded-[1.5px]", sm: "!h-[16px] !w-[42px]", md: "!h-[24px] !w-[66px]", lg: "!h-[30px] !w-[84px]" };
+export function RibbonRack({ list, per = 3, size = "md", className }: { list: Decor[]; per?: number; size?: keyof typeof RK; className?: string }) {
+  if (!list.length) return null;
+  const s = list.slice().sort((x, y) => ORD[x.tab] - ORD[y.tab]), rows: Decor[][] = [];
+  for (let i = s.length; i > 0; i -= per) rows.unshift(s.slice(Math.max(0, i - per), i));
+  return <div className={cn("inline-flex flex-col items-center gap-[2px]", className)} title={s.map(d => d.t).join(" · ")}>
+    {rows.map((r, i) => <div key={i} className="flex gap-[2px]">{r.map((d, j) => <Ribbon key={d.k + j} d={d} className={RK[size]} />)}</div>)}</div>;
+}

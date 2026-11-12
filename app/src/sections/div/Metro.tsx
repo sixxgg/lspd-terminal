@@ -7,7 +7,7 @@ import { Modal } from "@/components/modal";
 import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { AgentCombo } from "@/components/agents";
-import { findAgent, getRoster, hoyISO, lvl, rankES, uid } from "@/lib/domain";
+import { findAgent, getRoster, hoyISO, lvl, rankES, uid , dmy } from "@/lib/domain";
 import { useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { uMap } from "@/lib/units";
@@ -18,7 +18,6 @@ type Ev = { id: string; tipo: "exa" | "ent"; cand: string; rango: string; fecha:
   pts: number; apto: string; by: string; ts: number; fil?: Record<string, boolean>; fort?: string; mej?: string; dec?: string };
 type Q = { id: string; a: string; q: string; r: string };
 const K_EV = "lspdt.mdx.eval", K_BANK = "lspdt.mdx.bank";
-const dmy = (s: string) => (s ? s.split("-").reverse().join("/") : "—");
 const f1 = (n: number, d = 1) => n.toFixed(d).replace(".", ",");
 
 /* ---------- entrevista ---------- */

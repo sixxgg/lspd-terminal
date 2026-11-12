@@ -6,11 +6,11 @@ import { Button, Card, Empty, Input, Segmented, Select, SearchInput } from "@/co
 import { Avatar, RankBadge } from "@/components/agents";
 import { useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
-import { fmtDate, norm, rankES } from "@/lib/domain";
+import { fmtDate, norm, rankES , dmy } from "@/lib/domain";
 import { useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { carType } from "@/lib/onx";
-import { delPhotos, dmy, missOf, patReport, vName, vcount, vehOf, type Cell, type PHist, type PRow } from "@/lib/patrol";
+import { delPhotos, missOf, patReport, vName, vcount, vehOf, type Cell, type PHist, type PRow } from "@/lib/patrol";
 import { cn } from "@/lib/cn";
 import { StatusPill, Thumbs } from "./Patrullas";
 

@@ -7,7 +7,7 @@ import { Button, Card, Field, Input, Select, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
-import { findAgent, getRoster, rankES, uid } from "@/lib/domain";
+import { findAgent, getRoster, rankES, uid , dmy } from "@/lib/domain";
 import { useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { AgentCombo } from "@/components/agents";
@@ -44,7 +44,6 @@ function toConv(convs: Conv[], set: (c: Conv[]) => void, e: { cand: string; rang
   set([...L.slice(0, -1), { ...last, rows }]); return last.n;
 }
 const today = () => new Date().toISOString().slice(0, 10);
-const dmy = (s: string) => (s ? s.split("-").reverse().join("/") : "—");
 const CANDS = () => getRoster().filter(a => ["Police Officer III+", "Police Officer III", "Police Officer II", "Detective I", "Detective II", "Detective III"].includes(a.r)).map(a => a.n).sort((a, b) => a.localeCompare(b));
 
 export const AREAS_EXA = ["Manual del Departamento", "Procedimientos de patrulla", "Uso de la fuerza", "Marco legal", "Liderazgo y supervisión"];

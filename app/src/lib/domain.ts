@@ -125,6 +125,8 @@ export const divAb = (d: string) => DIV_INFO[d] || [d.split(/\s+/).map(w => w[0]
 const DIV_LOGO: Record<string, string> = { "Recruitment and Training Division": "rtd", "Underwater Dive Unit": "udu", "Metropolitan Division": "metro", "Major Crimes Division": "mcd", "High Tech Crime Unit": "htcu", "Gang and Narcotics Division": "gnd", "Air Support Division": "asd" };
 export const divEmblem = (d: string) => srcOf(LS.get("lspdt.divlogo." + d) || "") || (DIV_LOGO[d] ? `/div/${DIV_LOGO[d]}.webp?v=3` : "");
 export const isoToDMY = (s?: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return m ? `${m[3]}/${m[2]}/${m[1]}` : ""; };
+/* AAAA-MM-DD → DD/MM/AAAA */
+export const dmy = (iso?: string) => (iso ? iso.split("-").reverse().join("/") : "—");
 export function dmyToISO(s: string) {
   const m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(String(s).trim()); if (!m) return null;
   const d = +m[1], mo = +m[2], y = m[3].length === 2 ? 2000 + +m[3] : +m[3], dt = new Date(y, mo - 1, d);

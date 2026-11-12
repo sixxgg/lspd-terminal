@@ -1,6 +1,6 @@
 import { scrollTopApp } from "@/lib/appearance";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileText, Search, Plus, X, Users, UserRound, Shield, Package, ScrollText, ChevronDown, Pencil, Trash2, Copy, Save, FilePlus2, Info, Star, Car, ListChecks, Radio, Check, GripVertical, ArrowDownUp } from "lucide-react";
+import { FileText, Search, Plus, X, Users, UserRound, Shield, Package, ScrollText, ChevronDown, Pencil, Trash2, Copy, Save, FilePlus2, Info, Star, Car, ListChecks, Radio, Check, GripVertical, ArrowDownUp, ShieldAlert } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Select, Textarea, SearchInput } from "@/components/ui";
 import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
@@ -12,6 +12,8 @@ import { legalFavKey } from "./Legal";
 import { EV_T, INF_EST, INF_FZ, ROLES, fixUnid, isIC, INF_SECS, INF_TIPOS, UNITS, VEH_EST, VEH_REL, VEH_T, agTag, dcParts, getPenal, infErrs, infNew, infText, penalOf, penalSearch, artCmp, type Art, type Inf, type Veh } from "@/lib/penal";
 import { cn } from "@/lib/cn";
 import { VehPick } from "@/components/vehpick";
+import { DivNav } from "./div/DivTools";
+import { OisPanel } from "./Ois";
 
 const fmtMoney = (n: number) => Number(n).toLocaleString("es-AR") + " $";
 export function PenMeta({ x }: { x: Art }) {
@@ -28,12 +30,15 @@ export function Informes() {
   useStoreVersion();
   const [INFS] = useJSON<Inf[]>("lspdt.informes", []);
   const [tab, setTab] = useState<"new" | "list">("new"), [edit, setEdit] = useState<Inf | null>(null), [open, setOpen] = useState<string | null>(null);
+  const [sub, setSub] = useState(() => LS.get("lspdt.next.infsub") || "inf"), go = (v: string) => { setSub(v); LS.set("lspdt.next.infsub", v); };
   return (
     <div className="space-y-5">
+      <DivNav value={sub} onChange={go} options={[{ value: "inf", label: "Informe policial", icon: <FileText />, txt: "Informe policial" }, { value: "ois", label: "Procedimiento OIS con fallecido", icon: <ShieldAlert />, txt: "Procedimiento OIS con fallecido" }]} />
+      {sub === "ois" ? <OisPanel /> : <>
       <Segmented value={tab} onChange={setTab} options={[{ value: "new", label: "Nuevo informe", icon: <FilePlus2 /> }, { value: "list", label: `Historial (${INFS.length})`, icon: <FileText /> }]} />
       {tab === "new" ? <InfForm key={edit?.id || "new"} init={edit} onSaved={id => { setEdit(null); setOpen(id); setTab("list"); }} />
         
-        : <InfList open={open} setOpen={setOpen} onEdit={r => { setEdit(r); setTab("new"); scrollTopApp(); }} />}
+        : <InfList open={open} setOpen={setOpen} onEdit={r => { setEdit(r); setTab("new"); scrollTopApp(); }} />}</>}
     </div>
   );
 }

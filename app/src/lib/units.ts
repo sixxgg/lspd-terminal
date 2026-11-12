@@ -72,7 +72,7 @@ type GenCfg = { id: string; uni: string; parent?: string; tabs: string[] };
 const slugD = (d: string) => d.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const G = (id: string, d: string, tabs: string[] = [], parent?: string, uni?: string): [string, GenCfg] => [d, { id, uni: uni || "x-" + slugD(d), parent, tabs }];
 export const GEN: Record<string, GenCfg> = Object.fromEntries([
-  G("asb", "Administration Services Bureau", ["adm2", "iev", "ipu", "doc", "tar", "conv", "subs"]),
+  G("asb", "Administration Services Bureau", ["adm2", "ent", "iev", "ipu", "doc", "tar", "conv", "subs"]),
   G("hsiu", "High Speed Interception Unit", ["tom"]),
   G("db", "Detective Bureau"),
   G("htcu", "High Tech Crime Unit", [], "Detective Bureau"), G("gnd", "Gang and Narcotics Division", [], "Detective Bureau"), G("mcd", "Major Crimes Division", [], "Detective Bureau"),

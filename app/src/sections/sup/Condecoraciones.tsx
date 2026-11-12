@@ -7,14 +7,13 @@ import { useFeedback } from "@/components/feedback";
 import { Ribbon } from "@/components/ribbon";
 import { AgentCombo } from "@/components/agents";
 import { DECOR, type Award, type Decor, type Tab } from "@/lib/decor";
-import { findAgent, norm, rankES, uid } from "@/lib/domain";
+import { findAgent, norm, rankES, uid , dmy } from "@/lib/domain";
 import { useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { allProfiles, updateProf } from "@/lib/profiles";
 
 const TABS: [Tab, string, typeof Medal][] = [["cond", "Condecoraciones", AwardI], ["med", "Medallas", Medal], ["fra", "Franjas de servicio", RibbonI]];
 const today = () => new Date().toISOString().slice(0, 10);
-const dmy = (s?: string) => (s ? s.split("-").reverse().join("/") : "");
 
 /* quién tiene cada condecoración (sale de los perfiles) */
 export function holders() {
@@ -86,7 +85,7 @@ function DecorModal({ d, onClose }: { d: Decor; onClose: () => void }) {
         {list.map(({ n, a }) => { const ag2 = findAgent(n); return (
           <div key={a.id} className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-800">
             <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{ag2 ? `${rankES(ag2.r)} ${n}` : n}</p>
-              <p className="truncate text-xs text-slate-500">{dmy(a.f) || "Sin fecha"}{a.m ? ` · ${a.m}` : ""}{a.by ? ` · otorgada por ${a.by}` : ""}</p></div>
+              <p className="truncate text-xs text-slate-500">{a.f ? dmy(a.f) : "Sin fecha"}{a.m ? ` · ${a.m}` : ""}{a.by ? ` · otorgada por ${a.by}` : ""}</p></div>
             <button aria-label={`Quitar a ${n}`} title="Quitar" onClick={async () => { if (!(await confirm(`¿Quitarle «${d.t}» a ${n}?`, { danger: true }))) return;
               updateProf(n, p => { p.cond = ((p.cond || []) as unknown as Award[]).filter(x => x.id !== a.id) as unknown as string[]; }); }}
               className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><Trash2 className="size-4" /></button>

@@ -6,11 +6,11 @@ import { Lightbox, Modal } from "@/components/modal";
 import { useCopy } from "@/components/output";
 import { CarPicker } from "@/components/carpick";
 import { useFeedback } from "@/components/feedback";
-import { findAgent as getAgent, lvl, rankES, uid } from "@/lib/domain";
+import { findAgent as getAgent, lvl, rankES, uid , dmy } from "@/lib/domain";
 import { LS, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { goTo } from "@/lib/profiles";
-import { PATROL_CARS, VST, delPhotos, dmy, eqAll, eqFor, missOf, vName, vehOf, patReport, pfoto, readImg, vcount, type Cell, type PHist, type Patrol, type PRow } from "@/lib/patrol";
+import { PATROL_CARS, VST, delPhotos, eqAll, eqFor, missOf, vName, vehOf, patReport, pfoto, readImg, vcount, type Cell, type PHist, type Patrol, type PRow } from "@/lib/patrol";
 import { cn } from "@/lib/cn";
 
 const newPat = (): Patrol => ({ fecha: new Date().toISOString().slice(0, 10), rows: [] });

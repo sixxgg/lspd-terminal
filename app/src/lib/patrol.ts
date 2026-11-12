@@ -1,3 +1,4 @@
+import { dmy } from "./domain";
 /* Revisión de patrullas: lspdt.equip2 (checklist del maletero), lspdt.patrol, lspdt.patHist, lspdt.pfoto.* */
 import { LS } from "./store";
 import { PATROL_CARS } from "./onx";
@@ -28,7 +29,6 @@ export const missOf = (c: Cell) => [...(c.m || []).map(missTxt), ...(c.o ? [c.o]
 export const vcount = (rows: PRow[], s: string) => rows.reduce((n, r) => n + vehOf(r).filter(k => (r.v[k]?.s || "") === s).length, 0);
 export const pfoto = (id: string) => LS.get("lspdt.pfoto." + id) || "";
 export const delPhotos = (rows: PRow[]) => rows.forEach(r => vehOf(r).forEach(k => (r.v[k]?.f || []).forEach(id => LS.del("lspdt.pfoto." + id))));
-export const dmy = (iso?: string) => (iso ? iso.split("-").reverse().join("/") : "");
 export function patReport(rec: { fecha: string; rows: PRow[]; nota?: string }, by: string) {
   let t = `REVISIÓN DE PATRULLAS — ${dmy(rec.fecha)}\nRevisado por: ${by || ""}\n`;
   for (const r of rec.rows) {

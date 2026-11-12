@@ -2,7 +2,7 @@ import { PROF, profOk } from "@/lib/nick";
 import { divVisible } from "@/lib/divisions";
 import type { LucideIcon } from "lucide-react";
 import {
-  Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
+  CalendarDays, Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
   Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint, UserRound, Presentation,
 } from "lucide-react";
 import { LS, ME_ROLES } from "./lib/store";
@@ -18,6 +18,7 @@ const RAW_AREAS: Area[] = [
     { k: "ts", l: "Hora para Discord", d: "Marcas de tiempo para comunicados: cada uno las ve en su propia hora", icon: Clock, ready: true },
     { k: "nov", l: "Novedades", d: "Registro de cambios por versión y la primera versión de la terminal", icon: ScrollText, ready: true }] },
   { k: "age", l: "Agentes", icon: Users, min: 6, req: "Sargento I", sec: [{ k: "prof", l: "Agentes", d: "Planilla del departamento por rango: Jefatura, Capitanía, Supervisores, Detectives y Patrulleros", icon: Users, ready: true }] },
+  { k: "cal", l: "Calendario", icon: CalendarDays, min: 0, sec: [{ k: "cal", l: "Calendario", d: "Prácticas, instrucciones y eventos de las divisiones", icon: CalendarDays, ready: true }] },
   { k: "inf", l: "Informes", icon: FileText, min: 0, sec: [{ k: "inf", l: "Informes policiales", d: "Redactar, registrar y buscar informes", icon: FileText, ready: true }] },
   /* oculta del menú: se entra desde el nombre del encabezado (por ahora solo six, BETA) */
   { k: "me", l: "Mi perfil", icon: UserRound, min: 0, hidden: true, sec: [{ k: "perfil", l: "Mi perfil", d: "Perfiles de la terminal (BETA)", icon: UserRound, ready: true }] },

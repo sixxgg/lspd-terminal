@@ -1,7 +1,7 @@
 import { profOk } from "@/lib/nick";
 import { cipher, onlineIcons, useTabFx } from "@/lib/tabfx";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, Flame, UserRound, KeyRound, BellRing } from "lucide-react";
+import { Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, Flame, UserRound, KeyRound, BellRing, CalendarClock } from "lucide-react";
 import { AREAS, canArea, lockedOf, menuAreas, secsOf, type Area, type Sec } from "@/nav";
 import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
@@ -13,6 +13,7 @@ import { usePref } from "@/lib/appearance";
 import { focusRing } from "@/components/ui";
 import { APP_VERSION } from "@/sections/Novedades";
 import { NotifBell } from "@/components/notifs";
+import { calAll, calNew } from "@/lib/calendar";
 
 /* versión actual: con fuego y NEW mientras haya novedades sin ver; abre el registro de cambios */
 /* nombre del encabezado: «Mi perfil (BETA)» y «Mi cuenta» */
@@ -28,8 +29,16 @@ function UserMenu({ children, onAcc, go, up, wide }: { children: ReactNode; onAc
         {profOk() && <button className={it} onClick={() => { setO(false); go("me", "perfil"); }}><UserRound />Mi perfil<span className="ml-auto rounded bg-pink-500/15 px-1.5 text-[10px] font-bold text-pink-600 dark:text-pink-300">BETA</span></button>}
         <button className={it} onClick={() => { setO(false); onAcc(); }}><KeyRound />Mi cuenta</button>
         {ME_ROLES.six && <button className={it} onClick={() => { setO(false); window.dispatchEvent(new Event("lspdt:testupd")); }}><BellRing />Probar actualización</button>}
+        {(ME_ROLES.six || ME_ROLES.anita) && <button className={it} onClick={() => { setO(false); window.dispatchEvent(new Event("lspdt:testcal")); }}><CalendarClock />Probar calendario</button>}
       </div>}
     </div>);
+}
+/* contador del Calendario: eventos nuevos que me tocan desde la última vez que lo abrí */
+function CalBadge({ n }: { n: string }) {
+  useStoreVersion(); const [, f] = useState(0);
+  useEffect(() => { const h = () => f(x => x + 1); window.addEventListener("lspdt:cal", h); return () => window.removeEventListener("lspdt:cal", h); }, []);
+  const c = calNew(calAll(), n).length;
+  return c ? <span className="grid min-w-[18px] place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-[18px] text-white shadow-sm shadow-red-500/40" aria-label={`${c} nuevos`}>{c > 9 ? "9+" : c}</span> : null;
 }
 const VersionBadge = ({ go }: { go: (a: string, s: string) => void }) => (
   <button onClick={() => go("ini", "nov")} title={`Versión ${APP_VERSION} · ver novedades`} className={cn("ver-new", focusRing)}>
@@ -100,7 +109,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
                 className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-xl px-1.5 py-2 text-[11px] min-[1450px]:px-2 min-[1450px]:text-[11.5px] font-semibold uppercase tracking-wide transition min-[1800px]:px-2.5 min-[1800px]:text-[12px]", focusRing,
                   red ? (on ? "bg-red-600 text-white shadow-sm shadow-red-600/30" : "text-red-500 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300")
                   : pink ? (on ? "bg-pink-500 text-white shadow-sm shadow-pink-500/30" : "text-pink-500 hover:bg-pink-500/10 hover:text-pink-600 dark:text-pink-400 dark:hover:text-pink-300")
-                  : on ? "bg-brand-600 text-white shadow-sm shadow-brand-600/30 dark:bg-brand-500" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white")}>{AI && <AI className={cn("size-[15px] shrink-0", !on && "hidden min-[1450px]:block")} />}{a.l}{a.beta && <span className="beta-tag">BETA</span>}</button>); })}
+                  : on ? "bg-brand-600 text-white shadow-sm shadow-brand-600/30 dark:bg-brand-500" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white")}>{AI && <AI className={cn("size-[15px] shrink-0", !on && "hidden min-[1450px]:block")} />}{a.l}{a.beta && <span className="beta-tag">BETA</span>}{a.k === "cal" && <CalBadge n={me.n} />}</button>); })}
           </nav>
           <div className="flex shrink-0 items-center gap-1">
             {sync}<NotifBell me={me} go={go} />{tools}
@@ -150,7 +159,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
                           on ? "bg-brand-600 text-white shadow-sm shadow-brand-600/30 dark:bg-brand-500"
                             : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-white")}>
                         <I className={cn("size-4 shrink-0", on ? "text-current" : "text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300")} />
-                        <span className="flex-1 truncate">{s.l}</span>
+                        <span className="flex-1 truncate">{s.l}</span>{a.k === "cal" && <CalBadge n={me.n} />}
                         
                       </button>
                     </li>

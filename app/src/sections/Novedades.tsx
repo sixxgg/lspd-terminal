@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "2.3.4";
+export const APP_VERSION = "2.3.5";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,16 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "2.3.5", f: "12/11/2026", t: "Calendario, expediente de agentes y procedimiento OIS", items: [
+    "Nueva sección Calendario: el mes con las prácticas, instrucciones y eventos de las divisiones, próximos con banner, filtros por división y «Anotados».",
+    "Cada división tiene su pestaña Calendario: la coordinación carga nombre, hora (formato web y Discord), banner opcional y creador del evento. La ASB puede publicar eventos para todo el departamento.",
+    "Aviso el mismo día (baja desde el borde de la tablet) con «Marcar como leído», «Anotarme» y «Recordármelo»; también llega a la campanita y el menú muestra un contador con lo nuevo.",
+    "Perfil de los agentes rediseñado como expediente: ficha con foto, placa, State ID y callsign, pasador de cintas y legajo por pestañas.",
+    "Condecoraciones rediseñadas: pasador como en el uniforme y selector visual por catálogo con buscador.",
+    "Informes: nueva subsección «Procedimiento OIS con fallecido» paso a paso, con copia para Discord y exportación a PDF con el sello del LSPD.",
+    "ASB: pestaña Entrevistas para aspirantes a administrativo, con preguntas, nota por respuesta y resultado.",
+    "Emblemas con fondo cuadrado: se recortan en círculo para que no se vea el cuadrado detrás del logo.",
+  ] },
   { v: "2.3.4", f: "12/11/2026", t: "Restablecer contraseñas", items: [
     "Se pueden restablecer contraseñas de cuentas registradas: se entrega una temporal y, al entrar, la terminal obliga a elegir una nueva antes de usar cualquier cosa.",
   ] },

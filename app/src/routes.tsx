@@ -29,11 +29,12 @@ const FeedbackApp = lz(() => import("./sections/FeedbackApp"), "FeedbackApp");
 const Huellas = lz(() => import("./sections/sup/Huellas"), "Huellas");
 const RegistroPatrullas = lz(() => import("./sections/sup/RegistroPatrullas"), "RegistroPatrullas");
 const Pizarra = lz(() => import("./sections/Pizarra"), "PizarraArea");
+const Calendario = lz(() => import("./sections/Calendario"), "Calendario");
 const Codigos = lz(() => import("./sections/Codigos"), "Codigos");
 const Equipamiento = lz(() => import("./sections/cap/Equipamiento"), "Equipamiento");
 
 
 export const VIEWS: Record<string, () => ReactNode> = {
   "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/cond": () => <Condecoraciones />, "cap/exa": () => <Sargentos tab="exa" />, "cap/ent": () => <Sargentos tab="ent" />, "cap/list": () => <Sargentos tab="list" />, "piz/piz": () => <Pizarra />, "cod/cod": () => <Codigos />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "sup/fbk": () => <Feedback />, "cap/vot": () => <Votaciones />, "sup/pat": () => <Patrullas />, "sup/prof": () => <Agentes />, "age/prof": () => <Agentes />, "ini/nov": () => <Novedades />, "ini/ts": () => <Timestamps />, "inf/inf": () => <Informes />, "leg/ley": () => <Legal />, "sup/preg": () => <RegistroPatrullas />, "fb/env": () => <FeedbackApp />, "sup/hue": () => <Huellas />, "cap/equ": () => <Equipamiento />, "cap/perm": () => <Permisos />, "jef/ros": () => <EstadoRoster />, "jef/his": () => <HistorialVotaciones />,
-  "me/perfil": () => <Perfil />, "adm/acc": () => <AdmAccesos />, "adm/brand": () => <AdmMarca />, "adm/data": () => <AdmDatos />,
+  "cal/cal": () => <Calendario />, "me/perfil": () => <Perfil />, "adm/acc": () => <AdmAccesos />, "adm/brand": () => <AdmMarca />, "adm/data": () => <AdmDatos />,
 };

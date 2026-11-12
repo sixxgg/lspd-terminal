@@ -5,7 +5,7 @@
 import { nickOf, profOk } from "@/lib/nick";
 import { LOGROS, TIER, goodTier } from "@/components/logros";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, CheckCheck, Eye, Heart, Trophy, UserPlus, MessageSquare, Shield, Sparkles, TrendingDown, TrendingUp, type LucideIcon } from "lucide-react";
+import { Bell, CalendarClock, CalendarPlus, CheckCheck, Eye, Heart, Trophy, UserPlus, MessageSquare, Shield, Sparkles, TrendingDown, TrendingUp, type LucideIcon } from "lucide-react";
 import { FB_ST, fbSt, fbX, useMyFeedback, useTick } from "@/components/fbnotif";
 import { LS, useStoreVersion } from "@/lib/store";
 import { uMap } from "@/lib/units";
@@ -13,6 +13,7 @@ import { emailOf } from "@/lib/domain";
 import { ago, lvl, rankES } from "@/lib/domain";
 import { APP_VERSION, hasNews } from "@/sections/Novedades";
 import { cn } from "@/lib/cn";
+import { calAck, calAll, calMine, fmtWhen, isToday } from "@/lib/calendar";
 
 type N = { id: string; t: number; I: LucideIcon; c: string; title: string; body: string; go: [string, string] };
 type Ev = { id: string; t: number; title: string; body: string; up: boolean };
@@ -59,6 +60,11 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
       for (const l of LOGROS) if (lg[l.k] && goodTier(l.tier))
         L.push({ id: `lg:${l.k}`, t: lg[l.k], I: Trophy, c: TIER[l.tier].c, title: `Logro desbloqueado: ${l.t}`, body: `${TIER[l.tier].l} · ${l.d}`, go: ["me", "perfil"] });
     }
+    /* calendario: lo de hoy que me toca y lo nuevo que cargaron mis divisiones */
+    { const ack = calAck(me.n), d0 = new Date(); d0.setHours(0, 0, 0, 0);
+      for (const e of calAll()) { if (!calMine(e, me.n) || e.at < Date.now() - 3 * 36e5) continue; const tl = e.tipo === "Otro" ? "evento" : e.tipo.toLowerCase();
+        if (isToday(e.at) && !ack[e.id]?.r) L.push({ id: "cal:hoy:" + e.id, t: Math.max(+d0, e.t), I: CalendarClock, c: "#f59e0b", title: `ATENCIÓN · hoy hay ${["práctica", "instrucción", "reunión"].includes(tl) ? "una" : "un"} ${tl}`, body: `${e.n} · ${e.ab} · ${fmtWhen(e, { day: false })}`, go: ["cal", "cal"] });
+        else if (e.by !== me.n && Date.now() - e.t < 14 * 864e5) L.push({ id: "cal:new:" + e.id, t: e.t, I: CalendarPlus, c: e.col, title: `${e.ab} · nuevo en el calendario`, body: `${e.n} · ${fmtWhen(e)}`, go: ["cal", "cal"] }); } }
     if (hasNews()) L.push({ id: "ver:" + APP_VERSION, t: lsGet<number>("lspdt.next.verT:" + APP_VERSION, 0) || (lsSet("lspdt.next.verT:" + APP_VERSION, Date.now()), Date.now()), I: Sparkles, c: "#f472b6", title: `Versión ${APP_VERSION} disponible`, body: "Mirá las novedades de la terminal.", go: ["ini", "nov"] });
     return L.sort((a, b) => b.t - a.t).slice(0, 30);
   }, [fb.list, cases, psb, me.n, kEv, ver]); // eslint-disable-line react-hooks/exhaustive-deps

@@ -2,7 +2,7 @@
    Pestañas: Roster, Uniformidad y Administración, más las propias de cada una (ASB, HSIU, MDSO, UDU).
    Los registros (licencias, tareas, convenios…) son listas de fichas en lspdt.drec.<id>.<sección>. */
 import { useMemo, useState, type ReactNode } from "react";
-import { ArrowDown, ArrowUp, BadgeCheck, BookOpen, CalendarDays, Car, Check, ClipboardList, Copy, ExternalLink, FileText, GraduationCap, Handshake, Layers, Lightbulb, ListTodo,
+import { MessageCircle, ArrowDown, ArrowUp, BadgeCheck, BookOpen, CalendarDays, Car, Check, ClipboardList, Copy, ExternalLink, FileText, GraduationCap, Handshake, Layers, Lightbulb, ListTodo,
   Megaphone, Palette, Pencil, Phone, Plus, RotateCcw, Shirt, Trash2, UserCog, Users } from "lucide-react";
 import { Button, Card, Checkbox, Empty, Field, Input, SearchInput, Select, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
@@ -18,6 +18,8 @@ import { DivAdmin, DivNav, Uniformidad, divTabs, type DivTab, type URole } from 
 import { RosterBoard } from "./Roster";
 import { Comunicados } from "./Comunicados";
 import { Instrucciones } from "./Instrucciones";
+import { DivCal } from "./DivCal";
+import { AsbEnt } from "./AsbEnt";
 
 /* ---------- editor de roles (Administración) ---------- */
 export function RoleEditor({ id, roles, coFlag = true, locked = [] }: { id: string; roles: GRole[]; coFlag?: boolean; locked?: string[] }) {
@@ -197,12 +199,12 @@ const F_LIC: FDef[] = [{ k: "ag", l: "Agente", t: "agent", req: true }, { k: "ac
 /* ---------- la división genérica ---------- */
 const TAB: Record<string, [string, typeof Users]> = { ros: ["Roster", Users], uni: ["Uniformidad", Shirt], adm2: ["Administrativos", UserCog], iev: ["Ideas de eventos", CalendarDays], ipu: ["Ideas de publicaciones", Lightbulb],
   doc: ["Documentación", FileText], tar: ["Tareas", ListTodo], conv: ["Convenios", Handshake], subs: ["Subdivisiones", Layers], tom: ["Registro TOM", Car], lic: ["Licencias", BadgeCheck],
-  com: ["Comunicados", Megaphone], ins: ["Instrucciones", GraduationCap] };
+  com: ["Comunicados", Megaphone], ins: ["Instrucciones", GraduationCap], cal: ["Calendario", CalendarDays], ent: ["Entrevistas", MessageCircle] };
 export function GenDiv({ d }: { d: string }) {
   useStoreVersion();
   const me = useMe(), c = GEN[d], id = c.id, ab = (d.match(/[A-Z]/g) || []).join("") || d, mem = !!ME_ROLES.admin || isGMem(id, me.n), co = isGCo(id, me.n);
   const only = c.tabs.includes("lic"); /* MDSO: solo licencias */
-  const keys = only ? c.tabs : ["ros", ...[...c.tabs, "uni"].sort((a, b) => TAB[a][0].localeCompare(TAB[b][0], "es"))];
+  const keys = only ? c.tabs : ["ros", ...[...c.tabs, "uni", "cal"].sort((a, b) => TAB[a][0].localeCompare(TAB[b][0], "es"))];
   const base: DivTab[] = keys.map(v => { const [l, I] = TAB[v]; return { value: v, label: l, icon: <I />, txt: l }; });
   const opts = only ? base : divTabs(id, base, co);
   const [t0, setT] = useState(() => LS.get("lspdt.next.gtab." + id) || keys[0]), t = opts.some(x => x.value === t0) ? t0 : opts[0]?.value || "ros";
@@ -222,6 +224,8 @@ export function GenDiv({ d }: { d: string }) {
     : t === "ipu" ? rec("ipu", F_IPU, "Idea", <Lightbulb />)
     : t === "doc" ? rec("doc", F_DOC, "Documento", <BookOpen />)
     : t === "tar" ? rec("tar", F_TAR, "Tarea", <ClipboardList />)
+    : t === "cal" ? <DivCal id={id} ab={ab} />
+    : t === "ent" ? <AsbEnt co={co} />
     : t === "conv" ? <Convenios id={id} mem={mem} co={co} />
     : t === "subs" ? <Subdivs />
     : t === "com" ? <Comunicados div="udu" canEdit={mem} />

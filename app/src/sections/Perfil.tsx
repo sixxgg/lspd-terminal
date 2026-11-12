@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Activity, Check, Bold, Camera, Eye, Heading1, Heading2, Heading3, IdCard, Italic, List, Lock, MessageSquare, Pencil, Quote, Save, Send, Strikethrough, Trash2, Trophy, Underline, UserCheck, UserPlus, Users, X, type LucideIcon } from "lucide-react";
 import { Button, Card, Textarea } from "@/components/ui";
 import { Avatar, RankBadge } from "@/components/agents";
-import { Ribbon } from "@/components/ribbon";
+import { Ribbon, RibbonRack } from "@/components/ribbon";
 import { Modal } from "@/components/modal";
 import { LOGROS, Medal, TIER } from "@/components/logros";
 import { useFeedback } from "@/components/feedback";
@@ -15,7 +15,7 @@ import { ACC, LS, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { readImg } from "@/lib/patrol";
 import { ago, emailOf, findAgent, fmtDate, lvl, rankES, uid } from "@/lib/domain";
-import { decorOf, type Award } from "@/lib/decor";
+import { decorOf, type Award, type Decor } from "@/lib/decor";
 import { profFull, takePreset } from "@/lib/profiles";
 import { isPSB, rtdMem, uMap, type UnitKey } from "@/lib/units";
 import { mdHtml } from "@/lib/discord";
@@ -249,9 +249,9 @@ export function Perfil() {
               {(prof.div || []).length > 0 && <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Divisiones</p>
                 <div className="flex flex-wrap gap-1.5">{(prof.div as string[]).map(d => <span key={d} className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold dark:bg-slate-800">{d}</span>)}</div></div>}
               <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Condecoraciones</p>
-                {!cond.length ? <p className="text-sm text-slate-400">Sin condecoraciones todavía.</p> : <div className="divide-y divide-slate-100 dark:divide-slate-800">{cond.map(c => { const d = decorOf(c.k); return (
+                {!cond.length ? <p className="text-sm text-slate-400">Sin condecoraciones todavía.</p> : <><div className="mb-2 grid place-items-center rounded-2xl bg-[radial-gradient(ellipse_at_top,#1e2f4d,#0a1222_70%)] px-4 py-5"><RibbonRack list={cond.map(c => decorOf(c.k)).filter((d): d is Decor => !!d)} per={4} size="md" /></div><div className="divide-y divide-slate-100 dark:divide-slate-800">{cond.map(c => { const d = decorOf(c.k); return (
                   <div key={c.id} className="flex gap-4 py-3"><span className="w-24 shrink-0 pt-1">{d && <Ribbon d={d} />}</span>
-                    <div className="min-w-0"><b className="block">{c.t}</b><p className="text-xs text-slate-500">Otorgada {c.f ? fmtDate(new Date(c.f).getTime()).split(",")[0] : ""}{c.by ? `, por ${c.by}` : ""}</p>{c.m && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{c.m}</p>}</div></div>); })}</div>}</div>
+                    <div className="min-w-0"><b className="block">{c.t}</b><p className="text-xs text-slate-500">Otorgada {c.f ? fmtDate(new Date(c.f).getTime()).split(",")[0] : ""}{c.by ? `, por ${c.by}` : ""}</p>{c.m && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{c.m}</p>}</div></div>); })}</div></>}</div>
               {(prof.movs || []).length > 0 && <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Carrera</p>
                 <Timeline ev={(prof.movs || []).map(m => ({ t: m.t, x: `${m.tipo}${m.de ? ` · ${m.de}` : ""}${m.a ? ` → ${m.a}` : ""}`, by: m.por?.n })).sort((a, b) => b.t - a.t)} /></div>}
             </div>}
