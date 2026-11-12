@@ -111,7 +111,6 @@ export function uMap(k: UnitKey, me?: string): Record<string, string[]> {
 const clean = (o: Record<string, unknown>) => Object.fromEntries(Object.entries(o).filter(([n, r]) => n !== "_v" && Array.isArray(r))) as Record<string, string[]>;
 export const uSaveMap = (k: UnitKey, m: Record<string, string[]>) => { const u = UNITS[k]; LS.setJSON(u.rk, u.seedV ? { ...m, _v: u.seedV } : m); };
 export const uTop = (k: UnitKey, r?: string[]) => UNITS[k].R.find(x => (r || []).includes(x[0])) || UNITS[k].R[UNITS[k].R.length - 1];
-export const uRole = (k: UnitKey, x: string): Role => UNITS[k].R.find(r => r[0] === x) || UNITS[k].SUB?.find(r => r[0] === x) || [x, x, "#94a3b8", x];
 export const isUMem = (k: UnitKey, n: string) => !!ME_ROLES.admin || !!uMap(k)[n];
 export const isUCoord = (k: UnitKey, n: string) => !!ME_ROLES.admin || (uMap(k)[n] || []).some(x => COORD_R.includes(x));
 /* rol en las instrucciones según el roster: coordinador, instructor o instructor en pruebas */

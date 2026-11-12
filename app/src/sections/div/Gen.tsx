@@ -3,18 +3,19 @@
    Los registros (licencias, tareas, convenios…) son listas de fichas en lspdt.drec.<id>.<sección>. */
 import { useMemo, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, BadgeCheck, BookOpen, CalendarDays, Car, Check, ClipboardList, Copy, ExternalLink, FileText, GraduationCap, Handshake, Layers, Lightbulb, ListTodo,
-  Megaphone, Palette, Pencil, Phone, Plus, RotateCcw, Shirt, Trash2, UserCog, Users, X } from "lucide-react";
+  Megaphone, Palette, Pencil, Phone, Plus, RotateCcw, Shirt, Trash2, UserCog, Users } from "lucide-react";
 import { Button, Card, Checkbox, Empty, Field, Input, SearchInput, Select, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { AgentCombo, Avatar } from "@/components/agents";
 import { useFeedback } from "@/components/feedback";
-import { copyText } from "@/components/output";
+import { useCopyMsg } from "@/components/output";
 import { findAgent, hoyISO, rankES, uid } from "@/lib/domain";
 import { LS, ME_ROLES, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { GEN, gCall, gMap, gRoleOf, gRoles, gSave, gSaveCall, isGCo, isGMem, saveRoles, type GRole } from "@/lib/units";
 import { cn } from "@/lib/cn";
 import { DivAdmin, DivNav, Uniformidad, divTabs, type DivTab, type URole } from "./DivTools";
+import { RosterBoard } from "./Roster";
 import { Comunicados } from "./Comunicados";
 import { Instrucciones } from "./Instrucciones";
 
@@ -53,46 +54,9 @@ export function RoleEditor({ id, roles, coFlag = true, locked = [] }: { id: stri
 /* ---------- roster genérico ---------- */
 function GenRoster({ id, ab, canEdit }: { id: string; ab: string; canEdit: boolean }) {
   useStoreVersion();
-  const { toast, confirm } = useFeedback(), R = gRoles(id), m = gMap(id), mem = Object.entries(m);
-  const [edit, setEdit] = useState(false), [nw, setNw] = useState(""), [nwR, setNwR] = useState(R[R.length - 1]?.k || "");
-  const save = (fn: (x: Record<string, string>) => void) => { const x = { ...m }; fn(x); gSave(id, x); };
-  const top = (r: string) => (R.some(x => x.k === r) ? r : R[R.length - 1]?.k);
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-sm"><b>{mem.length}</b> integrantes</span>
-        {R.map(r => { const n = mem.filter(([, x]) => top(x) === r.k).length; return n ? <span key={r.k} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-2.5 py-0.5 text-xs dark:border-slate-700"><span className="size-2 rounded-full" style={{ background: r.c }} />{r.l} · {n}</span> : null; })}
-        {canEdit && <Button className="ml-auto" size="sm" variant={edit ? "primary" : "outline"} icon={edit ? <Check /> : <Pencil />} onClick={() => setEdit(!edit)}>{edit ? "Listo" : "Editar roster"}</Button>}
-      </div>
-      {edit && (
-        <Card className="flex flex-wrap gap-2 p-3">
-          <AgentCombo className="min-w-[14rem] flex-1" value={nw} onChange={setNw} filter={a => !m[a.n]} placeholder={`Agregar agente a la ${ab}…`} />
-          <Select value={nwR} onChange={e => setNwR(e.target.value)} className="w-auto text-sm">{R.map(r => <option key={r.k} value={r.k}>{r.l}</option>)}</Select>
-          <Button icon={<Plus />} onClick={() => { if (!nw) return; save(x => { x[nw] = nwR; }); toast(`${nw} agregado como ${gRoleOf(id, nwR).l}`); setNw(""); }}>Agregar</Button>
-        </Card>)}
-      {!mem.length && !edit ? <Card><Empty icon={<Users />} title="Todavía no hay integrantes" desc={canEdit ? "Tocá «Editar roster» para sumar agentes." : "La coordinación todavía no cargó el roster."} /></Card> : (
-        <Card className="overflow-hidden">{R.map(r => {
-          const L = mem.filter(([, x]) => top(x) === r.k).sort((a, b) => a[0].localeCompare(b[0], "es"));
-          if (!L.length && !edit) return null;
-          return (
-            <div key={r.k}>
-              <div className="flex items-center gap-2 border-y border-slate-100 bg-slate-50/80 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 first:border-t-0 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300" style={{ boxShadow: `inset 3px 0 0 ${r.c}` }}>
-                {r.l}<span className="rounded-md bg-white px-1.5 text-slate-500 dark:bg-slate-800">{L.length}</span></div>
-              {L.length ? L.map(([n]) => { const a = findAgent(n); return (
-                <div key={n} className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-2.5 last:border-0 dark:border-slate-800/70">
-                  <div className="flex min-w-[14rem] flex-1 items-center gap-2.5"><Avatar n={n} size={32} />
-                    <div><p className="text-sm font-semibold">{n}</p><p className="text-xs text-slate-500">{a ? `${a.p ? `#${a.p} · ` : ""}${rankES(a.r)}` : "No figura en el roster cargado"}</p></div></div>
-                  {edit ? <div className="flex items-center gap-1.5">
-                    <Input defaultValue={gCall(id, n)} placeholder="Indicativo" className="h-8 w-32 font-mono text-xs uppercase"
-                      onBlur={e => { const v = e.target.value.trim().toUpperCase(); if (v !== gCall(id, n)) { gSaveCall(id, n, v); toast("Indicativo guardado"); } }} />
-                    <Select value={top(m[n])} onChange={e => save(x => { x[n] = e.target.value; })} className="h-8 w-auto py-0 text-xs">{R.map(x => <option key={x.k} value={x.k}>{x.l}</option>)}</Select>
-                    <button aria-label={`Quitar a ${n}`} onClick={async () => { if (await confirm(`¿Quitar a ${n} de la ${ab}?`, { danger: true })) save(x => { delete x[n]; }); }} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><X className="size-4" /></button>
-                  </div> : <span style={{ ["--c" as string]: r.c }} className="inline-flex items-center rounded-md border border-[color:var(--c)] bg-[color:var(--c)]/15 px-1.5 py-0.5 text-[11px] font-semibold"><span className="mr-1.5 size-1.5 rounded-full" style={{ background: r.c }} />{r.l}</span>}
-                  {!edit && gCall(id, n) && <span className="rounded-md bg-red-500/10 px-1.5 py-0.5 font-mono text-[11px] font-bold text-red-600 dark:text-red-400">{gCall(id, n)}</span>}
-                </div>); }) : <p className="px-4 py-3 text-xs text-slate-400">Sin integrantes.</p>}
-            </div>);
-        })}</Card>)}
-    </div>);
+  const R = gRoles(id), map = Object.fromEntries(Object.entries(gMap(id)).map(([n, r]) => [n, [r]]));
+  return <RosterBoard ab={ab} roles={R} map={map} canEdit={canEdit} onSave={m => gSave(id, Object.fromEntries(Object.entries(m).map(([n, r]) => [n, r[0]])))}
+    call={{ l: "Indicativo", ph: "Ej.: WHISKEY-04", get: n => gCall(id, n), set: (n, v) => gSaveCall(id, n, v) }} />;
 }
 
 /* ---------- fichas genéricas (licencias, tareas, convenios…) ---------- */
@@ -107,7 +71,7 @@ const dIso = (iso: string) => { const [y, m, d] = iso.split("-"); return d ? `${
 function RecList({ k, fields, noun, icon, canAdd, canAll, tpl, empty, compact }: {
   k: string; fields: FDef[]; noun: string; icon: ReactNode; canAdd: boolean; canAll: boolean; tpl?: (r: Rec) => string; empty?: string; compact?: boolean;
 }) {
-  const me = useMe(), { toast, confirm } = useFeedback(), copy = (t: string, m: string) => void copyText(t).then(ok => toast(ok ? m : "No se pudo copiar", ok ? undefined : "err")), [L, setL] = useJSON<Rec[]>(k, []);
+  const me = useMe(), { toast, confirm } = useFeedback(), copy = useCopyMsg(), [L, setL] = useJSON<Rec[]>(k, []);
   const [ed, setEd] = useState<Rec | null>(null), [q, setQ] = useState(""), [chip, setChip] = useState("");
   const cf = fields.find(f => f.chip), main = fields[0];
   const blank = (): Rec => ({ id: "", t: 0, by: me.n, ...Object.fromEntries(fields.map(f => [f.k, f.t === "bool" ? true : f.me ? me.n : f.today ? hoyISO() : f.t === "sel" ? f.o?.[0] || "" : ""])) });

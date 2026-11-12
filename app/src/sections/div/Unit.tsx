@@ -1,7 +1,7 @@
 import { DivAdmin, DivNav, Uniformidad, divTabs, type DivTab, type URole } from "./DivTools";
 import { Comunicados } from "./Comunicados";
 import { lazy, Suspense, useMemo, useState } from "react";
-import { Megaphone, Shirt, Users, Pencil, Check, Plus, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History, Dog, ClipboardCheck, MessageCircle, Trophy, Loader2 } from "lucide-react";
+import { Megaphone, Shirt, Users, Check, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History, Dog, ClipboardCheck, MessageCircle, Trophy, Loader2 } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input, Segmented, Select } from "@/components/ui";
 import { AgentCombo, AgentPicker, Avatar } from "@/components/agents";
 import { Helicopter } from "@/components/icons";
@@ -11,11 +11,12 @@ import { Col, Split } from "@/components/layout";
 import { LUGARES, fmtDate, findAgent, lvl, norm, rankES, uid } from "@/lib/domain";
 import { LS, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { K9_PL, MD_CALLS, UNITS, unitRoles, insRole, isUCoord, isUMem, uMap, uRole, uSaveMap, uTop, type UnitKey } from "@/lib/units";
+import { K9_PL, MD_CALLS, UNITS, unitRoles, insRole, isUCoord, isUMem, uMap, uSaveMap, uTop, type UnitKey } from "@/lib/units";
 import { unitPalette } from "@/lib/divisions";
 import { cn } from "@/lib/cn";
 import { Psb, dcIdOf } from "./Psb";
 import { RoleEditor } from "./Gen";
+import { RosterBoard } from "./Roster";
 import { T1080 } from "@/sections/sup/T1080";
 import { Instrucciones } from "./Instrucciones";
 const MetroExam = lazy(() => import("./Metro").then(m => ({ default: m.MetroExam })));
@@ -41,7 +42,6 @@ const INS_TIPOS: Record<UnitKey, string[]> = { asd: ["Vuelo táctico", "Búsqued
 
 type Log = { id: string; t: number; por2: string; ag: string[]; veh?: string; ae?: string; mat?: string; mo: string; mox?: string; perm?: string; por?: string; dog?: string; zona?: string };
 type F = Omit<Log, "id" | "t" | "por2"> & { mox: string; perm: string; por: string; mat: string; dog: string; zona: string; veh: string };
-const uAg = (n: string) => findAgent(n) || { n, p: K9_PL[n] || "", r: "", fuera: true as const };
 const uLog = (k: UnitKey) => { const l = LS.json<Log[]>(UNITS[k].lk, []); return Array.isArray(l) ? l : []; };
 const vehL = (k: UnitKey, v?: string) => { const u = UNITS[k]; if (!u.veh) return ""; const o = u.veh.o.find(x => x[0] === v) || u.veh.o[0]; return `${o[1]} (${o[2]})`; };
 function uText(k: UnitKey, F: Partial<F> & { ag: string[]; mo: string }) {
@@ -54,6 +54,9 @@ function uText(k: UnitKey, F: Partial<F> & { ag: string[]; mo: string }) {
   const pa = F.por ? findAgent(F.por) : null;
   s += `\n**Permiso:** ${F.perm ? `${F.perm}${F.por ? ` (autorizado por ${pa ? rankES(pa.r) + " " : ""}${F.por}${pa?.p ? " #" + pa.p : ""})` : ""}` : "—"}`; return s;
 }
+/* permisos: los habituales de cada unidad; en la A.S.D, volar otra aeronave que no sea el Polmav lo exige */
+const PERMS: Record<string, string[]> = { asd: ["Patrullaje fuera de turno", "Vuelo con pasajero civil"], k9: ["Patrullaje fuera de turno", "Uso del K-9 en operativo de otra división"] };
+const vehPerm = (k: UnitKey, v: string) => { const o = UNITS[k].veh?.o; return o && v !== o[0][0] ? `Uso del ${o.find(x => x[0] === v)?.[1] || v}` : ""; };
 const newF = (k: UnitKey, me: string): F => { const u = UNITS[k]; return { ag: me ? [me] : [], veh: u.veh ? u.veh.o[0][0] : "", mat: "", mo: u.mo?.[0] || "", mox: "", perm: "", por: "", dog: "", zona: "" }; };
 
 const EXAMS: [string, string, string][] = [["EVAL-INS-01", "Instructor de vuelo", "Habilita como instructor de vuelo policial. Si lo supera un Piloto, pasa automáticamente a Piloto experimentado. Permanencia mínima: 3 semanas."],
@@ -106,65 +109,14 @@ export function Unit({ k, dn }: { k: UnitKey; dn?: string }) {
   );
 }
 
-function Tag({ k, x, main, pal }: { k: UnitKey; x: string; main?: boolean; pal: Record<string, string> }) {
-  const r = uRole(k, x), sub = UNITS[k].SUB?.some(s => s[0] === x), c = pal[x] || r[2];
-  return <span style={{ ["--c" as string]: c }} className={cn("inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold", main ? "border-[color:var(--c)] bg-[color:var(--c)]/15 text-slate-800 dark:text-white" : sub ? "border-transparent bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" : "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300")}>
-    {main && <span className="mr-1.5 size-1.5 rounded-full" style={{ background: c }} />}{r[1]}</span>;
-}
-
 function Roster({ k, pal }: { k: UnitKey; pal: Record<string, string> }) {
-  const me = useMe(), { toast, confirm } = useFeedback(), u = UNITS[k], co = isUCoord(k, me.n), m = uMap(k, me.n);
-  const [edit, setEdit] = useState(false), [nw, setNw] = useState(""), [nwR, setNwR] = useState(u.R[u.R.length - 1][0]);
-  const mem = Object.entries(m);
-  const save = (fn: (x: Record<string, string[]>) => void) => { const x = structuredClone(m); fn(x); uSaveMap(k, x); };
-  const ids = LS.json<Record<string, string>>("lspdt.psbIds", {});
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-sm"><b>{mem.length}</b> integrantes</span>
-        {u.R.map(([kk, l]) => { const n = mem.filter(([, r]) => uTop(k, r)[0] === kk).length; return n ? <span key={kk} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-2.5 py-0.5 text-xs dark:border-slate-700"><span className="size-2 rounded-full" style={{ background: pal[kk] }} />{l} · {n}</span> : null; })}
-        {co && <Button className="ml-auto" size="sm" variant={edit ? "primary" : "outline"} icon={edit ? <Check /> : <Pencil />} onClick={() => setEdit(!edit)}>{edit ? "Listo" : "Editar roster"}</Button>}
-      </div>
-      {edit && (
-        <Card className="flex flex-wrap gap-2 p-3">
-          <AgentCombo className="min-w-[14rem] flex-1" value={nw} onChange={setNw} filter={a => !m[a.n]} placeholder={`Agregar agente a la ${u.ab}…`} />
-          <Select value={nwR} onChange={e => setNwR(e.target.value)} className="w-auto text-sm">{u.R.map(([kk, l]) => <option key={kk} value={kk}>{l}</option>)}</Select>
-          <Button icon={<Plus />} onClick={() => { if (!nw) return; save(x => { x[nw] = [nwR]; }); toast(`${nw} agregado como ${uRole(k, nwR)[1]}`); setNw(""); }}>Agregar</Button>
-        </Card>)}
-      <Card className="overflow-hidden">
-        {u.R.map(([kk, l]) => {
-          const L = mem.filter(([, r]) => uTop(k, r)[0] === kk).sort((a, b) => a[0].localeCompare(b[0], "es"));
-          if (!L.length && !edit) return null;
-          return (
-            <div key={kk}>
-              <div className="flex items-center gap-2 border-y border-slate-100 bg-slate-50/80 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 first:border-t-0 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300" style={{ boxShadow: `inset 3px 0 0 ${pal[kk]}` }}>
-                {l}<span className="rounded-md bg-white px-1.5 text-slate-500 dark:bg-slate-800">{L.length}</span></div>
-              {L.length ? L.map(([n, r]) => { const a = uAg(n); return (
-                <div key={n} className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-2.5 last:border-0 dark:border-slate-800/70">
-                  <div className="flex min-w-[14rem] flex-1 items-center gap-2.5"><Avatar n={n} size={32} />
-                    <div><p className="text-sm font-semibold">{n}</p><p className="text-xs text-slate-500">{a.p && `#${a.p} · `}{"fuera" in a ? "No figura en el roster cargado" : rankES(a.r)}</p></div></div>
-                  {edit ? (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {k === "md" && <Input defaultValue={callOf(n)} placeholder="Indicativo (R20D…)" className="h-8 w-32 font-mono text-xs"
-                        onBlur={e => { const v = e.target.value.trim().toUpperCase(), M = { ...MD_CALLS, ...LS.json<Record<string, string>>("lspdt.mdCalls", {}) }; if ((M[n] || "") === v) return; M[n] = v; LS.setJSON("lspdt.mdCalls", M); toast("Indicativo guardado"); }} />}
-                      {k === "psb" && <Input defaultValue={ids[n] || dcIdOf(n)} placeholder="Discord ID" inputMode="numeric" className="h-8 w-44 font-mono text-xs"
-                        onBlur={e => { const v = e.target.value.replace(/\D/g, ""), M = LS.json<Record<string, string>>("lspdt.psbIds", {}); if ((M[n] || "") === v) return; if (v) M[n] = v; else delete M[n]; LS.setJSON("lspdt.psbIds", M); toast("Discord ID guardado"); }} />}
-                      {[...u.R, ...(u.SUB || [])].map(([x, ll, , sh]) => { const on = r.includes(x); return (
-                        <label key={x} title={ll} className={cn("cursor-pointer select-none rounded-md border px-2 py-1 text-[11px] font-semibold transition", on ? "text-slate-900 dark:text-white" : "border-slate-200 text-slate-400 hover:text-slate-600 dark:border-slate-700")}
-                          style={on ? { borderColor: pal[x], background: `${pal[x]}26` } : undefined}>
-                          <input type="checkbox" className="sr-only" checked={on} onChange={e => save(y => { y[n] = (y[n] || []).filter(z => z !== x); if (e.target.checked) y[n].push(x); if (!y[n].length) y[n] = [u.R[u.R.length - 1][0]]; })} />{sh}</label>); })}
-                      <button aria-label={`Quitar a ${n}`} onClick={async () => { if (await confirm(`¿Quitar a ${n} de la ${u.ab}?`, { danger: true })) save(y => { delete y[n]; }); }} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><X className="size-4" /></button>
-                    </div>
-                  ) : <div className="flex flex-wrap gap-1"><Tag k={k} x={kk} main pal={pal} />{r.filter(x => x !== kk).map(x => <Tag key={x} k={k} x={x} pal={pal} />)}
-                    {k === "k9" && <DogEd n={n} can={co || n === me.n} />}
-                    {k === "md" && callOf(n) && <span className="rounded-md bg-red-500/10 px-1.5 py-0.5 font-mono text-[11px] font-bold text-red-600 dark:text-red-400">{callOf(n)}</span>}
-                    {k === "asd" && asdSusp(n) && <span title={asdSuspTxt(n)} className="inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-300">Patrullaje aéreo suspendido</span>}</div>}
-                </div>); }) : <p className="px-4 py-3 text-xs text-slate-400">Sin integrantes.</p>}
-            </div>);
-        })}
-      </Card>
-    </div>
-  );
+  const me = useMe(), u = UNITS[k], co = isUCoord(k, me.n), m = uMap(k, me.n);
+  return <RosterBoard ab={u.ab} roles={u.R.map(([x, l]) => ({ k: x, l, c: pal[x] }))} subs={(u.SUB || []).map(([x, l]) => ({ k: x, l, c: pal[x] || "#94a3b8" }))} map={m} canEdit={co} onSave={x => uSaveMap(k, x)}
+    call={k === "md" ? { l: "Indicativo", ph: "R20D", get: callOf, set: (n, v) => LS.setJSON("lspdt.mdCalls", { ...MD_CALLS, ...LS.json<Record<string, string>>("lspdt.mdCalls", {}), [n]: v }) } : undefined}
+    disc={k === "psb" ? { l: "Discord ID", ph: "123456789012345678", get: n => LS.json<Record<string, string>>("lspdt.psbIds", {})[n] || dcIdOf(n), set: (n, v) => { const M = LS.json<Record<string, string>>("lspdt.psbIds", {}); if (v) M[n] = v; else delete M[n]; LS.setJSON("lspdt.psbIds", M); } } : undefined}
+    tags={n => <>{k === "k9" && <DogEd n={n} can={false} />}{k === "asd" && asdSusp(n) && <span title={asdSuspTxt(n)} className="inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-300">Patrullaje aéreo suspendido</span>}</>}
+    info={n => K9_PL[n] ? `#${K9_PL[n]} · fuera del roster cargado` : ""}
+    editExtra={k === "k9" ? n => <Field label="K-9 asignado"><DogEd n={n} can /></Field> : undefined} />;
 }
 
 function RegForm({ k, onSaved }: { k: UnitKey; onSaved: () => void }) {
@@ -177,6 +129,8 @@ function RegForm({ k, onSaved }: { k: UnitKey; onSaved: () => void }) {
   const save = () => {
     if (!F.ag.length) { toast("Agregá al menos un agente", "err"); return; } if (F.mo === "Otro" && !F.mox.trim()) { toast("Escribí el motivo", "err"); return; }
     if (u.dog && !F.dog.trim()) { toast("Escribí el nombre del K-9", "err"); return; }
+    if (F.perm === "Otro") { toast("Escribí qué permiso se autorizó", "err"); return; }
+    if (F.perm.trim() && !F.por) { toast("Elegí quién autorizó el permiso", "err"); return; }
     if (k === "asd" && F.mo !== "Formación / examen") { const su = F.ag.filter(x => asdSusp(x)); if (su.length) { toast(`${su.join(", ")} ${su.length > 1 ? "tienen" : "tiene"} el patrullaje aéreo suspendido (EVAL-CRIT-EMG-05 reprobada). Solo puede volar en «Formación / examen» hasta aprobarla.`, "err"); return; } }
     LS.setJSON(u.lk, [...uLog(k), { ...structuredClone(F), id: uid(), t: Date.now(), por2: me.n }]);
     up({ ...newF(k, me.n), ag: F.ag.slice(), veh: F.veh, dog: F.dog }); toast(u.one![0].toUpperCase() + u.one!.slice(1) + " registrado"); onSaved();
@@ -200,7 +154,7 @@ function RegForm({ k, onSaved }: { k: UnitKey; onSaved: () => void }) {
           <CardHeader icon={u.veh ? <Helicopter /> : <ClipboardPen />} title={`Datos del ${u.one}`} />
           <CardBody>
             {u.veh && <Field label={u.veh.l}><div className="grid grid-cols-3 gap-2">{u.veh.o.map(([v, n, s]) => (
-              <button key={v} onClick={() => up({ veh: v })} className={cn("flex flex-col items-center gap-1 rounded-xl border p-3 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500", F.veh === v ? "border-brand-500 bg-brand-50 dark:border-brand-400 dark:bg-brand-500/10" : "border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50")}>
+              <button key={v} onClick={() => { const a = vehPerm(k, v), was = vehPerm(k, F.veh); up({ veh: v, perm: a || (F.perm === was ? "" : F.perm), por: a || F.perm !== was ? F.por : "" }); }} className={cn("flex flex-col items-center gap-1 rounded-xl border p-3 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500", F.veh === v ? "border-brand-500 bg-brand-50 dark:border-brand-400 dark:bg-brand-500/10" : "border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50")}>
                 <Helicopter className="size-5 text-slate-500" /><b className="text-sm">{n}</b><small className="text-[11px] text-slate-500">{s}</small></button>))}</div></Field>}
             <div className="grid gap-4 sm:grid-cols-2">
               {u.mat && <Field label="Matrícula" hint="(opcional)"><Input value={F.mat} onChange={e => up({ mat: e.target.value.toUpperCase() })} placeholder="N704NX" className="font-mono uppercase" /></Field>}
@@ -210,8 +164,13 @@ function RegForm({ k, onSaved }: { k: UnitKey; onSaved: () => void }) {
             <Field label="Motivo"><div className="flex flex-wrap gap-1.5">{u.mo!.map(x => (
               <button key={x} onClick={() => up({ mo: x })} className={cn("rounded-full border px-3 py-1 text-xs font-medium transition", F.mo === x ? "border-brand-500 bg-brand-600 text-white dark:bg-brand-500" : "border-slate-200 bg-white text-slate-600 hover:border-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300")}>{x}</button>))}</div>
               <Input className="mt-2" value={F.mox} onChange={e => up({ mox: e.target.value })} placeholder={F.mo === "Otro" ? "Escribí el motivo" : "Detalle (opcional)"} /></Field>
-            <Field label="Permiso" hint={`(opcional${u.veh ? ", si se autoriza una aeronave distinta" : ""})`}>
-              <Input value={F.perm} onChange={e => up({ perm: e.target.value })} placeholder={u.veh ? "Ej: Uso del MH-60S Blackhawk autorizado" : "Ej: Salida autorizada fuera de turno"} /></Field>
+            <Field label="Permiso" hint={vehPerm(k, F.veh) ? "(obligatorio: la aeronave elegida no es la de patrullaje)" : "(opcional)"}>
+              <div className="flex flex-wrap gap-1.5">{["", ...(vehPerm(k, F.veh) ? [vehPerm(k, F.veh)] : []), ...(PERMS[k] || []), "Otro"].map(p => {
+                const otro = p === "Otro", on = otro ? !!F.perm && F.perm !== vehPerm(k, F.veh) && !(PERMS[k] || []).includes(F.perm) || F.perm === "Otro" : F.perm === p, lock = !!vehPerm(k, F.veh) && p === "";
+                return <button key={p || "_"} type="button" disabled={lock} onClick={() => up({ perm: otro ? (on ? "" : "Otro") : p, por: p ? F.por : "" })}
+                  className={cn("rounded-full border px-3 py-1 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-35", on || (!p && !F.perm) ? "border-brand-500 bg-brand-600 text-white dark:bg-brand-500" : "border-slate-200 text-slate-600 hover:border-brand-300 dark:border-slate-700 dark:text-slate-300")}>{p || "Sin permiso"}</button>; })}</div>
+              {F.perm && F.perm !== vehPerm(k, F.veh) && !(PERMS[k] || []).includes(F.perm) && <Input className="mt-2" autoFocus value={F.perm === "Otro" ? "" : F.perm} onChange={e => up({ perm: e.target.value || "Otro" })} placeholder="Escribí qué se autorizó" />}
+            </Field>
             {F.perm.trim() && <Field label="Autorizado por" hint="(coordinación, supervisores e instructores de la división)">
               <div className="grid gap-2 sm:grid-cols-2">{auth.sort((a, b) => a.localeCompare(b, "es")).map(n => { const on = F.por === n, a = findAgent(n), r = uTop(k, m[n]); return (
                 <button key={n} type="button" onClick={() => up({ por: on ? "" : n })} aria-pressed={on}

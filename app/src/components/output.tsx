@@ -11,6 +11,11 @@ export async function copyText(t: string) {
   try { await navigator.clipboard.writeText(t); return true; }
   catch { const a = document.createElement("textarea"); a.value = t; document.body.appendChild(a); a.select(); const ok = document.execCommand("copy"); a.remove(); return ok; }
 }
+/* copia un texto y avisa con el mensaje que se elija */
+export function useCopyMsg() {
+  const { toast } = useFeedback();
+  return (t: string, msg = "Copiado") => { void copyText(t).then(ok => toast(ok ? msg : "No se pudo copiar", ok ? undefined : "err")); };
+}
 export function useCopy() {
   const { toast } = useFeedback();
   return async (t: string, errors?: string[]) => {

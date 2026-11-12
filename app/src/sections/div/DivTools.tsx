@@ -7,6 +7,7 @@ import { Check, Copy, Eye, EyeOff, Link2, Lock, Pencil, Plus, Shirt, ShieldAlert
 import { Button, Card, Empty, Field, Input, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { api } from "@/lib/api";
+import { useCopyMsg } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { LS, useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
@@ -51,15 +52,14 @@ export const uniTab = (): DivTab => ({ value: "uni", label: "Uniformidad", icon:
 /* género del atuendo: etiqueta con color e ícono */
 const GEN = { h: { l: "Hombre", s: "♂", c: "border-sky-400/40 bg-sky-500/10 text-sky-700 dark:text-sky-300" }, m: { l: "Mujer", s: "♀", c: "border-pink-400/40 bg-pink-500/10 text-pink-700 dark:text-pink-300" } } as const;
 const GenTag = ({ g }: { g?: "h" | "m" }) => g ? <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold", GEN[g].c)}><span className="text-sm leading-none">{GEN[g].s}</span>{GEN[g].l}</span> : null;
-function useCopy() { const { toast } = useFeedback(); return (s: string, what = "Código copiado") => { void navigator.clipboard?.writeText(s).then(() => toast(what), () => toast("No se pudo copiar")); }; }
 export type URole = [string, string, string]; /* [clave, nombre, color] de mayor a menor jerarquía */
-function UnifCard({ u, copy, tools, locked }: { u: Unif; copy: (s: string) => void; tools?: ReactNode; locked?: string }) {
+function UnifCard({ u, copy, tools, locked }: { u: Unif; copy: (s: string, m?: string) => void; tools?: ReactNode; locked?: string }) {
   return (
     <div className={cn("fx-card group relative flex flex-col gap-2 rounded-2xl p-3.5", locked && "fx-card-off")} style={{ ["--c" as string]: u.rc || "rgb(var(--b-400))" }}>
       <div className="relative flex items-start gap-2"><b className="min-w-0 flex-1 truncate text-[15px] leading-tight">{u.n}</b>{tools}</div>
       <div className="relative flex flex-wrap items-center gap-1.5"><GenTag g={u.g} />{u.rl && <span className="fx-rank rounded-full px-2 py-0.5 text-[10px] font-bold">{u.rl}</span>}</div>
       {locked ? <div className="fx-code relative flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-500"><Lock className="size-3.5 shrink-0" /><span className="truncate">{locked}</span></div>
-        : <button onClick={() => copy(u.code)} title="Copiar código" className="fx-code relative flex items-center gap-2 rounded-xl px-3 py-2 text-left font-mono text-xs">
+        : <button onClick={() => copy(u.code, "Código copiado")} title="Copiar código" className="fx-code relative flex items-center gap-2 rounded-xl px-3 py-2 text-left font-mono text-xs">
           <span className="line-clamp-2 min-w-0 flex-1 break-all">{u.code}</span><Copy className="size-3.5 shrink-0 opacity-60" /></button>}
       {u.nota && !locked && <p className="relative line-clamp-2 text-[11px] text-slate-500">{u.nota}</p>}
     </div>);
@@ -77,7 +77,7 @@ function groups(L: Unif[], roles: URole[]) {
 }
 
 export function Uniformidad({ id, ab, dn, canEdit, roles = [], mine = [] }: { id: string; ab: string; dn?: string; canEdit: boolean; roles?: URole[]; mine?: string[] }) {
-  const me = useMe(), { toast, confirm } = useFeedback(), copy = useCopy(), [L, setL] = useJSON<Unif[]>(`lspdt.unif.${id}`, []);
+  const me = useMe(), { toast, confirm } = useFeedback(), copy = useCopyMsg(), [L, setL] = useJSON<Unif[]>(`lspdt.unif.${id}`, []);
   const [ed, setEd] = useState<Unif | null>(null), [g, setG] = useState<"" | "h" | "m">(""), [sh, setSh] = useState(false);
   /* acceso por jerarquía: cada uno ve los de su rango y los de abajo; la coordinación ve todo */
   const myIdx = Math.min(...mine.map(r => roles.findIndex(x => x[0] === r)).filter(i => i >= 0), Infinity);
@@ -128,7 +128,7 @@ export function Uniformidad({ id, ab, dn, canEdit, roles = [], mine = [] }: { id
 /* links temporales de una sección: crear (con vencimiento), copiar, ver vistas y revocar */
 const DUR: [number, string][] = [[1, "1 hora"], [6, "6 horas"], [24, "1 día"], [72, "3 días"], [168, "7 días"]];
 export function ShareLinks({ k, title, div, ab }: { k: string; title: string; div?: string; ab?: string }) {
-  const { toast } = useFeedback(), copy = useCopy(), [h, setH] = useState(24), [L, setL] = useState<{ t: string; exp: number; by: string; views: number }[] | null>(null), [busy, setBusy] = useState(false);
+  const { toast } = useFeedback(), copy = useCopyMsg(), [h, setH] = useState(24), [L, setL] = useState<{ t: string; exp: number; by: string; views: number }[] | null>(null), [busy, setBusy] = useState(false);
   const url = (t: string) => `${location.origin}/next/?ver=${t}`;
   const load = async () => { const r = await api("/api/share", { list: k }); setL(r.__s === 200 ? (r.list as typeof L) || [] : []); };
   useEffect(() => { void load(); }, [k]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -157,7 +157,7 @@ export function ShareLinks({ k, title, div, ab }: { k: string; title: string; di
    Usa el emblema actual de la división y el logo del departamento que manda el servidor */
 type PubD = { v?: string | null; title?: string; div?: string; ab?: string; exp?: number; img?: { div?: string | null; brand?: string | null }; msg?: string; ok?: boolean };
 export function PublicSection({ tok }: { tok: string }) {
-  const copy = useCopy(), [D, setD] = useState<PubD | null>(null), [g, setG] = useState<"" | "h" | "m">("");
+  const copy = useCopyMsg(), [D, setD] = useState<PubD | null>(null), [g, setG] = useState<"" | "h" | "m">("");
   useEffect(() => { document.documentElement.classList.add("dark"); void api(`/api/share?t=${tok}`).then(r => setD(r.__s === 200 ? { ...(r as PubD), ok: true } : { msg: (r.msg as string) || "El link no es válido" })); }, [tok]);
   const L: Unif[] = (() => { try { return D?.v ? JSON.parse(D.v) : []; } catch { return []; } })(), V = L.filter(u => !g || u.g === g);
   const ab = D?.ab || (D?.title || "").replace(/^Uniformidad · /, ""), emb = D?.img?.div || (D?.div ? divEmblem(D.div) : "") || D?.img?.brand || "/next/logo.svg";
