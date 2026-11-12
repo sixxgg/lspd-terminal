@@ -6,7 +6,7 @@ import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Tex
 import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { Col, Split } from "@/components/layout";
-import { hoyISO, initials, isoToDMY, joinY, lvl, maskDMY, uid } from "@/lib/domain";
+import { hoyISO, initials, isoToDMY, joinY, lvl, maskDMY, uid , myKey } from "@/lib/domain";
 import { LS, useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { isRTD, rtdMem } from "@/lib/units";
@@ -44,10 +44,10 @@ export function Rtd({ dn }: { dn?: string }) {
 
 function RtdForm({ init, onSaved }: { init: R | null; onSaved: (id: string) => void }) {
   const me = useMe(), { toast, confirm } = useFeedback();
-  const [A, setA] = useState<R>(() => { if (init) return structuredClone(init); const x = Object.assign(NEW(me.n), LS.json<Partial<R>>("lspdt.rtdDraft", {})); x.casos = (x.casos || []).filter(c => (c.c as unknown) !== ""); if (!x.ent.length && !x.asp) x.ent = [me.n]; return x; });
+  const [A, setA] = useState<R>(() => { if (init) return structuredClone(init); const x = Object.assign(NEW(me.n), LS.json<Partial<R>>(myKey("rtdDraft", me.n), {})); x.casos = (x.casos || []).filter(c => (c.c as unknown) !== ""); if (!x.ent.length && !x.asp) x.ent = [me.n]; return x; });
   const [showErr, setShowErr] = useState(false), [pick, setPick] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { LS.setJSON("lspdt.rtdDraft", A); }, [A]);
+  useEffect(() => { LS.setJSON(myKey("rtdDraft", me.n), A); }, [A]);
   const up = (fn: (x: R) => void) => setA(a => { const x = structuredClone(a); fn(x); return x; });
   const set = (k: keyof R) => (e: { target: { value: string } }) => up(x => { (x[k] as string) = k === "cid" ? e.target.value.toUpperCase() : e.target.value; });
   const mem = rtdMem(), text = useMemo(() => rtdText(A), [A]), parts = dcParts(text), [ok, tot] = rtdScore(A), cmp = rtdCmp(A) as { k: string; l: string; p: string; e: string; s: string }[];
@@ -60,7 +60,7 @@ function RtdForm({ init, onSaved }: { init: R | null; onSaved: (id: string) => v
     const L = LS.json<R[]>("lspdt.rtdEnt", []), r: R = { ...structuredClone(A), fecha: A.fecha || isoToDMY(hoyISO()), t: Date.now(), por: me.n }; let id = A.id;
     if (A.id) { const i = L.findIndex(x => x.id === A.id); if (i >= 0) L[i] = { ...L[i], ...r, por: L[i].por, edit: me.n }; else L.push(r); }
     else { id = r.id = uid(); L.push(r); }
-    LS.setJSON("lspdt.rtdEnt", L); LS.del("lspdt.rtdDraft"); toast("Entrevista guardada en el registro"); onSaved(id);
+    LS.setJSON("lspdt.rtdEnt", L); LS.del(myKey("rtdDraft", me.n)); toast("Entrevista guardada en el registro"); onSaved(id);
   };
   const n = (k: string) => cmp.filter(x => x.s === k).length;
   return (
@@ -163,7 +163,7 @@ function RtdForm({ init, onSaved }: { init: R | null; onSaved: (id: string) => v
           </CardBody>
         </Card>
         <RtdOut text={text} parts={parts} errs={showErr ? errs : undefined}
-          footer={<><Button variant="ghost" onClick={async () => { if (!(await confirm("¿Empezar una entrevista nueva? Se borran los datos cargados."))) return; LS.del("lspdt.rtdDraft"); setA(NEW(me.n)); setShowErr(false); setPick(false); }}>Nueva entrevista</Button>
+          footer={<><Button variant="ghost" onClick={async () => { if (!(await confirm("¿Empezar una entrevista nueva? Se borran los datos cargados."))) return; LS.del(myKey("rtdDraft", me.n)); setA(NEW(me.n)); setShowErr(false); setPick(false); }}>Nueva entrevista</Button>
             <Button icon={<Save />} onClick={save}>{A.id ? "Guardar cambios" : "Guardar en el registro"}</Button></>} />
       </Col>
     </Split>

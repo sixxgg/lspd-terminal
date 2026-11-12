@@ -5,7 +5,7 @@ import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Sel
 import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { Col, Split } from "@/components/layout";
-import { LUGARES, fmtDate, getRoster, norm, rankES, uid } from "@/lib/domain";
+import { LUGARES, fmtDate, getRoster, norm, rankES, uid , myKey } from "@/lib/domain";
 import { LS, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { legalFavKey } from "./Legal";
@@ -40,10 +40,10 @@ export function Informes() {
 
 function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) => void }) {
   const me = useMe(), { toast, confirm } = useFeedback();
-  const [A, setA] = useState<Inf>(() => { const a = init ? structuredClone(init) : Object.assign(infNew(me.n), LS.json<Partial<Inf>>("lspdt.infDraft", {})); a.unid = (a.unid || []).map(fixUnid); return a; });
+  const [A, setA] = useState<Inf>(() => { const a = init ? structuredClone(init) : Object.assign(infNew(me.n), LS.json<Partial<Inf>>(myKey("infDraft", me.n), {})); a.unid = (a.unid || []).map(fixUnid); return a; });
   const [showErr, setShowErr] = useState(false), [otro, setOtro] = useState(""), [drag, setDrag] = useState<number | null>(null), [over, setOver] = useState<number | null>(null);
   const moveU = (from: number, to: number) => { if (from === to) return; up(x => { const [m] = x.unid.splice(from, 1); x.unid.splice(to, 0, m); }); };
-  useEffect(() => { LS.setJSON("lspdt.infDraft", A); }, [A]);
+  useEffect(() => { LS.setJSON(myKey("infDraft", me.n), A); }, [A]);
   const up = (fn: (x: Inf) => void) => setA(a => { const x = structuredClone(a); fn(x); return x; });
   const set = <K extends keyof Inf>(k: K) => (e: { target: { value: string } }) => up(x => { (x[k] as unknown as string) = e.target.value; });
   const P = getPenal(), text = useMemo(() => infText(A, me.n, P), [A, me.n, P]), errs = infErrs(A), parts = dcParts(text);
@@ -58,7 +58,7 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
     let L: Inf[];
     if (A.id) { const i = INFS.findIndex(x => x.id === A.id); L = i >= 0 ? INFS.map((x, j) => (j === i ? { ...x, ...r, edit: me.n } : x)) : [...INFS, r]; }
     else { r.id = uid(); L = [...INFS, r]; }
-    LS.setJSON("lspdt.informes", L); LS.del("lspdt.infDraft"); toast(A.id ? "Cambios guardados" : "Informe registrado"); onSaved(r.id);
+    LS.setJSON("lspdt.informes", L); LS.del(myKey("infDraft", me.n)); toast(A.id ? "Cambios guardados" : "Informe registrado"); onSaved(r.id);
   };
   const evRow = (e: Inf["ev"][number], i: number, subj: boolean) => (
     <div key={i} className={cn("grid gap-2 rounded-xl border border-slate-200 p-2.5 dark:border-slate-800", subj ? "sm:grid-cols-[10rem_9rem_1fr_auto]" : "sm:grid-cols-[9rem_1fr_auto]")}>
@@ -240,7 +240,7 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
       </Col>
       <DiscordOutput title="Informe policial" tag="Discord" text={text} errors={showErr ? errs : undefined}
         extra={parts.length > 1 && <span className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">{parts.length} partes:{parts.map((p, i) => <Button key={i} size="sm" variant="outline" onClick={() => { if (errs.length) { setShowErr(true); return; } void copy(p); }}>{i + 1}/{parts.length}</Button>)}</span>}
-        footer={<><Button variant="ghost" onClick={async () => { if (!(await confirm("¿Empezar un informe nuevo? Se borran los datos cargados."))) return; LS.del("lspdt.infDraft"); setA(infNew(me.n)); setShowErr(false); }}>Nuevo informe</Button>
+        footer={<><Button variant="ghost" onClick={async () => { if (!(await confirm("¿Empezar un informe nuevo? Se borran los datos cargados."))) return; LS.del(myKey("infDraft", me.n)); setA(infNew(me.n)); setShowErr(false); }}>Nuevo informe</Button>
           <Button icon={<Save />} onClick={save}>{A.id ? "Guardar cambios" : "Registrar informe"}</Button></>} />
     </Split>
   );

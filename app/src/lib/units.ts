@@ -53,6 +53,53 @@ export const UNITS: Record<"asd" | "k9" | "psb" | "md", Unit> = {
     SUB: [["swat", "SWAT", "#e05a52", "SWAT"], ["sierra", "SIERRA", "#d4a937", "SIERRA"], ["bq", "Bomb Squad", "#d4a937", "BQ"], ["h", "Pelotón H", "#d4a937", "Pel. H"], ["udu", "UDU", "#d4a937", "UDU"], ["cnt", "Crisis Negotiation Team", "#d4a937", "CNT"]] },
 };
 export type UnitKey = keyof typeof UNITS;
+
+/* roles editables desde Administración (lspdt.groles.<clave>): nombre, color y orden; las claves de coordinación no cambian */
+export type GRole = { k: string; l: string; c: string; co?: boolean };
+const rolesKey = (id: string) => `lspdt.groles.${id}`;
+export const roleOv = (id: string) => { const o = LS.json<GRole[] | null>(rolesKey(id), null); return Array.isArray(o) && o.length ? o : null; };
+for (const [k, u] of Object.entries(UNITS)) {
+  const R0 = u.R;
+  Object.defineProperty(u, "R", { get: () => { const o = roleOv(k); return o ? o.map(r => [r.k, r.l, r.c, R0.find(x => x[0] === r.k)?.[3] || r.l.split(" ")[0]] as Role) : R0; } });
+}
+export const unitRoles = (k: UnitKey): GRole[] => UNITS[k].R.map(r => ({ k: r[0], l: r[1], c: r[2], co: COORD_R.includes(r[0]) }));
+export const saveRoles = (id: string, R: GRole[] | null) => { if (R) LS.setJSON(rolesKey(id), R); else LS.del(rolesKey(id)); };
+
+/* ---- divisiones y subdivisiones con roster genérico (lspdt.groster.<id>): roles a elección de la coordinación ---- */
+const GEN_ROLES: GRole[] = [{ k: "coord", l: "Coordinación", c: "#e2c66a", co: true }, { k: "subcoord", l: "Subcoordinación", c: "#f3dc95", co: true },
+  { k: "inst", l: "Instructor", c: "#2fbf68" }, { k: "ofi", l: "Oficial", c: "#5b93b8" }, { k: "asp", l: "Aspirante", c: "#8a8f97" }];
+type GenCfg = { id: string; uni: string; parent?: string; tabs: string[] };
+const slugD = (d: string) => d.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const G = (id: string, d: string, tabs: string[] = [], parent?: string, uni?: string): [string, GenCfg] => [d, { id, uni: uni || "x-" + slugD(d), parent, tabs }];
+export const GEN: Record<string, GenCfg> = Object.fromEntries([
+  G("asb", "Administration Services Bureau", ["adm2", "iev", "ipu", "doc", "tar", "conv", "subs"]),
+  G("hsiu", "High Speed Interception Unit", ["tom"]),
+  G("db", "Detective Bureau"),
+  G("htcu", "High Tech Crime Unit", [], "Detective Bureau"), G("gnd", "Gang and Narcotics Division", [], "Detective Bureau"), G("mcd", "Major Crimes Division", [], "Detective Bureau"),
+  G("swat", "Special Weapons And Tactics", [], "Metropolitan Division"), G("bs", "Bomb Squad", [], "Metropolitan Division"),
+  G("mdso", "Metropolitan Drone Support Operations", ["lic"], "Metropolitan Division"), G("cnt", "Crisis Negotiation Team", [], "Metropolitan Division"),
+  G("udu", "Underwater Dive Unit", ["com", "ins"], "Metropolitan Division", "udu"),
+]);
+/* integrantes iniciales: las subdivisiones de la METRO salen de su roster */
+const MD_FLAG: Record<string, string> = { swat: "swat", bs: "bq", cnt: "cnt", udu: "udu" };
+function gSeed(id: string): Record<string, string> {
+  if (id === "mdso") return { "Ryan Westbrook": "coord", "Kai Jeon-Soo": "coord" };
+  const f = MD_FLAG[id]; if (!f) return {};
+  const o: Record<string, string> = {}; for (const [n, r] of Object.entries(uMap("md"))) if (r.includes(f)) o[n] = "ofi";
+  if (id === "udu" && o["Ryan Westbrook"]) o["Ryan Westbrook"] = "coord";
+  return o;
+}
+export const gRoles = (id: string): GRole[] => roleOv(id) || GEN_ROLES;
+export const gMap = (id: string): Record<string, string> => { const o = LS.json<Record<string, string> | null>(`lspdt.groster.${id}`, null); return o && typeof o === "object" && !Array.isArray(o) ? o : gSeed(id); };
+export const gSave = (id: string, m: Record<string, string>) => LS.setJSON(`lspdt.groster.${id}`, m);
+export const gRoleOf = (id: string, x: string): GRole => gRoles(id).find(r => r.k === x) || gRoles(id)[gRoles(id).length - 1] || { k: x, l: x, c: "#94a3b8" };
+export const isGMem = (id: string, n: string) => !!gMap(id)[n];
+const parentCo = (c: GenCfg, n: string): boolean => !!c.parent && (c.parent === "Metropolitan Division" ? isUCoord("md", n) : GEN[c.parent] ? isGCo(GEN[c.parent].id, n) : false);
+export function isGCo(id: string, n: string): boolean {
+  if (ME_ROLES.admin) return true;
+  const r = gMap(id)[n]; if (r && gRoleOf(id, r).co) return true;
+  const c = Object.values(GEN).find(x => x.id === id); return !!c && parentCo(c, n);
+}
 const COORD_R = ["coord", "subcoord", "co", "aco"];
 
 export function uMap(k: UnitKey, me?: string): Record<string, string[]> {
@@ -89,6 +136,7 @@ export function rosterDivs(n: string): string[] {
   if (uMap("k9")[n]) out.push("K-9 Division");
   if (uMap("psb")[n]) out.push("Professional Standards Bureau");
   if (rtdMem().includes(n)) out.push("Recruitment and Training Division");
+  for (const [d, c] of Object.entries(GEN)) if (!out.includes(d) && isGMem(c.id, n)) out.push(d);
   return out;
 }
 export const rosterCall = (n: string) => ({ ...MD_CALLS, ...LS.json<Record<string, string>>("lspdt.mdCalls", {}) })[n] || "";

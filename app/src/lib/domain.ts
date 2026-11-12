@@ -134,3 +134,5 @@ export function dmyToISO(s: string) {
 export const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
 const nkey = (n: string) => norm(n).replace(/[^a-z0-9]/g, "");
 export const findLoose = (n: string) => findAgent(n) || getRoster().find(a => nkey(a.n) === nkey(n)) || null;
+/* borradores y preferencias de formularios: por persona (nadie hereda lo que dejó otro en la misma computadora) */
+export const myKey = (k: string, n: string) => `lspdt.next.${k}.${n.replace(/[^A-Za-z0-9]/g, "")}`;

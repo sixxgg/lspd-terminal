@@ -11,10 +11,11 @@ import { Col, Split } from "@/components/layout";
 import { LUGARES, fmtDate, findAgent, lvl, norm, rankES, uid } from "@/lib/domain";
 import { LS, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { K9_PL, MD_CALLS, UNITS, insRole, isUCoord, isUMem, uMap, uRole, uSaveMap, uTop, type UnitKey } from "@/lib/units";
+import { K9_PL, MD_CALLS, UNITS, unitRoles, insRole, isUCoord, isUMem, uMap, uRole, uSaveMap, uTop, type UnitKey } from "@/lib/units";
 import { unitPalette } from "@/lib/divisions";
 import { cn } from "@/lib/cn";
 import { Psb, dcIdOf } from "./Psb";
+import { RoleEditor } from "./Gen";
 import { T1080 } from "@/sections/sup/T1080";
 import { Instrucciones } from "./Instrucciones";
 const MetroExam = lazy(() => import("./Metro").then(m => ({ default: m.MetroExam })));
@@ -52,7 +53,7 @@ function uText(k: UnitKey, F: Partial<F> & { ag: string[]; mo: string }) {
   s += `\n**Motivo:** ${F.mo === "Otro" ? F.mox || "—" : F.mo}${F.mo !== "Otro" && F.mox ? ` — ${F.mox}` : ""}`;
   s += `\n**Permiso:** ${F.perm ? `${F.perm}${F.por ? ` (autorizado por ${F.por})` : ""}` : "—"}`; return s;
 }
-const newF = (k: UnitKey, me: string): F => { const u = UNITS[k]; return { ag: uMap(k)[me] ? [me] : [], veh: u.veh ? u.veh.o[0][0] : "", mat: "", mo: u.mo?.[0] || "", mox: "", perm: "", por: "", dog: "", zona: "" }; };
+const newF = (k: UnitKey, me: string): F => { const u = UNITS[k]; return { ag: me ? [me] : [], veh: u.veh ? u.veh.o[0][0] : "", mat: "", mo: u.mo?.[0] || "", mox: "", perm: "", por: "", dog: "", zona: "" }; };
 
 const EXAMS: [string, string, string][] = [["EVAL-INS-01", "Instructor de vuelo", "Habilita como instructor de vuelo policial. Si lo supera un Piloto, pasa automáticamente a Piloto experimentado. Permanencia mínima: 3 semanas."],
   ["EVAL-RESC-02", "Búsqueda y rescate (SAR)", "Habilita como operador aéreo de búsqueda y rescate SAR. Permanencia mínima: 2 semanas."],
@@ -95,7 +96,7 @@ export function Unit({ k, dn }: { k: UnitKey; dn?: string }) {
   return (
     <div className="space-y-4" style={{ ["--uacc" as string]: pal.acc }}>
       <DivNav value={t} onChange={go} options={opts} />
-      {t === "adm" ? <DivAdmin id={k} ab={u.ab} dn={dn} tabs={base} /> : t === "uni" ? <Uniformidad id={k} ab={u.ab} dn={dn} canEdit={co} roles={u.R.map(r => [r[0], r[1], r[2]] as URole)} mine={uMap(k)[me.n] || []} /> : t === "ros" ? <Roster k={k} pal={pal.roles} />
+      {t === "adm" ? <DivAdmin id={k} ab={u.ab} dn={dn} tabs={base} extra={<RoleEditor id={k} roles={unitRoles(k)} coFlag={false} locked={["coord", "subcoord", "co", "aco", "inst", "instp"]} />} /> : t === "uni" ? <Uniformidad id={k} ab={u.ab} dn={dn} canEdit={co} roles={u.R.map(r => [r[0], r[1], r[2]] as URole)} mine={uMap(k)[me.n] || []} /> : t === "ros" ? <Roster k={k} pal={pal.roles} />
         : t === "ins" ? <Instrucciones div={k} ab={u.ab} names={names} roleOf={n => insRole(k, n)} tipos={INS_TIPOS[k]} canEdit={mem} isCoord={co} />
         : t === "mde" || t === "mdi" || t === "mdl" ? <Lazy><MetroExam tab={t === "mde" ? "exa" : t === "mdi" ? "ent" : "list"} /></Lazy>
         : t === "reg" ? <RegForm k={k} onSaved={() => go("log")} /> : t === "log" ? <LogView k={k} /> : t === "exa" ? <Exams pal={pal.roles} /> : t === "com" ? <Comunicados div="asd" canEdit={co} />
@@ -167,9 +168,9 @@ function Roster({ k, pal }: { k: UnitKey; pal: Record<string, string> }) {
 
 function RegForm({ k, onSaved }: { k: UnitKey; onSaved: () => void }) {
   const me = useMe(), { toast } = useFeedback(), u = UNITS[k], m = uMap(k);
-  const [F, setF] = useState<F>(() => { try { return { ...newF(k, me.n), ...JSON.parse(sessionStorage.getItem("u." + k) || "{}") }; } catch { return newF(k, me.n); } });
+  const [F, setF] = useState<F>(() => { try { return { ...newF(k, me.n), ...JSON.parse(sessionStorage.getItem("u." + k + "." + me.n) || "{}") }; } catch { return newF(k, me.n); } });
   const [all, setAll] = useState(false);
-  const up = (p: Partial<F>) => { const x = { ...F, ...p }; setF(x); try { sessionStorage.setItem("u." + k, JSON.stringify(x)); } catch { /* */ } };
+  const up = (p: Partial<F>) => { const x = { ...F, ...p }; setF(x); try { sessionStorage.setItem("u." + k + "." + me.n, JSON.stringify(x)); } catch { /* */ } };
   const text = uText(k, F), dogs = useMemo(() => [...new Set(uLog(k).map(x => x.dog).filter(Boolean))] as string[], [k]);
   const auth = Object.entries(m).filter(([, r]) => r.some(x => ["coord", "subcoord", "sup", "inst"].includes(x))).map(([n]) => n);
   const save = () => {

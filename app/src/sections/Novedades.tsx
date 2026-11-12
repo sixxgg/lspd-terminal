@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "2.0";
+export const APP_VERSION = "2.1";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,17 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "2.1", f: "12/11/2026", t: "Rosters para todos y nuevas divisiones", items: [
+    "Todas las divisiones y subdivisiones tienen roster. La coordinación define los roles (nombre, color, orden y si coordinan) desde Administración, y suma o quita gente en un paso.",
+    "Subdivisiones abiertas (SWAT, Bomb Squad, CNT, UDU y las de la Detective Bureau) con Roster, Uniformidad y Administración.",
+    "Metropolitan Drone Support Operations: solo Licencias (agente, licencia activa, desde cuándo, N° de serie y modelo del drone).",
+    "Administration Services Bureau: Administrativos, Ideas de eventos, Ideas de publicaciones, Documentación, Tareas, Convenios (plantilla en Canva y teléfonos de negocios para copiar) y Subdivisiones.",
+    "High Speed Interception Unit abierta: Roster, Uniformidad, Administración y Registro TOM con la plantilla nueva (vehículo utilizado, vehículo seguido y motivo).",
+    "Legal: solo la ve quien recibe acceso del dueño de la terminal.",
+    "Las plantillas se completan con quien las está escribiendo: firma, agente y borradores son de cada uno.",
+    "Nueva pantalla de ingreso: tu credencial se escanea y valida sola (placa, rango, ID y divisiones).",
+    "El ID de las cuentas respeta el orden de registro.",
+  ] },
   { v: "2.0", f: "11/11/2026", t: "Terminal de Mando 2.0", items: [
     "Divisiones privadas: cada división la ve solo quien está cargado en su roster. Todas tienen Instrucciones, Uniformidad por rango y género con código para copiar, y Administración (coordinación) para elegir qué pestañas ven los miembros. Encabezado y pestañas rediseñados.",
     "METRO, SWAT, K-9, A.S.D, RTD y PSB con su roster real: roles, subdivisiones, indicativos, examen escrito, entrevista de instructor y lista de elegibles. La PSB de punta a punta: notificación, elevación, Aprobación SAJD, resolución y expedientes.",

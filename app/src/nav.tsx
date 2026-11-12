@@ -5,7 +5,7 @@ import {
   Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
   Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint, UserRound, Presentation,
 } from "lucide-react";
-import { ME_ROLES } from "./lib/store";
+import { LS, ME_ROLES } from "./lib/store";
 import { Helicopter } from "./components/icons";
 import { lvl } from "./lib/domain";
 
@@ -75,7 +75,9 @@ export const AREAS: Area[] = RAW_AREAS
   .map(a => (a.k === "ini" ? a : { ...a, sec: a.sec.slice().sort(byLabel) }))
   .sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
 
-export const canArea = (a: Area, r?: string) => (a.k === "me" ? profOk() : a.admin ? !!ME_ROLES.admin : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : lvl(r) >= a.min);
+/* Legal: solo six y a quien six le da acceso desde Administración */
+const legalOk = () => !!ME_ROLES.six || LS.json<string[]>("lspdt.legacc", []).includes(PROF.me);
+export const canArea = (a: Area, r?: string) => (a.k === "me" ? profOk() : a.k === "leg" ? legalOk() : a.admin ? !!ME_ROLES.admin : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : lvl(r) >= a.min);
 /* áreas del menú (sin las ocultas) */
 export const menuAreas = (r?: string) => AREAS.filter(a => !a.hidden && canArea(a, r));
 /* secciones bloqueadas para ese rango (se muestran con candado) */

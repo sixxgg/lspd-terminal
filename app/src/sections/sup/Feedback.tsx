@@ -5,7 +5,7 @@ import { AgentPicker, Avatar, RankBadge } from "@/components/agents";
 import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { Col, Split } from "@/components/layout";
-import { findAgent, fmtDate, genderOf, lvl, norm, rankES, uid } from "@/lib/domain";
+import { findAgent, fmtDate, genderOf, lvl, norm, rankES, uid , myKey } from "@/lib/domain";
 import { discordPlain } from "@/lib/discord";
 import { getPenal, penalOf, artCmp } from "@/lib/penal";
 import { LS, useJSON } from "@/lib/store";
@@ -17,7 +17,6 @@ type Fb = { ag: string; tipo: string; tpl: string; f: Record<string, string>; ob
 type Tpl = { k: string; l: string; tipo: string; f: [string, string, string, string?][] };
 const TPL = FB_TPL as unknown as Tpl[];
 const TIPOS = FB_TIPOS as [string, string, string, string, string, string][];
-const DRAFT = "lspdt.next.fbDraft";
 
 /* «63.3», «138.37» o «63.3 — Título»: busca el título en el código penal si no viene escrito */
 export function artTxt(v?: string) {
@@ -47,9 +46,9 @@ export function Feedback() {
 
 function FbForm({ init, onSaved }: { init: Fb | null; onSaved: (id: string) => void }) {
   const me = useMe(), { toast, confirm } = useFeedback();
-  const [A, setA] = useState<Fb>(() => init ? structuredClone(init) : Object.assign(fbNew() as Fb, LS.json<Partial<Fb>>(DRAFT, {})));
+  const [A, setA] = useState<Fb>(() => init ? structuredClone(init) : Object.assign(fbNew() as Fb, LS.json<Partial<Fb>>(myKey("fbDraft", me.n), {})));
   const [err, setErr] = useState(false);
-  useEffect(() => { if (!A.id) LS.setJSON(DRAFT, A); }, [A]);
+  useEffect(() => { if (!A.id) LS.setJSON(myKey("fbDraft", me.n), A); }, [A]);
   const up = (p: Partial<Fb>) => setA(a => ({ ...a, ...p }));
   const P = TPL.find(t => t.k === A.tpl) || TPL[TPL.length - 1];
   const text = useMemo(() => fbText(A, fbCtx(A.ag, me)), [A, me]), errs = fbErrs(A) as string[];
@@ -60,7 +59,7 @@ function FbForm({ init, onSaved }: { init: Fb | null; onSaved: (id: string) => v
     let id = A.id;
     if (A.id) { const i = all.findIndex(x => x.id === A.id); if (i >= 0) all[i] = { ...all[i], ...r, edit: me.n }; else all.push(r); }
     else { id = r.id = uid(); all.push(r); }
-    LS.setJSON("lspdt.feedback", all); LS.del(DRAFT); toast(A.id ? "Cambios guardados" : "Feedback registrado"); onSaved(id);
+    LS.setJSON("lspdt.feedback", all); LS.del(myKey("fbDraft", me.n)); toast(A.id ? "Cambios guardados" : "Feedback registrado"); onSaved(id);
   };
   const a = A.ag ? findAgent(A.ag) : null;
   return (
@@ -108,7 +107,7 @@ function FbForm({ init, onSaved }: { init: Fb | null; onSaved: (id: string) => v
         </Card>
       </Col>
       <DiscordOutput title="Feedback" tag="Discord" text={text} errors={err ? errs : undefined}
-        footer={<><Button variant="ghost" onClick={async () => { if (!(await confirm("¿Empezar un feedback nuevo? Se borran los datos cargados."))) return; LS.del(DRAFT); setA(fbNew() as Fb); setErr(false); }}>Nuevo</Button>
+        footer={<><Button variant="ghost" onClick={async () => { if (!(await confirm("¿Empezar un feedback nuevo? Se borran los datos cargados."))) return; LS.del(myKey("fbDraft", me.n)); setA(fbNew() as Fb); setErr(false); }}>Nuevo</Button>
           <Button icon={<Save />} onClick={save}>{A.id ? "Guardar cambios" : "Registrar"}</Button></>} />
     </Split>
   );

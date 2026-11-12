@@ -4,7 +4,7 @@ import { Badge, Button, Card, CardBody, CardHeader, Checkbox, Chip, Empty, Field
 import { AgentPicker, Avatar, RankBadge } from "@/components/agents";
 import { DiscordOutput, copyText } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
-import { DIVISIONES, LUGARES, getRoster, findAgent, fmtDate, hoyDMY, isDMY, lvl, maskDMY, maskHM, norm, profOf, rankES, uid } from "@/lib/domain";
+import { DIVISIONES, LUGARES, getRoster, findAgent, fmtDate, hoyDMY, isDMY, lvl, maskDMY, maskHM, norm, profOf, rankES, uid , myKey } from "@/lib/domain";
 import { useJSON } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
@@ -45,10 +45,10 @@ const errsOf = (A: PerdArm) => [!A.ag && "agente", !A.arma.trim() && "tipo de ar
 
 export function PerdidaArmamento({ me }: { me: { n: string; r: string } }) {
   const [tab, setTab] = useState<"new" | "list">("new");
-  const [A, setA] = useState<PerdArm>(() => { try { const d = localStorage.getItem("lspdt.next.paDraft"); if (d) return { ...nuevo(me.n), ...JSON.parse(d) }; } catch { /* */ } return nuevo(me.n); });
+  const [A, setA] = useState<PerdArm>(() => { try { const d = localStorage.getItem(myKey("paDraft", me.n)); if (d) return { ...nuevo(me.n), ...JSON.parse(d) }; } catch { /* */ } return nuevo(me.n); });
   const [list, setList] = useJSON<PerdArm[]>("lspdt.perdArm", []);
   const { toast, confirm } = useFeedback();
-  useEffect(() => { try { localStorage.setItem("lspdt.next.paDraft", JSON.stringify(A)); } catch { /* */ } }, [A]);
+  useEffect(() => { try { localStorage.setItem(myKey("paDraft", me.n), JSON.stringify(A)); } catch { /* */ } }, [A]);
   const set = <K extends keyof PerdArm>(k: K, v: PerdArm[K]) => setA(x => ({ ...x, [k]: v }));
   const text = useMemo(() => perdText(A), [A]);
   const errs = errsOf(A);

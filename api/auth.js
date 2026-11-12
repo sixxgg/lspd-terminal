@@ -1,5 +1,5 @@
 import { q } from "../lib/db.js";
-import { send, body, wrap, roster, findIn, lvl, CAP, norm, emailOf, hashPw, checkPw, needsRehash, randomPw, safeEq, clientIp, loginBlocked, loginFail, loginOk, sessionToken, tokenHash, newSession, endSession, current, PUBLIC_KEYS, query, canEnter, invalidate, isSix, SIX_OWNER, OWNERS, dbAdmins, parseList, parseRoster as parseRosterRaw } from "../lib/core.js";
+import { send, body, wrap, roster, findIn, lvl, CAP, norm, emailOf, hashPw, checkPw, needsRehash, randomPw, safeEq, clientIp, loginBlocked, loginFail, loginOk, sessionToken, tokenHash, newSession, endSession, current, PUBLIC_KEYS, query, canEnter, invalidate, isSix, SIX_OWNER, ID_PIN, OWNERS, dbAdmins, parseList, parseRoster as parseRosterRaw } from "../lib/core.js";
 import { fullData } from "../lib/store.js";
 import { randomBytes } from "node:crypto";
 
@@ -25,6 +25,8 @@ async function gate(ag) { // ¿puede entrar? (mando, RTD, ASD o aprobado por un 
   const r = (await q(`select (select v from kv where k='lspdt.ui') ui, (select v from meta where k='approved') ap, (select v from kv where k='lspdt.asdRoster') asd, (select v from kv where k='lspdt.k9Roster') k9, (select v from kv where k='lspdt.mdRoster') md`)).rows[0];
   return canEnter(ag, r.ui, r.ap, r.asd, r.k9, r.md);
 }
+const pin = n => { const i = ID_PIN.indexOf(n); return i < 0 ? 99 : i; };
+const byId = (a, b) => pin(a.k) - pin(b.k) || +a.t - +b.t;
 const PEND_MSG = "Tus credenciales están siendo revisadas por la administración. Intentá más tarde.";
 export default wrap(async (req, res) => {
   if (req.method === "GET") {
@@ -40,7 +42,7 @@ export default wrap(async (req, res) => {
       else brand[r.k] = r.v === "#img" ? `/api/img?k=${encodeURIComponent(r.k)}&t=${r.t}` : r.v;
     }
     /* orden de registro = ID de la cuenta en los perfiles (six, el fundador, siempre es el #1) */
-    acc.sort((a, b) => (b.k === SIX_OWNER) - (a.k === SIX_OWNER) || +a.t - +b.t);
+    acc.sort(byId);
     const out = { me: me ? me.n : null, names: acc.map(r => r.k), brand };
     if (me && query(req).full) out.data = await fullData(me); // ahorra una vuelta al iniciar
     else out.roster = slim(parseRosterRaw(raw).list);
@@ -114,8 +116,9 @@ export default wrap(async (req, res) => {
   if (!me) return send(res, 401, { error: "auth", msg: "Tu sesión expiró. Volvé a iniciar sesión." });
 
   if (a === "info") {
-    const r = (await q("select email,created,last,(select count(*) from accounts b where b.created <= a.created) as no from accounts a where name=$1", [me.n])).rows[0];
-    return send(res, 200, { e: r.email, c: +r.created, last: +r.last, no: +r.no, rec: (await metaList("rec:" + me.n)).length });
+    const r = (await q("select email,created,last from accounts where name=$1", [me.n])).rows[0];
+    const all = (await q("select name as k, created as t from accounts")).rows.sort(byId);
+    return send(res, 200, { e: r.email, c: +r.created, last: +r.last, no: all.findIndex(x => x.k === me.n) + 1, rec: (await metaList("rec:" + me.n)).length });
   }
   if (a === "recgen") return send(res, 200, { rec: await newRec(me.n) });
   if (["invites", "invite", "uninvite"].includes(a) && !canInvite(me)) return send(res, 403, { msg: "Las invitaciones las generan solo los dueños de la terminal." });

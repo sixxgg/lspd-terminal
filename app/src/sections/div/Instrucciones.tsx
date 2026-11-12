@@ -36,7 +36,7 @@ export function Instrucciones({ div, ab, names, roleOf, tipos, canEdit, isCoord 
   useStoreVersion();
   const me = useMe(), { toast, confirm } = useFeedback(), copy = useCopy();
   const [L, setL] = useJSON<Ins[]>(`lspdt.instr.${div}`, []);
-  const blank = (): Ins => ({ id: "", t: 0, fecha: hoyISO(), hora: "", tipo: "", ins: roleOf(me.n) ? [{ n: me.n, r: roleOf(me.n) as InsRole }] : [], imp: [], notas: "", by: me.n });
+  const blank = (): Ins => ({ id: "", t: 0, fecha: hoyISO(), hora: "", tipo: "", ins: [{ n: me.n, r: (roleOf(me.n) || "inst") as InsRole }], imp: [], notas: "", by: me.n });
   const [x, setX] = useState<Ins>(blank), [all, setAll] = useState(false), [q, setQ] = useState(""), [open, setOpen] = useState("");
   const up = (p: Partial<Ins>) => setX({ ...x, ...p });
   const T = useMemo(() => [...new Set([...tipos, ...L.map(i => i.tipo).filter(Boolean)])], [tipos, L]);

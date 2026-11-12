@@ -6,7 +6,7 @@ import { TagInput } from "@/components/fields";
 import { Col, Split } from "@/components/layout";
 import { useFeedback } from "@/components/feedback";
 import { ALT_ARMAS, ALT_CONS, ALT_FRASES, ALT_HECHOS, ALT_PUNTOS, CONS_MAP, altText, annText, plazoTxt } from "@/legacy/alerta";
-import { LUGARES, fmtDate, joinY, lvl, norm, rankES, uid } from "@/lib/domain";
+import { LUGARES, fmtDate, joinY, lvl, norm, rankES, uid , myKey } from "@/lib/domain";
 import { dcfg } from "@/lib/templates";
 import { useMe } from "@/lib/me";
 import { LS, useJSON } from "@/lib/store";
@@ -23,12 +23,12 @@ const dtLocal = (d: Date) => { const p = (n: number) => String(n).padStart(2, "0
 export function Alerta() {
   const me = useMe(), { toast } = useFeedback();
   const [tab, setTab] = useState<"new" | "list">("new");
-  const [A, setA] = useState<Alt>(() => ({ ...NEW(), ...LS.json<Partial<Alt>>("lspdt.altDraft", {}) }));
+  const [A, setA] = useState<Alt>(() => ({ ...NEW(), ...LS.json<Partial<Alt>>(myKey("altDraft", me.n), {}) }));
   const firmaDef = `${rankES(me.r)} ${me.n}${me.p ? "\nPlaca #" + me.p : ""}\nLos Santos Police Department`;
-  const [firma, setFirma] = useState(() => LS.get("lspdt.altFirma") || firmaDef);
+  const [firma, setFirma] = useState(() => LS.get(myKey("altFirma", me.n)) || firmaDef);
   const [list, setList] = useJSON<Sol[]>("lspdt.alertas", []);
   const [reuse, setReuse] = useState(0);
-  useEffect(() => { LS.set("lspdt.altDraft", JSON.stringify(A)); }, [A]);
+  useEffect(() => { LS.set(myKey("altDraft", me.n), JSON.stringify(A)); }, [A]);
   const set = <K extends keyof Alt>(k: K, v: Alt[K]) => setA(x => ({ ...x, [k]: v }));
   const text = useMemo(() => altText(A, firma.trim()) as string, [A, firma]);
   const errs = [!A.puntos.length && "puntos afectados", !A.lugares.length && "al menos un lugar", !A.hechos.length && !A.extra.trim() && "acontecimientos",
@@ -108,8 +108,8 @@ export function Alerta() {
               </CardBody>
             </Card>
             <Card>
-              <CardHeader icon={<PenLine />} title="Firma" action={<Button variant="ghost" size="sm" onClick={() => { LS.del("lspdt.altFirma"); setFirma(firmaDef); }}>Restaurar</Button>} />
-              <CardBody><Textarea rows={3} value={firma} onChange={e => { setFirma(e.target.value); LS.set("lspdt.altFirma", e.target.value); }} /></CardBody>
+              <CardHeader icon={<PenLine />} title="Firma" action={<Button variant="ghost" size="sm" onClick={() => { LS.del(myKey("altFirma", me.n)); setFirma(firmaDef); }}>Restaurar</Button>} />
+              <CardBody><Textarea rows={3} value={firma} onChange={e => { setFirma(e.target.value); LS.set(myKey("altFirma", me.n), e.target.value); }} /></CardBody>
             </Card>
           </Col>
           <DiscordOutput title={`Solicitud de ${A.tipo === "ampliacion" ? "ampliación" : "elevación"} · Nivel ${A.nivel}`} tag="Escrito" text={text} errors={errs}

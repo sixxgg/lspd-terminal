@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { UserCheck, Crown, ShieldPlus, ImagePlus, Type, Save, Trash2, Check, X, Upload, Download, FileSpreadsheet, RotateCcw, GraduationCap, Shield, Database, Eye } from "lucide-react";
+import { Scale, UserCheck, Crown, ShieldPlus, ImagePlus, Type, Save, Trash2, Check, X, Upload, Download, FileSpreadsheet, RotateCcw, GraduationCap, Shield, Database, Eye } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Select } from "@/components/ui";
 import { prevStart } from "@/lib/preview";
 import { AgentCombo, Avatar } from "@/components/agents";
@@ -7,7 +7,7 @@ import { ImagePicker, imgSpec } from "@/components/imagepick";
 import { useFeedback } from "@/components/feedback";
 import { ALL_DIVS, findAgent, fmtDate, getRoster, lvl, norm, rankES, RANK_COLOR } from "@/lib/domain";
 import { authApi } from "@/lib/api";
-import { DEF_ROSTER, LS, syncIdle, useStoreVersion } from "@/lib/store";
+import { DEF_ROSTER, LS, ME_ROLES, syncIdle, useJSON, useStoreVersion } from "@/lib/store";
 import { uMap, uSaveMap, rtdMem } from "@/lib/units";
 import { parseCSV } from "@/lib/csv";
 import { DivLogo } from "@/sections/sup/Agentes";
@@ -18,6 +18,20 @@ import { cn } from "@/lib/cn";
 
 const Row = ({ n, children }: { n: string; children?: React.ReactNode }) => { const a = findAgent(n); return (
   <div className="flex flex-wrap items-center gap-3 px-4 py-2.5"><Avatar n={n} size={30} /><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{n}</p><p className="text-xs text-slate-500">{a ? rankES(a.r) + (a.p ? " · #" + a.p : "") : "Fuera del roster"}</p></div>{children}</div>); };
+
+/* ---------- acceso a Legal: solo lo da el dueño ---------- */
+function LegalAcc() {
+  const { toast, confirm } = useFeedback(), [L, setL] = useJSON<string[]>("lspdt.legacc", []), [sel, setSel] = useState("");
+  return (
+    <Card className="xl:col-span-2">
+      <CardHeader icon={<Scale />} title="Acceso a Legal" desc={`Solo vos podés darlo. ${L.length} con acceso además de vos.`} />
+      <div className="divide-y divide-slate-100 dark:divide-slate-800">{L.length ? L.map(n => <Row key={n} n={n}>
+        <button aria-label={`Quitar a ${n}`} onClick={async () => { if (await confirm(`¿Quitarle el acceso a Legal a ${n}?`, { danger: true })) { setL(L.filter(x => x !== n)); toast(`${n} ya no ve Legal`); } }} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-500/10 hover:text-red-600"><X className="size-4" /></button></Row>)
+        : <p className="px-4 py-3 text-sm text-slate-400">Nadie más tiene acceso.</p>}</div>
+      <CardBody><div className="flex gap-2"><AgentCombo className="flex-1" value={sel} onChange={setSel} filter={a => !L.includes(a.n)} />
+        <Button onClick={() => { if (!sel) { toast("Elegí un agente", "err"); return; } setL([...L, sel]); toast(`${sel} ahora ve Legal`); setSel(""); }}>Dar acceso</Button></div></CardBody>
+    </Card>);
+}
 
 /* ---------- solicitudes de acceso y administradores ---------- */
 export function AdmAccesos() {
@@ -45,6 +59,7 @@ export function AdmAccesos() {
           <Button icon={<Eye />} onClick={() => prevStart(pv)}>Ver como {rankES(pv)} sin divisiones</Button>
         </div></CardBody>
       </Card>
+      {ME_ROLES.six && <LegalAcc />}
       <Card>
         <CardHeader icon={<UserCheck />} title="Solicitudes de acceso" desc="Agentes por debajo de Sargento I que crearon su cuenta y esperan aprobación." />
         {!req ? <CardBody><p className="text-sm text-slate-400">Cargando…</p></CardBody> : <>

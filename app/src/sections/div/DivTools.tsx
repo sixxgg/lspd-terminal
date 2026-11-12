@@ -189,13 +189,14 @@ export function PublicSection({ tok }: { tok: string }) {
     </div>);
 }
 
-export function DivAdmin({ id, ab, dn, tabs }: { id: string; ab: string; dn?: string; tabs: DivTab[] }) {
+export function DivAdmin({ id, ab, dn, tabs, extra }: { id: string; ab: string; dn?: string; tabs: DivTab[]; extra?: ReactNode }) {
   const { toast } = useFeedback(), [A, setA] = useJSON<Acc>(accKey(id), {}), hide = new Set(A.hide || []);
   const flip = (v: string, txt: string) => { const h = new Set(hide); if (h.has(v)) h.delete(v); else h.add(v); setA({ ...A, hide: [...h] }); toast(h.has(v) ? `«${txt}» ahora es solo para la coordinación` : `«${txt}» visible para toda la ${ab}`); };
   return (
     <Card className="overflow-hidden border-red-500/30 p-0">
       <div className="flex items-center gap-2 border-b border-red-500/20 bg-red-500/[.06] px-5 py-3"><ShieldAlert className="size-4 text-red-500" /><b className="text-red-600 dark:text-red-400">Administración de la {ab}</b>
         <span className="ml-auto text-xs text-slate-500">Solo coordinación y subcoordinación</span></div>
+      {extra}
       <div className="p-5">
         <p className="mb-3 text-sm text-slate-500">Elegí qué pestañas ven los miembros. Las que quedan «Solo coordinación» no le aparecen al resto de la división.</p>
         <div className="divide-y divide-slate-100 dark:divide-slate-800">{tabs.map(t => { const txt = t.txt || String(t.label), off = hide.has(t.value); return (

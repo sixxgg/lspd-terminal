@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { DIVS, divAb, divEmblem } from "./domain";
 import { LS, ME_ROLES } from "./store";
 import { profFull } from "./profiles";
-import { UNITS, isRTD, isUMem, type UnitKey } from "./units";
+import { GEN, UNITS, isGMem, isRTD, isUMem, roleOv, type UnitKey } from "./units";
 
 export const DIV_DESC: Record<string, string> = {
   "Detective Bureau": "Investigaciones criminales del departamento: delitos graves, crimen organizado, narcotráfico y delitos tecnológicos.",
@@ -14,13 +14,22 @@ export const DIV_DESC: Record<string, string> = {
   "Recruitment and Training Division": "Reclutamiento, selección y formación de nuevos aspirantes y agentes del LSPD.",
   "Professional Standards Bureau": "Asuntos internos: vela por la integridad, la conducta y la ética de todo el personal del departamento.",
   "Underwater Dive Unit": "Unidad de buceo de la Metropolitan Division: rescate y búsqueda subacuática, persecución marítima y apoyo en operativos en el agua.",
+  "Special Weapons And Tactics": "Unidad táctica de la Metropolitan Division para intervenciones de alto riesgo, rescate de rehenes y sujetos armados atrincherados.",
+  "Bomb Squad": "Desactivación y manejo de artefactos explosivos y materiales peligrosos.",
+  "Metropolitan Drone Support Operations": "Apoyo aéreo con drones de la Metropolitan Division: licencias, vigilancia y seguimiento.",
+  "Crisis Negotiation Team": "Negociación en crisis: rehenes, personas atrincheradas e intentos de suicidio.",
+  "High Tech Crime Unit": "Delitos tecnológicos: fraude informático, ciberdelitos y análisis forense digital.",
+  "Gang and Narcotics Division": "Investigación de bandas y narcotráfico.",
+  "Major Crimes Division": "Investigación de delitos graves: homicidios, secuestros y crimen organizado.",
   "K-9 Division": "Unidad canina: detección de sustancias y explosivos, búsqueda de personas y apoyo en operativos.",
 };
 export const DIV_DONE: Record<string, "rtd" | UnitKey> = { "Recruitment and Training Division": "rtd", "Air Support Division": "asd", "K-9 Division": "k9", "Professional Standards Bureau": "psb", "Metropolitan Division": "md" };
-export const divOpen = (d: string, me: string) => { const k = DIV_DONE[d]; return k === "rtd" ? isRTD(me) : k ? isUMem(k, me) : false; };
+/* división con roster genérico: entra quien está cargado en su roster o la tiene en su perfil */
+const inProf = (d: string, me: string) => ((profFull(me).div || []) as string[]).includes(d);
+export const divOpen = (d: string, me: string) => { const k = DIV_DONE[d]; if (k) return k === "rtd" ? isRTD(me) : isUMem(k, me); const g = GEN[d]; return !!ME_ROLES.admin || (!!g && (isGMem(g.id, me) || inProf(d, me))); };
 /* qué divisiones aparecen en el menú: las que tienen contenido, solo para quien está cargado en su roster;
    las que todavía no tienen contenido, solo para quien la tiene en su perfil. La administración ve todas. */
-export const divVisible = (d: string, me: string) => !!ME_ROLES.admin || divOpen(d, me) || (!DIV_DONE[d] && ((profFull(me).div || []) as string[]).includes(d));
+export const divVisible = (d: string, me: string) => !!ME_ROLES.admin || divOpen(d, me) || (!DIV_DONE[d] && inProf(d, me));
 export const subsOf = (d: string) => DIVS.find(x => x[0] === d)?.[1] || [];
 
 /* colores: [acento, claro, oscuro] — por defecto los medidos del logo oficial; con un logo propio se calculan */
@@ -69,7 +78,7 @@ export function unitPalette(k: UnitKey): { roles: Record<string, string>; acc: s
   const u = UNITS[k], p = divColors(u.d);
   const L = lift(hexRgb(p[1])), A = lift(hexRgb(p[0])), D = lift(mix(hexRgb(p[2]), hexRgb(p[0]), 0.55)), W = [255, 255, 255], G = [138, 143, 151], n = u.R.length;
   const P = [L, A, D, mix(A, W, 0.42), mix(D, W, 0.4), mix(L, G, 0.45), mix(A, G, 0.5)];
-  const roles: Record<string, string> = {}; u.R.forEach((r, i) => { roles[r[0]] = toHex(i === n - 1 && n > 2 ? G : P[Math.min(i, P.length - 1)]); });
+  const ov = !!roleOv(k), roles: Record<string, string> = {}; u.R.forEach((r, i) => { roles[r[0]] = ov ? r[2] : toHex(i === n - 1 && n > 2 ? G : P[Math.min(i, P.length - 1)]); });
   u.SUB?.forEach(r => { roles[r[0]] = r[2]; });
   return { roles, acc: toHex(L) };
 }

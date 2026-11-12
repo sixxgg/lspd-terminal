@@ -10,7 +10,7 @@ import { useMe } from "@/lib/me";
 import { findAgent, getRoster } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 
-export type CommDiv = "asd" | "udu";
+type CommDiv = "asd" | "udu";
 type Form = { tpl: string; v: Record<string, string> };
 type Comm = { id: string; t: string; body: string; ts: number; by: string; f?: Form };
 
@@ -171,7 +171,8 @@ function BlocksEd({ value, onChange }: { value: string; onChange: (v: string) =>
     </div>);
 }
 const tplOf = (k: string) => TPLS.find(t => t.k === k) || TPLS[TPLS.length - 1];
-const newForm = (d: CommDiv, k: string, me: string): Form => ({ tpl: k, v: tplOf(k).def(d, me) });
+/* la firma siempre es de quien escribe el comunicado */
+const newForm = (d: CommDiv, k: string, me: string): Form => { const v = tplOf(k).def(d, me); if (me) v.firma = me; return { tpl: k, v }; };
 /* los campos nuevos de una plantilla (firma en bloque, asistencia…) toman su valor por defecto en los comunicados viejos */
 const build = (d: CommDiv, f: Form) => { const t = tplOf(f.tpl); return t.render(d, { ...t.def(d, ""), ...f.v }); };
 
