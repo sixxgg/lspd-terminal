@@ -2,13 +2,14 @@
    Salen en el Calendario del departamento, con contador y aviso el mismo día para los integrantes. */
 import { useState } from "react";
 import { CalendarPlus, Copy, Globe2, ImagePlus, Pencil, RotateCcw, Save, Trash2, X } from "lucide-react";
-import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input, Textarea } from "@/components/ui";
+import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input } from "@/components/ui";
 import { AgentCombo } from "@/components/agents";
+import { RichEditor } from "@/components/richedit";
 import { ImagePicker } from "@/components/imagepick";
 import { useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { EvCard, EvModal, banSrc, tipoC } from "@/components/calui";
-import { CAL_TIPOS, PUB_KEY, banKey, calAll, calCan, calDivName, calKey, calPubCan, calText, type CalEv, type CalItem } from "@/lib/calendar";
+import { CAL_TIPOS, PUB_KEY, banKey, calAll, calCan, calDivName, calKey, calOwn, calPubCan, calText, type CalEv, type CalItem } from "@/lib/calendar";
 import { LS, useJSON } from "@/lib/store";
 import { divAb, uid } from "@/lib/domain";
 import { ts } from "@/lib/discord";
@@ -32,7 +33,7 @@ export function DivCal({ id, ab }: { id: string; ab: string }) {
     if (!f.n.trim()) { toast("Poné el nombre del evento", "err"); return; }
     if (!atMs) { toast("Elegí el día y la hora", "err"); return; }
     const prev = [...L, ...P].find(x => x.id === f.bid);
-    const ev: CalEv = { id: f.bid, t: prev?.t || Date.now(), by: prev?.by || me.n, n: f.n.trim(), tipo: f.tipo, at: atMs, cre: f.cre || me.n, desc: f.desc.trim(), ban: f.ban, d: id, ...(f.pub ? { pub: true } : {}) };
+    const ev: CalEv = { id: f.bid, t: prev?.t || Date.now(), by: prev?.by || me.n, n: f.n.trim(), tipo: f.tipo, at: atMs, cre: f.cre || me.n, desc: f.desc, ban: f.ban, d: id, ...(f.pub ? { pub: true } : {}) };
     setL([...L.filter(x => x.id !== ev.id), ...(f.pub ? [] : [ev])].sort((a, b) => a.at - b.at));
     if (f.pub || P.some(x => x.id === ev.id)) setP([...P.filter(x => x.id !== ev.id), ...(f.pub ? [ev] : [])].sort((a, b) => a.at - b.at));
     toast(f.id ? "Evento actualizado" : "Evento cargado en el calendario"); setF(blank());
@@ -46,7 +47,7 @@ export function DivCal({ id, ab }: { id: string; ab: string }) {
   const preview: CalItem = { id: f.bid, t: 0, by: me.n, n: f.n || "Nombre del evento", tipo: f.tipo, at: atMs || Date.now(), cre: f.cre, desc: f.desc, ban: f.ban, d: id, pub: f.pub, src: "cal", dn, ab, col };
   const acts = (e: CalItem) => <>
     <Button size="sm" variant="ghost" icon={<Copy />} onClick={() => void copy(calText(e, ab))}>Discord</Button>
-    {can && e.src !== "ins" && <><Button size="sm" variant="ghost" icon={<Pencil />} onClick={() => edit(e)}>Editar</Button>
+    {(can || calOwn(e, me.n)) && e.src !== "ins" && <><Button size="sm" variant="ghost" icon={<Pencil />} onClick={() => edit(e)}>Editar</Button>
       <Button size="sm" variant="ghost" className="ml-auto text-red-600 dark:text-red-400" icon={<Trash2 />} aria-label="Borrar" onClick={() => void del(e)} /></>}</>;
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
@@ -76,7 +77,7 @@ export function DivCal({ id, ab }: { id: string; ab: string }) {
               : <button onClick={() => setPick(true)} className="flex aspect-[16/5] w-full flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-200 text-xs font-semibold text-slate-400 transition hover:border-brand-300 hover:text-brand-600 dark:border-slate-700"><ImagePlus className="size-5" />Subir banner</button>}
           </Field>
           <Field label="Creador del evento"><AgentCombo value={f.cre} onChange={n => up({ cre: n })} /></Field>
-          <Field label="Detalles" hint="(opcional)"><Textarea rows={3} value={f.desc} onChange={e => up({ desc: e.target.value })} placeholder="Punto de encuentro, uniforme, qué traer…" /></Field>
+          <Field label="Detalles" hint="(opcional · con formato)"><RichEditor key={f.bid} init={f.desc} onChange={h => setF(v => ({ ...v, desc: h }))} placeholder="Punto de encuentro, uniforme, qué traer…" minH="min-h-[6rem]" /></Field>
           {pubOk && <Checkbox checked={f.pub} onChange={v => up({ pub: v })} label={<span className="inline-flex items-center gap-1.5"><Globe2 className="size-3.5 text-sky-500" />Visible para todo el departamento</span>} />}
           <div className="flex gap-2">{f.id && <Button variant="ghost" onClick={() => setF(blank())}>Cancelar</Button>}<Button className="flex-1 justify-center" icon={<Save />} onClick={save}>{f.id ? "Guardar cambios" : "Cargar evento"}</Button></div>
           <div><p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Vista previa</p><EvCard e={preview} /></div>

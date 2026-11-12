@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { startLang } from "./lib/lang";
 import { FeedbackProvider } from "./components/feedback";
 import "@fontsource/rajdhani/latin-500.css"; import "@fontsource/rajdhani/latin-600.css"; import "@fontsource/rajdhani/latin-700.css";
 import "@fontsource/chakra-petch/latin-500.css"; import "@fontsource/chakra-petch/latin-600.css";
@@ -18,3 +19,4 @@ createRoot(document.getElementById("root")!).render(
     <FeedbackProvider><App /></FeedbackProvider>
   </StrictMode>,
 );
+startLang();

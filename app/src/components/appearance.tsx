@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Palette, MonitorSmartphone, Sparkles, Type, MousePointer2, Check, Tv, BellRing } from "lucide-react";
 import { ME_ROLES } from "@/lib/store";
 import { Checkbox, Field, Segmented, Select } from "@/components/ui";
+import { langOf, langPref, setLangPref } from "@/lib/lang";
 import { Modal } from "@/components/modal";
 import { ACCENTS, CRT_V, CURS, HEADS, SKINS, curSvg, deptUiNow, setPref, usePref } from "@/lib/appearance";
 import { cn } from "@/lib/cn";
@@ -65,6 +66,7 @@ export function AppearanceModal({ open, onClose }: { open: boolean; onClose: () 
             <div className="mt-2 flex items-center gap-3"><input type="range" min={0} max={24} step={1} value={b} onChange={e => setPref("updBlur", +e.target.value)} className="w-full accent-brand-600" aria-label="Desenfoque" />
               <button type="button" onClick={() => window.dispatchEvent(new Event("lspdt:testupd"))} className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">Probar</button></div></div>
         </div>); })()}
+      <Field label="Idioma" hint={`(automático: según desde dónde entrás · ahora ${langOf() === "ar" ? "Argentina" : "España"})`}><Segmented size="sm" value={langPref()} onChange={v => setLangPref(v)} options={[{ value: "auto", label: "Automático" }, { value: "ar", label: "Español (Argentina)" }, { value: "es", label: "Español (España)" }]} /></Field>
       <Field label="Menú"><Segmented size="sm" value={p.nav} onChange={v => setPref("nav", v)} options={[{ value: "top", label: "Arriba, por áreas" }, { value: "side", label: "Lateral" }]} /></Field>
       <Field label="Tipografía"><div className="flex items-center gap-2"><Type className="size-4 text-slate-400" />
         <Segmented size="sm" value={p.font} onChange={v => setPref("font", v)} options={[{ value: "inter", label: "Moderna (Inter)" }, { value: "public", label: "Clásica (Public Sans)" }]} /></div></Field>

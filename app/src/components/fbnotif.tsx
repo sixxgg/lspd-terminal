@@ -20,7 +20,8 @@ function FbBadge({ s, className }: { s?: string; className?: string }) {
 /* los resúmenes viejos traían «[foto]» por cada imagen */
 export const fbX = (x?: string) => { const s = x || "", n = (s.match(/\[foto\]/g) || []).length; if (!n) return s || "(solo fotos)";
   const t = s.replace(/\[foto\]/g, " ").replace(/\s+/g, " ").trim(); return `[📷 ${n} ${n === 1 ? "foto" : "fotos"}]${t ? " " + t : ""}`; };
-type MyFb = { id: string; t: number; u: number; st: string; x: string; nota?: string };
+type MyFb = { id: string; t: number; u: number; st: string; x: string; nota?: string; cat?: string; area?: string };
+const CAT: Record<string, [string, string]> = { error: ["🐞 Error", "#ef4444"], idea: ["💡 Idea", "#f59e0b"], mejora: ["✨ Mejora", "#a855f7"], otro: ["💬 Otro", "#64748b"] };
 const SEEN = "lspdt.next.fbSeen";
 const getSeen = () => { try { return Number(localStorage.getItem(SEEN) || 0); } catch { return 0; } };
 /* mis feedback (del servidor), se actualiza cada 2 minutos y al volver a la pestaña */
@@ -41,10 +42,10 @@ export function useMyFeedback() {
 export function useTick(ms = 60000) { const [, f] = useState(0); useEffect(() => { const i = setInterval(() => f(x => x + 1), ms); return () => clearInterval(i); }, [ms]); }
 export function FbList({ list }: { list: MyFb[] }) {
   useTick();
-  if (!list.length) return <p className="py-6 text-center text-sm text-slate-400">Todavía no mandaste feedback.</p>;
+  if (!list.length) return <p className="py-10 text-center text-sm text-slate-400">Nada por acá todavía.</p>;
   return <div className="space-y-2">{list.map(x => (
-    <div key={x.id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-      <div className="mb-1 flex items-center gap-2"><FbBadge s={x.st} /><span className="ml-auto text-[11px] text-slate-400">{x.u !== x.t ? `Actualizado ${ago(x.u)}` : ago(x.t)}</span></div>
+    <div key={x.id} className="rounded-xl border border-l-4 border-slate-200 p-3 dark:border-slate-800" style={{ borderLeftColor: FB_ST[fbSt(x.st)].c }}>
+      <div className="mb-1 flex flex-wrap items-center gap-2"><FbBadge s={x.st} />{x.cat && CAT[x.cat] && <span className="text-[11px] font-semibold" style={{ color: CAT[x.cat][1] }}>{CAT[x.cat][0]}</span>}{x.area && <span className="rounded bg-slate-100 px-1.5 text-[10.5px] font-semibold text-slate-500 dark:bg-slate-800">{x.area}</span>}<span className="ml-auto text-[11px] text-slate-400">{x.u !== x.t ? `Actualizado ${ago(x.u)}` : ago(x.t)}</span></div>
       <p className="line-clamp-3 text-sm">{fbX(x.x)}</p>
       {x.nota && <p className="mt-1.5 rounded-lg bg-slate-50 px-2 py-1 text-xs text-slate-600 dark:bg-slate-800/60 dark:text-slate-300"><b>Respuesta:</b> {x.nota}</p>}
     </div>))}</div>;

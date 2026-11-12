@@ -28,7 +28,7 @@ const clean = h => String(h).replace(/<(script|style|iframe|object|embed|link|me
 async function notify(t, site) {
   const tok = (process.env.DISCORD_BOT_TOKEN || "").trim().replace(/^Bot\s+/i, ""); if (!tok) return "falta la variable DISCORD_BOT_TOKEN en Vercel (y un Redeploy después de crearla)";
   const nI = (String(t.html).match(/<img[^>]*>/gi) || []).length, txt = plain(String(t.html).replace(/<img[^>]*>/gi, ""));
-  const head = `<@${PING}> 💗 **Nuevo feedback** de **${t.who}**${t.who !== "six" && t.who !== t.by ? ` · ${t.by}` : ""}${nI ? ` · 📷 ${nI} ${nI === 1 ? "foto" : "fotos"}` : ""}`;
+  const head = `<@${PING}> 💗 **Nuevo feedback** de **${t.who}**${t.who !== "six" && t.who !== t.by ? ` · ${t.by}` : ""}${nI ? ` · 📷 ${nI} ${nI === 1 ? "foto" : "fotos"}` : ""}${t.cat ? `\n**${{ error: "🐞 Error", idea: "💡 Idea", mejora: "✨ Mejora", otro: "💬 Otro" }[t.cat]}**${t.area ? ` · ${t.area}` : ""}` : ""}`;
   const content = `${head}\n>>> ${txt.length > 1500 ? txt.slice(0, 1500) + "…" : txt || "(solo fotos)"}`;
   const url = `${site}/?ir=six-not`, go = (body) => fetch(`https://discord.com/api/v10/channels/${CHANNEL}/messages`, { method: "POST", headers: { Authorization: "Bot " + tok, "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(8000) });
   try {
@@ -62,7 +62,7 @@ export default wrap(async (req, res) => {
     const ids = (await myIds(u.n)).filter(x => /^[a-z0-9]{1,40}$/.test(x)), list = [];
     const rows = ids.length ? (await q("select v from kv where k = any($1) and v is not null", [ids.map(x => "lspdt.six.fb." + x)])).rows : [];
     for (const r of rows) { let t; try { t = JSON.parse(r.v); } catch { continue; }
-      if (t && t.by === u.n && t.st !== "elim") list.push({ id: t.id, t: t.t, u: t.u || t.t, st: t.st, x: t.x || excerpt(t.html || ""), nota: String(t.nota || "").slice(0, 300) }); }
+      if (t && t.by === u.n && t.st !== "elim") list.push({ id: t.id, t: t.t, u: t.u || t.t, st: t.st, x: t.x || excerpt(t.html || ""), nota: String(t.nota || "").slice(0, 300), cat: t.cat || "", area: t.area || "" }); }
     list.sort((a, b) => b.u - a.u);
     return send(res, 200, { list });
   }
@@ -85,7 +85,8 @@ export default wrap(async (req, res) => {
   const id = now.toString(36) + crypto.randomBytes(3).toString("hex"), keys = [];
   for (let i = 0; i < imgs.length; i++) { const k = `lspdt.six.fbi.${id}.${i}`; keys.push(k);
     await q("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do nothing", [k, imgs[i], u.n, now]); }
-  const t = { id, by: u.n, ...(await whoOf(u)), t: now, u: now, html, x: excerpt(html), imgs: keys, st: "pend" };
+  const CATS = ["error", "idea", "mejora", "otro"], cat = CATS.includes(b.cat) ? b.cat : "", area = String(b.area || "").replace(/[<>@`*_~|]/g, "").slice(0, 40);
+  const t = { id, by: u.n, ...(await whoOf(u)), t: now, u: now, html, x: excerpt(html), imgs: keys, st: "pend", ...(cat ? { cat } : {}), ...(area ? { area } : {}) };
   await q("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do nothing", [`lspdt.six.fb.${id}`, JSON.stringify(t), u.n, now]);
   const prevIds = await myIds(u.n);
   await q("insert into meta(k,v) values($1,$2) on conflict(k) do update set v=excluded.v", [IX(u.n), [...new Set([...prevIds, id])].slice(-200).join(",")]);

@@ -1,11 +1,13 @@
 /* piezas del calendario que se usan en la sección y en cada división: tarjeta con banner y detalle del evento */
-import { Bell, BellOff, CalendarDays, Check, Copy, Globe2, MapPin, Star, UserRound } from "lucide-react";
+import { Trash2, Bell, BellOff, CalendarDays, Check, Copy, Globe2, MapPin, Star, UserRound } from "lucide-react";
 import { Modal } from "@/components/modal";
 import { Button } from "@/components/ui";
 import { useCopy } from "@/components/output";
+import { useFeedback } from "@/components/feedback";
 import { LS } from "@/lib/store";
 import { srcOf } from "@/lib/domain";
-import { banKey, calAck, calSetAck, calText, fmtWhen, hasTime, isToday, type CalItem } from "@/lib/calendar";
+import { richOf } from "@/lib/richtext";
+import { PUB_KEY, banKey, calCan, calKey, calOwn, calPubCan, type CalEv, calAck, calSetAck, calText, fmtWhen, hasTime, isToday, type CalItem } from "@/lib/calendar";
 import { useMe } from "@/lib/me";
 import { cn } from "@/lib/cn";
 
@@ -44,14 +46,17 @@ export function EvCard({ e, onClick, actions }: { e: CalItem; onClick?: () => vo
 
 /* detalle: banner grande, hora en la zona de quien lo mira y en formato Discord, y lo personal (anotarme / recordarme) */
 export function EvModal({ e, onClose }: { e: CalItem | null; onClose: () => void }) {
-  const me = useMe(), copy = useCopy();
+  const me = useMe(), copy = useCopy(), { toast, confirm } = useFeedback();
   if (!e) return null;
   const ack = calAck(me.n)[e.id] || {}, u = Math.floor(e.at / 1000);
   const remindAt = Math.max(Date.now() + 6e4, e.at - 30 * 6e4);
   return (
     <Modal open onClose={onClose} size="md" icon={<CalendarDays />} title={e.n} desc={`${e.tipo} · ${e.dn}`}
       footer={<>
-        <Button variant="ghost" icon={<Copy />} className="mr-auto" onClick={() => void copy(calText(e, e.ab))}>Copiar para Discord</Button>
+        <Button variant="ghost" icon={<Copy />} className="mr-auto" onClick={() => void copy(calText(e, e.ab))}>Comunicado para Discord</Button>
+        {e.src !== "ins" && (calOwn(e, me.n) || (e.pub ? calPubCan(me.n) : calCan(e.d, me.n))) && <Button variant="ghost" className="text-red-600 dark:text-red-400" icon={<Trash2 />} aria-label="Borrar evento" onClick={async () => {
+          if (!(await confirm(`¿Borrar «${e.n}» del calendario?`, { danger: true }))) return;
+          const k = e.pub ? PUB_KEY : calKey(e.d); LS.setJSON(k, LS.json<CalEv[]>(k, []).filter(x => x.id !== e.id)); if (e.ban) LS.del(banKey(e.id)); toast("Evento borrado"); onClose(); }} />}
         {e.at > Date.now() && <Button variant="outline" icon={ack.at ? <BellOff /> : <Bell />} onClick={() => calSetAck(me.n, e.id, { at: ack.at ? 0 : remindAt })}>{ack.at ? "Quitar recordatorio" : "Recordármelo"}</Button>}
         <Button icon={ack.a ? <Check /> : <Star />} variant={ack.a ? "outline" : "primary"} onClick={() => calSetAck(me.n, e.id, { a: ack.a ? 0 : Date.now() })}>{ack.a ? "Anotado" : "Anotarme"}</Button></>}>
       <div className="-mx-5 -mt-5"><EvBanner e={e} className="aspect-[16/6]" /></div>
@@ -64,7 +69,7 @@ export function EvModal({ e, onClose }: { e: CalItem | null; onClose: () => void
       {hasTime(e) && <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[#313338] px-3 py-2 font-mono text-xs text-slate-200">
         <span className="text-slate-400">Discord</span><code className="rounded bg-black/30 px-1.5 py-0.5">{`<t:${u}:F>`}</code><code className="rounded bg-black/30 px-1.5 py-0.5">{`<t:${u}:R>`}</code>
         <button className="ml-auto inline-flex items-center gap-1 font-sans font-semibold text-sky-300 hover:underline" onClick={() => void copy(`<t:${u}:F> (<t:${u}:R>)`)}><Copy className="size-3.5" />Copiar hora</button></div>}
-      {e.desc?.trim() && <p className="whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-800/50">{e.desc}</p>}
+      {e.desc?.trim() && <div className="fb-rich rounded-xl bg-slate-50 p-3 text-sm leading-relaxed dark:bg-slate-800/50" dangerouslySetInnerHTML={{ __html: richOf(e.desc) }} />}
       {ack.at ? <p className="text-xs text-slate-500">Te lo recuerdo el {new Date(ack.at).toLocaleString("es-AR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })} h.</p> : null}
     </Modal>);
 }

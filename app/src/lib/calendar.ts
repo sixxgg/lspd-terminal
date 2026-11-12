@@ -4,7 +4,8 @@
    Lo personal (leído, anotado, recordatorio) vive en este navegador. */
 import { GEN, UNITS, gMap, isGCo, isGMem, isUCoord, rtdMem, uMap, type UnitKey } from "./units";
 import { LS, ME_ROLES } from "./store";
-import { divAb } from "./domain";
+import { divAb, findAgent } from "./domain";
+import { htmlToDc } from "./richtext";
 
 export const CAL_TIPOS = ["Práctica", "Instrucción", "Evento", "Reunión", "Operativo", "Otro"] as const;
 export type CalEv = { id: string; t: number; by: string; n: string; tipo: string; at: number; cre: string; desc?: string; ban?: boolean; d: string; pub?: boolean };
@@ -79,9 +80,17 @@ const calSeen = (n: string) => { try { return +(localStorage.getItem(seenK(n)) |
 export const calMarkSeen = (n: string) => { try { localStorage.setItem(seenK(n), String(Date.now())); } catch { /* */ } window.dispatchEvent(new Event("lspdt:cal")); };
 export const calNew = (L: CalItem[], n: string) => { const s = calSeen(n), now = Date.now() - 864e5; return L.filter(e => e.t > s && e.by !== n && e.at >= now && calMine(e, n)); };
 
-/* texto para Discord con la hora en formato <t:…> (cada uno la ve en su zona horaria) */
-export function calText(e: Pick<CalItem, "n" | "tipo" | "at" | "cre" | "desc" | "dn">, ab?: string) {
-  const u = Math.floor(e.at / 1000);
-  return [`## 📅 ${e.n || "[nombre del evento]"}`, `**${e.tipo}${ab ? ` · ${ab}` : ""}**`, "",
-    `**Hora:** <t:${u}:F> (<t:${u}:R>)`, `**Creador del evento:** ${e.cre || "—"}`, ...(e.desc?.trim() ? ["", e.desc.trim()] : []), "", `-# ${e.dn}`].join("\n");
+/* comunicado de la división para Discord: hora con <t:…> (cada uno la ve en su zona horaria), detalles con su formato y firma del creador */
+export const ROLE_LSPD = "887963542437888004";
+const ART: Record<string, string> = { "Práctica": "una práctica", "Instrucción": "una instrucción", "Reunión": "una reunión", "Evento": "un evento", "Operativo": "un operativo", "Otro": "una actividad" };
+export function calText(e: Pick<CalItem, "n" | "tipo" | "at" | "cre" | "desc" | "dn"> & { pub?: boolean }, ab?: string) {
+  const u = Math.floor(e.at / 1000), a = findAgent(e.cre || ""), desc = e.desc ? htmlToDc(e.desc) : "";
+  return [`# 📅 ${e.n || "[Nombre del evento]"}`, "",
+    `Se informa que el día <t:${u}:D> a las <t:${u}:t> (<t:${u}:R>) la **${e.dn}**${ab ? ` (${ab})` : ""} llevará a cabo ${ART[e.tipo] || "una actividad"}: **${e.n || "[nombre]"}**.`, "",
+    ...(desc ? [desc, ""] : []),
+    "Se solicita **puntualidad a todos los participantes**.", "Confirmar asistencia con ✅", "",
+    `**${a ? a.n : e.cre || "—"}${a?.p ? ` | ${a.p}` : ""}**`, `*Creador del evento · ${e.dn}*`, "*Departamento de Policía de Los Santos*",
+    ...(e.pub ? ["", `||<@&${ROLE_LSPD}>||`] : [])].join("\n").replace(/\n{3,}/g, "\n\n");
 }
+/* puede borrarlo: la coordinación (o la ASB) y quien lo creó o figura como creador */
+export const calOwn = (e: Pick<CalEv, "by" | "cre">, n: string) => e.by === n || e.cre === n;

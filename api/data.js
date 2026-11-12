@@ -56,6 +56,14 @@ export default wrap(async (req, res) => {
   if (why === PSB_DENY) { // miembros de la PSB definidos en el panel de administración
     try { const r = await q("select v from kv where k='lspdt.ui'"); const l = JSON.parse(r.rows[0].v).psb; if (Array.isArray(l) && l.includes(u.n)) why = null; } catch {}
   }
+  /* calendario: quien creó un evento (o figura como creador) lo puede borrar aunque no sea de la coordinación */
+  if (why && /^lspdt\.(drec\.[a-z0-9]+\.cal|calpub)$/.test(k) && typeof b.v === "string") {
+    try {
+      const cur = JSON.parse((await q("select v from kv where k=$1", [k])).rows[0]?.v || "[]"), nv = JSON.parse(b.v), ids = new Set(nv.map(x => x.id));
+      const gone = cur.filter(x => !ids.has(x.id)), same = nv.every(x => { const c = cur.find(y => y.id === x.id); return c && JSON.stringify(c) === JSON.stringify(x); });
+      if (same && gone.length && gone.every(x => x.by === u.n || x.cre === u.n)) why = null;
+    } catch { /* valor raro: queda el permiso normal */ }
+  }
   if (why) return send(res, 403, { error: "perm", msg: why });
   if (typeof b.url === "string") { // imagen por URL: el servidor la descarga y la guarda (los enlaces de Discord vencen)
     if (!IMG_KEY.test(k)) return send(res, 400, { msg: "Esa clave no admite imágenes" });

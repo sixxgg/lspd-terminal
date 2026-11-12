@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "2.3.5";
+export const APP_VERSION = "2.5";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,13 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "2.5", f: "12/11/2026", t: "Menú nuevo, idioma según el visitante y Feedback renovado", items: [
+    "Menú de arriba rediseñado: ícono y nombre apilados y lo que no entra pasa a «Más», así nunca se corta. La versión queda chiquita debajo del escudo.",
+    "Idioma automático: desde Argentina la terminal habla con voseo y desde España (o el resto) con tú. Se puede fijar a mano en Apariencia.",
+    "Feedback renovado: tipo (error, idea, mejora u otro), sección de la terminal, editor con formato y «Mis feedback» con filtros por estado.",
+    "Calendario: los detalles admiten negrita, cursiva, subrayado, tachado, oculto, listas y colores; «Copiar» arma el comunicado de la división para Discord; quien creó el evento lo puede borrar.",
+    "Arreglado el brillo violeta que se pintaba sobre el banner y el logo de las divisiones (ASB → Administrativos).",
+  ] },
   { v: "2.3.5", f: "12/11/2026", t: "Calendario, expediente de agentes y procedimiento OIS", items: [
     "Nueva sección Calendario: el mes con las prácticas, instrucciones y eventos de las divisiones, próximos con banner, filtros por división y «Anotados».",
     "Cada división tiene su pestaña Calendario: la coordinación carga nombre, hora (formato web y Discord), banner opcional y creador del evento. La ASB puede publicar eventos para todo el departamento.",

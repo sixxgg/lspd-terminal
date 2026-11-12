@@ -9,12 +9,13 @@ import { useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { findAgent, getRoster } from "@/lib/domain";
 import { cn } from "@/lib/cn";
+import { ROLE_LSPD } from "@/lib/calendar";
 
 type CommDiv = "asd" | "udu";
 type Form = { tpl: string; v: Record<string, string> };
 type Comm = { id: string; t: string; body: string; ts: number; by: string; f?: Form };
 
-const ROLE_LSPD = "887963542437888004", ROLE_ASD = "1493377759680925919";
+const ROLE_ASD = "1493377759680925919";
 const INFO: Record<CommDiv, { n: string; ab: string; em: string; roles: [string, string][] }> = {
   asd: { n: "Air Support Division", ab: "ASD", em: "<:ASD:1316164563506434078>", roles: [[ROLE_LSPD, "LSPD (todo el departamento)"], [ROLE_ASD, "ASD (miembros de la división)"]] },
   udu: { n: "Underwater Dive Unit", ab: "UDU", em: "<:UDU:1511307840986550352>", roles: [[ROLE_LSPD, "LSPD (todo el departamento)"]] },
