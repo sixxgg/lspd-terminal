@@ -1,12 +1,11 @@
 /* Procedimiento del Sargento con el oficial implicado en un OIS con fallecido (Supervisión · Sargento II Evelyn Molina).
-   Se completa paso a paso, se copia para Discord y se exporta en PDF con el formato de los documentos oficiales (sello LSPD).
+   Se completa paso a paso, se ve en formato web y se exporta en PDF con el formato de los documentos oficiales (sello LSPD).
    Se guarda en lspdt.ois. */
 import { useEffect, useState } from "react";
-import { AlertTriangle, Ambulance, Check, ClipboardCheck, Copy, Crosshair, FileDown, FilePlus2, FileText, FlaskConical, HeartPulse, MapPinOff, MessageSquareWarning, Pencil, RotateCcw, Save, Send, Trash2 } from "lucide-react";
+import { AlertTriangle, Ambulance, Check, ClipboardCheck, Plus, Crosshair, FileDown, FilePlus2, FileText, FlaskConical, HeartPulse, MapPinOff, MessageSquareWarning, Pencil, RotateCcw, Save, Send, Trash2 } from "lucide-react";
 import { Button, Card, Checkbox, Empty, Field, Input, Segmented, Textarea } from "@/components/ui";
 import { AgentCombo } from "@/components/agents";
 import { Modal } from "@/components/modal";
-import { useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { findAgent, hoyISO, rankES, uid , dmy } from "@/lib/domain";
 import { useJSON } from "@/lib/store";
@@ -26,27 +25,38 @@ type Ois = {
   her: "" | "si" | "no"; ems: boolean; emo: string; emoN: string;
   pss: string[]; ret: boolean; zona: string;
   mod: string; ser: string; est: string; estN: string; car: string; rest: string; disp: string; dot: string; camb: "" | "si" | "no"; otra: string;
-  alc: string; drog: string; testN: string; psb: boolean[]; notas: string; hist?: { t: number; by: string; a: string }[];
+  alc: string; drog: string; testN: string; psb: boolean[]; notas: string; hist?: { t: number; by: string; a: string }[]; armas?: Gun[];
 };
+/* armas revisadas en el paso 4 (puede haber más de una si disparó con varias) */
+type Gun = { id: string; mod: string; ser: string; est: string; estN: string; cap: number; mags: string[]; disp: string; camb: "" | "si" | "no" };
+/* modelos con su capacidad de cargador (como en el servidor): elegir uno completa el resto */
+const MODELOS: [string, number][] = [["Combat Pistol", 12], ["Pistol MK2", 12], ["Heavy Pistol", 18], ["Pistol", 12], ["SMG", 30], ["Carbine Rifle", 30], ["Carbine Rifle MK2", 30], ["Pump Shotgun", 8], ["Heavy Sniper", 6], ["Heavy Sniper MK2", 6]];
+const capOf = (m: string) => MODELOS.find(([n]) => n.toLowerCase() === m.trim().toLowerCase())?.[1] || 0;
+const newGun = (): Gun => ({ id: uid(), mod: "", ser: "", est: "", estN: "", cap: 0, mags: ["", "", ""], disp: "", camb: "" });
+/* expedientes viejos (un arma con texto libre) → formato nuevo */
+const gunsOf = (x: Ois): Gun[] => x.armas?.length ? x.armas : [{ id: "g0", mod: x.mod, ser: x.ser, est: x.est, estN: x.estN, cap: capOf(x.mod), mags: (x.rest.match(/\d+/g) || []).length ? x.rest.match(/\d+/g)! : Array.from({ length: +x.car || 3 }, () => ""), disp: x.disp, camb: x.camb }];
+/* cuentas: dotación = cargadores × capacidad; disparadas = dotación − lo que queda */
+const gCalc = (g: Gun) => { const left = g.mags.reduce((a, m) => a + (+m || 0), 0), dot = g.cap ? g.cap * g.mags.length : 0, filled = g.mags.every(m => m !== "");
+  return { left, dot, est: dot && filled ? Math.max(0, dot - left) : null }; };
 /* número de expediente: el siguiente libre del año (nunca se repite aunque se borren registros) */
 const yy = () => String(new Date().getFullYear()).slice(2);
 const nextNo = (L: Ois[]) => { const p = `OIS-${yy()}-`, max = Math.max(0, ...L.filter(r => r.no?.startsWith(p)).map(r => +r.no.slice(p.length) || 0)); return p + String(max + 1).padStart(4, "0"); };
 const blank = (me: string, L: Ois[]): Ois => { const d = new Date(); return { id: "", no: nextNo(L), t: 0, by: me,
   fecha: hoyISO(), hora: `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`, lugar: "", sgt: me, of: "", her: "", ems: false, emo: "", emoN: "",
-  pss: PSS.map(() => ""), ret: false, zona: "", mod: "", ser: "", est: "", estN: "", car: "", rest: "", disp: "", dot: "", camb: "", otra: "", alc: "", drog: "", testN: "", psb: PSB_AV.map(() => false), notas: "" }; };
+  pss: PSS.map(() => ""), ret: false, zona: "", mod: "", ser: "", est: "", estN: "", car: "", rest: "", disp: "", dot: "", camb: "", otra: "", alc: "", drog: "", testN: "", psb: PSB_AV.map(() => false), notas: "", armas: [newGun()] }; };
 
 const who = (n: string) => { const a = findAgent(n); return a ? `${rankES(a.r)} ${n}` : n || "—"; };
 const placa = (n: string) => findAgent(n)?.p || "";
 /* balas: lo que queda en los cargadores y lo que falta según la dotación */
-const sumRest = (s: string) => (s.match(/\d+/g) || []).reduce((a, b) => a + +b, 0);
-const faltan = (x: Ois) => (x.dot && x.rest ? +x.dot - sumRest(x.rest) : null);
 /* lo que falta en cada paso (vacío = paso completo) */
 const STEP_T = ["Estado del oficial", "Declaración de Seguridad Pública (PSS)", "Retirada de la escena", "Revisión del arma", "Test de alcohol y drogas", "Notificación a PSB"];
 const faltas = (x: Ois): string[][] => [
   [x.her === "" && "Si está herido", x.her === "si" && !x.ems && "EMS solicitado (está herido)", !x.emo && "Estado emocional"].filter(Boolean) as string[],
   x.pss.map((p, i) => (!p.trim() ? `Respuesta a la pregunta ${i + 1}` : "")).filter(Boolean),
   [!x.ret && "Confirmar que se lo retiró de la escena"].filter(Boolean) as string[],
-  [!x.mod && "Modelo", !x.ser && "N° de serie", !x.est && "Estado del arma", !x.car && "Cargadores", !x.disp && "Balas disparadas", x.camb === "" && "Si cambió de cargador"].filter(Boolean) as string[],
+  gunsOf(x).flatMap((g, i, L) => { const p = L.length > 1 ? `Arma ${i + 1} · ` : "", c = gCalc(g);
+    return [!g.mod && "Modelo", !g.ser && "N° de serie", !g.est && "Estado del arma", !g.mags.length && "Cargadores", g.mags.some(m => m === "") && "Balas que quedan en cada cargador",
+      !g.disp && c.est === null && "Balas disparadas", g.camb === "" && "Si cambió de cargador"].filter(Boolean).map(t => p + t); }),
   [!x.alc && "Resultado de alcohol", !x.drog && "Resultado de drogas"].filter(Boolean) as string[],
   PSB_AV.map((p, i) => (!x.psb[i] ? p : "")).filter(Boolean),
 ];
@@ -54,10 +64,11 @@ const steps = (x: Ois) => faltas(x).map(f => !f.length);
 const base = (x: Ois) => [!x.of && "Oficial implicado", !x.sgt && "Sargento a cargo", !x.lugar.trim() && "Lugar"].filter(Boolean) as string[];
 
 export function OisPanel() {
-  const me = useMe(), { toast, confirm } = useFeedback(), copy = useCopy();
+  const me = useMe(), { toast, confirm } = useFeedback();
   const [L, setL] = useJSON<Ois[]>("lspdt.ois", []);
-  const [tab, setTab] = useState<"new" | "list">("new"), [x, setX] = useState<Ois>(() => blank(me.n, L)), [open, setOpen] = useState(""), [miss, setMiss] = useState(false), [rev, setRev] = useState<Ois | null>(null);
+  const [tab, setTab] = useState<"new" | "list">("new"), [x, setX] = useState<Ois>(() => blank(me.n, L)), [open, setOpen] = useState(""), [miss, setMiss] = useState(false), [rev, setRev] = useState<Ois | null>(null), [web, setWeb] = useState<Ois | null>(null);
   const up = (p: Partial<Ois>) => setX({ ...x, ...p }), ok = steps(x), done = ok.filter(Boolean).length;
+  const guns = gunsOf(x), setGuns = (L: Gun[]) => up({ armas: L });
   /* expedientes con el mismo número (de antes del arreglo): el más nuevo pasa al siguiente libre */
   useEffect(() => {
     const seen = new Set<string>(), fix: Ois[] = [], out = L.slice().sort((a, b) => a.t - b.t);
@@ -86,7 +97,7 @@ export function OisPanel() {
             {o && <div className="flex flex-wrap gap-2 bg-slate-50/60 px-4 py-3 dark:bg-slate-900/40">
               <Button size="sm" icon={<ClipboardCheck />} onClick={() => setRev(r)}>Revisar</Button>
               <Button size="sm" variant="outline" icon={<FileDown />} onClick={() => oisPdf(r)}>Exportar PDF</Button>
-              <Button size="sm" variant="outline" icon={<Copy />} onClick={() => void copy(oisText(r))}>Copiar para Discord</Button>
+              <Button size="sm" variant="outline" icon={<FileText />} onClick={() => setWeb(r)}>Ver en web</Button>
               <Button size="sm" variant="outline" icon={<Pencil />} onClick={() => { setX(r); setTab("new"); }}>Editar</Button>
               {(r.by === me.n || me.l >= 8 || me.admin) && <Button size="sm" variant="ghost" className="ml-auto text-red-600 dark:text-red-400" icon={<Trash2 />} onClick={async () => { if (await confirm(`¿Borrar ${r.no}?`, { danger: true })) setL(L.filter(i => i.id !== r.id)); }}>Borrar</Button>}
             </div>}
@@ -126,34 +137,20 @@ export function OisPanel() {
           </Step>
 
           <Step n={4} ok={ok[3]} I={Crosshair} t="Revisión del arma" d="Se revisa en el momento. El arma NO se retira: se devuelve al oficial en cuanto termina la revisión.">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Modelo"><Input value={x.mod} onChange={e => up({ mod: e.target.value })} placeholder="Ej: Glock 17" /></Field>
-              <Field label="N° de serie"><Input className="font-mono uppercase" value={x.ser} onChange={e => up({ ser: e.target.value })} /></Field>
-            </div>
-            <Field label="Estado del arma"><div className="flex flex-wrap gap-1.5">{ARMA_EST.map(e => <Pill key={e} on={x.est === e} onClick={() => up({ est: e })}>{e}</Pill>)}</div></Field>
-            {x.est && x.est !== ARMA_EST[0] && <Input value={x.estN} onChange={e => up({ estN: e.target.value })} placeholder="Describí el daño o el fallo" />}
-            <div className="grid gap-3 sm:grid-cols-4">
-              <Field label="Cargadores"><Input inputMode="numeric" value={x.car} onChange={e => up({ car: e.target.value.replace(/\D/g, "") })} /></Field>
-              <Field label="Balas que quedan" className="sm:col-span-3" hint="(en cada cargador)"><Input value={x.rest} onChange={e => up({ rest: e.target.value })} placeholder="Ej: 12 / 17 / 17" /></Field>
-              <Field label="Balas disparadas"><Input inputMode="numeric" value={x.disp} onChange={e => up({ disp: e.target.value.replace(/\D/g, "") })} /></Field>
-              <Field label="Dotación reglamentaria" hint="(balas)"><Input inputMode="numeric" value={x.dot} onChange={e => up({ dot: e.target.value.replace(/\D/g, "") })} placeholder="Ej: 51" /></Field>
-              <div className="flex items-end sm:col-span-2">{faltan(x) !== null && <p className={cn("w-full rounded-xl px-3 py-2 text-xs font-semibold", x.disp && faltan(x) !== +x.disp ? "bg-amber-500/10 text-amber-700 dark:text-amber-300" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300")}>
-                Según la dotación faltan {faltan(x)} {faltan(x) === 1 ? "bala" : "balas"}{x.disp ? (faltan(x) === +x.disp ? " · coincide con lo disparado" : ` · declaró ${x.disp}: no coincide`) : ""}</p>}</div>
-            </div>
-            <div className="flex flex-wrap items-center gap-3"><span className="text-sm font-medium">¿Cambió de cargador durante el incidente?</span><YesNo v={x.camb} on={v => up({ camb: v })} /></div>
-            <Field label="Otra arma además de la reglamentaria" hint="(vacío si no usó)"><Input value={x.otra} onChange={e => up({ otra: e.target.value })} placeholder="Ej: escopeta, fusil…" /></Field>
+            {guns.map((g, gi) => <GunForm key={g.id} g={g} n={gi + 1} many={guns.length > 1} set={p => setGuns(guns.map(y => (y.id === g.id ? { ...y, ...p } : y)))} onDel={() => setGuns(guns.filter(y => y.id !== g.id))} />)}
+            <Button variant="outline" icon={<Plus />} onClick={() => setGuns([...guns, { ...newGun(), mags: ["", ""] }])}>Añadir otra arma con la que disparó</Button>
           </Step>
 
           <Step n={5} ok={ok[4]} I={FlaskConical} t="Test de alcohol y drogas" d="Obligatorio en todo uso de fuerza letal: no supone ninguna acusación. El resultado se anota y se adjunta al informe.">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Alcohol"><div className="flex flex-wrap gap-1.5">{TEST.map(e => <Pill key={e} on={x.alc === e} bad={e === "Positivo"} onClick={() => up({ alc: e })}>{e}</Pill>)}</div></Field>
-              <Field label="Drogas"><div className="flex flex-wrap gap-1.5">{TEST.map(e => <Pill key={e} on={x.drog === e} bad={e === "Positivo"} onClick={() => up({ drog: e })}>{e}</Pill>)}</div></Field>
+              <Field label="Alcohol"><div className="flex flex-wrap gap-1.5">{TEST.map(e => <TestPill key={e} v={e} on={x.alc === e} onClick={() => up({ alc: e })} />)}</div></Field>
+              <Field label="Drogas"><div className="flex flex-wrap gap-1.5">{TEST.map(e => <TestPill key={e} v={e} on={x.drog === e} onClick={() => up({ drog: e })} />)}</div></Field>
             </div>
             <Input value={x.testN} onChange={e => up({ testN: e.target.value })} placeholder="Observaciones del test (opcional)" />
           </Step>
 
           <Step n={6} ok={ok[5]} I={Send} t="Notificación a PSB" d="Se informa al oficial de que:">
-            {PSB_AV.map((p, i) => <Checkbox key={i} checked={x.psb[i]} onChange={v => up({ psb: x.psb.map((b, j) => (j === i ? v : b)) })} label={p} />)}
+            <div className="flex flex-col gap-2">{PSB_AV.map((p, i) => <Checkbox key={i} checked={x.psb[i]} onChange={v => up({ psb: x.psb.map((b, j) => (j === i ? v : b)) })} label={p} />)}</div>
           </Step>
           <Card className="p-5"><Field label="Notas del Sargento" hint="(opcional)"><Textarea rows={3} value={x.notas} onChange={e => up({ notas: e.target.value })} /></Field></Card>
         </div>
@@ -165,7 +162,7 @@ export function OisPanel() {
           <div className="grid gap-2">
             <Button icon={<Save />} onClick={save}>{x.id ? "Guardar cambios" : "Guardar"}</Button>
             <Button variant="outline" icon={<FileDown />} disabled={!x.of} onClick={() => oisPdf(x)}>Exportar PDF</Button>
-            <Button variant="outline" icon={<Copy />} disabled={!x.of} onClick={() => void copy(oisText(x))}>Copiar para Discord</Button>
+            <Button variant="outline" icon={<FileText />} disabled={!x.of} onClick={() => setWeb(x)}>Ver en formato web</Button>
             {(x.id || x.of) && <Button variant="ghost" icon={<RotateCcw />} onClick={() => setX(blank(me.n, L))}>Empezar otro</Button>}
           </div>
           <p className="text-[11px] leading-relaxed text-slate-400">El PDF sale con el sello del LSPD: en la ventana de impresión elegí «Guardar como PDF».</p>
@@ -173,7 +170,8 @@ export function OisPanel() {
         </Card>
       </div>}
       {miss && <Missing x={x} onClose={() => setMiss(false)} onSave={doSave} />}
-      {rev && <Review r={rev} onClose={() => setRev(null)} onEdit={() => { setX(rev); setRev(null); setTab("new"); }} />}
+      {rev && <Review r={rev} onClose={() => setRev(null)} onEdit={() => { setX(rev); setRev(null); setTab("new"); }} onWeb={() => { setWeb(rev); setRev(null); }} />}
+      {web && <WebView r={web} onClose={() => setWeb(null)} />}
     </div>);
 }
 
@@ -194,11 +192,11 @@ const MissRow = ({ t, l }: { t: string; l: string[] }) => (
   <div><p className="text-sm font-bold text-red-600 dark:text-red-400">{t}</p><ul className="ml-4 list-disc text-[13px] text-red-700/90 dark:text-red-300/90">{l.map(x => <li key={x}>{x}</li>)}</ul></div>);
 
 /* revisión de un expediente ya hecho: cada paso en verde o en rojo con lo que falta, y el historial de cambios */
-function Review({ r, onClose, onEdit }: { r: Ois; onClose: () => void; onEdit: () => void }) {
-  const copy = useCopy(), F = faltas(r), b = base(r), k = F.filter(f => !f.length).length, okAll = k === 6 && !b.length;
+function Review({ r, onClose, onEdit, onWeb }: { r: Ois; onClose: () => void; onEdit: () => void; onWeb: () => void }) {
+  const F = faltas(r), b = base(r), k = F.filter(f => !f.length).length, okAll = k === 6 && !b.length;
   return (
     <Modal open onClose={onClose} size="lg" icon={<ClipboardCheck />} title={`Revisión · ${r.no}`} desc={`${who(r.of)} · ${dmy(r.fecha)} ${r.hora} · Sargento: ${who(r.sgt)}`}
-      footer={<><Button variant="ghost" icon={<Copy />} className="mr-auto" onClick={() => void copy(oisText(r))}>Discord</Button><Button variant="outline" icon={<FileDown />} onClick={() => oisPdf(r)}>PDF</Button><Button icon={<Pencil />} onClick={onEdit}>{okAll ? "Editar" : "Completar lo que falta"}</Button></>}>
+      footer={<><Button variant="ghost" icon={<FileText />} className="mr-auto" onClick={onWeb}>Ver en web</Button><Button variant="outline" icon={<FileDown />} onClick={() => oisPdf(r)}>PDF</Button><Button icon={<Pencil />} onClick={onEdit}>{okAll ? "Editar" : "Completar lo que falta"}</Button></>}>
       <div className={cn("flex items-center gap-3 rounded-2xl border p-3.5", okAll ? "border-emerald-500/40 bg-emerald-500/[.08]" : "border-red-500/40 bg-red-500/[.08]")}>
         {okAll ? <Check className="size-5 text-emerald-500" /> : <AlertTriangle className="size-5 text-red-500" />}
         <p className={cn("text-sm font-semibold", okAll ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300")}>{okAll ? "Expediente completo: los 6 pasos están cargados." : `Faltan datos: ${k}/6 pasos completos${b.length ? ` · sin ${b.join(", ").toLowerCase()}` : ""}.`}</p>
@@ -216,6 +214,52 @@ function Review({ r, onClose, onEdit }: { r: Ois; onClose: () => void; onEdit: (
     </Modal>);
 }
 
+/* una arma: modelo (con su capacidad), serie, estado y balas por cargador; las disparadas se calculan solas */
+function GunForm({ g, n, many, set, onDel }: { g: Gun; n: number; many: boolean; set: (p: Partial<Gun>) => void; onDel: () => void }) {
+  const c = gCalc(g), mag = (i: number, v: string) => set({ mags: g.mags.map((m, j) => (j === i ? v.replace(/\D/g, "").slice(0, 3) : m)) });
+  const count = (k: number) => set({ mags: Array.from({ length: k }, (_, i) => g.mags[i] ?? "") });
+  const disp = g.disp || (c.est !== null ? String(c.est) : ""), off = !!g.disp && c.est !== null && +g.disp !== c.est;
+  return (
+    <div className={cn("space-y-3", many && "rounded-2xl border border-slate-200 p-4 dark:border-slate-800")}>
+      {many && <div className="flex items-center gap-2"><span className="rounded-lg bg-slate-900 px-2 py-0.5 text-xs font-bold text-white dark:bg-white dark:text-slate-900">Arma {n}</span>{n === 1 && <span className="text-xs text-slate-500">Reglamentaria</span>}
+        {n > 1 && <button onClick={onDel} className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-red-500 hover:underline"><Trash2 className="size-3.5" />Quitar</button>}</div>}
+      <Field label="Modelo"><div className="space-y-2">
+        <div className="flex flex-wrap gap-1.5">{MODELOS.map(([m, cap]) => <Pill key={m} on={g.mod === m} onClick={() => set({ mod: m, cap })}>{m}</Pill>)}</div>
+        <Input value={g.mod} onChange={e => set({ mod: e.target.value, cap: capOf(e.target.value) || g.cap })} placeholder="U otro modelo…" /></div></Field>
+      <div className="grid gap-3 sm:grid-cols-[1fr_9rem]">
+        <Field label="N° de serie"><Input className="font-mono uppercase" value={g.ser} onChange={e => set({ ser: e.target.value })} /></Field>
+        <Field label="Balas por cargador"><Input inputMode="numeric" value={g.cap || ""} onChange={e => set({ cap: +e.target.value.replace(/\D/g, "") || 0 })} placeholder="—" /></Field>
+      </div>
+      <Field label="Estado del arma"><div className="flex flex-wrap gap-1.5">{ARMA_EST.map(e => <Pill key={e} on={g.est === e} onClick={() => set({ est: e })}>{e}</Pill>)}</div></Field>
+      {g.est && g.est !== ARMA_EST[0] && <Input value={g.estN} onChange={e => set({ estN: e.target.value })} placeholder="Describí el daño o el fallo" />}
+      <Field label="Cargadores que lleva" hint="(incluido el que está puesto en el arma)"><div className="flex flex-wrap gap-1.5">{[1, 2, 3, 4, 5, 6].map(k => <Pill key={k} on={g.mags.length === k} onClick={() => count(k)}>{k}</Pill>)}</div></Field>
+      <Field label="Balas que quedan en cada cargador"><div className="flex flex-wrap gap-2">{g.mags.map((m, i) => (
+        <div key={i} className="w-[6.5rem] rounded-xl border border-slate-200 p-2 dark:border-slate-700">
+          <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-wide text-slate-400">{i === 0 ? "En el arma" : `Cargador ${i + 1}`}</p>
+          <Input inputMode="numeric" className="h-8 text-center font-mono" value={m} onChange={e => mag(i, e.target.value)} placeholder={g.cap ? String(g.cap) : "0"} />
+          <div className="mt-1 flex gap-1">{g.cap > 0 && <button onClick={() => mag(i, String(g.cap))} className="flex-1 rounded-md bg-emerald-500/10 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-300">Lleno</button>}
+            <button onClick={() => mag(i, "0")} className="flex-1 rounded-md bg-red-500/10 py-0.5 text-[10px] font-bold text-red-600 dark:text-red-300">Vacío</button></div>
+        </div>))}</div></Field>
+      <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
+        <Field label="Balas disparadas"><Input inputMode="numeric" value={g.disp} onChange={e => set({ disp: e.target.value.replace(/\D/g, "") })} placeholder={c.est !== null ? `${c.est} (calculado)` : "—"} /></Field>
+        <div className="flex items-end">{c.dot > 0 && <p className={cn("w-full rounded-xl px-3 py-2 text-xs font-semibold", off ? "bg-amber-500/10 text-amber-700 dark:text-amber-300" : "bg-sky-500/10 text-sky-700 dark:text-sky-300")}>
+          Dotación: {g.mags.length} × {g.cap} = {c.dot} · quedan {c.left}{c.est !== null ? ` → disparó ${c.est}` : " (completá todos los cargadores)"}{off ? ` · declaró ${g.disp}: no coincide` : g.disp && c.est !== null ? " · coincide" : ""}
+          {!g.disp && c.est !== null && <button onClick={() => set({ disp: String(c.est) })} className="ml-2 font-bold underline">Usar {c.est}</button>}</p>}</div>
+      </div>
+      <div className="flex flex-wrap items-center gap-3"><span className="text-sm font-medium">¿Cambió de cargador durante el incidente?</span><YesNo v={g.camb} on={v => set({ camb: v })} />
+        {disp && g.cap > 0 && +disp > g.cap && g.camb === "" && <span className="text-xs text-amber-500">Disparó más balas que las de un cargador: seguramente sí.</span>}</div>
+    </div>);
+}
+
+/* formato web: el mismo documento que el PDF, en pantalla */
+function WebView({ r, onClose }: { r: Ois; onClose: () => void }) {
+  return (
+    <Modal open onClose={onClose} size="xl" icon={<FileText />} title={`Informe · ${r.no}`} desc={`${who(r.of)} · ${dmy(r.fecha)}`}
+      footer={<><Button variant="ghost" onClick={onClose}>Cerrar</Button><Button icon={<FileDown />} onClick={() => oisPdf(r)}>Exportar PDF</Button></>}>
+      <div className="rounded-xl bg-slate-200 p-3 dark:bg-slate-800"><iframe title={`Informe ${r.no}`} srcDoc={oisHtml(r).replace("<body>", '<body style="background:#fff;padding:28px 34px;max-width:820px;margin:0 auto">')} className="h-[68vh] w-full rounded-lg bg-white shadow-lg" /></div>
+    </Modal>);
+}
+
 function Step({ n, ok, I, t, d, children }: { n: number; ok: boolean; I: typeof Check; t: string; d: string; children: React.ReactNode }) {
   return (
     <Card className={cn("overflow-hidden transition", ok && "ring-1 ring-emerald-500/40")}>
@@ -229,32 +273,26 @@ function Step({ n, ok, I, t, d, children }: { n: number; ok: boolean; I: typeof 
 const Pill = ({ on, bad, onClick, children }: { on: boolean; bad?: boolean; onClick: () => void; children: React.ReactNode }) => (
   <button type="button" onClick={onClick} aria-pressed={on} className={cn("rounded-full border px-3 py-1 text-xs font-semibold transition",
     on ? (bad ? "border-red-500 bg-red-500 text-white" : "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900") : "border-slate-200 text-slate-500 hover:text-slate-800 dark:border-slate-700 dark:hover:text-slate-200")}>{children}</button>);
+/* resultado del test: positivo verde, negativo rojo, pendiente amarillo, con un brillo leve */
+const TEST_C: Record<string, string> = { "Positivo": "#22c55e", "Negativo": "#ef4444", "Pendiente de resultado": "#f59e0b" };
+const TestPill = ({ v, on, onClick }: { v: string; on: boolean; onClick: () => void }) => { const c = TEST_C[v];
+  return <button type="button" onClick={onClick} aria-pressed={on} className="rounded-full border px-3 py-1 text-xs font-semibold transition"
+    style={on ? { color: "#fff", background: c, borderColor: c, boxShadow: `0 0 10px ${c}aa, 0 0 2px ${c}` } : { color: c, borderColor: c + "66", background: c + "12" }}>{v}</button>; };
 const YesNo = ({ v, on }: { v: "" | "si" | "no"; on: (v: "si" | "no") => void }) => <div className="flex gap-1.5"><Pill on={v === "si"} onClick={() => on("si")}>Sí</Pill><Pill on={v === "no"} onClick={() => on("no")}>No</Pill></div>;
 
 /* ---------- salida: Discord y PDF ---------- */
 const sn = (v: string) => (v === "si" ? "Sí" : v === "no" ? "No" : "—");
-const vals = (x: Ois) => {
-  const f = faltan(x);
-  return {
-    p1: [["Herido", sn(x.her) + (x.her === "si" ? (x.ems ? " · EMS solicitado" : " · EMS SIN solicitar") : "")], ["Estado emocional", [x.emo, x.emoN].filter(Boolean).join(" · ") || "—"]],
-    p3: [["Retirado de la escena", x.ret ? "Sí" : "No"], ["Zona", x.zona || "—"]],
-    p4: [["Modelo", x.mod || "—"], ["N° de serie", x.ser.toUpperCase() || "—"], ["Estado", [x.est, x.estN].filter(Boolean).join(" · ") || "—"], ["Cargadores", x.car || "—"], ["Balas que quedan", x.rest || "—"],
-      ["Balas disparadas", x.disp || "—"], ["Dotación reglamentaria", x.dot ? `${x.dot}${f !== null ? ` (faltan ${f}${x.disp ? (f === +x.disp ? ", coincide" : ", NO coincide") : ""})` : ""}` : "—"],
-      ["Cambio de cargador", sn(x.camb)], ["Otra arma", x.otra || "No"]],
-    p5: [["Alcohol", x.alc || "—"], ["Drogas", x.drog || "—"], ...(x.testN ? [["Observaciones", x.testN]] : [])],
-  };
-};
-function oisText(x: Ois) {
-  const V = vals(x), kv = (L: string[][]) => L.map(([k, v]) => `**${k}:** ${v}`);
-  return [`## 🚨 Procedimiento OIS con fallecido · ${x.no}`, `**Oficial implicado:** ${who(x.of)}${placa(x.of) ? ` | ${placa(x.of)}` : ""}`, `**Sargento a cargo:** ${who(x.sgt)}`,
-    `**Fecha:** ${dmy(x.fecha)} ${x.hora}${x.lugar ? ` · ${x.lugar}` : ""}`, "",
-    "### 1. Estado del oficial", ...kv(V.p1), "", "### 2. Declaración de Seguridad Pública (PSS)", ...PSS.map((q, i) => `> ${i + 1}. ${q}\n${x.pss[i] || "—"}`), "",
-    "### 3. Retirada de la escena", ...kv(V.p3), "", "### 4. Revisión del arma", ...kv(V.p4), "", "### 5. Test de alcohol y drogas", ...kv(V.p5), "",
-    "### 6. Notificación a PSB", ...PSB_AV.map((p, i) => `${x.psb[i] ? "✅" : "⬜"} ${p}`), ...(x.notas.trim() ? ["", `**Notas:** ${x.notas.trim()}`] : []), "", `-# Procedimiento: ${OIS_AUTOR} · LSPD`].join("\n");
-}
-
+const vals = (x: Ois) => ({
+  p1: [["Herido", sn(x.her) + (x.her === "si" ? (x.ems ? " · EMS solicitado" : " · EMS SIN solicitar") : "")], ["Estado emocional", [x.emo, x.emoN].filter(Boolean).join(" · ") || "—"]],
+  p3: [["Retirado de la escena", x.ret ? "Sí" : "No"], ["Zona", x.zona || "—"]],
+  p4: gunsOf(x).map(g => { const c = gCalc(g), d = g.disp || (c.est !== null ? String(c.est) : "");
+    return [["Modelo", g.mod || "—"], ["N° de serie", g.ser.toUpperCase() || "—"], ["Estado", [g.est, g.estN].filter(Boolean).join(" · ") || "—"], ["Cargadores", g.mags.length ? `${g.mags.length}${g.cap ? ` de ${g.cap} balas` : ""}` : "—"],
+      ["Balas que quedan", g.mags.length ? g.mags.map(m => m || "?").join(" / ") + ` (total ${c.left})` : "—"], ["Balas disparadas", d ? d + (c.est !== null && g.disp && +g.disp !== c.est ? ` (según la dotación: ${c.est}, NO coincide)` : c.est !== null ? " (coincide con la dotación)" : "") : "—"],
+      ["Dotación reglamentaria", c.dot ? `${g.mags.length} × ${g.cap} = ${c.dot}` : "—"], ["Cambio de cargador", sn(g.camb)]]; }),
+  p5: [["Alcohol", x.alc || "—"], ["Drogas", x.drog || "—"], ...(x.testN ? [["Observaciones", x.testN]] : [])],
+});
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-function oisPdf(x: Ois) {
+function oisHtml(x: Ois) {
   const V = vals(x), seal = location.origin + "/next/lspd-seal.webp", hoy = new Date().toLocaleDateString("es-AR");
   const grid = (L: string[][]) => { const r: string[] = []; for (let i = 0; i < L.length; i += 2) r.push("<tr>" + [L[i], L[i + 1]].map(c => (c ? `<td><b>${esc(c[0])}:</b><br>${esc(c[1])}</td>` : "<td></td>")).join("") + "</tr>"); return `<table class="g">${r.join("")}</table>`; };
   const bar = (t: string) => `<div class="bar">${esc(t)}</div>`;
@@ -278,14 +316,17 @@ function oisPdf(x: Ois) {
   <ol>${PSS.map((q, i) => `<li><span class="q">${esc(q)}</span><br>${esc(x.pss[i] || "—")}</li>`).join("")}</ol>
   <div class="warn">Está prohibido preguntar por qué disparó o pedir una versión de los hechos. Eso lo hace la investigación.</div>
   ${bar("Paso 3 · Retirada de la escena inmediata")}${grid(V.p3)}
-  ${bar("Paso 4 · Revisión del arma")}<p>El arma no se retira: se devuelve al oficial en cuanto termina la revisión.</p>${grid(V.p4)}
+  ${bar("Paso 4 · Revisión del arma")}<p>El arma no se retira: se devuelve al oficial en cuanto termina la revisión.</p>${V.p4.map((g, i) => (V.p4.length > 1 ? `<p class="q">Arma ${i + 1}${i === 0 ? " (reglamentaria)" : ""}</p>` : "") + grid(g)).join("")}
   ${bar("Paso 5 · Test de alcohol y drogas")}<p>Procedimiento obligatorio en todo uso de fuerza letal; no supone ninguna acusación.</p>${grid(V.p5)}
   ${bar("Paso 6 · Notificación a PSB")}<p>Se informa al oficial de que:</p>${PSB_AV.map((p, i) => `<div class="chk">${x.psb[i] ? "☑" : "☐"} ${esc(p)}</div>`).join("")}
   ${x.notas.trim() ? bar("Notas del Sargento") + `<p>${esc(x.notas.trim()).replace(/\n/g, "<br>")}</p>` : ""}
   <div class="sig"><div><div class="ln">${esc(who(x.sgt))}<br>Sargento a cargo · Los Santos Police Department</div></div><div><div class="ln">${esc(who(x.of))}<br>Oficial implicado</div></div></div>
   <div class="ft">Procedimiento redactado por ${OIS_AUTOR} · Los Santos Police Department</div>
   </body></html>`;
-  const f = document.createElement("iframe"); f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0"; document.body.appendChild(f);
+  return html;
+}
+function oisPdf(x: Ois) {
+  const html = oisHtml(x), f = document.createElement("iframe"); f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0"; document.body.appendChild(f);
   const d = f.contentDocument!; d.open(); d.write(html); d.close();
   const go = () => { const w = f.contentWindow!; w.focus(); w.print(); setTimeout(() => f.remove(), 60000); };
   const img = d.querySelector("img"); if (img && !img.complete) { img.onload = go; img.onerror = go; } else setTimeout(go, 50);

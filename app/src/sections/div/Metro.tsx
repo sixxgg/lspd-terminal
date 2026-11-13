@@ -1,6 +1,6 @@
 /* METRO · exámenes para aspirantes a instructor de la academia: entrevista con hoja de puntuación (1–5, pesos por bloque, máx. 60),
    examen escrito (banco editable, nota /10, corte 70 %) y lista de elegibles (examen ×4 + entrevista = /100). */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Check, ClipboardCheck, Eye, MessageCircle, RotateCcw, Minus, Pencil, Plus, Save, Star, Trash2, Trophy, X } from "lucide-react";
 import { Button, Card, Field, Input, Select, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
@@ -26,12 +26,26 @@ const f1 = (n: number, d = 1) => n.toFixed(d).replace(".", ",");
 
 /* ---------- entrevista ---------- */
 const BLOQ: [string, number, string[]][] = [
-  ["Motivación y trayectoria", 1, ["¿Por qué quieres ser instructor de la academia Metro?", "¿Cuánto tiempo llevas en la Metropolitan Division y qué cargos has ocupado?", "¿Qué crees que puedes aportar a los nuevos aspirantes?"]],
-  ["Conocimiento y experiencia", 2, ["¿Qué diferencia a Metro de otras divisiones y qué debe saber un aspirante desde el primer día?", "¿En qué áreas te sientes más fuerte (tácticas, tiro, conducción, liderazgo, procedimientos)?", "¿En cuál crees que necesitas mejorar?", "Explícame cómo harías una entrada táctica o un procedimiento de tu elección."]],
-  ["Capacidad de enseñar", 3, ["¿Has instruido o guiado a alguien antes? ¿Cómo fue?", "¿Cómo estructurarías una clase de 30 minutos?", "¿Cómo explicarías un mismo procedimiento a alguien que aprende rápido y a alguien que va lento?", "¿Cómo evaluarías si un aspirante está listo para pasar?"]],
-  ["Situaciones prácticas", 3, ["Un aspirante falla el mismo ejercicio tres veces. ¿Qué haces?", "Un aspirante te discute o cuestiona tu corrección delante del grupo. ¿Cómo reaccionas?", "Ves a otro instructor enseñando algo incorrecto o saltándose el reglamento. ¿Qué haces?", "Un aspirante es muy bueno pero tiene mala actitud. ¿Lo apruebas?"]],
-  ["Actitud y disciplina", 2, ["¿Cómo manejas la presión y las críticas?", "¿Has tenido sanciones o llamadas de atención? ¿Qué aprendiste?", "¿Cuál es tu disponibilidad semanal y cómo la compaginarías con tus patrullas?"]],
-  ["Cierre", 1, ["¿Qué cambiarías de la academia actual?", "¿Hay algo más que quieras que tengamos en cuenta?"]],
+  ["Motivación y trayectoria", 1, ["¿Qué te motiva a formar parte del equipo de instructores de la Metropolitan Division?",
+    "¿Cuánto tiempo llevas en la Metropolitan Division? ¿A qué subdivisiones perteneces actualmente y en qué otras divisiones has estado?",
+    "¿Qué crees que puedes aportar al equipo de instructores y a la formación de los nuevos aspirantes?"]],
+  ["Conocimiento y experiencia", 2, ["¿Qué diferencia a la Metropolitan Division del resto de divisiones? ¿Qué conocimientos básicos debería tener un aspirante desde su ingreso?",
+    "¿En qué áreas consideras que tienes más conocimientos o habilidades? (Táctica, armamento y tiro, conducción, liderazgo, procedimientos, etc.)",
+    "¿En qué aspectos de tu formación o desempeño crees que aún necesitas mejorar?",
+    "Explícanos cómo llevarías a cabo una entrada táctica en un inmueble (u otro procedimiento de tu elección), detallando los pasos y lo que tendrías en cuenta en cada uno."]],
+  ["Capacidad de enseñar", 3, ["¿Tienes experiencia instruyendo, formando o guiando a otros agentes? Si es así, ¿cómo fue?",
+    "¿Cómo organizarías una clase de 30 minutos, desde la introducción hasta la evaluación final?",
+    "¿Cómo adaptarías tu forma de enseñar para explicar un mismo procedimiento a dos aspirantes con ritmos de aprendizaje distintos?",
+    "¿Qué criterios usarías para decidir si un aspirante está preparado para superar una evaluación y avanzar en su formación?"]],
+  ["Situaciones prácticas", 3, ["Un aspirante comete el mismo error en tres intentos seguidos de un ejercicio. ¿Cómo abordarías la situación y qué harías para ayudarlo a corregirlo?",
+    "Durante una instrucción, un aspirante cuestiona una de tus correcciones delante del grupo. ¿Cómo gestionarías la situación?",
+    "Observas que otro instructor enseña un procedimiento de forma incorrecta o incumple la normativa interna. ¿Cómo actuarías?",
+    "Un aspirante tiene un excelente nivel técnico y operativo, pero mantiene una actitud inadecuada o poco profesional. ¿Debería aprobar? Justifica tu respuesta."]],
+  ["Actitud y disciplina", 2, ["¿Cómo gestionas la presión y las críticas, sobre todo cuando vienen de superiores o compañeros?",
+    "¿Has recibido sanciones disciplinarias o llamadas de atención durante tu trayectoria en la división? Si es así, ¿qué aprendiste de ellas?",
+    "¿Cuál es tu disponibilidad semanal y cómo compaginarías tus responsabilidades como instructor con tus patrullas y obligaciones operativas?"]],
+  ["Cierre", 1, ["¿Qué mejorarías o cambiarías de la academia actual para optimizar la formación de los nuevos aspirantes?",
+    "¿Hay algo más de tu experiencia, trayectoria o motivación que consideres importante que tengamos en cuenta en esta selección?"]],
 ];
 /* peso de cada bloque: cuanto más pesa, más resalta */
 const W_ST: Record<number, { c: string; l: string }> = { 1: { c: "#64748b", l: "vale x1" }, 2: { c: "#f59e0b", l: "vale el doble · x2" }, 3: { c: "#ef4444", l: "vale el triple · x3" } };
@@ -52,18 +66,20 @@ function entScore(e: Ev) {
 /* ---------- examen escrito ---------- */
 const AREAS = ["Táctica y procedimientos", "Armamento y tiro", "Conducción y persecución", "Instrucción y liderazgo"];
 const BANK0: Q[] = [
-  ["Táctica y procedimientos", "¿Cuáles son los pasos de una entrada táctica a un inmueble?", "Planificación y reparto de roles, aproximación cubierta, aviso/identificación, entrada por el punto elegido, despeje por sectores (esquinas y puntos muertos), control de sujetos y comunicación constante."],
-  ["Táctica y procedimientos", "¿Qué es un perímetro interior y uno exterior y para qué sirve cada uno?", "El interior contiene la amenaza y lo cubren unidades tácticas; el exterior controla accesos y aleja civiles y prensa."],
-  ["Táctica y procedimientos", "¿Qué se informa por radio al llegar a una escena de alto riesgo?", "Unidad, ubicación exacta, situación observada, número de sospechosos y armas, heridos, y qué apoyo se necesita."],
-  ["Armamento y tiro", "¿Qué reglas básicas de seguridad con armas debe repetir un instructor?", "Tratar toda arma como cargada, no apuntar a nada que no se quiera disparar, dedo fuera del gatillo hasta decidir disparar, conocer el blanco y lo que hay detrás."],
-  ["Armamento y tiro", "¿Cuándo está justificado el uso del arma de fuego?", "Solo ante un peligro inminente para la vida o la integridad propia o de terceros, sin alternativa menos lesiva."],
-  ["Armamento y tiro", "¿Qué hace un tirador cuando se le traba el arma en un enfrentamiento?", "Avisa al equipo, busca cobertura, resuelve la interrupción (o pasa al arma secundaria) y vuelve a la línea cuando está operativo."],
-  ["Conducción y persecución", "¿Qué factores evalúa el mando para mantener o cancelar una persecución?", "Riesgo para civiles y agentes, tráfico y zona, gravedad del delito, velocidad y estado de la vía, y si hay apoyo aéreo para seguirlo sin riesgo."],
-  ["Conducción y persecución", "¿Cuál es el orden de las unidades en una persecución y qué hace cada una?", "Unidad principal (persigue y cuenta por radio), secundaria (apoya y releva) y el resto se posiciona para cortar o hacer PIT si se autoriza."],
-  ["Instrucción y liderazgo", "¿Cómo se estructura una clase práctica de 30 minutos?", "Objetivo y explicación breve, demostración, práctica guiada, práctica individual con corrección y cierre con repaso y dudas."],
-  ["Instrucción y liderazgo", "¿Cómo se corrige a un aspirante delante del grupo sin perder autoridad ni humillarlo?", "Corrección breve y concreta sobre la acción, sin juicios personales; lo demás en privado al terminar."],
-  ["Instrucción y liderazgo", "¿Qué hace un instructor si ve a otro enseñando algo contrario al reglamento?", "No lo desautoriza delante del grupo: se lo comenta en privado y, si persiste, lo eleva a la coordinación."],
+  ["Táctica y procedimientos", "¿Cuáles son las fases y los pasos fundamentales de una entrada táctica en un inmueble?", "Planificación y reparto de roles, aproximación cubierta, aviso/identificación, entrada por el punto elegido, despeje por sectores (esquinas y puntos muertos), control de sujetos y comunicación constante."],
+  ["Táctica y procedimientos", "¿Qué diferencia hay entre un perímetro interior y uno exterior? ¿Qué función cumple cada uno?", "El interior contiene la amenaza y lo cubren unidades tácticas; el exterior controla accesos y aleja civiles y prensa."],
+  ["Táctica y procedimientos", "Al llegar a una escena de alto riesgo, ¿qué información debe transmitirse por radio y en qué orden?", "Unidad, ubicación exacta, situación observada, número de sospechosos y armas, heridos, y qué apoyo se necesita."],
+  ["Armamento y tiro", "¿Cuáles son las normas fundamentales de seguridad en el manejo de armas de fuego que todo instructor debe conocer y transmitir?", "Tratar toda arma como cargada, no apuntar a nada que no se quiera disparar, dedo fuera del gatillo hasta decidir disparar, conocer el blanco y lo que hay detrás."],
+  ["Armamento y tiro", "¿En qué circunstancias está justificado que un agente use su arma de fuego?", "Solo ante un peligro inminente para la vida o la integridad propia o de terceros, sin alternativa menos lesiva."],
+  ["Armamento y tiro", "¿Cómo debe actuar un agente ante una interrupción o un fallo de su arma durante un enfrentamiento?", "Avisa al equipo, busca cobertura, resuelve la interrupción (o pasa al arma secundaria) y vuelve a la línea cuando está operativo."],
+  ["Conducción y persecución", "¿Qué factores debe evaluar el responsable de una persecución para decidir si la continúa o la cancela?", "Riesgo para civiles y agentes, tráfico y zona, gravedad del delito, velocidad y estado de la vía, y si hay apoyo aéreo para seguirlo sin riesgo."],
+  ["Conducción y persecución", "¿Cómo se reparten las funciones entre las unidades que participan en una persecución y qué responsabilidad tiene cada una?", "Unidad principal (persigue y cuenta por radio), secundaria (apoya y releva) y el resto se posiciona para cortar o hacer PIT si se autoriza."],
+  ["Instrucción y liderazgo", "¿Qué estructura debería seguir una clase práctica de 30 minutos para que los conocimientos se transmitan correctamente?", "Objetivo y explicación breve, demostración, práctica guiada, práctica individual con corrección y cierre con repaso y dudas."],
+  ["Instrucción y liderazgo", "¿Cómo debe corregir un instructor a un aspirante delante del grupo, manteniendo su autoridad sin exponerlo ni humillarlo?", "Corrección breve y concreta sobre la acción, sin juicios personales; lo demás en privado al terminar."],
+  ["Instrucción y liderazgo", "¿Cómo debe proceder un instructor cuando detecta que otro miembro del equipo enseña contenidos contrarios al reglamento interno?", "No lo desautoriza delante del grupo: se lo comenta en privado y, si persiste, lo eleva a la coordinación."],
 ].map(([a, q, r], i) => ({ id: "m" + i, a, q, r }));
+/* banco guardado con la redacción anterior: se actualiza la pregunta (la respuesta esperada y lo editado a mano no se tocan) */
+const BANK_OLD: Record<string, string> = { m0: "¿Cuáles son los pasos de una entrada táctica a un inmueble?", m1: "¿Qué es un perímetro interior y uno exterior y para qué sirve cada uno?", m2: "¿Qué se informa por radio al llegar a una escena de alto riesgo?", m3: "¿Qué reglas básicas de seguridad con armas debe repetir un instructor?", m4: "¿Cuándo está justificado el uso del arma de fuego?", m5: "¿Qué hace un tirador cuando se le traba el arma en un enfrentamiento?", m6: "¿Qué factores evalúa el mando para mantener o cancelar una persecución?", m7: "¿Cuál es el orden de las unidades en una persecución y qué hace cada una?", m8: "¿Cómo se estructura una clase práctica de 30 minutos?", m9: "¿Cómo se corrige a un aspirante delante del grupo sin perder autoridad ni humillarlo?", m10: "¿Qué hace un instructor si ve a otro enseñando algo contrario al reglamento?" };
 const gv = (g: Grade | number) => (g === "ok" ? 1 : g === "mid" ? 0.5 : 0);
 
 export function MetroExam({ tab }: { tab: "exa" | "ent" | "list" }) {
@@ -162,6 +178,7 @@ function Ent({ evs, onSave, onDel }: { evs: Ev[]; onSave: (e: Ev) => void; onDel
 function Exa({ evs, onSave, onDel }: { evs: Ev[]; onSave: (e: Ev) => void; onDel: (id: string) => void }) {
   const me = useMe(), { toast } = useFeedback();
   const [bank, setBank] = useJSON<Q[]>(K_BANK, BANK0), [ed, setEd] = useState(false);
+  useEffect(() => { if (bank.some(q => BANK_OLD[q.id] === q.q)) setBank(bank.map(q => (BANK_OLD[q.id] === q.q ? { ...q, q: BANK0.find(b => b.id === q.id)!.q } : q))); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const blank = (): Ev => ({ id: "", tipo: "exa", cand: "", rango: "", fecha: hoyISO(), notas: {}, obs: {}, pts: 0, apto: "", by: me.n, ts: 0 });
   const [cur, setCur] = useState<Ev | null>(null), [view, setView] = useState<Ev | null>(null), e = cur || blank(), set = (p: Partial<Ev>) => setCur({ ...e, ...p });
   const got = bank.reduce((a, q) => a + gv(e.notas[q.id] || ""), 0), pct = bank.length ? got / bank.length : 0, nota = pct * 10, done = bank.every(q => e.notas[q.id]), apto = pct >= 0.7;

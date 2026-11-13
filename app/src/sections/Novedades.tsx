@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "2.5.5";
+export const APP_VERSION = "2.5.6";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,13 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "2.5.6", f: "13/11/2026", t: "OIS: armas y balas más fáciles · preguntas de la METRO corregidas", items: [
+    "OIS · Revisión del arma: se elige el modelo (completa las balas por cargador), cuántos cargadores lleva y cuántas balas quedan en cada uno (con botones Lleno / Vacío); la terminal calcula la dotación y las balas disparadas.",
+    "OIS: si disparó con más de un arma, «Añadir otra arma» suma otra revisión completa.",
+    "OIS · Test: Positivo en verde, Negativo en rojo y Pendiente en amarillo, con un brillo leve.",
+    "OIS: el formato Discord se reemplaza por «Ver en formato web» (el mismo documento que el PDF, en pantalla).",
+    "METRO: preguntas de la entrevista de instructor y del examen escrito revisadas (redacción, ortografía y conjugaciones).",
+  ] },
   { v: "2.5.5", f: "13/11/2026", t: "METRO: convocatorias · OIS: revisión e historial", items: [
     "METRO · Entrevista de instructor: convocatorias (C1 · Convocatoria 1 y las que se agreguen) con sus postulantes, pendientes y ya entrevistados.",
     "Las entrevistas y exámenes ya hechos se abren en una ventana con las respuestas (no pisan el formulario); «Editar» los carga si hace falta y hay botón «Reiniciar».",
