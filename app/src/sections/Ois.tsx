@@ -51,7 +51,7 @@ const placa = (n: string) => findAgent(n)?.p || "";
 /* lo que falta en cada paso (vacío = paso completo) */
 const STEP_T = ["Estado del oficial", "Declaración de Seguridad Pública (PSS)", "Retirada de la escena", "Revisión del arma", "Test de alcohol y drogas", "Notificación a PSB"];
 const faltas = (x: Ois): string[][] => [
-  [x.her === "" && "Si está herido", x.her === "si" && !x.ems && "EMS solicitado (está herido)", !x.emo && "Estado emocional"].filter(Boolean) as string[],
+  [x.her === "" && "Si está herido", x.her === "si" && !x.ems && "EMS solicitado (está herido)", !x.emo && !x.emoN.trim() && "Estado emocional"].filter(Boolean) as string[],
   x.pss.map((p, i) => (!p.trim() ? `Respuesta a la pregunta ${i + 1}` : "")).filter(Boolean),
   [!x.ret && "Confirmar que se lo retiró de la escena"].filter(Boolean) as string[],
   gunsOf(x).flatMap((g, i, L) => { const p = L.length > 1 ? `Arma ${i + 1} · ` : "", c = gCalc(g);
@@ -123,7 +123,7 @@ export function OisPanel() {
             <div className="flex flex-wrap items-center gap-3"><span className="text-sm font-medium">¿Está herido?</span><YesNo v={x.her} on={v => up({ her: v, ems: v === "si" ? x.ems : false })} />
               {x.her === "si" && <span className={cn("inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm", x.ems ? "bg-emerald-500/10" : "bg-red-500/10")}><Ambulance className="size-4 text-red-500" /><Checkbox checked={x.ems} onChange={v => up({ ems: v })} label="EMS solicitado" /></span>}</div>
             <Field label="Estado emocional"><div className="flex flex-wrap gap-1.5">{EMO.map(e => <Pill key={e} on={x.emo === e} onClick={() => up({ emo: x.emo === e ? "" : e })}>{e}</Pill>)}</div></Field>
-            <Input value={x.emoN} onChange={e => up({ emoN: e.target.value })} placeholder="Observaciones (opcional)" />
+            <Input value={x.emoN} onChange={e => up({ emoN: e.target.value })} placeholder="Otro estado u observaciones (ej: impotente)" />
           </Step>
 
           <Step n={2} ok={ok[1]} I={MessageSquareWarning} t="Declaración de Seguridad Pública (PSS)" d="A solas y por separado del resto, solo estas preguntas.">

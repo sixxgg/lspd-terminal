@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "2.5.6";
+export const APP_VERSION = "2.5.7";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,13 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "2.5.7", f: "13/11/2026", t: "Examen escrito en línea de la METRO · registro de actividad", items: [
+    "METRO · Examen: nueva pestaña con el estado del examen (Listo en verde o No disponible en rojo con candado). Al iniciarlo, la tablet muestra solo el examen: preguntas de opción múltiple y un reloj.",
+    "Durante el examen no se puede copiar, pegar ni seleccionar. Salir de la pestaña, sacar capturas o abrir las herramientas del navegador suma un strike; al tercero se desaprueba.",
+    "METRO · Gestión de exámenes (coordinación): activar o desactivar, duración, hora programada, convocatoria, anotados a mano, nota mínima, resultados con el detalle de cada respuesta, banco de preguntas y pruebas que se pueden borrar.",
+    "A quien está anotado le aparece un aviso arriba de la pantalla 15 minutos antes y cuando el examen ya está listo.",
+    "OIS: el estado emocional escrito a mano (por ejemplo, «Impotente») ya cuenta como completado.",
+  ] },
   { v: "2.5.6", f: "13/11/2026", t: "OIS: armas y balas más fáciles · preguntas de la METRO corregidas", items: [
     "OIS · Revisión del arma: se elige el modelo (completa las balas por cargador), cuántos cargadores lleva y cuántas balas quedan en cada uno (con botones Lleno / Vacío); la terminal calcula la dotación y las balas disparadas.",
     "OIS: si disparó con más de un arma, «Añadir otra arma» suma otra revisión completa.",

@@ -1,5 +1,6 @@
 import { q, tx } from "../lib/db.js";
-import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix } from "../lib/core.js";
+import { audit, auditList, diffSum } from "../lib/audit.js";
+import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp } from "../lib/core.js";
 
 async function downloadImg(url) {
   const fail = m => Object.assign(new Error(m), { status: 400 });
@@ -37,6 +38,10 @@ export default wrap(async (req, res) => {
       const ch = rows.map(r => [r.k, r.img ? imgUrl(r.k, r.t) : r.v, +r.t]);
       const t = rows.length ? Math.max(since, ...rows.map(r => +r.t)) : since;
       return send(res, 200, { ch, t, me: { admin: u.admin, owner: u.owner, six: isSix(u), anita: !!u.anita } });
+    }
+    if (qs.logs) { // registro de actividad: solo six
+      if (!isSix(u)) return send(res, 403, { msg: "Solo six" });
+      return send(res, 200, await auditList({ before: qs.before, who: qs.who, text: qs.q }));
     }
     if (qs.images) { // galería: todas las imágenes guardadas (solo administradores)
       if (!u.admin) return send(res, 403, { msg: "Solo administradores" });
@@ -87,13 +92,15 @@ export default wrap(async (req, res) => {
     const exists = cur.t != null, curV = cur.v;
     let v = mine;
     if (!del && curV != null && !mine.startsWith("data:")) v = mergeText(typeof b.base === "string" ? b.base : null, mine, curV);
-    if (exists && v === curV) return { v, t: +cur.t };
+    if (exists && v === curV) return { v, t: +cur.t, same: 1 };
     // historial: la imagen de la terminal que se reemplaza o quita queda guardada en la galería
     if (ADMIN_KEY.test(k) && !k.startsWith("lspdt.lib.") && curV && curV.startsWith("data:"))
       await c.query("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do nothing", ["lspdt.lib.h" + Date.now().toString(36), curV, u.n, Date.now()]);
     const t = (await c.query("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do update set v=excluded.v, t=excluded.t, by=excluded.by, at=excluded.at returning t", [k, v, u.n, Date.now()])).rows[0].t;
-    return { v, t: +t };
+    return { v, t: +t, old: curV, exists };
   });
+  const sum = del ? diffSum(out.old, null) : diffSum(out.exists ? out.old : null, out.v);
+  if (!out.same && !/^Cambió: (seen|t|ts|last)$/.test(sum)) await audit(u.n, del ? "borró" : out.exists ? "editó" : "creó", k, sum, clientIp(req));
   if (k === "lspdt.roster" || k === "lspdt.ui" || /^lspdt\.(asd|k9|psb|md)Roster$|^lspdt\.(groster|groles|divacc)\./.test(k)) invalidate(); // cambió el rango o las divisiones de alguien
   const r = { t: out.t };
   if (out.v !== mine || b.url || b.from) r.v = out.v && out.v.startsWith("data:") ? imgUrl(k, out.t) : out.v; // devuelve el resultado solo si cambió por la fusión

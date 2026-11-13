@@ -2,6 +2,7 @@
    y avisa por Discord al canal configurado (sin adjuntos, con botón a la terminal). El token del bot va en la variable DISCORD_BOT_TOKEN de Vercel (nunca en el código). */
 import crypto from "node:crypto";
 import { q } from "../lib/db.js";
+import { audit } from "../lib/audit.js";
 import { send, body, wrap, requireUser, isSix } from "../lib/core.js";
 
 const CHANNEL = process.env.DISCORD_FB_CHANNEL || "1551455529035898970";
@@ -92,5 +93,6 @@ export default wrap(async (req, res) => {
   await q("insert into meta(k,v) values($1,$2) on conflict(k) do update set v=excluded.v", [IX(u.n), [...new Set([...prevIds, id])].slice(-200).join(",")]);
   const dc = await notify(t, siteOf(req));
   if (dc) console.warn("feedback: aviso a Discord no enviado:", dc);
+  await audit(u.n, "envió feedback", "feedback", [cat, area, t.x].filter(Boolean).join(" · "));
   return send(res, 200, { ok: true, id });
 });

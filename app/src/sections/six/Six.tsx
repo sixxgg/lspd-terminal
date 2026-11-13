@@ -2,7 +2,7 @@
    Pestañas: Inicio y, de la A a la Z, Administración · Comunicados · Equipo de ilícitos · Gestión de staff · Notificaciones. Los datos van en lspdt.six.* (el servidor no se los muestra a nadie más). */
 import "./six.css";
 import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
-import { AtSign, Bell, Check, KeyRound, ChevronRight, Copy, FileText, Home, Lock, Megaphone, Plus, Power, RefreshCw, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X } from "lucide-react";
+import { AtSign, Bell, Check, KeyRound, ChevronRight, Copy, FileText, Home, Lock, Megaphone, Plus, Power, RefreshCw, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X, ScrollText, Search } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
 import { api, authApi } from "@/lib/api";
 import { discordHtml } from "@/lib/discord";
@@ -20,7 +20,7 @@ type Staff = { id: string; n: string; rol: string; dc: string; notas: string };
 type Com = { id: string; t: string; body: string; ts: number };
 type Sent = { id: string; ts: number; banda: string; res: IlicForm["res"]; txt: string };
 const ROLES = ["Owner", "Administración", "Moderación", "Soporte", "Ilícitos", "Desarrollo", "Otro"];
-const TABS = [["ini", "INICIO", Home], ["adm", "ADMINISTRACIÓN", Settings2], ["com", "COMUNICADOS", Megaphone], ["ilic", "EQUIPO DE ILÍCITOS", Skull], ["staff", "GESTIÓN DE STAFF", Users], ["not", "NOTIFICACIONES", Bell]] as const;
+const TABS = [["ini", "INICIO", Home], ["adm", "ADMINISTRACIÓN", Settings2], ["com", "COMUNICADOS", Megaphone], ["ilic", "EQUIPO DE ILÍCITOS", Skull], ["staff", "GESTIÓN DE STAFF", Users], ["not", "NOTIFICACIONES", Bell], ["logs", "LOGS", ScrollText]] as const;
 type Tab = (typeof TABS)[number][0];
 const LOCKED = (): Tab[] => (NS.id === "six" ? ["com", "staff"] : []); // en six: próximamente
 const NAME = () => (NS.id === "six" ? "six" : "anita");
@@ -78,7 +78,7 @@ function Ticker({ f }: { f: () => string }) {
 
 export function Six({ onExit, start = "ini", who = "six" }: { onExit: () => void; start?: "ini" | "not"; who?: Who }) {
   NS.id = who; /* todo lo que sigue usa el espacio de este panel */
-  const C0 = cfg0(who), [cfg, setCfg] = useJSON<SixCfg>(cfgKey(who), C0), c = { ...C0, ...cfg }, tabs = TABS.filter(t => who === "six" || t[0] !== "not");
+  const C0 = cfg0(who), [cfg, setCfg] = useJSON<SixCfg>(cfgKey(who), C0), c = { ...C0, ...cfg }, tabs = TABS.filter(t => who === "six" || (t[0] !== "not" && t[0] !== "logs"));
   const [tab, setTab] = useState<Tab>(start), [out, setOut] = useState(false), [booted, setBooted] = useState(c.intro === "no"), [replay, setReplay] = useState(0);
   const [staff, setStaff] = useJSON<Staff[]>(K("staff"), []);
   const unread = who !== "six" ? 0 : fbList().filter(x => x.t > Number(LS.get(FB_SEEN) || 0)).length;
@@ -114,6 +114,7 @@ export function Six({ onExit, start = "ini", who = "six" }: { onExit: () => void
         {LOCKED().includes(tab) ? <Soon t={TABS.find(x => x[0] === tab)![1]} />
           : tab === "ini" ? <HomeTab go={setTab} unread={unread} staff={staff.length} />
           : tab === "not" ? <NotifTab />
+          : tab === "logs" && who === "six" ? <LogsTab />
           : tab === "adm" ? <AdmTab c={c} set={set} replay={() => { setReplay(x => x + 1); setBooted(false); }} />
           : tab === "staff" ? <StaffTab staff={staff} setStaff={setStaff} />
           : tab === "com" ? <ComTab staff={staff} users={users} />
@@ -437,4 +438,48 @@ function PostTab({ users }: { users: Record<string, string> }) {
       </div>
     </div>
   );
+}
+
+/* ---------- logs: todo lo que se hace en la terminal (quién, qué, dónde y cuándo) ---------- */
+type Log = { id: number; t: number; n: string; a: string; k: string; d: string; ip: string };
+const KL: [RegExp, string][] = [[/^login$/, "Sesión"], [/^cuenta$/, "Cuentas"], [/^feedback$/, "Feedback"], [/^mdexam$/, "METRO · Examen en línea"],
+  [/^lspdt\.roster$/, "Roster general"], [/^lspdt\.ui$/, "Ajustes de la terminal"], [/^lspdt\.profiles$/, "Perfiles de agentes"], [/^lspdt\.(foto|pfoto)\./, "Foto de perfil"], [/^lspdt\.uprof\./, "Preferencias de su perfil"], [/^lspdt\.cover\./, "Portada de perfil"],
+  [/^lspdt\.informes$/, "Informes policiales"], [/^lspdt\.ois$/, "Informes OIS"], [/^lspdt\.votes$/, "Votaciones"], [/^lspdt\.(entrev|sgt\.)/, "Entrevistas / exámenes de sargento"], [/^lspdt\.alertas$/, "Alertas"],
+  [/^lspdt\.huellas/, "Huellas"], [/^lspdt\.perdArm$/, "Pérdida de armamento"], [/^lspdt\.patHist$/, "Registro de patrullas"], [/^lspdt\.penal$/, "Código penal"], [/^lspdt\.faltas$/, "Catálogo de faltas (PSB)"],
+  [/^lspdt\.psb/, "PSB"], [/^lspdt\.asd/, "ASD"], [/^lspdt\.k9/, "K-9"], [/^lspdt\.rtd/, "RTD"], [/^lspdt\.md(Roster|Calls)$/, "METRO · Roster"], [/^lspdt\.mdx\.armas$/, "METRO · Armas"],
+  [/^lspdt\.mdx\.conv$/, "METRO · Convocatorias"], [/^lspdt\.mdx\.eval$/, "METRO · Evaluaciones"], [/^lspdt\.mdx\.bank$/, "METRO · Banco del examen"], [/^lspdt\.calpub$/, "Calendario público"],
+  [/^lspdt\.drec\.([a-z0-9]+)\.cal$/, "Calendario · $1"], [/^lspdt\.drec\.([a-z0-9]+)\.([a-z0-9]+)$/, "División $1 · $2"], [/^lspdt\.(unif)\.(.+)$/, "Uniformidad · $2"], [/^lspdt\.instr\.(.+)$/, "Instrucciones · $1"],
+  [/^lspdt\.comms\.(.+)$/, "Comunicados · $1"], [/^lspdt\.boards?\./, "Pizarra"], [/^lspdt\.six\./, "six"], [/^lspdt\.(logo|fav|bg|img|divlogo|ico|lib)/, "Imágenes de la terminal"], [/^lspdt\.calban\./, "Banner de evento"]];
+const kLab = (k: string) => { for (const [r, l] of KL) { const m = k.match(r); if (m) return l.replace(/\$(\d)/g, (_, i) => m[+i] || ""); } return k.replace(/^lspdt\./, ""); };
+const A_C = (a: string) => (/borr|elimin|quit|rechaz|strike|incorrecta/.test(a) ? "#ef4444" : /cre|envi|subi|aprob|inici|dio|empez|entreg/.test(a) ? "#22c55e" : /sesi/.test(a) ? "#64748b" : "#38bdf8");
+function LogsTab() {
+  const [L, setL] = useState<Log[]>([]), [who, setWho] = useState<{ n: string; c: number }[]>([]), [f, setF] = useState(""), [qq, setQ] = useState(""), [busy, setBusy] = useState(false), [more, setMore] = useState(true);
+  const load = async (before?: number) => {
+    setBusy(true); const p = new URLSearchParams({ logs: "1", ...(before ? { before: String(before) } : {}), ...(f ? { who: f } : {}), ...(qq.trim() ? { q: qq.trim() } : {}) });
+    const r = await api("/api/data?" + p); setBusy(false); if (r.__s !== 200) return;
+    setL(x => (before ? [...x, ...r.list] : r.list)); setWho(r.who || []); setMore(r.list.length >= 200);
+  };
+  useEffect(() => { const i = setTimeout(() => void load(), qq ? 350 : 0); return () => clearTimeout(i); }, [f, qq]); // eslint-disable-line react-hooks/exhaustive-deps
+  const day = (t: number) => new Date(t).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
+  return (
+    <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
+      <Panel t="Personas" icon={<Users />} className="lg:sticky lg:top-20 lg:self-start">
+        <div className="max-h-[60vh] space-y-0.5 overflow-y-auto font-sans text-sm">
+          {[{ n: "", c: who.reduce((t, x) => t + x.c, 0) }, ...who].map(x => <button key={x.n || "_"} onClick={() => setF(x.n)} className={cn("flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition", f === x.n ? "bg-six/15 text-six" : "text-slate-300 hover:bg-white/5")}>
+            <span className="min-w-0 flex-1 truncate">{x.n || "Todos"}</span><span className="text-xs tabular-nums text-slate-500">{x.c}</span></button>)}</div></Panel>
+      <Panel t="Registro de actividad" icon={<ScrollText />} d="Todo lo que se crea, edita o borra en la terminal, quién lo hizo y desde qué IP. Las ediciones seguidas de lo mismo se juntan en una línea. Se guardan 4 meses.">
+        <div className="mb-3 flex gap-2"><div className="relative flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" /><NIn className="pl-9" value={qq} onChange={e => setQ(e.target.value)} placeholder="Buscar por sección, acción o detalle…" /></div>
+          <NBtn icon={<RefreshCw className={cn(busy && "animate-spin")} />} onClick={() => void load()}>ACTUALIZAR</NBtn></div>
+        {!L.length ? <p className="py-10 text-center font-sans text-sm text-slate-500">{busy ? "Cargando…" : "No hay registros."}</p>
+        : <div className="font-sans text-sm">{L.map((x, i) => <div key={x.id}>
+            {(i === 0 || day(L[i - 1].t) !== day(x.t)) && <p className="sticky top-0 z-[1] mb-1 mt-3 bg-[#07090d]/90 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-six backdrop-blur first:mt-0">{day(x.t)}</p>}
+            <div className="flex items-start gap-3 rounded-lg px-2 py-1.5 hover:bg-white/[.03]">
+              <span className="w-14 shrink-0 pt-px font-mono text-xs tabular-nums text-slate-500">{new Date(x.t).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}</span>
+              <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ background: A_C(x.a), boxShadow: `0 0 8px ${A_C(x.a)}` }} />
+              <div className="min-w-0 flex-1"><p><b className="text-white">{x.n || "—"}</b> <span style={{ color: A_C(x.a) }}>{x.a}</span> <span className="text-slate-300">{kLab(x.k)}</span></p>
+                {x.d && <p className="break-words text-xs text-slate-500">{x.d}</p>}</div>
+              <span className="hidden shrink-0 font-mono text-[10.5px] text-slate-600 md:block" title={x.k}>{x.ip}</span></div></div>)}
+          {more && <div className="mt-3 flex justify-center"><NBtn ghost disabled={busy} onClick={() => void load(L[L.length - 1].t)}>CARGAR MÁS</NBtn></div>}</div>}
+      </Panel>
+    </div>);
 }

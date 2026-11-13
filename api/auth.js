@@ -1,4 +1,5 @@
 import { q } from "../lib/db.js";
+import { audit } from "../lib/audit.js";
 import { send, body, wrap, roster, findIn, lvl, CAP, norm, emailOf, hashPw, checkPw, needsRehash, randomPw, safeEq, clientIp, loginBlocked, loginFail, loginOk, sessionToken, tokenHash, newSession, endSession, current, PUBLIC_KEYS, query, canEnter, invalidate, isSix, SIX_OWNER, ID_PIN, OWNERS, dbAdmins, parseList, parseRoster as parseRosterRaw } from "../lib/core.js";
 import { fullData } from "../lib/store.js";
 import { randomBytes } from "node:crypto";
@@ -59,7 +60,7 @@ export default wrap(async (req, res) => {
     const rows = (await q("select name,email,hash from accounts")).rows;
     const acc = rows.find(x => norm(x.email) === u || norm(x.name) === u || norm(x.email.split("@")[0]) === u);
     if (!acc) { await loginFail("", ip); return send(res, 404, { msg: "No hay una cuenta con ese correo. Registrate primero." }); }
-    if (!checkPw(b.pw, acc.hash)) { await loginFail(u, ip); await new Promise(r => setTimeout(r, 600)); return send(res, 403, { msg: "Contraseña incorrecta." }); }
+    if (!checkPw(b.pw, acc.hash)) { await loginFail(u, ip); await audit(acc.name, "contraseña incorrecta", "login", "", ip); await new Promise(r => setTimeout(r, 600)); return send(res, 403, { msg: "Contraseña incorrecta." }); }
     await loginOk(u);
     if (needsRehash(acc.hash)) await q("update accounts set hash=$2 where name=$1", [acc.name, hashPw(b.pw)]);
     const ag = findIn((await roster()).list, acc.name);
@@ -69,7 +70,7 @@ export default wrap(async (req, res) => {
       return send(res, 403, { pending: true, msg: PEND_MSG });
     }
     await q("update accounts set last=$2 where name=$1", [acc.name, Date.now()]);
-    await newSession(res, acc.name, !!b.keep);
+    await newSession(res, acc.name, !!b.keep); await audit(acc.name, "inició sesión", "login", b.keep ? "Mantener sesión" : "", ip);
     return send(res, 200, { n: acc.name, e: acc.email, data: await fullData(await userOf(acc.name, ag)) });
   }
 
@@ -89,9 +90,10 @@ export default wrap(async (req, res) => {
     if (!(await gate(ag))) { // queda pendiente de aprobación
       const pend = (await metaList("pending")).filter(x => x !== ag.n); pend.push(ag.n); await setMeta("pending", pend);
       await setMeta("rejected", (await metaList("rejected")).filter(x => x !== ag.n));
+      await audit(ag.n, "creó su cuenta (pendiente)", "cuenta", "", ip);
       return send(res, 202, { pending: true, n: ag.n, e: emailOf(ag.n), rec, msg: "Cuenta creada. " + PEND_MSG });
     }
-    await newSession(res, ag.n, b.keep !== false);
+    await newSession(res, ag.n, b.keep !== false); await audit(ag.n, "creó su cuenta", "cuenta", "Con invitación de " + (inv.by || "—"), ip);
     return send(res, 200, { n: ag.n, e: emailOf(ag.n), rec, data: await fullData(await userOf(ag.n, ag)) });
   }
 
@@ -109,7 +111,7 @@ export default wrap(async (req, res) => {
     return send(res, 200, { ok: 1, left: L.length, e: acc.email });
   }
 
-  if (a === "logout") { await endSession(req, res); return send(res, 200, { ok: 1 }); }
+  if (a === "logout") { const w = await current(req).catch(() => null); if (w) await audit(w.n, "cerró sesión", "login", "", clientIp(req)); await endSession(req, res); return send(res, 200, { ok: 1 }); }
 
   // Lo que sigue requiere sesión
   const me = await current(req);
@@ -144,6 +146,7 @@ export default wrap(async (req, res) => {
     await q("update accounts set hash=$2 where name=$1", [me.n, hashPw(b.nw)]);
     await q("delete from sessions where name=$1 and token<>$2", [me.n, tokenHash(sessionToken(req))]); invalidate(); // cierra las otras sesiones
     if (must) await setMeta("mustpw", (await metaList("mustpw")).filter(x => x !== me.n));
+    await audit(me.n, "cambió su contraseña", "cuenta", "", clientIp(req));
     return send(res, 200, { ok: 1 });
   }
 
@@ -157,7 +160,7 @@ export default wrap(async (req, res) => {
     const tmp = randomPw(), r = await q("update accounts set hash=$2 where name=$1 returning name", [b.n, hashPw(tmp)]);
     if (!r.rows[0]) return send(res, 404, { msg: "No existe esa cuenta" });
     await setMeta("mustpw", [...new Set([...(await metaList("mustpw")), b.n])]);
-    await q("delete from sessions where name=$1", [b.n]); invalidate();
+    await q("delete from sessions where name=$1", [b.n]); invalidate(); await audit(me.n, "restableció la contraseña", "cuenta", b.n, clientIp(req));
     return send(res, 200, { tmp });
   }
 
@@ -183,7 +186,7 @@ export default wrap(async (req, res) => {
     await setMeta("pending", (await metaList("pending")).filter(x => x !== n));
     const ap = (await metaList("approved")).filter(x => x !== n), rj = (await metaList("rejected")).filter(x => x !== n);
     if (ok) ap.push(n); else { rj.push(n); await q("delete from sessions where name=$1", [n]); }
-    await setMeta("approved", ap); await setMeta("rejected", rj); invalidate();
+    await setMeta("approved", ap); await setMeta("rejected", rj); invalidate(); await audit(me.n, ok ? "aprobó el acceso" : "rechazó el acceso", "cuenta", n, clientIp(req));
     return send(res, 200, { ok: 1 });
   }
 
@@ -200,7 +203,7 @@ export default wrap(async (req, res) => {
     if (b.on && !(await q("select 1 from accounts where name=$1", [n])).rows[0]) return send(res, 404, { msg: "Esa persona todavía no tiene cuenta en la terminal." });
     let list = (await dbAdmins()).filter(x => x !== n);
     if (b.on) list.push(n);
-    await q("insert into meta(k,v) values('admins',$1) on conflict(k) do update set v=excluded.v", [JSON.stringify(list)]);
+    await q("insert into meta(k,v) values('admins',$1) on conflict(k) do update set v=excluded.v", [JSON.stringify(list)]); await audit(me.n, b.on ? "dio administrador" : "quitó administrador", "cuenta", n, clientIp(req));
     invalidate();
     return send(res, 200, { admins: list });
   }
@@ -216,13 +219,13 @@ export default wrap(async (req, res) => {
     const r = await q("update accounts set hash=$2 where name=$1 returning name", [b.n, hashPw(tmp)]);
     if (!r.rows[0]) return send(res, 404, { msg: "No existe esa cuenta" });
     await setMeta("mustpw", [...new Set([...(await metaList("mustpw")), b.n])]);
-    await q("delete from sessions where name=$1", [b.n]); invalidate();
+    await q("delete from sessions where name=$1", [b.n]); invalidate(); await audit(me.n, "restableció la contraseña", "cuenta", b.n, clientIp(req));
     return send(res, 200, { tmp });
   }
   if (a === "delete") {
     if (b.n === me.n) return send(res, 400, { msg: "No podés eliminar tu propia cuenta" });
     await q("delete from sessions where name=$1", [b.n]);
-    await q("delete from accounts where name=$1", [b.n]); invalidate();
+    await q("delete from accounts where name=$1", [b.n]); invalidate(); await audit(me.n, "eliminó la cuenta", "cuenta", b.n, clientIp(req));
     return send(res, 200, { ok: 1 });
   }
   return send(res, 400, { msg: "Acción desconocida" });
