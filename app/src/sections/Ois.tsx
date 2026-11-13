@@ -1,10 +1,11 @@
 /* Procedimiento del Sargento con el oficial implicado en un OIS con fallecido (Supervisión · Sargento II Evelyn Molina).
    Se completa paso a paso, se copia para Discord y se exporta en PDF con el formato de los documentos oficiales (sello LSPD).
    Se guarda en lspdt.ois. */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertTriangle, Ambulance, Check, ClipboardCheck, Copy, Crosshair, FileDown, FilePlus2, FileText, FlaskConical, HeartPulse, MapPinOff, MessageSquareWarning, Pencil, RotateCcw, Save, Send, Trash2 } from "lucide-react";
 import { Button, Card, Checkbox, Empty, Field, Input, Segmented, Textarea } from "@/components/ui";
 import { AgentCombo } from "@/components/agents";
+import { Modal } from "@/components/modal";
 import { useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { findAgent, hoyISO, rankES, uid , dmy } from "@/lib/domain";
@@ -25,9 +26,12 @@ type Ois = {
   her: "" | "si" | "no"; ems: boolean; emo: string; emoN: string;
   pss: string[]; ret: boolean; zona: string;
   mod: string; ser: string; est: string; estN: string; car: string; rest: string; disp: string; dot: string; camb: "" | "si" | "no"; otra: string;
-  alc: string; drog: string; testN: string; psb: boolean[]; notas: string;
+  alc: string; drog: string; testN: string; psb: boolean[]; notas: string; hist?: { t: number; by: string; a: string }[];
 };
-const blank = (me: string, n: number): Ois => { const d = new Date(); return { id: "", no: `OIS-${String(d.getFullYear()).slice(2)}-${String(n).padStart(4, "0")}`, t: 0, by: me,
+/* número de expediente: el siguiente libre del año (nunca se repite aunque se borren registros) */
+const yy = () => String(new Date().getFullYear()).slice(2);
+const nextNo = (L: Ois[]) => { const p = `OIS-${yy()}-`, max = Math.max(0, ...L.filter(r => r.no?.startsWith(p)).map(r => +r.no.slice(p.length) || 0)); return p + String(max + 1).padStart(4, "0"); };
+const blank = (me: string, L: Ois[]): Ois => { const d = new Date(); return { id: "", no: nextNo(L), t: 0, by: me,
   fecha: hoyISO(), hora: `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`, lugar: "", sgt: me, of: "", her: "", ems: false, emo: "", emoN: "",
   pss: PSS.map(() => ""), ret: false, zona: "", mod: "", ser: "", est: "", estN: "", car: "", rest: "", disp: "", dot: "", camb: "", otra: "", alc: "", drog: "", testN: "", psb: PSB_AV.map(() => false), notas: "" }; };
 
@@ -36,18 +40,37 @@ const placa = (n: string) => findAgent(n)?.p || "";
 /* balas: lo que queda en los cargadores y lo que falta según la dotación */
 const sumRest = (s: string) => (s.match(/\d+/g) || []).reduce((a, b) => a + +b, 0);
 const faltan = (x: Ois) => (x.dot && x.rest ? +x.dot - sumRest(x.rest) : null);
-const steps = (x: Ois) => [x.her !== "" && !!x.emo && (x.her !== "si" || x.ems), x.pss.every(p => p.trim()), x.ret, !!(x.mod && x.ser && x.est && x.car && x.disp && x.camb), !!(x.alc && x.drog), x.psb.every(Boolean)];
+/* lo que falta en cada paso (vacío = paso completo) */
+const STEP_T = ["Estado del oficial", "Declaración de Seguridad Pública (PSS)", "Retirada de la escena", "Revisión del arma", "Test de alcohol y drogas", "Notificación a PSB"];
+const faltas = (x: Ois): string[][] => [
+  [x.her === "" && "Si está herido", x.her === "si" && !x.ems && "EMS solicitado (está herido)", !x.emo && "Estado emocional"].filter(Boolean) as string[],
+  x.pss.map((p, i) => (!p.trim() ? `Respuesta a la pregunta ${i + 1}` : "")).filter(Boolean),
+  [!x.ret && "Confirmar que se lo retiró de la escena"].filter(Boolean) as string[],
+  [!x.mod && "Modelo", !x.ser && "N° de serie", !x.est && "Estado del arma", !x.car && "Cargadores", !x.disp && "Balas disparadas", x.camb === "" && "Si cambió de cargador"].filter(Boolean) as string[],
+  [!x.alc && "Resultado de alcohol", !x.drog && "Resultado de drogas"].filter(Boolean) as string[],
+  PSB_AV.map((p, i) => (!x.psb[i] ? p : "")).filter(Boolean),
+];
+const steps = (x: Ois) => faltas(x).map(f => !f.length);
+const base = (x: Ois) => [!x.of && "Oficial implicado", !x.sgt && "Sargento a cargo", !x.lugar.trim() && "Lugar"].filter(Boolean) as string[];
 
 export function OisPanel() {
   const me = useMe(), { toast, confirm } = useFeedback(), copy = useCopy();
   const [L, setL] = useJSON<Ois[]>("lspdt.ois", []);
-  const [tab, setTab] = useState<"new" | "list">("new"), [x, setX] = useState<Ois>(() => blank(me.n, L.length + 1)), [open, setOpen] = useState("");
+  const [tab, setTab] = useState<"new" | "list">("new"), [x, setX] = useState<Ois>(() => blank(me.n, L)), [open, setOpen] = useState(""), [miss, setMiss] = useState(false), [rev, setRev] = useState<Ois | null>(null);
   const up = (p: Partial<Ois>) => setX({ ...x, ...p }), ok = steps(x), done = ok.filter(Boolean).length;
-  const save = () => {
-    if (!x.of) { toast("Elegí al oficial implicado", "err"); return; }
-    const r = { ...x, id: x.id || uid(), t: x.t || Date.now() };
-    setL([...L.filter(i => i.id !== r.id), r]); setX(r); toast(x.id ? "Procedimiento actualizado" : "Procedimiento guardado");
+  /* expedientes con el mismo número (de antes del arreglo): el más nuevo pasa al siguiente libre */
+  useEffect(() => {
+    const seen = new Set<string>(), fix: Ois[] = [], out = L.slice().sort((a, b) => a.t - b.t);
+    for (const r of out) { if (seen.has(r.no)) { const n = nextNo([...out, ...fix]); fix.push({ ...r, no: n, hist: [...(r.hist || []), { t: Date.now(), by: "sistema", a: `Número duplicado (${r.no}) corregido a ${n}` }] }); seen.add(n); } else seen.add(r.no); }
+    if (fix.length) { setL(out.map(r => fix.find(f => f.id === r.id) || r)); toast(`Numeración corregida: ${fix.map(f => f.no).join(", ")}`); }
+  }, [L.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  const doSave = () => {
+    const prev = L.find(i => i.id === x.id), k = steps(x).filter(Boolean).length;
+    const r: Ois = { ...x, id: x.id || uid(), t: x.t || Date.now(), no: prev ? x.no : L.some(i => i.no === x.no) ? nextNo(L) : x.no,
+      hist: [...(x.hist || []), { t: Date.now(), by: me.n, a: `${prev ? "Editó" : "Creó"} el expediente · ${k}/6 pasos completos` }] };
+    setL([...L.filter(i => i.id !== r.id), r]); setX(r); setMiss(false); toast(prev ? "Procedimiento actualizado" : `Procedimiento guardado: ${r.no}`);
   };
+  const save = () => { if (!x.of) { toast("Elegí al oficial implicado", "err"); return; } if (base(x).length || faltas(x).some(f => f.length)) setMiss(true); else doSave(); };
   const H = L.slice().sort((a, b) => b.t - a.t);
   return (
     <div className="space-y-5">
@@ -58,9 +81,11 @@ export function OisPanel() {
             <button onClick={() => setOpen(o ? "" : r.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/40">
               <span className="font-mono text-xs font-bold text-slate-400">{r.no}</span><span className="min-w-0 flex-1 truncate text-sm font-semibold">{who(r.of)}</span>
               <span className="hidden text-xs text-slate-500 sm:block">{dmy(r.fecha)} · {r.sgt}</span>
+              {k < 6 && <span className="hidden items-center gap-1 text-[11px] font-semibold text-red-500 md:inline-flex"><AlertTriangle className="size-3.5" />Faltan datos</span>}
               <span className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-bold", k === 6 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300" : "bg-amber-500/15 text-amber-700 dark:text-amber-300")}>{k}/6</span></button>
             {o && <div className="flex flex-wrap gap-2 bg-slate-50/60 px-4 py-3 dark:bg-slate-900/40">
-              <Button size="sm" icon={<FileDown />} onClick={() => oisPdf(r)}>Exportar PDF</Button>
+              <Button size="sm" icon={<ClipboardCheck />} onClick={() => setRev(r)}>Revisar</Button>
+              <Button size="sm" variant="outline" icon={<FileDown />} onClick={() => oisPdf(r)}>Exportar PDF</Button>
               <Button size="sm" variant="outline" icon={<Copy />} onClick={() => void copy(oisText(r))}>Copiar para Discord</Button>
               <Button size="sm" variant="outline" icon={<Pencil />} onClick={() => { setX(r); setTab("new"); }}>Editar</Button>
               {(r.by === me.n || me.l >= 8 || me.admin) && <Button size="sm" variant="ghost" className="ml-auto text-red-600 dark:text-red-400" icon={<Trash2 />} onClick={async () => { if (await confirm(`¿Borrar ${r.no}?`, { danger: true })) setL(L.filter(i => i.id !== r.id)); }}>Borrar</Button>}
@@ -141,13 +166,54 @@ export function OisPanel() {
             <Button icon={<Save />} onClick={save}>{x.id ? "Guardar cambios" : "Guardar"}</Button>
             <Button variant="outline" icon={<FileDown />} disabled={!x.of} onClick={() => oisPdf(x)}>Exportar PDF</Button>
             <Button variant="outline" icon={<Copy />} disabled={!x.of} onClick={() => void copy(oisText(x))}>Copiar para Discord</Button>
-            {(x.id || x.of) && <Button variant="ghost" icon={<RotateCcw />} onClick={() => setX(blank(me.n, L.length + 1))}>Empezar otro</Button>}
+            {(x.id || x.of) && <Button variant="ghost" icon={<RotateCcw />} onClick={() => setX(blank(me.n, L))}>Empezar otro</Button>}
           </div>
           <p className="text-[11px] leading-relaxed text-slate-400">El PDF sale con el sello del LSPD: en la ventana de impresión elegí «Guardar como PDF».</p>
           <p className="border-t border-slate-100 pt-3 text-[11px] text-slate-400 dark:border-slate-800">Procedimiento: {OIS_AUTOR}</p>
         </Card>
       </div>}
+      {miss && <Missing x={x} onClose={() => setMiss(false)} onSave={doSave} />}
+      {rev && <Review r={rev} onClose={() => setRev(null)} onEdit={() => { setX(rev); setRev(null); setTab("new"); }} />}
     </div>);
+}
+
+/* aviso rojo: qué falta antes de guardar (se puede guardar igual y completarlo después) */
+function Missing({ x, onClose, onSave }: { x: Ois; onClose: () => void; onSave: () => void }) {
+  const F = faltas(x), b = base(x);
+  return (
+    <Modal open onClose={onClose} size="md" icon={<AlertTriangle className="text-red-500" />} title={<span className="text-red-500">Faltan datos en el procedimiento</span>} desc={`${x.no} · ${who(x.of)}`}
+      footer={<><Button variant="ghost" onClick={onSave}>Guardar igual</Button><Button icon={<Pencil />} onClick={onClose}>Volver a completar</Button></>}>
+      <div className="space-y-2 rounded-2xl border border-red-500/40 bg-red-500/[.07] p-4">
+        {b.length > 0 && <MissRow t="Datos generales" l={b} />}
+        {F.map((l, i) => (l.length ? <MissRow key={i} t={`Paso ${i + 1} · ${STEP_T[i]}`} l={l} /> : null))}
+      </div>
+      <p className="text-xs text-slate-500">Si lo guardás así queda marcado con «Faltan datos» en Registrados hasta que se complete.</p>
+    </Modal>);
+}
+const MissRow = ({ t, l }: { t: string; l: string[] }) => (
+  <div><p className="text-sm font-bold text-red-600 dark:text-red-400">{t}</p><ul className="ml-4 list-disc text-[13px] text-red-700/90 dark:text-red-300/90">{l.map(x => <li key={x}>{x}</li>)}</ul></div>);
+
+/* revisión de un expediente ya hecho: cada paso en verde o en rojo con lo que falta, y el historial de cambios */
+function Review({ r, onClose, onEdit }: { r: Ois; onClose: () => void; onEdit: () => void }) {
+  const copy = useCopy(), F = faltas(r), b = base(r), k = F.filter(f => !f.length).length, okAll = k === 6 && !b.length;
+  return (
+    <Modal open onClose={onClose} size="lg" icon={<ClipboardCheck />} title={`Revisión · ${r.no}`} desc={`${who(r.of)} · ${dmy(r.fecha)} ${r.hora} · Sargento: ${who(r.sgt)}`}
+      footer={<><Button variant="ghost" icon={<Copy />} className="mr-auto" onClick={() => void copy(oisText(r))}>Discord</Button><Button variant="outline" icon={<FileDown />} onClick={() => oisPdf(r)}>PDF</Button><Button icon={<Pencil />} onClick={onEdit}>{okAll ? "Editar" : "Completar lo que falta"}</Button></>}>
+      <div className={cn("flex items-center gap-3 rounded-2xl border p-3.5", okAll ? "border-emerald-500/40 bg-emerald-500/[.08]" : "border-red-500/40 bg-red-500/[.08]")}>
+        {okAll ? <Check className="size-5 text-emerald-500" /> : <AlertTriangle className="size-5 text-red-500" />}
+        <p className={cn("text-sm font-semibold", okAll ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300")}>{okAll ? "Expediente completo: los 6 pasos están cargados." : `Faltan datos: ${k}/6 pasos completos${b.length ? ` · sin ${b.join(", ").toLowerCase()}` : ""}.`}</p>
+      </div>
+      <ol className="space-y-2">{STEP_T.map((t, i) => { const l = F[i]; return (
+        <li key={t} className={cn("rounded-xl border p-3", l.length ? "border-red-500/40 bg-red-500/[.05]" : "border-slate-200 dark:border-slate-800")}>
+          <p className="flex items-center gap-2 text-sm font-semibold"><span className={cn("grid size-6 place-items-center rounded-lg text-xs text-white", l.length ? "bg-red-500" : "bg-emerald-500")}>{l.length ? i + 1 : <Check className="size-3.5" />}</span>Paso {i + 1} · {t}</p>
+          {l.length > 0 && <ul className="ml-10 mt-1 list-disc text-[13px] text-red-600 dark:text-red-400">{l.map(x => <li key={x}>Falta: {x}</li>)}</ul>}
+        </li>); })}</ol>
+      <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-[.16em] text-slate-400">Historial</p>
+        {(r.hist || []).length ? <ul className="space-y-1 border-l-2 border-slate-200 pl-3 text-xs dark:border-slate-800">{r.hist!.slice().reverse().map((h, i) => (
+          <li key={i}><b>{new Date(h.t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</b> · {h.by} · <span className="text-slate-500">{h.a}</span></li>))}</ul>
+          : <p className="text-xs text-slate-500">Creado el {new Date(r.t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })} por {r.by}. Los cambios desde ahora quedan registrados acá.</p>}
+      </div>
+    </Modal>);
 }
 
 function Step({ n, ok, I, t, d, children }: { n: number; ok: boolean; I: typeof Check; t: string; d: string; children: React.ReactNode }) {

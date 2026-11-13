@@ -1,7 +1,7 @@
 /* METRO · exámenes para aspirantes a instructor de la academia: entrevista con hoja de puntuación (1–5, pesos por bloque, máx. 60),
    examen escrito (banco editable, nota /10, corte 70 %) y lista de elegibles (examen ×4 + entrevista = /100). */
 import { useMemo, useState } from "react";
-import { AlertTriangle, Check, ClipboardCheck, MessageCircle, Minus, Pencil, Plus, Save, Star, Trash2, Trophy, X } from "lucide-react";
+import { AlertTriangle, Check, ClipboardCheck, Eye, MessageCircle, RotateCcw, Minus, Pencil, Plus, Save, Star, Trash2, Trophy, X } from "lucide-react";
 import { Button, Card, Field, Input, Select, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { DiscordOutput } from "@/components/output";
@@ -15,7 +15,11 @@ import { cn } from "@/lib/cn";
 
 type Grade = "" | "ok" | "mid" | "no";
 type Ev = { id: string; tipo: "exa" | "ent"; cand: string; rango: string; fecha: string; notas: Record<string, Grade | number>; obs: Record<string, string>;
-  pts: number; apto: string; by: string; ts: number; fil?: Record<string, boolean>; fort?: string; mej?: string; dec?: string };
+  pts: number; apto: string; by: string; ts: number; fil?: Record<string, boolean>; fort?: string; mej?: string; dec?: string; conv?: string };
+/* convocatorias de la academia: cada una con sus postulantes (las evaluaciones viejas quedan en la C1) */
+type Conv = { id: string; n: string; t: number; post: string[] };
+const K_CONV = "lspdt.mdx.conv", CONV0: Conv[] = [{ id: "C1", n: "Convocatoria 1", t: 0, post: [] }];
+const convOf = (e: Ev) => e.conv || "C1";
 type Q = { id: string; a: string; q: string; r: string };
 const K_EV = "lspdt.mdx.eval", K_BANK = "lspdt.mdx.bank";
 const f1 = (n: number, d = 1) => n.toFixed(d).replace(".", ",");
@@ -79,9 +83,9 @@ function Head({ e, set }: { e: Ev; set: (p: Partial<Ev>) => void }) {
       <Field label="Fecha"><Input type="date" value={e.fecha} onChange={x => set({ fecha: x.target.value })} /></Field>
     </Card>);
 }
-function Hist({ evs, tipo, onOpen, onDel }: { evs: Ev[]; tipo: Ev["tipo"]; onOpen: (e: Ev) => void; onDel: (id: string) => void }) {
-  const { confirm } = useFeedback(), L = evs.filter(e => e.tipo === tipo).sort((a, b) => b.ts - a.ts); if (!L.length) return null;
-  return <Card className="overflow-hidden"><p className="border-b border-slate-100 px-4 py-3 text-sm font-semibold dark:border-slate-800">Registradas ({L.length})</p>
+function Hist({ evs, tipo, conv, onOpen, onDel }: { evs: Ev[]; tipo: Ev["tipo"]; conv?: string; onOpen: (e: Ev) => void; onDel: (id: string) => void }) {
+  const { confirm } = useFeedback(), L = evs.filter(e => e.tipo === tipo && (!conv || convOf(e) === conv)).sort((a, b) => b.ts - a.ts); if (!L.length) return null;
+  return <Card className="overflow-hidden"><p className="border-b border-slate-100 px-4 py-3 text-sm font-semibold dark:border-slate-800">Registradas{conv ? ` · ${conv}` : ""} ({L.length}) <span className="font-normal text-slate-400">· tocá una para ver sus respuestas</span></p>
     <div className="divide-y divide-slate-100 dark:divide-slate-800">{L.map(e => (
       <div key={e.id} className="flex items-center gap-3 px-4 py-2.5">
         <span className={cn("rounded-md px-2 py-0.5 text-[11px] font-bold", e.apto.startsWith("Apto") ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300" : "bg-red-500/10 text-red-600 dark:text-red-300")}>{e.apto.toUpperCase()}</span>
@@ -91,9 +95,12 @@ function Hist({ evs, tipo, onOpen, onDel }: { evs: Ev[]; tipo: Ev["tipo"]; onOpe
 }
 
 function Ent({ evs, onSave, onDel }: { evs: Ev[]; onSave: (e: Ev) => void; onDel: (id: string) => void }) {
-  const me = useMe(), { toast } = useFeedback();
-  const blank = (): Ev => ({ id: "", tipo: "ent", cand: "", rango: "", fecha: hoyISO(), notas: {}, obs: {}, pts: 0, apto: "", by: me.n, ts: 0, fil: {}, fort: "", mej: "", dec: "" });
-  const [cur, setCur] = useState<Ev | null>(null), e = cur || blank(), set = (p: Partial<Ev>) => setCur({ ...e, ...p });
+  const me = useMe(), { toast, confirm } = useFeedback();
+  const [convs, setConvs] = useJSON<Conv[]>(K_CONV, CONV0), [cv, setCv] = useState(() => { try { return localStorage.getItem("lspdt.next.mdconv") || "C1"; } catch { return "C1"; } });
+  const conv = convs.find(c => c.id === cv) || convs[0] || CONV0[0];
+  const blank = (cand = ""): Ev => ({ id: "", tipo: "ent", cand, rango: findAgent(cand) ? rankES(findAgent(cand)!.r) : "", fecha: hoyISO(), notas: {}, obs: {}, pts: 0, apto: "", by: me.n, ts: 0, fil: {}, fort: "", mej: "", dec: "", conv: conv.id });
+  const [cur, setCur] = useState<Ev | null>(null), [view, setView] = useState<Ev | null>(null), e = cur || blank(), set = (p: Partial<Ev>) => setCur({ ...e, ...p });
+  const reset = async () => { if (cur && (Object.keys(e.notas).length || e.cand) && !(await confirm("¿Reiniciar la entrevista? Se borra lo cargado en el formulario (lo ya registrado no se toca)."))) return; setCur(null); window.scrollTo?.({ top: 0 }); };
   const S = entScore(e), dec = e.dec || S.res;
   const txt = [`## 🎓 Entrevista · Instructor Academia Metro`, `**Candidato:** ${e.cand || "—"} (${e.rango || "—"}) · **Entrevistador:** ${me.n} · **Fecha:** ${dmy(e.fecha)}`, "",
     ...S.bl.map(b => `**${b.b}** (x${b.w}): media ${f1(b.m, 2)} → ${f1(b.s, 2)} pts`), "",
@@ -105,18 +112,25 @@ function Ent({ evs, onSave, onDel }: { evs: Ev[]; onSave: (e: Ev) => void; onDel
       <Card className="flex flex-wrap items-center gap-2 p-3 text-sm text-slate-500"><MessageCircle className="size-4 text-brand-500" />
         Cada pregunta del 1 al 5 · media de cada bloque × su peso · máximo <b>60</b> · <b>48–60</b> apto · <b>36–47</b> apto con seguimiento · menos de 36 no apto
         <span className="ml-auto flex gap-1.5"><WBadge w={1} /><WBadge w={2} /><WBadge w={3} /></span></Card>
+      <Convocatorias evs={evs} convs={convs} setConvs={setConvs} conv={conv} pick={id => { setCv(id); try { localStorage.setItem("lspdt.next.mdconv", id); } catch { /* */ } }}
+        onStart={n => setCur(blank(n))} onView={setView} />
+      <div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold">{e.id ? `Editando la entrevista de ${e.cand}` : "Nueva entrevista"} <span className="font-normal text-slate-500">· {conv.id} · {conv.n}</span></p>
+        <Button size="sm" variant="outline" className="ml-auto" icon={<RotateCcw />} onClick={() => void reset()}>Reiniciar</Button></div>
       <Head e={e} set={set} />
       {BLOQ.map(([b, w]) => { const bl = S.bl.find(x => x.b === b)!; return (
         <section key={b} className="space-y-2 rounded-2xl" style={w > 1 ? { boxShadow: `inset 3px 0 0 ${W_ST[w].c}`, paddingLeft: 10 } : undefined}>
           <p className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">{b}<WBadge w={w} big /><span className="ml-auto normal-case tracking-normal">media {f1(bl.m, 2)} × {w} = <b className="text-slate-700 dark:text-slate-200">{f1(bl.s, 2)} pts</b> <span className="text-slate-400">(máx. {5 * w})</span></span></p>
           {QS.filter(q => q.b === b).map(q => { const v = Number(e.notas["q" + q.n]) || 0, crit = q.n === 14 || q.n === 15; return (
-            <Card key={q.n} className={cn("grid gap-3 p-4 sm:grid-cols-[2.6rem_1fr_auto]", v && "border-l-4", v && (v >= 4 ? "border-l-emerald-500" : v === 3 ? "border-l-amber-400" : "border-l-red-500"))}>
-              <span className="flex flex-col items-start gap-1"><b className="text-slate-400">{q.n}</b><WBadge w={q.w} /></span>
-              <div className="space-y-2"><p className="text-sm leading-relaxed">{q.q}{crit && <span className="ml-2 rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 dark:text-red-300">eliminatoria si es menos de 3</span>}</p>
-                <Input className="h-8 text-xs" value={e.obs["q" + q.n] || ""} onChange={x => set({ obs: { ...e.obs, ["q" + q.n]: x.target.value } })} placeholder="Observación (opcional)…" /></div>
-              <div className="flex gap-0.5 self-start" role="radiogroup" aria-label={`Puntaje de la pregunta ${q.n}`}>{[1, 2, 3, 4, 5].map(s =>
+            <Card key={q.n} className={cn("space-y-3 p-4", v && "border-l-4", v && (v >= 4 ? "border-l-emerald-500" : v === 3 ? "border-l-amber-400" : "border-l-red-500"))}>
+              <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
+                <b className="w-[4.25rem] shrink-0 pt-0.5 font-mono text-slate-400">{q.n}</b>
+                <p className="min-w-[14rem] flex-1 pt-0.5 text-sm font-medium leading-relaxed">{q.q}{crit && <span className="ml-2 whitespace-nowrap rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 dark:text-red-300">eliminatoria si es menos de 3</span>}</p>
+              <div className="ml-auto flex shrink-0 gap-0.5" role="radiogroup" aria-label={`Puntaje de la pregunta ${q.n}`}>{[1, 2, 3, 4, 5].map(s =>
                 <button key={s} role="radio" aria-checked={v === s} title={`${s} de 5`} onClick={() => set({ notas: { ...e.notas, ["q" + q.n]: v === s ? 0 : s } })}>
                   <Star className={cn("size-6 transition", s <= v ? "fill-amber-400 text-amber-400" : "text-slate-300 hover:text-amber-300 dark:text-slate-600")} /></button>)}</div>
+              </div>
+              <div className="flex items-center gap-3"><span className="flex w-[4.25rem] shrink-0"><WBadge w={q.w} /></span>
+                <Input className="h-9 flex-1 text-[13px]" value={e.obs["q" + q.n] || ""} onChange={x => set({ obs: { ...e.obs, ["q" + q.n]: x.target.value } })} placeholder="Observación (opcional)…" /></div>
             </Card>); })}
         </section>); })}
       <Card className="space-y-3 p-4">
@@ -132,12 +146,15 @@ function Ent({ evs, onSave, onDel }: { evs: Ev[]; onSave: (e: Ev) => void; onDel
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{([["Puntuación", `${f1(S.pts)} / 60`], ["Resultado", S.res, RES_C[S.res]], ["Filtros", S.elim.length ? `${S.elim.length} activo${S.elim.length > 1 ? "s" : ""}` : "Ninguno", S.elim.length ? "text-red-500" : ""], ["Decisión", S.done ? dec : "Pendiente", S.done ? RES_C[dec] : "text-amber-500"]] as [string, string, string?][]).map(([l, v, c]) => (
         <Card key={l} className="p-4 text-center"><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{l}</p><p className={cn("font-display mt-1 text-xl font-semibold", c)}>{v}</p></Card>))}</div>
       <div className="flex flex-wrap justify-end gap-2">
-        {cur?.id && <Button variant="ghost" onClick={() => setCur(null)}>Nueva entrevista</Button>}
+        <Button variant="ghost" icon={<RotateCcw />} onClick={() => void reset()}>Reiniciar</Button>
         <Button icon={<Save />} onClick={() => { if (!e.cand) { toast("Elegí el candidato", "err"); return; } if (!S.done) { toast("Faltan preguntas por puntuar", "err"); return; }
-          const r = { ...e, id: e.id || uid(), pts: S.pts, apto: dec, ts: e.ts || Date.now(), by: e.by || me.n }; onSave(r); setCur(r); toast("Entrevista registrada · pasa a la lista de elegibles"); }}>Registrar entrevista</Button>
+          const r = { ...e, id: e.id || uid(), pts: S.pts, apto: dec, ts: e.ts || Date.now(), by: e.by || me.n, conv: e.conv || conv.id };
+          onSave(r); if (!conv.post.includes(r.cand)) setConvs(convs.map(c => (c.id === conv.id ? { ...c, post: [...c.post, r.cand] } : c)));
+          setCur(null); toast(`Entrevista de ${r.cand} registrada en ${conv.id}`); }}>Registrar entrevista</Button>
       </div>
       <DiscordOutput title="Hoja de puntuación" text={txt} sticky={false} />
-      <Hist evs={evs} tipo="ent" onOpen={setCur} onDel={onDel} />
+      <Hist evs={evs} tipo="ent" conv={conv.id} onOpen={setView} onDel={onDel} />
+      {view && <EvView e={view} onClose={() => setView(null)} onEdit={() => { setCur(view); setView(null); window.scrollTo?.({ top: 0 }); }} />}
     </div>
   );
 }
@@ -146,7 +163,7 @@ function Exa({ evs, onSave, onDel }: { evs: Ev[]; onSave: (e: Ev) => void; onDel
   const me = useMe(), { toast } = useFeedback();
   const [bank, setBank] = useJSON<Q[]>(K_BANK, BANK0), [ed, setEd] = useState(false);
   const blank = (): Ev => ({ id: "", tipo: "exa", cand: "", rango: "", fecha: hoyISO(), notas: {}, obs: {}, pts: 0, apto: "", by: me.n, ts: 0 });
-  const [cur, setCur] = useState<Ev | null>(null), e = cur || blank(), set = (p: Partial<Ev>) => setCur({ ...e, ...p });
+  const [cur, setCur] = useState<Ev | null>(null), [view, setView] = useState<Ev | null>(null), e = cur || blank(), set = (p: Partial<Ev>) => setCur({ ...e, ...p });
   const got = bank.reduce((a, q) => a + gv(e.notas[q.id] || ""), 0), pct = bank.length ? got / bank.length : 0, nota = pct * 10, done = bank.every(q => e.notas[q.id]), apto = pct >= 0.7;
   const txt = [`## 📝 Examen escrito · Instructor Academia Metro`, `**Candidato:** ${e.cand || "—"} (${e.rango || "—"}) · **Fecha:** ${dmy(e.fecha)}`, "",
     ...AREAS.map(a => { const l = bank.filter(q => q.a === a); return l.length ? `**${a}:** ${l.reduce((s, q) => s + gv(e.notas[q.id] || ""), 0)}/${l.length}` : ""; }).filter(Boolean), "",
@@ -167,16 +184,72 @@ function Exa({ evs, onSave, onDel }: { evs: Ev[]; onSave: (e: Ev) => void; onDel
           </Card>); })}</section> : null; })}
       <div className="flex flex-wrap items-center justify-end gap-3">
         <span className={cn("mr-auto text-lg font-semibold", done ? (apto ? "text-emerald-500" : "text-red-500") : "text-amber-500")}>{Math.round(pct * 100)} % · {f1(nota, 2)}/10 · {done ? (apto ? "APTO" : "NO APTO") : "Pendiente"}</span>
-        {cur?.id && <Button variant="ghost" onClick={() => setCur(null)}>Nueva evaluación</Button>}
+        <Button variant="ghost" icon={<RotateCcw />} onClick={() => setCur(null)}>Reiniciar</Button>
         <Button icon={<Save />} onClick={() => { if (!e.cand) { toast("Elegí el candidato", "err"); return; } if (!done) { toast("Faltan preguntas por corregir", "err"); return; }
-          const r = { ...e, id: e.id || uid(), pts: nota, apto: apto ? "Apto" : "No apto", ts: e.ts || Date.now(), by: e.by || me.n }; onSave(r); setCur(r); toast("Examen registrado · pasa a la lista de elegibles"); }}>Registrar examen</Button>
+          const r = { ...e, id: e.id || uid(), pts: nota, apto: apto ? "Apto" : "No apto", ts: e.ts || Date.now(), by: e.by || me.n }; onSave(r); setCur(null); toast("Examen registrado · pasa a la lista de elegibles"); }}>Registrar examen</Button>
       </div>
       <DiscordOutput title="Resultado del examen" text={txt} sticky={false} />
-      <Hist evs={evs} tipo="exa" onOpen={setCur} onDel={onDel} />
+      <Hist evs={evs} tipo="exa" onOpen={setView} onDel={onDel} />
+      {view && <EvView e={view} bank={bank} onClose={() => setView(null)} onEdit={() => { setCur(view); setView(null); window.scrollTo?.({ top: 0 }); }} />}
       {ed && <BankEd bank={bank} onClose={() => setEd(false)} onSave={b => { setBank(b); setEd(false); toast("Banco actualizado"); }} />}
     </div>
   );
 }
+/* convocatoria (C1, C2…): postulantes con su estado; desde acá se entrevista o se ven las respuestas */
+function Convocatorias({ evs, convs, setConvs, conv, pick, onStart, onView }: { evs: Ev[]; convs: Conv[]; setConvs: (c: Conv[]) => void; conv: Conv; pick: (id: string) => void; onStart: (n: string) => void; onView: (e: Ev) => void }) {
+  const { confirm } = useFeedback(), [add, setAdd] = useState("");
+  const ents = evs.filter(e => e.tipo === "ent" && convOf(e) === conv.id), names = [...new Set([...conv.post, ...ents.map(e => e.cand)])];
+  const lastEnt = (n: string) => ents.filter(e => e.cand === n).sort((a, b) => b.ts - a.ts)[0];
+  const rows = names.map(n => ({ n, e: lastEnt(n) })).sort((a, b) => (a.e ? 1 : 0) - (b.e ? 1 : 0) || (b.e?.pts || 0) - (a.e?.pts || 0) || a.n.localeCompare(b.n));
+  const put = (post: string[]) => setConvs(convs.map(c => (c.id === conv.id ? { ...c, post } : c)));
+  const nueva = () => { const k = Math.max(0, ...convs.map(c => +c.id.slice(1) || 0)) + 1; setConvs([...convs, { id: "C" + k, n: "Convocatoria " + k, t: Date.now(), post: [] }]); pick("C" + k); };
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+        {convs.map(c => <button key={c.id} onClick={() => pick(c.id)} aria-pressed={c.id === conv.id} className={cn("rounded-full border px-3 py-1 text-xs font-bold transition", c.id === conv.id ? "border-brand-500 bg-brand-600 text-white" : "border-slate-200 text-slate-500 hover:text-slate-800 dark:border-slate-700 dark:hover:text-slate-200")}>{c.id} <span className="font-semibold opacity-75">· {c.n}</span></button>)}
+        <Button size="sm" variant="ghost" icon={<Plus />} onClick={nueva}>Nueva convocatoria</Button>
+        <span className="ml-auto text-xs text-slate-500">{ents.length ? `${new Set(ents.map(e => e.cand)).size} entrevistados` : "Sin entrevistas"} · {rows.length - new Set(ents.map(e => e.cand)).size} pendientes</span>
+      </div>
+      <div className="divide-y divide-slate-100 dark:divide-slate-800">
+        {rows.length ? rows.map(({ n, e }) => (
+          <div key={n} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
+            <span className="min-w-0 flex-1 truncate text-sm"><b>{n}</b> <span className="text-xs text-slate-500">{findAgent(n) ? rankES(findAgent(n)!.r) : ""}</span></span>
+            {e ? <><span className={cn("text-xs font-semibold", RES_C[e.apto] || "text-slate-500")}>{e.apto} · {f1(e.pts)}/60</span>
+              <Button size="sm" variant="outline" icon={<Eye />} onClick={() => onView(e)}>Ver respuestas</Button></>
+              : <><span className="text-xs font-semibold text-amber-500">Pendiente de entrevista</span>
+                <Button size="sm" icon={<MessageCircle />} onClick={() => onStart(n)}>Entrevistar</Button>
+                <button aria-label={`Quitar a ${n}`} onClick={async () => { if (await confirm(`¿Quitar a ${n} de ${conv.id}?`)) put(conv.post.filter(x => x !== n)); }} className="rounded-lg p-1.5 text-slate-400 hover:text-red-600"><X className="size-4" /></button></>}
+          </div>)) : <p className="px-4 py-6 text-center text-sm text-slate-400">Todavía no hay postulantes en {conv.id}.</p>}
+      </div>
+      <div className="flex flex-wrap items-end gap-2 border-t border-slate-100 bg-slate-50/60 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/40">
+        <div className="min-w-[14rem] flex-1"><AgentCombo value={add} onChange={setAdd} names={cands()} placeholder="Agregar postulante…" /></div>
+        <Button variant="outline" icon={<Plus />} disabled={!add || names.includes(add)} onClick={() => { put([...conv.post, add]); setAdd(""); }}>Agregar a {conv.id}</Button>
+      </div>
+    </Card>);
+}
+
+/* respuestas de una evaluación ya hecha (solo lectura): no pisa el formulario; «Editar» la carga si hace falta */
+function EvView({ e, bank, onClose, onEdit }: { e: Ev; bank?: Q[]; onClose: () => void; onEdit: () => void }) {
+  const ent = e.tipo === "ent", S = ent ? entScore(e) : null;
+  return (
+    <Modal open onClose={onClose} size="lg" icon={ent ? <MessageCircle /> : <ClipboardCheck />} title={`${ent ? "Entrevista" : "Examen escrito"} · ${e.cand}`}
+      desc={`${e.rango || "—"} · ${dmy(e.fecha)} · ${ent ? `${convOf(e)} · ` : ""}evaluó ${e.by}`}
+      footer={<><Button variant="ghost" onClick={onClose}>Cerrar</Button><Button variant="outline" icon={<Pencil />} onClick={onEdit}>Editar</Button></>}>
+      <div className="grid grid-cols-3 gap-2">{(ent ? [["Puntuación", `${f1(e.pts)}/60`], ["Sugerido", S!.res], ["Decisión", e.apto]] : [["Nota", `${f1(e.pts, 2)}/10`], ["Resultado", e.apto], ["Fecha", dmy(e.fecha)]]).map(([l, v]) => (
+        <div key={l} className="rounded-xl bg-slate-50 p-3 text-center dark:bg-slate-800/50"><p className="text-[10.5px] font-semibold uppercase tracking-wide text-slate-400">{l}</p><p className={cn("font-semibold", RES_C[v] || "")}>{v}</p></div>))}</div>
+      {ent ? <>{BLOQ.map(([b, w]) => <div key={b} className="space-y-1.5"><p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">{b}<WBadge w={w} /></p>
+        {QS.filter(q => q.b === b).map(q => { const v = Number(e.notas["q" + q.n]) || 0, o = e.obs["q" + q.n]; return (
+          <div key={q.n} className="rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-800"><div className="flex items-start gap-2"><b className="w-6 shrink-0 text-right text-slate-400">{q.n}</b><p className="flex-1 text-sm">{q.q}</p>
+            <span className="flex shrink-0">{[1, 2, 3, 4, 5].map(s => <Star key={s} className={cn("size-4", s <= v ? "fill-amber-400 text-amber-400" : "text-slate-300 dark:text-slate-600")} />)}</span></div>
+            {o && <p className="ml-8 mt-1 text-[13px] italic text-slate-600 dark:text-slate-300">“{o}”</p>}</div>); })}</div>)}
+        {S!.elim.length > 0 && <p className="rounded-xl border border-red-500/40 bg-red-500/[.07] p-3 text-sm text-red-600 dark:text-red-300"><b>Filtros eliminatorios:</b> {S!.elim.join(" · ")}</p>}
+        {(e.fort || e.mej) && <div className="grid gap-2 sm:grid-cols-2">{e.fort && <p className="rounded-xl bg-emerald-500/[.07] p-3 text-sm"><b>Fortalezas:</b> {e.fort}</p>}{e.mej && <p className="rounded-xl bg-amber-500/[.07] p-3 text-sm"><b>A mejorar:</b> {e.mej}</p>}</div>}</>
+        : <div className="space-y-1.5">{(bank || []).map((q, i) => { const g = e.notas[q.id] as Grade; return (
+          <div key={q.id} className="flex items-start gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-800"><b className="w-6 shrink-0 text-right text-slate-400">{i + 1}</b><p className="flex-1">{q.q}</p>
+            <span className={cn("shrink-0 text-xs font-bold", g === "ok" ? "text-emerald-500" : g === "mid" ? "text-amber-500" : g === "no" ? "text-red-500" : "text-slate-400")}>{g === "ok" ? "Correcta" : g === "mid" ? "Parcial" : g === "no" ? "Incorrecta" : "—"}</span></div>); })}</div>}
+    </Modal>);
+}
+
 function BankEd({ bank, onSave, onClose }: { bank: Q[]; onSave: (b: Q[]) => void; onClose: () => void }) {
   const [b, setB] = useState(bank);
   return (

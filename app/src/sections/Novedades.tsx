@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "2.5.4";
+export const APP_VERSION = "2.5.5";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,13 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "2.5.5", f: "13/11/2026", t: "METRO: convocatorias · OIS: revisión e historial", items: [
+    "METRO · Entrevista de instructor: convocatorias (C1 · Convocatoria 1 y las que se agreguen) con sus postulantes, pendientes y ya entrevistados.",
+    "Las entrevistas y exámenes ya hechos se abren en una ventana con las respuestas (no pisan el formulario); «Editar» los carga si hace falta y hay botón «Reiniciar».",
+    "Preguntas de la entrevista más prolijas: número, insignia de peso y observación alineados.",
+    "OIS: botón «Revisar» en cada expediente con los 6 pasos en verde o rojo y lo que falta; aviso rojo al guardar si queda algo sin completar; historial de cambios.",
+    "OIS: los números de expediente ya no se repiten; los duplicados existentes se renumeran solos.",
+  ] },
   { v: "2.5.4", f: "12/11/2026", t: "METRO · Armas", items: [
     "Nueva pestaña Armas para la coordinación de la METRO, separada en Pistolas, Subfusiles, Rifles, Francotiradores y Lanzagranadas.",
     "Cada arma con su munición, accesorios por ranura (los del inventario del servidor), para quién está autorizada, notas y si está en dotación.",
