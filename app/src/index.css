@@ -81,8 +81,8 @@ html.neon.dark header.sticky { box-shadow: 0 1px 0 rgb(var(--b-500) / .2), 0 10p
 @keyframes tb-pulse { 0%,100% { opacity: 1; } 50% { opacity: .7; } }
 @media (prefers-reduced-motion: reduce) { .tb-brand, .tb-glow, .tb-leds i::before { animation: none !important; } }
 .tab-screen { position: relative; width: 100%; height: 100%; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 0 0 3px #040504, 0 0 0 4px rgba(255,255,255,.05); }
-.tab-status { flex: none; height: 28px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; background: #050b16; color: #9fb0c8;
-  font: 600 11px/1 "JetBrains Mono", Consolas, monospace; letter-spacing: .12em; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,.05); }
+.tab-status { flex: none; height: 22px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; background: #050b16; color: #9fb0c8;
+  font: 600 9px/1 "JetBrains Mono", Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,.05); }
 .tab-status, .tab-status * { white-space: nowrap; } .tab-status { gap: 16px; } .tab-status > * { min-width: 0; overflow: hidden; text-overflow: clip; -webkit-mask-image: linear-gradient(90deg,#000 calc(100% - 24px),transparent); mask-image: linear-gradient(90deg,#000 calc(100% - 24px),transparent); } .tab-status > :last-child { -webkit-mask-image: none; mask-image: none; } .tab-status > :last-child { flex: none; }
 .tab-status .sec { color: #39ff88; text-shadow: 0 0 4px rgba(57,255,136,.9), 0 0 10px rgba(57,255,136,.6), 0 0 20px rgba(57,255,136,.35); }
 .tab-status .sec::first-letter, .tab-status .sec svg { animation: sec-dot 1.6s ease-in-out infinite; }
@@ -105,8 +105,8 @@ html.neon.dark header.sticky { box-shadow: 0 1px 0 rgb(var(--b-500) / .2), 0 10p
 @media (prefers-reduced-motion: reduce) { .sync-dot, .sync-bar { animation: none !important; } }
 @media (prefers-reduced-motion: reduce) { .tab-status .sec::first-letter { animation: none; } }
 .tab-status .clk { color: #e9eef7; letter-spacing: .08em; }
-.tab-status .sec-s { opacity: .45; font-size: 10px; }
-.tab-status .sig { display: inline-flex; align-items: flex-end; gap: 2px; height: 11px; }
+.tab-status .sec-s { opacity: .45; font-size: 8px; }
+.tab-status .sig { display: inline-flex; align-items: flex-end; gap: 2px; height: 9px; }
 .tab-status .sig i { width: 3px; border-radius: 1px; background: rgba(159,176,200,.25); }
 .tab-status .sig i.on { background: #39ff88; box-shadow: 0 0 4px rgba(57,255,136,.6); }
 .tab-status .sig.off i { background: rgba(255,77,82,.35); }
@@ -362,3 +362,4 @@ html:not([data-head="none"]) header nav .nav-dk-l { font-family: var(--fh, inher
 .ver-chip { position: relative; font: 700 9.5px/1.5 "JetBrains Mono", Consolas, monospace; letter-spacing: .04em; padding: 0 6px; border-radius: 999px; color: rgb(148 163 184); background: rgb(148 163 184 / .12); }
 .ver-chip.is-new { color: #fff; background: linear-gradient(90deg, #e5484d, #ec4899); box-shadow: 0 0 10px rgba(236,72,153,.55); }
 .ver-chip.is-new::after { content: ""; position: absolute; top: -2px; right: -2px; width: 6px; height: 6px; border-radius: 99px; background: #fde047; box-shadow: 0 0 6px #fde047; animation: sec-dot 1.6s ease-in-out infinite; }
+.tab-status svg { width: 10px; height: 10px; }

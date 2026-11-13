@@ -456,7 +456,7 @@ function Catalog() {
 
 /* ---------- historial de expedientes y comunicados ---------- */
 type PsbDoc = { t: string; txt: string; ts: number; by: string };
-type PsbCase = { id: string; cf: string; ag: string; dv: string; by: string; ts: number; upd: number; concl: string; docs: PsbDoc[]; px: PXT; st?: string; jusOk?: { st: "pend" | "ok" | "rej"; by: string; ts: number; m?: string } };
+type PsbCase = { id: string; cf: string; ag: string; dv: string; by: string; ts: number; upd: number; concl: string; docs: PsbDoc[]; px: PXT; st?: string; ois?: string; jusOk?: { st: "pend" | "ok" | "rej"; by: string; ts: number; m?: string } };
 const K_CASES = "lspdt.psbCases";
 const getCases = () => LS.json<PsbCase[]>(K_CASES, []);
 function saveDoc(t: string, txt: string, by: string, concl = "", st = "") {
@@ -469,7 +469,7 @@ function saveDoc(t: string, txt: string, by: string, concl = "", st = "") {
   LS.setJSON(K_CASES, i >= 0 ? L.map((x, j) => (j === i ? c : x)) : [...L, c]);
   return { ok: true, msg: `Guardado en el historial · ${cf} (${c.docs.length} ${c.docs.length === 1 ? "comunicado" : "comunicados"})` };
 }
-const DOC_T: Record<string, string> = { not: "Notificación", ele: "Elevación de caso", jus: "Aprobación SAJD", res: "Resolución", vot: "Votación" };
+const DOC_T: Record<string, string> = { ois: "Informe OIS (remitido por el sargento)", not: "Notificación", ele: "Elevación de caso", jus: "Aprobación SAJD", res: "Resolución", vot: "Votación" };
 const fdt = (t: number) => new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 function Historial({ go }: { go: Go }) {

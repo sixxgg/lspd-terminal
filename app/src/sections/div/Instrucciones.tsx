@@ -7,7 +7,7 @@ import { AgentCombo, Avatar } from "@/components/agents";
 import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { Col, Split } from "@/components/layout";
-import { findAgent, hoyISO, lvl, norm, rankES, uid , dmy } from "@/lib/domain";
+import { dmy, findAgent, hoyISO, lvl, norm, rankES, uid, unixOf } from "@/lib/domain";
 import { useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { cn } from "@/lib/cn";
@@ -18,10 +18,9 @@ type Asis = "asi" | "no" | "pen";
 const AS: [Asis, string, string, string][] = [["asi", "Asistió", "✅", "#22c55e"], ["no", "No asistió", "❌", "#ef4444"], ["pen", "Pendiente", "⏳", "#f59e0b"]];
 type Ins = { id: string; t: number; fecha: string; hora: string; tipo: string; ins: { n: string; r: InsRole }[]; imp: { n: string; st: Asis }[]; notas: string; by: string };
 
-const unix = (d: string, h: string) => (d ? Math.floor(new Date(`${d}T${h || "00:00"}`).getTime() / 1000) : 0);
 const tag = (n: string) => { const a = findAgent(n); return `${n}${a && a.p ? ` | ${a.p}` : ""}`; };
 function insText(ab: string, x: Ins) {
-  const t = unix(x.fecha, x.hora), c = (s: Asis) => x.imp.filter(i => i.st === s).length;
+  const t = unixOf(x.fecha, x.hora), c = (s: Asis) => x.imp.filter(i => i.st === s).length;
   return [`## 📋 Instrucción · ${x.tipo || "[tipo]"} — ${ab}`,
     `**Fecha:** ${t ? `<t:${t}:D> a las <t:${t}:t>` : dmy(x.fecha)}`, "",
     "**Impartida por:**", ...(x.ins.length ? x.ins.map(i => `- ${ROL.find(r => r[0] === i.r)![1]}: ${tag(i.n)}`) : ["- —"]), "",

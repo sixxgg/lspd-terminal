@@ -11,14 +11,13 @@ import { useFeedback } from "@/components/feedback";
 import { EvCard, EvModal, banSrc, tipoC } from "@/components/calui";
 import { CAL_TIPOS, PUB_KEY, banKey, calAll, calCan, calDivName, calKey, calOwn, calPubCan, calText, type CalEv, type CalItem } from "@/lib/calendar";
 import { LS, useJSON } from "@/lib/store";
-import { divAb, uid } from "@/lib/domain";
+import { divAb, pad2, uid } from "@/lib/domain";
 import { ts } from "@/lib/discord";
 import { useMe } from "@/lib/me";
 import { cn } from "@/lib/cn";
 
-const pad = (n: number) => String(n).padStart(2, "0");
-const isoD = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const isoT = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const isoD = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const isoT = (d: Date) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 
 export function DivCal({ id, ab }: { id: string; ab: string }) {
   const me = useMe(), { toast, confirm } = useFeedback(), copy = useCopy();

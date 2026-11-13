@@ -5,121 +5,51 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "2.5.8";
+export const APP_VERSION = "3.0";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
 export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
-type Rel = { v: string; f: string; t: string; items: string[] };
+type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
-  { v: "2.5.8", f: "13/11/2026", t: "Examen METRO rediseñado · notificaciones de un renglón", items: [
-    "Examen: pantalla nueva, una pregunta por vez con navegador de preguntas, barra de progreso, reloj y strikes arriba; se responde con el mouse o con A/B/C y se avanza con las flechas. Sin marca de agua.",
-    "Examen: inicio, entrega, strikes y resultado con ventanas nuevas.",
-    "Notificaciones: ahora son una píldora de un renglón; las confirmaciones muestran la pregunta, el detalle debajo y los botones al costado.",
-  ] },
-  { v: "2.5.7", f: "13/11/2026", t: "Examen escrito en línea de la METRO · registro de actividad", items: [
-    "METRO · Examen: nueva pestaña con el estado del examen (Listo en verde o No disponible en rojo con candado). Al iniciarlo, la tablet muestra solo el examen: preguntas de opción múltiple y un reloj.",
-    "Durante el examen no se puede copiar, pegar ni seleccionar. Salir de la pestaña, sacar capturas o abrir las herramientas del navegador suma un strike; al tercero se desaprueba.",
-    "METRO · Gestión de exámenes (coordinación): activar o desactivar, duración, hora programada, convocatoria, anotados a mano, nota mínima, resultados con el detalle de cada respuesta, banco de preguntas y pruebas que se pueden borrar.",
-    "A quien está anotado le aparece un aviso arriba de la pantalla 15 minutos antes y cuando el examen ya está listo.",
-    "OIS: el estado emocional escrito a mano (por ejemplo, «Impotente») ya cuenta como completado.",
-  ] },
-  { v: "2.5.6", f: "13/11/2026", t: "OIS: armas y balas más fáciles · preguntas de la METRO corregidas", items: [
-    "OIS · Revisión del arma: se elige el modelo (completa las balas por cargador), cuántos cargadores lleva y cuántas balas quedan en cada uno (con botones Lleno / Vacío); la terminal calcula la dotación y las balas disparadas.",
-    "OIS: si disparó con más de un arma, «Añadir otra arma» suma otra revisión completa.",
-    "OIS · Test: Positivo en verde, Negativo en rojo y Pendiente en amarillo, con un brillo leve.",
-    "OIS: el formato Discord se reemplaza por «Ver en formato web» (el mismo documento que el PDF, en pantalla).",
-    "METRO: preguntas de la entrevista de instructor y del examen escrito revisadas (redacción, ortografía y conjugaciones).",
-  ] },
-  { v: "2.5.5", f: "13/11/2026", t: "METRO: convocatorias · OIS: revisión e historial", items: [
-    "METRO · Entrevista de instructor: convocatorias (C1 · Convocatoria 1 y las que se agreguen) con sus postulantes, pendientes y ya entrevistados.",
-    "Las entrevistas y exámenes ya hechos se abren en una ventana con las respuestas (no pisan el formulario); «Editar» los carga si hace falta y hay botón «Reiniciar».",
-    "Preguntas de la entrevista más prolijas: número, insignia de peso y observación alineados.",
-    "OIS: botón «Revisar» en cada expediente con los 6 pasos en verde o rojo y lo que falta; aviso rojo al guardar si queda algo sin completar; historial de cambios.",
-    "OIS: los números de expediente ya no se repiten; los duplicados existentes se renumeran solos.",
-  ] },
-  { v: "2.5.4", f: "12/11/2026", t: "METRO · Armas", items: [
-    "Nueva pestaña Armas para la coordinación de la METRO, separada en Pistolas, Subfusiles, Rifles, Francotiradores y Lanzagranadas.",
-    "Cada arma con su munición, accesorios por ranura (los del inventario del servidor), para quién está autorizada, notas y si está en dotación.",
-    "«Copiar kit» (por arma o el kit completo): comandos listos con el ID del jugador y la plantilla editable, lista de ítems o texto para Discord; cada línea se copia sola o todo junto.",
-  ] },
-  { v: "2.5.3", f: "12/11/2026", t: "Avisos como notificaciones push", items: [
-    "Todos los avisos de la terminal (foto cargada, cambios guardados, eliminado, errores…) bajan desde arriba de la pantalla como una notificación del teléfono: se apilan, se cierran solos y se pueden deslizar hacia arriba o tocar para cerrarlos.",
-    "Las confirmaciones («¿Borrar…?», «¿Quitar la foto?») también llegan como notificación push con Cancelar / Confirmar y la pantalla de fondo desenfocada.",
-  ] },
-  { v: "2.5.2", f: "12/11/2026", t: "Menú más grande", items: [
-    "Menú de áreas y de secciones más grandes (íconos y nombres), y la barra de estado de arriba ya no se parte en dos líneas en pantallas chicas.",
-  ] },
-  { v: "2.5.1", f: "12/11/2026", t: "Feedback más prolijo", items: [
-    "Feedback más compacto: categorías completas con ícono, editor más bajo y encabezado con los pasos (enviás → six lo revisa → se trabaja → te avisa la campanita).",
-    "«Mis feedback»: los estados pasan a una grilla con contadores que también sirve de filtro (ya no se cortan) y un vacío más claro.",
-  ] },
-  { v: "2.5", f: "12/11/2026", t: "Menú nuevo, idioma según el visitante y Feedback renovado", items: [
-    "Menú de arriba rediseñado: ícono y nombre apilados y lo que no entra pasa a «Más», así nunca se corta. La versión queda chiquita debajo del escudo.",
-    "Idioma automático: desde Argentina la terminal habla con voseo y desde España (o el resto) con tú. Se puede fijar a mano en Apariencia.",
-    "Feedback renovado: tipo (error, idea, mejora u otro), sección de la terminal, editor con formato y «Mis feedback» con filtros por estado.",
-    "Calendario: los detalles admiten negrita, cursiva, subrayado, tachado, oculto, listas y colores; «Copiar» arma el comunicado de la división para Discord; quien creó el evento lo puede borrar.",
-    "Arreglado el brillo violeta que se pintaba sobre el banner y el logo de las divisiones (ASB → Administrativos).",
-  ] },
-  { v: "2.3.5", f: "12/11/2026", t: "Calendario, expediente de agentes y procedimiento OIS", items: [
-    "Nueva sección Calendario: el mes con las prácticas, instrucciones y eventos de las divisiones, próximos con banner, filtros por división y «Anotados».",
-    "Cada división tiene su pestaña Calendario: la coordinación carga nombre, hora (formato web y Discord), banner opcional y creador del evento. La ASB puede publicar eventos para todo el departamento.",
-    "Aviso el mismo día (baja desde el borde de la tablet) con «Marcar como leído», «Anotarme» y «Recordármelo»; también llega a la campanita y el menú muestra un contador con lo nuevo.",
-    "Perfil de los agentes rediseñado como expediente: ficha con foto, placa, State ID y callsign, pasador de cintas y legajo por pestañas.",
-    "Condecoraciones rediseñadas: pasador como en el uniforme y selector visual por catálogo con buscador.",
-    "Informes: nueva subsección «Procedimiento OIS con fallecido» paso a paso, con copia para Discord y exportación a PDF con el sello del LSPD.",
-    "ASB: pestaña Entrevistas para aspirantes a administrativo, con preguntas, nota por respuesta y resultado.",
-    "Emblemas con fondo cuadrado: se recortan en círculo para que no se vea el cuadrado detrás del logo.",
-  ] },
-  { v: "2.3.4", f: "12/11/2026", t: "Restablecer contraseñas", items: [
-    "Se pueden restablecer contraseñas de cuentas registradas: se entrega una temporal y, al entrar, la terminal obliga a elegir una nueva antes de usar cualquier cosa.",
-  ] },
-  { v: "2.3.3", f: "12/11/2026", t: "Notificaciones dentro de la tablet", items: [
-    "El aviso de actualización baja desde el borde de arriba de la pantalla de la tablet.",
-    "Al tocar «Reiniciar ahora» se ve la pantalla «Actualización en curso» mientras se descarga la versión nueva; al volver, un aviso confirma que la terminal quedó actualizada.",
-    "Apariencia: desenfoque de la pantalla al recibir una notificación, con deslizante para regularlo o apagarlo (de fábrica, apagado) y botón para probarlo.",
-    "El dueño de la terminal puede editar todos los rosters.",
-  ] },
-  { v: "2.3.1", f: "12/11/2026", t: "Rosters solo para la coordinación", items: [
-    "El roster de cada división lo modifica únicamente su coordinación (también lo controla el servidor). La administración solo puede cargarlo mientras la división no tenga coordinación.",
-    "RTD con roster propio: Coordinación, Subcoordinador, Master Field Training Officer, Field Training Officer y Miembro de la RTD, con los 17 FTO cargados.",
-    "CNT con sus rangos: Coordinador, Negociador (5) y Aspirante C.N.T.",
-    "Ventana de alta y edición del roster más compacta.",
-  ] },
-  { v: "2.3", f: "12/11/2026", t: "Rosters nuevos y divisiones protegidas", items: [
-    "Rosters rediseñados en todas las divisiones y subdivisiones: tarjetas por rol con su color, indicativo y especialidades; alta y edición en una ventana chica como la de uniformidad.",
-    "Rosters cargados: ASB (coordinación Lara Calloway y Evelyn Molina, agentes y administrativos), HSIU y Detective Bureau (WHISKEY-01, 02, 03…). Indicativos también en las subdivisiones de la METRO.",
-    "Registro de vuelo y de patrullaje: el permiso se elige de una lista (volar una aeronave que no sea el Polmav lo exige) y siempre pide quién lo autorizó.",
-    "Los datos de cada división solo los recibe quien está en su roster, y las pestañas «Solo coordinación» tampoco llegan al resto: lo controla el servidor.",
-    "Aviso de actualización como notificación del sistema de la tablet: baja desde arriba, se reinicia con un toque o se desliza para después.",
-    "Limpieza de código duplicado y sin uso.",
-  ] },
-  { v: "2.1", f: "12/11/2026", t: "Rosters para todos y nuevas divisiones", items: [
-    "Todas las divisiones y subdivisiones tienen roster. La coordinación define los roles (nombre, color, orden y si coordinan) desde Administración, y suma o quita gente en un paso.",
-    "Subdivisiones abiertas (SWAT, Bomb Squad, CNT, UDU y las de la Detective Bureau) con Roster, Uniformidad y Administración.",
-    "Metropolitan Drone Support Operations: solo Licencias (agente, licencia activa, desde cuándo, N° de serie y modelo del drone).",
-    "Administration Services Bureau: Administrativos, Ideas de eventos, Ideas de publicaciones, Documentación, Tareas, Convenios (plantilla en Canva y teléfonos de negocios para copiar) y Subdivisiones.",
-    "High Speed Interception Unit abierta: Roster, Uniformidad, Administración y Registro TOM con la plantilla nueva (vehículo utilizado, vehículo seguido y motivo).",
-    "Legal: solo la ve quien recibe acceso del dueño de la terminal.",
-    "Las plantillas se completan con quien las está escribiendo: firma, agente y borradores son de cada uno.",
-    "Nueva pantalla de ingreso: tu credencial se escanea y valida sola (placa, rango, ID y divisiones).",
-    "El ID de las cuentas respeta el orden de registro.",
-  ] },
-  { v: "2.0", f: "11/11/2026", t: "Terminal de Mando 2.0", items: [
-    "Divisiones privadas: cada división la ve solo quien está cargado en su roster. Todas tienen Instrucciones, Uniformidad por rango y género con código para copiar, y Administración (coordinación) para elegir qué pestañas ven los miembros. Encabezado y pestañas rediseñados.",
-    "METRO, SWAT, K-9, A.S.D, RTD y PSB con su roster real: roles, subdivisiones, indicativos, examen escrito, entrevista de instructor y lista de elegibles. La PSB de punta a punta: notificación, elevación, Aprobación SAJD, resolución y expedientes.",
-    "Pizarra (BETA) estilo Miro en el menú principal: lienzo infinito con notas, formas, flechas, lápiz e imágenes, plantillas, cursores en vivo, exportación a PNG y enlace temporal para verla sin sesión.",
-    "Perfiles (BETA): portada, foto o GIF, nickname OOC, «Acerca de mí» con formato, seguidores y sugerencias, comentarios, pestaña Personaje y logros por rareza (los míticos holográficos).",
-    "Agentes como área propia ordenada por rango, con condecoraciones; Capitanía con el ascenso a Sargento I (examen, Oral Board y lista de elegibles).",
-    "Supervisores: informes completos, revisión y registro de patrullas ONX con su marca, registro de huellas y entrevistas.",
-    "Feedback con formato y fotos, y campanita de notificaciones (feedback, rangos, PSB, perfiles y versiones nuevas).",
-    "Códigos radiales, 10-X, derechos y alfabeto NATO con buscador y clic para copiar.",
-    "Links temporales de solo lectura (uniformidad y pizarra) que vencen solos, con contador de visitas y botón para revocar.",
-    "Registro solo con invitación y códigos de recuperación de contraseña.",
-    "Nuevo marco de tablet táctica negro con luces, marca «Bananita» configurable por la administración y pestaña del navegador con punto ONLINE.",
-    "Administración › «Ver como»: mirar la terminal con otro rango y sin divisiones, en solo lectura.",
-    "Más liviana y rápida: menos trabajo en segundo plano, carga por partes, aviso de versión nueva arriba y limpieza de código.",
+  { v: "3.0", f: "11/11/2026 – 13/11/2026", t: "Terminal de Mando 3.0", items: [], g: [
+    ["Divisiones", [
+      "Cada división la ve solo quien está en su roster y lo controla el servidor; la coordinación elige qué pestañas ven los miembros y es la única que edita su roster.",
+      "Rosters rediseñados en todas las divisiones y subdivisiones (SWAT, Bomb Squad, CNT, UDU, Detective Bureau, HSIU, RTD, ASB…): roles con color y orden, indicativos y especialidades.",
+      "Todas con Instrucciones, Uniformidad por rango y género, Calendario y Administración.",
+      "ASB: Administrativos, Entrevistas, Ideas de eventos y publicaciones, Documentación, Tareas, Convenios y Subdivisiones. MDSO con licencias de drone. HSIU con Registro TOM.",
+      "PSB de punta a punta: notificación, elevación, aprobación SAJD, resolución, votaciones y expedientes.",
+    ]],
+    ["Metropolitan Division", [
+      "Armas (coordinación): las armas reglamentarias por tipo, con munición, accesorios por ranura, autorización y «Copiar kit» con comandos, lista de ítems o texto.",
+      "Entrevista de instructor por convocatorias (C1…) con postulantes, respuestas en solo lectura y preguntas revisadas.",
+      "Examen escrito en línea: estado Listo / No disponible, pantalla exclusiva con una pregunta por vez, reloj, corrección automática en el servidor y strikes por salir de la pestaña, capturas o herramientas del navegador (3 desaprueban).",
+      "Gestión de exámenes: activar, duración, hora programada con aviso a los anotados, convocatoria, anotados a mano, nota mínima, resultados con el detalle de cada respuesta, banco de preguntas y pruebas que se pueden borrar.",
+    ]],
+    ["Informes y procedimientos", [
+      "Procedimiento OIS con fallecido en 6 pasos: armas con cálculo de cargadores y balas disparadas, varias armas, test con colores, revisión de lo que falta, historial y números sin duplicar.",
+      "El OIS se remite a la Force Investigation Division: al guardarlo se abre el caso en la PSB y a sus miembros les llega el aviso.",
+      "Formato web y PDF con el sello del LSPD.",
+    ]],
+    ["Calendario", [
+      "Sección Calendario con el mes, próximos eventos con banner y filtros por división; cada división carga los suyos y la ASB publica para todo el departamento.",
+      "Detalles con formato, comunicado listo para copiar, aviso el mismo día y contador de lo nuevo; quien crea un evento lo puede borrar.",
+    ]],
+    ["Agentes y perfiles", [
+      "Perfil del agente como expediente: foto, placa, State ID, callsign, pasador de condecoraciones y legajo por pestañas.",
+      "Condecoraciones con selector visual por catálogo. Perfiles (BETA) con portada, seguidores, comentarios y logros.",
+    ]],
+    ["Terminal", [
+      "Menú nuevo que nunca se corta (lo que no entra va a «Más»), barra de estado más chica y versión debajo del escudo.",
+      "Idioma según quien visita: voseo desde Argentina y tú desde España y el resto (se puede fijar en Apariencia).",
+      "Avisos y confirmaciones como notificaciones push de un renglón que bajan desde arriba.",
+      "Feedback renovado: tipo, sección, editor con formato y fotos, y «Mis feedback» con estados.",
+      "Pizarra (BETA), códigos radiales, enlaces temporales de solo lectura, registro con invitación, códigos de recuperación y restablecimiento de contraseñas.",
+      "Ingreso con credencial escaneada, aviso de actualización dentro de la tablet y «Ver como» para la administración.",
+      "Registro de actividad para el dueño: quién crea, edita o borra cada cosa.",
+      "Código más liviano: sin duplicados ni partes sin uso y carga por partes.",
+    ]],
   ] },
   { v: "1.0", f: "07/11/2026", t: "La terminal nueva pasa a ser la principal", items: [
     "Apartado Legal con el catálogo oficial completo (Código Penal y leyes), favoritos, búsqueda por artículo y mención especial a su autor.",
@@ -157,9 +87,12 @@ export function Novedades() {
                   <span className="text-xs text-slate-400">{r.f}</span>
                 </div>
                 <h3 className="font-display mt-1 text-lg font-semibold">{r.t}</h3>
-                <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                  {r.items.map(x => <li key={x} className="flex gap-2"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-brand-500" />{x}</li>)}
-                </ul>
+                {[...(r.items.length ? [["", r.items] as [string, string[]]] : []), ...(r.g || [])].map(([h, L]) => (
+                  <div key={h || "_"} className={cn(h && "mt-4")}>
+                    {h && <p className="text-[11px] font-bold uppercase tracking-[.16em] text-brand-600 dark:text-brand-300">{h}</p>}
+                    <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                      {L.map(x => <li key={x} className="flex gap-2"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-brand-500" />{x}</li>)}
+                    </ul></div>))}
               </Card>
             </li>))}
         </ol>

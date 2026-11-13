@@ -7,8 +7,9 @@ import { Button, Card, Checkbox, Empty, Field, Input, Segmented, Textarea } from
 import { AgentCombo } from "@/components/agents";
 import { Modal } from "@/components/modal";
 import { useFeedback } from "@/components/feedback";
-import { findAgent, hoyISO, rankES, uid , dmy } from "@/lib/domain";
-import { useJSON } from "@/lib/store";
+import { dmy, escHtml, findAgent, hoyISO, rankES, uid } from "@/lib/domain";
+import { syncNow, useJSON } from "@/lib/store";
+import { api } from "@/lib/api";
 import { useMe } from "@/lib/me";
 import { cn } from "@/lib/cn";
 
@@ -17,7 +18,7 @@ const PSS = ["¿Has disparado? ¿Cuántas veces y en qué dirección?", "¿Hay a
 const EMO = ["Tranquilo", "Nervioso", "En shock", "Alterado", "Desorientado"];
 const ARMA_EST = ["Funciona correctamente", "Con daños", "Se encasquilló"];
 const TEST = ["Negativo", "Positivo", "Pendiente de resultado"];
-const PSB_AV = ["Este uso de la fuerza se remitirá al Professional Standards Bureau (PSB).", "El caso se revisará internamente.", "Si necesitan algo de él, PSB se pondrá en contacto directamente."];
+const PSB_AV = ["Este uso de la fuerza se remitirá a la Force Investigation Division (FID) del Professional Standards Bureau.", "El caso se revisará internamente.", "Si necesitan algo de él, la FID se pondrá en contacto directamente."];
 const OIS_AUTOR = "Sargento II Evelyn Molina";
 
 type Ois = {
@@ -49,7 +50,7 @@ const who = (n: string) => { const a = findAgent(n); return a ? `${rankES(a.r)} 
 const placa = (n: string) => findAgent(n)?.p || "";
 /* balas: lo que queda en los cargadores y lo que falta según la dotación */
 /* lo que falta en cada paso (vacío = paso completo) */
-const STEP_T = ["Estado del oficial", "Declaración de Seguridad Pública (PSS)", "Retirada de la escena", "Revisión del arma", "Test de alcohol y drogas", "Notificación a PSB"];
+const STEP_T = ["Estado del oficial", "Declaración de Seguridad Pública (PSS)", "Retirada de la escena", "Revisión del arma", "Test de alcohol y drogas", "Remisión a la FID"];
 const faltas = (x: Ois): string[][] => [
   [x.her === "" && "Si está herido", x.her === "si" && !x.ems && "EMS solicitado (está herido)", !x.emo && !x.emoN.trim() && "Estado emocional"].filter(Boolean) as string[],
   x.pss.map((p, i) => (!p.trim() ? `Respuesta a la pregunta ${i + 1}` : "")).filter(Boolean),
@@ -79,7 +80,11 @@ export function OisPanel() {
     const prev = L.find(i => i.id === x.id), k = steps(x).filter(Boolean).length;
     const r: Ois = { ...x, id: x.id || uid(), t: x.t || Date.now(), no: prev ? x.no : L.some(i => i.no === x.no) ? nextNo(L) : x.no,
       hist: [...(x.hist || []), { t: Date.now(), by: me.n, a: `${prev ? "Editó" : "Creó"} el expediente · ${k}/6 pasos completos` }] };
-    setL([...L.filter(i => i.id !== r.id), r]); setX(r); setMiss(false); toast(prev ? "Procedimiento actualizado" : `Procedimiento guardado: ${r.no}`);
+    setL([...L.filter(i => i.id !== r.id), r]); setX(r); setMiss(false);
+    /* se remite a la FID: el servidor abre (o actualiza) el caso en la PSB y a sus miembros les llega el aviso */
+    void api("/api/data", { oisFid: { no: r.no, of: r.of, sgt: r.sgt || r.by, lugar: r.lugar, fecha: r.fecha, hora: r.hora, txt: oisSum(r) } }).then(res => {
+      toast(res.__s === 200 ? `${prev ? "Procedimiento actualizado" : `Procedimiento guardado: ${r.no}`} · ${res.cf} ${res.nuevo ? "abierto" : "actualizado"} en la FID` : `${r.no} guardado, pero no se pudo remitir a la FID: ${res.msg || "probá de nuevo"}`, res.__s === 200 ? "ok" : "err");
+      if (res.__s === 200) syncNow(); });
   };
   const save = () => { if (!x.of) { toast("Elegí al oficial implicado", "err"); return; } if (base(x).length || faltas(x).some(f => f.length)) setMiss(true); else doSave(); };
   const H = L.slice().sort((a, b) => b.t - a.t);
@@ -149,7 +154,7 @@ export function OisPanel() {
             <Input value={x.testN} onChange={e => up({ testN: e.target.value })} placeholder="Observaciones del test (opcional)" />
           </Step>
 
-          <Step n={6} ok={ok[5]} I={Send} t="Notificación a PSB" d="Se informa al oficial de que:">
+          <Step n={6} ok={ok[5]} I={Send} t="Remisión a la FID" d="Se informa al oficial de que (al guardar, la PSB recibe el aviso y se abre el caso en la FID):">
             <div className="flex flex-col gap-2">{PSB_AV.map((p, i) => <Checkbox key={i} checked={x.psb[i]} onChange={v => up({ psb: x.psb.map((b, j) => (j === i ? v : b)) })} label={p} />)}</div>
           </Step>
           <Card className="p-5"><Field label="Notas del Sargento" hint="(opcional)"><Textarea rows={3} value={x.notas} onChange={e => up({ notas: e.target.value })} /></Field></Card>
@@ -291,7 +296,15 @@ const vals = (x: Ois) => ({
       ["Dotación reglamentaria", c.dot ? `${g.mags.length} × ${g.cap} = ${c.dot}` : "—"], ["Cambio de cargador", sn(g.camb)]]; }),
   p5: [["Alcohol", x.alc || "—"], ["Drogas", x.drog || "—"], ...(x.testN ? [["Observaciones", x.testN]] : [])],
 });
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+/* resumen en texto para el caso de la FID */
+function oisSum(x: Ois) {
+  const V = vals(x), L = (rows: string[][]) => rows.map(([k, v]) => `- ${k}: ${v}`).join("\n");
+  return [`Procedimiento OIS ${x.no} · ${[x.fecha && dmy(x.fecha), x.hora].filter(Boolean).join(" ")}${x.lugar ? ` · ${x.lugar}` : ""}`, `Sargento a cargo: ${x.sgt || x.by} · Oficial implicado: ${x.of}`, "",
+    "1. Estado del oficial", L(V.p1), "", "2. Declaración de Seguridad Pública", ...PSS.map((q, i) => `- ${q}: ${x.pss[i] || "—"}`), "", "3. Retirada de la escena", L(V.p3), "",
+    ...V.p4.flatMap((g, i) => [`4. Revisión del arma${V.p4.length > 1 ? ` (${i + 1})` : ""}`, L(g), ""]), "5. Test de alcohol y drogas", L(V.p5),
+    ...(x.notas.trim() ? ["", "Notas", x.notas.trim()] : [])].join("\n");
+}
+const esc = escHtml;
 function oisHtml(x: Ois) {
   const V = vals(x), seal = location.origin + "/next/lspd-seal.webp", hoy = new Date().toLocaleDateString("es-AR");
   const grid = (L: string[][]) => { const r: string[] = []; for (let i = 0; i < L.length; i += 2) r.push("<tr>" + [L[i], L[i + 1]].map(c => (c ? `<td><b>${esc(c[0])}:</b><br>${esc(c[1])}</td>` : "<td></td>")).join("") + "</tr>"); return `<table class="g">${r.join("")}</table>`; };
@@ -318,7 +331,7 @@ function oisHtml(x: Ois) {
   ${bar("Paso 3 · Retirada de la escena inmediata")}${grid(V.p3)}
   ${bar("Paso 4 · Revisión del arma")}<p>El arma no se retira: se devuelve al oficial en cuanto termina la revisión.</p>${V.p4.map((g, i) => (V.p4.length > 1 ? `<p class="q">Arma ${i + 1}${i === 0 ? " (reglamentaria)" : ""}</p>` : "") + grid(g)).join("")}
   ${bar("Paso 5 · Test de alcohol y drogas")}<p>Procedimiento obligatorio en todo uso de fuerza letal; no supone ninguna acusación.</p>${grid(V.p5)}
-  ${bar("Paso 6 · Notificación a PSB")}<p>Se informa al oficial de que:</p>${PSB_AV.map((p, i) => `<div class="chk">${x.psb[i] ? "☑" : "☐"} ${esc(p)}</div>`).join("")}
+  ${bar("Paso 6 · Remisión a la FID")}<p>Se informa al oficial de que:</p>${PSB_AV.map((p, i) => `<div class="chk">${x.psb[i] ? "☑" : "☐"} ${esc(p)}</div>`).join("")}
   ${x.notas.trim() ? bar("Notas del Sargento") + `<p>${esc(x.notas.trim()).replace(/\n/g, "<br>")}</p>` : ""}
   <div class="sig"><div><div class="ln">${esc(who(x.sgt))}<br>Sargento a cargo · Los Santos Police Department</div></div><div><div class="ln">${esc(who(x.of))}<br>Oficial implicado</div></div></div>
   <div class="ft">Procedimiento redactado por ${OIS_AUTOR} · Los Santos Police Department</div>

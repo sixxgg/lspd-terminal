@@ -19,7 +19,7 @@ type N = { id: string; t: number; I: LucideIcon; c: string; title: string; body:
 type Ev = { id: string; t: number; title: string; body: string; up: boolean };
 const lsGet = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(k); return v ? (JSON.parse(v) as T) : d; } catch { return d; } };
 const lsSet = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sin almacenamiento */ } };
-type Case = { id: string; cf: string; ag: string; by: string; ts: number; upd: number; docs: { t: string; ts: number; by: string }[] };
+type Case = { id: string; cf: string; ag: string; by: string; ts: number; upd: number; ois?: string; docs: { t: string; ts: number; by: string }[] };
 
 export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: string, s: string) => void }) {
   const ver = useStoreVersion(); useTick();
@@ -43,7 +43,8 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
       L.push({ id: `fb:${x.id}:${x.u}`, t: x.u, I: Heart, c: S.c, title: `Tu feedback: ${S.l}`, body: x.nota ? `Respuesta: ${x.nota}` : fbX(x.x), go: ["fb", "env"] }); }
     for (const e of lsGet<Ev[]>(kEv, [])) L.push({ id: e.id, t: e.t, I: e.up ? TrendingUp : TrendingDown, c: e.up ? "#22c55e" : "#f59e0b", title: e.title, body: e.body, go: ["age", "prof"] });
     if (psb) for (const c of cases) {
-      if (c.by !== me.n && Date.now() - c.ts < 14 * 864e5) L.push({ id: `psb:n:${c.id}`, t: c.ts, I: Shield, c: "#818cf8", title: `PSB · expediente nuevo ${c.cf}`, body: `${c.ag || "Agente sin cargar"} · abierto por ${c.by}`, go: ["div", "dv_psb"] });
+      if (c.by !== me.n && Date.now() - c.ts < 14 * 864e5) L.push(c.ois ? { id: `psb:n:${c.id}`, t: c.ts, I: Shield, c: "#ef4444", title: `FID · uso de la fuerza ${c.ois}`, body: `${c.ag} · remitido por ${c.by} · caso ${c.cf}`, go: ["div", "dv_psb"] }
+        : { id: `psb:n:${c.id}`, t: c.ts, I: Shield, c: "#818cf8", title: `PSB · expediente nuevo ${c.cf}`, body: `${c.ag || "Agente sin cargar"} · abierto por ${c.by}`, go: ["div", "dv_psb"] });
       const r = c.docs.filter(d => d.t === "res").sort((a, b) => b.ts - a.ts)[0];
       if (r && r.by !== me.n) L.push({ id: `psb:r:${c.id}:${r.ts}`, t: r.ts, I: Shield, c: "#22c55e", title: `PSB · ${c.cf} resuelto`, body: `${c.ag || ""} · resolución de ${r.by}`, go: ["div", "dv_psb"] }); }
     /* comentarios que otros dejaron en mi perfil */

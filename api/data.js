@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { q, tx } from "../lib/db.js";
 import { audit, auditList, diffSum } from "../lib/audit.js";
 import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp } from "../lib/core.js";
@@ -58,6 +59,26 @@ export default wrap(async (req, res) => {
   /* contraseña restablecida: hasta que la cambie no puede guardar nada */
   try { if (JSON.parse((await q("select v from meta where k='mustpw'")).rows[0]?.v || "[]").includes(u.n)) return send(res, 403, { error: "perm", msg: "Primero cambiá tu contraseña" }); } catch { /* */ }
   let why = canWrite(u, k);
+  /* OIS remitido a la FID: cualquiera que pueda cargar OIS abre (o actualiza) el caso en la PSB, sin tocar el resto de los expedientes */
+  if (b.oisFid && typeof b.oisFid === "object") {
+    if (canWrite(u, "lspdt.ois")) return send(res, 403, { msg: "No podés cargar procedimientos OIS" });
+    const o = b.oisFid, s = x => String(x ?? "").slice(0, 200), no = s(o.no), m = /^OIS-(\d{2})-(\d+)$/.exec(no);
+    if (!m || !s(o.of)) return send(res, 400, { msg: "Faltan datos del OIS" });
+    const K = "lspdt.psbCases", now = Date.now(), txt = String(o.txt || "").slice(0, 20000);
+    const r = await tx(async c => {
+      await c.query("select pg_advisory_xact_lock(hashtext($1))", [K]);
+      let L = []; try { L = JSON.parse((await c.query("select v from kv where k=$1", [K])).rows[0]?.v || "[]"); } catch { /* */ }
+      const cf = `CF-${m[1]}-OIS${m[2]}`, i = L.findIndex(x => x.ois === no), doc = { t: "ois", txt, ts: now, by: u.n };
+      const hecho = `Uso de la fuerza con arma de fuego (OIS ${no})${o.lugar ? " en " + s(o.lugar) : ""}${o.fecha ? ", el " + s(o.fecha).split("-").reverse().join("/") : ""}${o.hora ? " a las " + s(o.hora) : ""}. Sargento a cargo: ${s(o.sgt)}.`;
+      const cs = i >= 0 ? { ...L[i], ag: s(o.of), upd: now, docs: [...(L[i].docs || []).filter(d => d.t !== "ois"), doc] }
+        : { id: crypto.randomBytes(6).toString("hex"), cf, ag: s(o.of), dv: "FID", by: u.n, ts: now, upd: now, concl: "", st: "abierto", ois: no, docs: [doc], px: { cA: m[1], cB: "OIS" + m[2], ag: s(o.of), dv: "FID", hecho } };
+      L = i >= 0 ? L.map((x, j) => (j === i ? cs : x)) : [...L, cs];
+      await c.query("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do update set v=excluded.v, t=excluded.t, by=excluded.by, at=excluded.at", [K, JSON.stringify(L), u.n, now]);
+      return { cf, nuevo: i < 0 };
+    });
+    await audit(u.n, r.nuevo ? "remitió a la FID" : "actualizó en la FID", "lspdt.psbCases", `${no} · ${r.cf} · oficial ${s(o.of)}`, clientIp(req));
+    return send(res, 200, r);
+  }
   if (why === PSB_DENY) { // miembros de la PSB definidos en el panel de administración
     try { const r = await q("select v from kv where k='lspdt.ui'"); const l = JSON.parse(r.rows[0].v).psb; if (Array.isArray(l) && l.includes(u.n)) why = null; } catch {}
   }

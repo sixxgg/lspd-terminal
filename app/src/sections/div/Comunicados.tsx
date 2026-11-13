@@ -7,7 +7,7 @@ import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { findAgent, getRoster } from "@/lib/domain";
+import { findAgent, getRoster, unixOf } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 import { ROLE_LSPD } from "@/lib/calendar";
 
@@ -28,7 +28,6 @@ type Tpl = { k: string; l: string; d: string; fields: Fd[]; def: (d: CommDiv, me
 
 const lines = (s = "") => s.split("\n").map(x => x.trim()).filter(Boolean);
 const pairs = (s = "") => lines(s).map(x => { const i = x.indexOf("|"); return i < 0 ? [x, ""] : [x.slice(0, i).trim(), x.slice(i + 1).trim()]; });
-const unix = (date: string, time = "00:00") => (date ? Math.floor(new Date(`${date}T${time || "00:00"}`).getTime() / 1000) : 0);
 const dmyShort = (date: string) => (date ? date.slice(2).split("-").reverse().join("/") : "[DD/MM/AA]");
 const mention = (v: Record<string, string>) => (v.rol ? (v.spoiler === "1" ? `||<@&${v.rol}>||` : `<@&${v.rol}>`) : "");
 const E = (d: CommDiv, v: Record<string, string>) => (v.emoji === "0" ? "" : INFO[d].em);
@@ -68,7 +67,7 @@ const TPLS: Tpl[] = [
         detalle: "Durante la práctica se evaluarán las maniobras básicas y se entregará el equipamiento a todos los oficiales interesados en formar parte de la división.", uniforme: "",
         requisito: "deberán presentarse con el uniforme de vuelo reglamentario en el helipuerto de Mission Row.", sinexc: "0", cierre: "Los esperamos.", asist: "1",
         firma: "", cargo: "Coordinación de la Air Support Division (ASD)", depto: "1", rol: ROLE_LSPD, spoiler: "1", emoji: "1" },
-    render: (d, v) => { const e = E(d, v), t = Number(v.ts) || unix(v.fecha, v.hora); return join([
+    render: (d, v) => { const e = E(d, v), t = Number(v.ts) || unixOf(v.fecha, v.hora); return join([
       `# ${e ? e + " " : ""}${v.titulo || "[Título]"}${e ? " " + e : ""}`, "",
       `Se informa que el día ${t ? `<t:${t}:D>` : dmyShort(v.fecha)} a las ${t ? `<t:${t}:t>` : "[HORA]"} (${t ? `<t:${t}:R>` : "[cuándo]"}) se llevará a cabo ${v.actividad || "[actividad]"}${v.conjunto ? `, realizada en conjunto con ${v.conjunto}` : ""}.`, "",
       [v.detalle, v.uniforme].filter(Boolean).join(" "), "",
@@ -97,7 +96,7 @@ const TPLS: Tpl[] = [
       { k: "lema", l: "Lema", t: "text", hint: "(opcional)" }, ...SIGN, ...COMMON],
     def: d => ({ depto: "1", promo: "005", saludo: "Buenas noches:", form: "https://", requisito: d === "asd" ? "Para formar parte de la ASD es necesario pertenecer, como mínimo, al **PELOTÓN B** de la **METRO**." : "Para formar parte de la UDU es necesario pertenecer a la **METRO**.",
       lema: d === "asd" ? "The mission is the same, only the vehicle has changed." : "", cargo: `Coordinador de la ${INFO[d].n} (${INFO[d].ab})`, rol: ROLE_LSPD, spoiler: "1", emoji: "1" }),
-    render: (d, v) => { const e = E(d, v), I = INFO[d], pt = unix(v.plazoF, v.plazoH); return join([
+    render: (d, v) => { const e = E(d, v), I = INFO[d], pt = unixOf(v.plazoF, v.plazoH); return join([
       `# **${e ? e + " " : ""}__INSTANCIAS - (${I.ab}) ${I.n.toUpperCase()} (PROMOCIÓN ${v.promo || "000"})__${e ? " " + e : ""}**`, "",
       v.saludo, `Me complace informar la apertura de oposiciones para acceder a la división **${I.n}** (__${I.ab}__) de la LSPD.`, "",
       "A todos los formularios **APTOS** se les informará en la fecha indicada para poder realizar las siguientes partes del proceso.",
@@ -136,7 +135,7 @@ const TPLS: Tpl[] = [
           case "h1": case "h2": case "h3": return [`${"#".repeat(+b.t[1])} ${b.t === "h1" && e ? e + " " : ""}${x || "[Título]"}${b.t === "h1" && e ? " " + e : ""}`, ""];
           case "list": return [...lines(x).map(l => `* ${l}`), ""];
           case "quote": return [...lines(x).map(l => `> ${l}`), ""];
-          case "when": { const t = unix(b.d || "", b.h || ""); return [(x || "{fecha} a las {hora} ({falta})").replace(/\{fecha\}/g, t ? `<t:${t}:D>` : "[DÍA]").replace(/\{hora\}/g, t ? `<t:${t}:t>` : "[HORA]").replace(/\{falta\}/g, t ? `<t:${t}:R>` : "[cuándo]"), ""]; }
+          case "when": { const t = unixOf(b.d || "", b.h || ""); return [(x || "{fecha} a las {hora} ({falta})").replace(/\{fecha\}/g, t ? `<t:${t}:D>` : "[DÍA]").replace(/\{hora\}/g, t ? `<t:${t}:t>` : "[HORA]").replace(/\{falta\}/g, t ? `<t:${t}:R>` : "[cuándo]"), ""]; }
           case "asist": return [`Confirmar asistencia con ${ASIST}`, ""];
           case "sep": return ["_ _", ""];
           case "firma": { const f = firmaBlock(v); return f ? [f, ""] : []; }

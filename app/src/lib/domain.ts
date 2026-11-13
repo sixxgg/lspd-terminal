@@ -77,7 +77,7 @@ export const LUGARES: string[] = [...gta.zonas, ...gta.calles];
 export const DIVISIONES = ["Patrulla", "Detective Bureau", "Metropolitan Division", "Air Support Division", "K-9 Division", "High Speed Interception Unit",
   "Recruitment and Training Division", "Professional Standards Bureau", "Administration Services Bureau"];
 
-const pad2 = (n: number) => String(n).padStart(2, "0");
+export const pad2 = (n: number) => String(n).padStart(2, "0");
 export const hoyDMY = () => { const d = new Date(); return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`; };
 export const isDMY = (s: string) => /^\d{2}\/\d{2}\/\d{4}$/.test(s);
 export const fmtDate = (t: number) => new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -133,6 +133,8 @@ export function dmyToISO(s: string) {
   if (y < 2000 || y > 2100 || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
   return `${y}-${pad2(mo)}-${pad2(d)}`;
 }
+export const unixOf = (d: string, h = "00:00") => (d ? Math.floor(new Date(`${d}T${h || "00:00"}`).getTime() / 1000) : 0);
+export const escHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 export const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
 const nkey = (n: string) => norm(n).replace(/[^a-z0-9]/g, "");
 export const findLoose = (n: string) => findAgent(n) || getRoster().find(a => nkey(a.n) === nkey(n)) || null;

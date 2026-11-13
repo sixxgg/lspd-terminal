@@ -7,7 +7,7 @@ import { Modal } from "@/components/modal";
 import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { AgentCombo } from "@/components/agents";
-import { findAgent, getRoster, hoyISO, lvl, rankES, uid , dmy } from "@/lib/domain";
+import { dmy, findAgent, getRoster, hoyISO, lvl, rankES, uid } from "@/lib/domain";
 import { useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { uMap } from "@/lib/units";

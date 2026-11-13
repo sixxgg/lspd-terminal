@@ -6,15 +6,14 @@ import { AgentCombo, Avatar } from "@/components/agents";
 import { useFeedback } from "@/components/feedback";
 import { LS, useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { findLoose, norm, uid } from "@/lib/domain";
+import { findLoose, norm, pad2, uid } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 
 type Hu = { id: string; f: string; c: string; cid: string; h: string; st: "nuevo" | "coinc"; fr: string; a: string; por: string };
 const KEY = "lspdt.huellas";
 const DT = /(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/;
 const ts = (s: string) => { const m = DT.exec(s); return m ? new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]).getTime() : 0; };
-const pad = (n: number) => String(n).padStart(2, "0");
-const nowTxt = () => { const d = new Date(); return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const nowTxt = () => { const d = new Date(); return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
 const toLocal = (s: string) => { const m = DT.exec(s); return m ? `${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}` : ""; };
 const fromLocal = (v: string) => { const m = /(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(v); return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : ""; };
 const agName = (n: string) => findLoose(n.trim())?.n || n.trim();

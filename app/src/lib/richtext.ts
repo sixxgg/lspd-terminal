@@ -1,8 +1,9 @@
+import { escHtml } from "./domain";
 /* Texto con formato del feedback: se arma con un editor (contentEditable) y SIEMPRE se vuelve a construir con una lista blanca
    antes de guardarlo o mostrarlo (nada de scripts, eventos ni estilos raros: solo negrita, subrayado, tachado, oculto, color e imágenes). */
 const TAGS: Record<string, string> = { B: "b", STRONG: "b", I: "i", EM: "i", U: "u", S: "s", STRIKE: "s", DEL: "s", DIV: "div", P: "div", BR: "br", UL: "ul", OL: "ol", LI: "li", SPAN: "span", FONT: "span" };
 const COLOR_RE = /^(#[0-9a-f]{3,8}|rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\))$/i;
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const esc = escHtml;
 export const FB_COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#a855f7", "#ec4899"];
 
 /* img(el): devuelve la URL a usar para una imagen (o "" para descartarla) */

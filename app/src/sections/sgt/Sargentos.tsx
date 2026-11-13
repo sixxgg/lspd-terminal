@@ -7,7 +7,7 @@ import { Button, Card, Field, Input, Select, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
-import { findAgent, getRoster, rankES, uid , dmy } from "@/lib/domain";
+import { dmy, findAgent, getRoster, hoyISO, rankES, uid } from "@/lib/domain";
 import { useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { AgentCombo } from "@/components/agents";
@@ -43,7 +43,6 @@ function toConv(convs: Conv[], set: (c: Conv[]) => void, e: { cand: string; rang
   const rows = ex ? last.rows.map(r => r === ex ? { ...r, ...p, rango: e.rango || r.rango } : r) : [...last.rows, { ...r_(e.cand, e.rango, undefined, undefined, 0), ...p }];
   set([...L.slice(0, -1), { ...last, rows }]); return last.n;
 }
-const today = () => new Date().toISOString().slice(0, 10);
 const CANDS = () => getRoster().filter(a => ["Police Officer III+", "Police Officer III", "Police Officer II", "Detective I", "Detective II", "Detective III"].includes(a.r)).map(a => a.n).sort((a, b) => a.localeCompare(b));
 
 export const AREAS_EXA = ["Manual del Departamento", "Procedimientos de patrulla", "Uso de la fuerza", "Marco legal", "Liderazgo y supervisión"];
@@ -133,7 +132,7 @@ function Examen({ evals, onSave, onDel }: { evals: Eval[]; onSave: (e: Eval) => 
   const me = useMe(), { toast } = useFeedback();
   const [bank, setBank] = useJSON<Q[]>(K_BANK, BANK0);
   const [cur, setCur] = useState<Eval | null>(null), [edit, setEdit] = useState(false);
-  const blank = (): Eval => ({ id: "", tipo: "exa", cand: "", rango: "", fecha: today(), anios: 0, notas: {}, obs: {}, pct: 0, nota: 0, apto: false, by: me.n, ts: 0, qs: bank.map(q => ({ id: q.id, t: q.q })) });
+  const blank = (): Eval => ({ id: "", tipo: "exa", cand: "", rango: "", fecha: hoyISO(), anios: 0, notas: {}, obs: {}, pct: 0, nota: 0, apto: false, by: me.n, ts: 0, qs: bank.map(q => ({ id: q.id, t: q.q })) });
   const e = cur || blank(), qs = bank;
   const set = (p: Partial<Eval>) => setCur({ ...e, ...p });
   const graded = qs.filter(q => e.notas[q.id]), pts = qs.reduce((a, q) => a + gradeVal(e.notas[q.id] || ""), 0);
@@ -200,7 +199,7 @@ function BankEditor({ bank, onSave, onClose }: { bank: Q[]; onSave: (b: Q[]) => 
 /* ---------- Fase III: entrevista (Oral Board) ---------- */
 function Entrevista({ evals, onSave, onDel }: { evals: Eval[]; onSave: (e: Eval) => void; onDel: (id: string) => void }) {
   const me = useMe(), { toast } = useFeedback();
-  const blank = (): Eval => ({ id: "", tipo: "ent", cand: "", rango: "", fecha: today(), notas: {}, obs: {}, pct: 0, nota: 0, apto: false, by: me.n, ts: 0 });
+  const blank = (): Eval => ({ id: "", tipo: "ent", cand: "", rango: "", fecha: hoyISO(), notas: {}, obs: {}, pct: 0, nota: 0, apto: false, by: me.n, ts: 0 });
   const [cur, setCur] = useState<Eval | null>(null), [rep, setRep] = useState<Record<number, boolean>>({});
   const [convs, setConvs] = useJSON<Conv[]>(K_CONV, CONV0);
   const e = cur || blank(), set = (p: Partial<Eval>) => setCur({ ...e, ...p });

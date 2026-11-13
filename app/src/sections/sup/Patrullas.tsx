@@ -6,7 +6,7 @@ import { Lightbox, Modal } from "@/components/modal";
 import { useCopy } from "@/components/output";
 import { CarPicker } from "@/components/carpick";
 import { useFeedback } from "@/components/feedback";
-import { findAgent as getAgent, lvl, rankES, uid , dmy } from "@/lib/domain";
+import { dmy, findAgent as getAgent, lvl, rankES, uid } from "@/lib/domain";
 import { LS, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { goTo } from "@/lib/profiles";

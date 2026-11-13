@@ -1,7 +1,7 @@
 /* Vista previa de Discord fiel: títulos, -# subtítulos, citas, listas, negrita/cursiva/subrayado/tachado,
    código, spoilers, menciones (<@id>, <@&rol>), marcas de tiempo <t:...> y emojis propios del servidor. */
-import { getRoster } from "./domain";
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+import { escHtml, getRoster } from "./domain";
+const esc = escHtml;
 export type DcCtx = { users?: Record<string, string>; roles?: Record<string, string> };
 
 export const TS_FMT: [string, string][] = [["t", "Hora corta"], ["T", "Hora con segundos"], ["d", "Fecha corta"], ["D", "Fecha larga"], ["f", "Fecha y hora"], ["F", "Día, fecha y hora"], ["R", "Relativo"]];

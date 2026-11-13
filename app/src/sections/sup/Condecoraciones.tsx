@@ -7,13 +7,12 @@ import { useFeedback } from "@/components/feedback";
 import { Ribbon } from "@/components/ribbon";
 import { AgentCombo } from "@/components/agents";
 import { DECOR, type Award, type Decor, type Tab } from "@/lib/decor";
-import { findAgent, norm, rankES, uid , dmy } from "@/lib/domain";
+import { dmy, findAgent, hoyISO, norm, rankES, uid } from "@/lib/domain";
 import { useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { allProfiles, updateProf } from "@/lib/profiles";
 
 const TABS: [Tab, string, typeof Medal][] = [["cond", "Condecoraciones", AwardI], ["med", "Medallas", Medal], ["fra", "Franjas de servicio", RibbonI]];
-const today = () => new Date().toISOString().slice(0, 10);
 
 /* quién tiene cada condecoración (sale de los perfiles) */
 export function holders() {
@@ -62,7 +61,7 @@ function DecorModal({ d, onClose }: { d: Decor; onClose: () => void }) {
   useStoreVersion();
   const me = useMe(), { toast, confirm } = useFeedback();
   const list = (holders().get(d.k) || []).sort((a, b) => (b.a.f || "").localeCompare(a.a.f || ""));
-  const [ag, setAg] = useState(""), [f, setF] = useState(today()), [m, setM] = useState("");
+  const [ag, setAg] = useState(""), [f, setF] = useState(hoyISO()), [m, setM] = useState("");
   const give = async () => {
     const a = findAgent(ag.trim()); if (!a) { toast("Elegí un agente del roster", "err"); return; }
     if (list.some(x => x.n === a.n) && d.c !== "Acumulativa" && !(await confirm(`${a.n} ya tiene «${d.t}». ¿Otorgarla otra vez?`))) return;

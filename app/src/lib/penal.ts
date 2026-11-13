@@ -1,5 +1,5 @@
 /* Código penal (lspdt.penal sobre el catálogo base) e informes policiales (lspdt.informes): misma lógica y texto que la versión clásica */
-import { RK_AB, findAgent, joinY, norm, rankES } from "./domain";
+import { RK_AB, findAgent, joinY, norm, pad2, rankES } from "./domain";
 import { CIRC, EV_T, INF_EST, INF_FZ, INF_ROLES, INF_TIPOS, PENAL_DEF, SYN } from "@/legacy/penal";
 
 export type Art = { a: string; t: string; d: string; c: string; k?: "cp" | "adm"; g?: string; m?: number; p?: number; pt?: number; v?: number };
@@ -54,8 +54,7 @@ const rkAb = (r: string) => RK_AB[r] || rankES(r);
 export const agTag = (n: string) => { const a = findAgent(n); return a ? `${rkAb(a.r)} ${a.n}${a.p ? ` [${a.p}]` : ""}` : n; };
 const modTxt = (m?: string) => (m === "at" ? "atenuado" : m === "ag" ? "agravado" : "");
 const plural = (n: number, s: string, p: string) => (n === 1 ? s : p);
-const pad = (n: number) => String(n).padStart(2, "0");
-export const infNew = (me?: string): Inf => { const d = new Date(); return { fecha: `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`, hora: `${pad(d.getHours())}:${pad(d.getMinutes())}`, ui: "", ux: "", uf: "Comisaría de Mission Row", tipos: [], est: "Incidente finalizado", motivo: "", hechos: "",
+export const infNew = (me?: string): Inf => { const d = new Date(); return { fecha: `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`, hora: `${pad2(d.getHours())}:${pad2(d.getMinutes())}`, ui: "", ux: "", uf: "Comisaría de Mission Row", tipos: [], est: "Incidente finalizado", motivo: "", hechos: "",
   unid: me ? [{ n: me, r: "Unidad de apoyo" }] : [], suj: [{ n: "", id: "", cg: [] }], fz: "N/A", fzd: "", ev: [], veh: [], off: [], extra: "", id: "" }; };
 
 const unitTag = (u: Unid) => (u.n ? agTag(u.n) + (u.u ? ` (${u.u})` : "") : u.u || "");

@@ -5,10 +5,10 @@ import { Button, Card, Field, Input } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
 import { TS_FMT, ts, unixOf } from "@/lib/discord";
 import { cn } from "@/lib/cn";
+import { pad2 } from "@/lib/domain";
 
-const pad = (n: number) => String(n).padStart(2, "0");
-const toDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const toTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const toDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const toTime = (d: Date) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 
 export function Timestamps() {
   const { toast } = useFeedback(), now = new Date();
