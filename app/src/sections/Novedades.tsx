@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.0";
+export const APP_VERSION = "3.0.1";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,12 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.0.1", f: "13/11/2026", t: "Versiones de los informes OIS", items: [
+    "Cada vez que se guarda algo en la terminal queda una versión en el servidor. En el OIS: Revisar → Versiones muestra qué cambió en cada una, la deja ver completa y permite restaurarla.",
+    "«Recuperar borrados» (Teniente o superior) lista los expedientes OIS que se borraron y permite traerlos de vuelta.",
+    "Al editar un OIS solo se guardan los campos que tocaste: si otra persona lo cambió mientras lo tenías abierto, no se pisan sus datos.",
+    "Los OIS cargados con el formato anterior muestran otra vez cargadores, balas, dotación y otra arma, que habían dejado de verse.",
+  ] },
   { v: "3.0", f: "11/11/2026 – 13/11/2026", t: "Terminal de Mando 3.0", items: [], g: [
     ["Divisiones", [
       "Cada división la ve solo quien está en su roster y lo controla el servidor; la coordinación elige qué pestañas ven los miembros y es la única que edita su roster.",

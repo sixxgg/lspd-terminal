@@ -2,7 +2,7 @@
    Se completa paso a paso, se ve en formato web y se exporta en PDF con el formato de los documentos oficiales (sello LSPD).
    Se guarda en lspdt.ois. */
 import { useEffect, useState } from "react";
-import { AlertTriangle, Ambulance, Check, ClipboardCheck, Plus, Crosshair, FileDown, FilePlus2, FileText, FlaskConical, HeartPulse, MapPinOff, MessageSquareWarning, Pencil, RotateCcw, Save, Send, Trash2 } from "lucide-react";
+import { AlertTriangle, Ambulance, Check, ClipboardCheck, History, Plus, Crosshair, FileDown, FilePlus2, FileText, FlaskConical, HeartPulse, MapPinOff, MessageSquareWarning, Pencil, RotateCcw, Save, Send, Trash2 } from "lucide-react";
 import { Button, Card, Checkbox, Empty, Field, Input, Segmented, Textarea } from "@/components/ui";
 import { AgentCombo } from "@/components/agents";
 import { Modal } from "@/components/modal";
@@ -26,7 +26,7 @@ type Ois = {
   her: "" | "si" | "no"; ems: boolean; emo: string; emoN: string;
   pss: string[]; ret: boolean; zona: string;
   mod: string; ser: string; est: string; estN: string; car: string; rest: string; disp: string; dot: string; camb: "" | "si" | "no"; otra: string;
-  alc: string; drog: string; testN: string; psb: boolean[]; notas: string; hist?: { t: number; by: string; a: string }[]; armas?: Gun[]; fid?: string;
+  alc: string; drog: string; testN: string; psb: boolean[]; notas: string; hist?: { t: number; by: string; a: string }[]; armas?: Gun[]; fid?: string; __at?: number;
 };
 /* armas revisadas en el paso 4 (puede haber más de una si disparó con varias) */
 type Gun = { id: string; mod: string; ser: string; est: string; estN: string; cap: number; mags: string[]; disp: string; camb: "" | "si" | "no" };
@@ -35,7 +35,16 @@ const MODELOS: [string, number][] = [["Combat Pistol", 12], ["Pistol MK2", 12], 
 const capOf = (m: string) => MODELOS.find(([n]) => n.toLowerCase() === m.trim().toLowerCase())?.[1] || 0;
 const newGun = (): Gun => ({ id: uid(), mod: "", ser: "", est: "", estN: "", cap: 0, mags: ["", "", ""], disp: "", camb: "" });
 /* expedientes viejos (un arma con texto libre) → formato nuevo */
-const gunsOf = (x: Ois): Gun[] => x.armas?.length ? x.armas : [{ id: "g0", mod: x.mod, ser: x.ser, est: x.est, estN: x.estN, cap: capOf(x.mod), mags: (x.rest.match(/\d+/g) || []).length ? x.rest.match(/\d+/g)! : Array.from({ length: +x.car || 3 }, () => ""), disp: x.disp, camb: x.camb }];
+const gunsOf = (x: Ois): Gun[] => {
+  if (x.armas?.length) return x.armas;
+  const nums = (x.rest || "").match(/\d+/g) || [], n = Math.max(+x.car || 0, nums.length) || 3;
+  const g: Gun = { id: "g0", mod: x.mod || "", ser: x.ser || "", est: x.est || "", estN: x.estN || "", cap: capOf(x.mod || "") || (+x.dot && n ? Math.round(+x.dot / n) : 0),
+    mags: Array.from({ length: n }, (_, i) => nums[i] ?? ""), disp: x.disp || "", camb: x.camb || "" };
+  return x.otra?.trim() ? [g, { ...newGun(), id: "g1", mod: x.otra.trim(), mags: [] }] : [g];
+};
+/* lo que se cargó con el formato anterior (antes de la v2.5.6): se muestra tal cual para que no se pierda nada */
+const legacy = (x: Ois): string[][] => [["Cargadores", x.car], ["Balas que quedan", x.rest], ["Dotación declarada", x.dot], ["Balas disparadas", !x.armas?.length ? "" : x.disp], ["Otra arma", x.otra]]
+  .filter(([, v]) => v && String(v).trim()) as string[][];
 /* cuentas: dotación = cargadores × capacidad; disparadas = dotación − lo que queda */
 const gCalc = (g: Gun) => { const left = g.mags.reduce((a, m) => a + (+m || 0), 0), dot = g.cap ? g.cap * g.mags.length : 0, filled = g.mags.every(m => m !== "");
   return { left, dot, est: dot && filled ? Math.max(0, dot - left) : null }; };
@@ -67,7 +76,9 @@ const base = (x: Ois) => [!x.of && "Oficial implicado", !x.sgt && "Sargento a ca
 export function OisPanel() {
   const me = useMe(), { toast, confirm } = useFeedback();
   const [L, setL] = useJSON<Ois[]>("lspdt.ois", []);
-  const [tab, setTab] = useState<"new" | "list">("new"), [x, setX] = useState<Ois>(() => blank(me.n, L)), [open, setOpen] = useState(""), [miss, setMiss] = useState(false), [rev, setRev] = useState<Ois | null>(null), [web, setWeb] = useState<Ois | null>(null);
+  const [tab, setTab] = useState<"new" | "list">("new"), [x, setX] = useState<Ois>(() => blank(me.n, L)), [open, setOpen] = useState(""), [miss, setMiss] = useState(false), [rev, setRev] = useState<Ois | null>(null), [web, setWeb] = useState<Ois | null>(null), [orig, setOrig] = useState<Ois | null>(null), [vers, setVers] = useState<Ois | null>(null), [gone, setGone] = useState(false);
+  /* abrir un expediente en el formulario: se guarda cómo estaba para, al guardar, aplicar solo lo que se cambió */
+  const edit = (r: Ois) => { setX(r); setOrig(r); setTab("new"); };
   const up = (p: Partial<Ois>) => setX({ ...x, ...p }), ok = steps(x), done = ok.filter(Boolean).length;
   const guns = gunsOf(x), setGuns = (L: Gun[]) => up({ armas: L });
   /* expedientes con el mismo número (de antes del arreglo): el más nuevo pasa al siguiente libre */
@@ -78,9 +89,12 @@ export function OisPanel() {
   }, [L.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const doSave = () => {
     const prev = L.find(i => i.id === x.id), k = steps(x).filter(Boolean).length;
-    const r: Ois = { ...x, id: x.id || uid(), t: x.t || Date.now(), no: prev ? x.no : L.some(i => i.no === x.no) ? nextNo(L) : x.no,
+    /* si alguien cambió el expediente mientras lo tenías abierto, solo se pisan los campos que tocaste vos */
+    const o = prev && orig?.id === prev.id ? orig : null, ch = o ? (Object.keys(x) as (keyof Ois)[]).filter(f => JSON.stringify(x[f]) !== JSON.stringify(o[f])) : [];
+    const src: Ois = o ? { ...prev!, ...Object.fromEntries(ch.map(f => [f, x[f]])) } as Ois : x;
+    const r: Ois = { ...src, id: x.id || uid(), t: x.t || Date.now(), no: prev ? x.no : L.some(i => i.no === x.no) ? nextNo(L) : x.no,
       hist: [...(x.hist || []), { t: Date.now(), by: me.n, a: `${prev ? "Editó" : "Creó"} el expediente · ${k}/6 pasos completos` }] };
-    setL([...L.filter(i => i.id !== r.id), r]); setX(r); setMiss(false);
+    setL([...L.filter(i => i.id !== r.id), r]); setX(r); setOrig(r); setMiss(false);
     /* se remite a la FID: el servidor abre (o actualiza) el caso en la PSB y a sus miembros les llega el aviso */
     void remit(r).then(res => {
       toast(res.__s === 200 ? `${prev ? "Procedimiento actualizado" : `Procedimiento guardado: ${r.no}`} · ${res.cf} ${res.nuevo ? "abierto" : "actualizado"} en la FID` : `${r.no} guardado, pero no se pudo remitir a la FID: ${res.msg || "probá de nuevo"}`, res.__s === 200 ? "ok" : "err");
@@ -97,6 +111,8 @@ export function OisPanel() {
   return (
     <div className="space-y-5">
       <Segmented value={tab} onChange={setTab} options={[{ value: "new", label: x.id ? "Editando" : "Nuevo procedimiento", icon: <FilePlus2 /> }, { value: "list", label: `Registrados (${L.length})`, icon: <FileText /> }]} />
+      {tab === "list" && (me.l >= 8 || me.admin) && <div className="-mt-2 flex justify-end"><Button size="sm" variant="ghost" icon={<History />} onClick={() => setGone(true)}>Recuperar borrados</Button></div>}
+      {gone && <Gone L={L} onClose={() => setGone(false)} onRestore={r => { setL([...L, { ...r, hist: [...(r.hist || []), { t: Date.now(), by: me.n, a: "Recuperó el expediente borrado" }] }]); toast(`${r.no} recuperado`); }} />}
       {tab === "list" ? (!H.length ? <Card><Empty icon={<ClipboardCheck />} title="Sin procedimientos registrados" /></Card> : <Card className="divide-y divide-slate-100 dark:divide-slate-800">
         {H.map(r => { const o = open === r.id, k = steps(r).filter(Boolean).length; return (
           <div key={r.id}>
@@ -109,7 +125,7 @@ export function OisPanel() {
               <Button size="sm" icon={<ClipboardCheck />} onClick={() => review(r)}>Revisar</Button>
               <Button size="sm" variant="outline" icon={<FileDown />} onClick={() => oisPdf(r)}>Exportar PDF</Button>
               <Button size="sm" variant="outline" icon={<FileText />} onClick={() => setWeb(r)}>Ver en web</Button>
-              <Button size="sm" variant="outline" icon={<Pencil />} onClick={() => { setX(r); setTab("new"); }}>Editar</Button>
+              <Button size="sm" variant="outline" icon={<Pencil />} onClick={() => edit(r)}>Editar</Button>
               {(r.by === me.n || me.l >= 8 || me.admin) && <Button size="sm" variant="ghost" className="ml-auto text-red-600 dark:text-red-400" icon={<Trash2 />} onClick={async () => { if (await confirm(`¿Borrar ${r.no}?`, { danger: true })) setL(L.filter(i => i.id !== r.id)); }}>Borrar</Button>}
             </div>}
           </div>); })}</Card>)
@@ -174,14 +190,18 @@ export function OisPanel() {
             <Button icon={<Save />} onClick={save}>{x.id ? "Guardar cambios" : "Guardar"}</Button>
             <Button variant="outline" icon={<FileDown />} disabled={!x.of} onClick={() => oisPdf(x)}>Exportar PDF</Button>
             <Button variant="outline" icon={<FileText />} disabled={!x.of} onClick={() => setWeb(x)}>Ver en formato web</Button>
-            {(x.id || x.of) && <Button variant="ghost" icon={<RotateCcw />} onClick={() => setX(blank(me.n, L))}>Empezar otro</Button>}
+            {(x.id || x.of) && <Button variant="ghost" icon={<RotateCcw />} onClick={() => { setX(blank(me.n, L)); setOrig(null); }}>Empezar otro</Button>}
           </div>
           <p className="text-[11px] leading-relaxed text-slate-400">El PDF sale con el sello del LSPD: en la ventana de impresión elegí «Guardar como PDF».</p>
           <p className="border-t border-slate-100 pt-3 text-[11px] text-slate-400 dark:border-slate-800">Procedimiento: {OIS_AUTOR}</p>
         </Card>
       </div>}
       {miss && <Missing x={x} onClose={() => setMiss(false)} onSave={doSave} />}
-      {rev && <Review r={rev} onClose={() => setRev(null)} onEdit={() => { setX(rev); setRev(null); setTab("new"); }} onWeb={() => { setWeb(rev); setRev(null); }} />}
+      {rev && <Review r={rev} onClose={() => setRev(null)} onEdit={() => { edit(rev); setRev(null); }} onWeb={() => { setWeb(rev); setRev(null); }} onVers={() => { setVers(rev); setRev(null); }} />}
+      {vers && <Versions r={vers} onClose={() => setVers(null)} onRestore={v => {
+        const cur = L.find(i => i.id === vers.id); if (!cur) return;
+        const n: Ois = { ...v, id: cur.id, no: cur.no, fid: cur.fid, hist: [...(cur.hist || []), { t: Date.now(), by: me.n, a: `Restauró la versión del ${new Date(v.__at || 0).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}` }] };
+        delete (n as Partial<Ois>).__at; setL(L.map(i => (i.id === n.id ? n : i))); setVers(null); toast(`${cur.no}: versión restaurada`); }} />}
       {web && <WebView r={web} onClose={() => setWeb(null)} />}
     </div>);
 }
@@ -203,11 +223,11 @@ const MissRow = ({ t, l }: { t: string; l: string[] }) => (
   <div><p className="text-sm font-bold text-red-600 dark:text-red-400">{t}</p><ul className="ml-4 list-disc text-[13px] text-red-700/90 dark:text-red-300/90">{l.map(x => <li key={x}>{x}</li>)}</ul></div>);
 
 /* revisión de un expediente ya hecho: cada paso en verde o en rojo con lo que falta, y el historial de cambios */
-function Review({ r, onClose, onEdit, onWeb }: { r: Ois; onClose: () => void; onEdit: () => void; onWeb: () => void }) {
+function Review({ r, onClose, onEdit, onWeb, onVers }: { r: Ois; onClose: () => void; onEdit: () => void; onWeb: () => void; onVers: () => void }) {
   const F = faltas(r), b = base(r), k = F.filter(f => !f.length).length, okAll = k === 6 && !b.length;
   return (
     <Modal open onClose={onClose} size="lg" icon={<ClipboardCheck />} title={`Revisión · ${r.no}`} desc={`${who(r.of)} · ${dmy(r.fecha)} ${r.hora} · Sargento: ${who(r.sgt)}`}
-      footer={<><Button variant="ghost" icon={<FileText />} className="mr-auto" onClick={onWeb}>Ver en web</Button><Button variant="outline" icon={<FileDown />} onClick={() => oisPdf(r)}>PDF</Button><Button icon={<Pencil />} onClick={onEdit}>{okAll ? "Editar" : "Completar lo que falta"}</Button></>}>
+      footer={<><Button variant="ghost" icon={<FileText />} onClick={onWeb}>Ver en web</Button><Button variant="ghost" icon={<History />} className="mr-auto" onClick={onVers}>Versiones</Button><Button variant="outline" icon={<FileDown />} onClick={() => oisPdf(r)}>PDF</Button><Button icon={<Pencil />} onClick={onEdit}>{okAll ? "Editar" : "Completar lo que falta"}</Button></>}>
       <div className={cn("flex items-center gap-3 rounded-2xl border p-3.5", okAll ? "border-emerald-500/40 bg-emerald-500/[.08]" : "border-red-500/40 bg-red-500/[.08]")}>
         {okAll ? <Check className="size-5 text-emerald-500" /> : <AlertTriangle className="size-5 text-red-500" />}
         <p className={cn("text-sm font-semibold", okAll ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300")}>{okAll ? "Expediente completo: los 6 pasos están cargados." : `Faltan datos: ${k}/6 pasos completos${b.length ? ` · sin ${b.join(", ").toLowerCase()}` : ""}.`}</p>
@@ -218,6 +238,8 @@ function Review({ r, onClose, onEdit, onWeb }: { r: Ois; onClose: () => void; on
           <p className="flex items-center gap-2 text-sm font-semibold"><span className={cn("grid size-6 place-items-center rounded-lg text-xs text-white", l.length ? "bg-red-500" : "bg-emerald-500")}>{l.length ? i + 1 : <Check className="size-3.5" />}</span>Paso {i + 1} · {t}</p>
           {l.length > 0 && <ul className="ml-10 mt-1 list-disc text-[13px] text-red-600 dark:text-red-400">{l.map(x => <li key={x}>Falta: {x}</li>)}</ul>}
         </li>); })}</ol>
+      {legacy(r).length > 0 && <div className="rounded-xl border border-amber-500/40 bg-amber-500/[.06] p-3"><p className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-300">Cargado con el formato anterior (paso 4)</p>
+        <dl className="mt-1.5 grid gap-x-4 gap-y-0.5 text-[13px] sm:grid-cols-2">{legacy(r).map(([k, v]) => <div key={k} className="flex gap-2"><dt className="text-slate-500">{k}:</dt><dd className="font-semibold">{v}</dd></div>)}</dl></div>}
       <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-[.16em] text-slate-400">Historial</p>
         {(r.hist || []).length ? <ul className="space-y-1 border-l-2 border-slate-200 pl-3 text-xs dark:border-slate-800">{r.hist!.slice().reverse().map((h, i) => (
           <li key={i}><b>{new Date(h.t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}</b> · {h.by} · <span className="text-slate-500">{h.a}</span></li>))}</ul>
@@ -264,6 +286,54 @@ function GunForm({ g, n, many, set, onDel }: { g: Gun; n: number; many: boolean;
 }
 
 /* formato web: el mismo documento que el PDF, en pantalla */
+/* versiones guardadas en el servidor de este expediente: qué cambió en cada una, verla completa y restaurarla */
+const F_LAB: Record<string, string> = { fecha: "Fecha", hora: "Hora", lugar: "Lugar", sgt: "Sargento", of: "Oficial", her: "Herido", ems: "EMS", emo: "Estado emocional", emoN: "Otro estado / observaciones",
+  pss: "Declaración (PSS)", ret: "Retirada de la escena", zona: "Zona", armas: "Armas", mod: "Modelo (formato anterior)", ser: "Serie (formato anterior)", est: "Estado del arma (formato anterior)", estN: "Notas del arma (formato anterior)",
+  car: "Cargadores (formato anterior)", rest: "Balas que quedan (formato anterior)", disp: "Balas disparadas", dot: "Dotación (formato anterior)", camb: "Cambio de cargador", otra: "Otra arma (formato anterior)",
+  alc: "Alcohol", drog: "Drogas", testN: "Observaciones del test", psb: "Remisión a la FID", notas: "Notas", no: "Número" };
+type Ver = { id: number; by: string; at: number; v: string | null };
+function Versions({ r, onClose, onRestore }: { r: Ois; onClose: () => void; onRestore: (v: Ois) => void }) {
+  const { confirm } = useFeedback(), [L, setL] = useState<Ver[] | null>(null), [sel, setSel] = useState(0), [err, setErr] = useState("");
+  useEffect(() => { void api(`/api/data?hist=lspdt.ois&id=${encodeURIComponent(r.id)}`).then(res => { if (res.__s === 200) setL(res.list); else setErr(res.msg || "No se pudieron cargar las versiones"); }); }, [r.id]);
+  const parse = (v: Ver | undefined): Ois | null => { try { return v?.v ? { ...JSON.parse(v.v), __at: v.at } : null; } catch { return null; } };
+  const diff = (i: number) => { const a = parse(L![i]), b = parse(L![i + 1]); if (!a) return ["Expediente borrado"]; if (!b) return i === L!.length - 1 ? ["Primera versión registrada"] : [];
+    return Object.keys(F_LAB).filter(k => JSON.stringify((a as never)[k] ?? "") !== JSON.stringify((b as never)[k] ?? "")).map(k => F_LAB[k]); };
+  const cur = L ? parse(L[sel]) : null, fmt = (t: number) => (t ? new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "antes del registro");
+  return (
+    <Modal open onClose={onClose} size="xl" icon={<History />} title={`Versiones · ${r.no}`} desc="Cada vez que se guardó el expediente. Elegí una para verla completa o restaurarla."
+      footer={<><Button variant="ghost" onClick={onClose}>Cerrar</Button>{cur && sel > 0 && <Button icon={<RotateCcw />} onClick={async () => { if (await confirm(`¿Restaurar la versión del ${fmt(L![sel].at)}? Lo actual queda guardado como otra versión.`, { ok: "Restaurar" })) onRestore(cur); }}>Restaurar esta versión</Button>}</>}>
+      {err ? <p className="text-sm text-red-500">{err}</p> : !L ? <p className="text-sm text-slate-500">Cargando…</p> : !L.length ? <p className="text-sm text-slate-500">Todavía no hay versiones guardadas de este expediente.</p> :
+      <div className="grid gap-4 lg:grid-cols-[17rem_minmax(0,1fr)]">
+        <ol className="max-h-[66vh] space-y-1.5 overflow-y-auto pr-1">{L.map((v, i) => { const d = diff(i); return (
+          <li key={v.id}><button onClick={() => setSel(i)} className={cn("w-full rounded-xl border p-2.5 text-left transition", sel === i ? "border-brand-500 bg-brand-500/10" : "border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40")}>
+            <p className="flex items-center gap-2 text-[13px] font-semibold">{fmt(v.at)}{i === 0 && <span className="rounded bg-emerald-500/15 px-1.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-300">ACTUAL</span>}</p>
+            <p className="text-xs text-slate-500">{v.by || "—"}</p>
+            {d.length > 0 && <p className="mt-1 text-[11.5px] leading-snug text-slate-600 dark:text-slate-300">{d.slice(0, 6).join(", ")}{d.length > 6 ? ` y ${d.length - 6} más` : ""}</p>}
+          </button></li>); })}</ol>
+        <div className="rounded-xl bg-slate-200 p-3 dark:bg-slate-800">{cur ? <iframe title="Versión" srcDoc={oisHtml(cur).replace("<body>", '<body style="background:#fff;padding:24px 30px;max-width:820px;margin:0 auto">')} className="h-[62vh] w-full rounded-lg bg-white shadow-lg" />
+          : <p className="p-6 text-sm text-slate-500">En esta versión el expediente no existía (estaba borrado).</p>}</div>
+      </div>}
+    </Modal>);
+}
+
+/* expedientes que estuvieron en alguna versión guardada y hoy no están (borrados o pisados) */
+function Gone({ L, onClose, onRestore }: { L: Ois[]; onClose: () => void; onRestore: (r: Ois) => void }) {
+  const [G, setG] = useState<(Ois & { __at: number; __by: string })[] | null>(null), [err, setErr] = useState("");
+  useEffect(() => { void api("/api/data?hist=lspdt.ois").then(res => {
+    if (res.__s !== 200) { setErr(res.msg || "No se pudieron cargar las versiones"); return; }
+    const now = new Set(L.map(r => r.id)), last = new Map<string, Ois & { __at: number; __by: string }>();
+    for (const v of res.list as Ver[]) { try { for (const r of JSON.parse(v.v || "[]") as Ois[]) if (r?.id && !now.has(r.id) && !last.has(r.id)) last.set(r.id, { ...r, __at: v.at, __by: v.by }); } catch { /* */ } }
+    setG([...last.values()]); }); }, [L]);
+  return (
+    <Modal open onClose={onClose} size="lg" icon={<History />} title="Expedientes borrados" desc="Aparecen en versiones guardadas pero ya no están en la lista. Se muestra la última versión de cada uno.">
+      {err ? <p className="text-sm text-red-500">{err}</p> : !G ? <p className="text-sm text-slate-500">Buscando…</p> : !G.length ? <p className="text-sm text-slate-500">No hay expedientes borrados en las versiones guardadas.</p>
+        : <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">{G.map(r => (
+          <div key={r.id} className="flex items-center gap-3 px-3 py-2.5"><span className="font-mono text-xs font-bold text-slate-400">{r.no}</span>
+            <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{who(r.of)}</p><p className="text-xs text-slate-500">{dmy(r.fecha)} · última versión del {new Date(r.__at).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })} ({r.__by || "—"})</p></div>
+            <Button size="sm" onClick={() => { const { __at, __by, ...o } = r; void __at; void __by; onRestore(o as Ois); }}>Recuperar</Button></div>))}</div>}
+    </Modal>);
+}
+
 function WebView({ r, onClose }: { r: Ois; onClose: () => void }) {
   return (
     <Modal open onClose={onClose} size="xl" icon={<FileText />} title={`Informe · ${r.no}`} desc={`${who(r.of)} · ${dmy(r.fecha)}`}
@@ -310,7 +380,7 @@ function oisSum(x: Ois) {
   const V = vals(x), L = (rows: string[][]) => rows.map(([k, v]) => `- ${k}: ${v}`).join("\n");
   return [`Procedimiento OIS ${x.no} · ${[x.fecha && dmy(x.fecha), x.hora].filter(Boolean).join(" ")}${x.lugar ? ` · ${x.lugar}` : ""}`, `Sargento a cargo: ${x.sgt || x.by} · Oficial implicado: ${x.of}`, "",
     "1. Estado del oficial", L(V.p1), "", "2. Declaración de Seguridad Pública", ...PSS.map((q, i) => `- ${q}: ${x.pss[i] || "—"}`), "", "3. Retirada de la escena", L(V.p3), "",
-    ...V.p4.flatMap((g, i) => [`4. Revisión del arma${V.p4.length > 1 ? ` (${i + 1})` : ""}`, L(g), ""]), "5. Test de alcohol y drogas", L(V.p5),
+    ...V.p4.flatMap((g, i) => [`4. Revisión del arma${V.p4.length > 1 ? ` (${i + 1})` : ""}`, L(g), ""]), ...(legacy(x).length ? ["Datos del formato anterior", L(legacy(x)), ""] : []), "5. Test de alcohol y drogas", L(V.p5),
     ...(x.notas.trim() ? ["", "Notas", x.notas.trim()] : [])].join("\n");
 }
 const esc = escHtml;
@@ -338,7 +408,7 @@ function oisHtml(x: Ois) {
   <ol>${PSS.map((q, i) => `<li><span class="q">${esc(q)}</span><br>${esc(x.pss[i] || "—")}</li>`).join("")}</ol>
   <div class="warn">Está prohibido preguntar por qué disparó o pedir una versión de los hechos. Eso lo hace la investigación.</div>
   ${bar("Paso 3 · Retirada de la escena inmediata")}${grid(V.p3)}
-  ${bar("Paso 4 · Revisión del arma")}<p>El arma no se retira: se devuelve al oficial en cuanto termina la revisión.</p>${V.p4.map((g, i) => (V.p4.length > 1 ? `<p class="q">Arma ${i + 1}${i === 0 ? " (reglamentaria)" : ""}</p>` : "") + grid(g)).join("")}
+  ${bar("Paso 4 · Revisión del arma")}<p>El arma no se retira: se devuelve al oficial en cuanto termina la revisión.</p>${V.p4.map((g, i) => (V.p4.length > 1 ? `<p class="q">Arma ${i + 1}${i === 0 ? " (reglamentaria)" : ""}</p>` : "") + grid(g)).join("")}${legacy(x).length ? `<p class="q">Datos cargados con el formato anterior</p>${grid(legacy(x))}` : ""}
   ${bar("Paso 5 · Test de alcohol y drogas")}<p>Procedimiento obligatorio en todo uso de fuerza letal; no supone ninguna acusación.</p>${grid(V.p5)}
   ${bar("Paso 6 · Remisión a la FID")}<p>Se informa al oficial de que:</p>${PSB_AV.map((p, i) => `<div class="chk">${x.psb[i] ? "☑" : "☐"} ${esc(p)}</div>`).join("")}
   ${x.notas.trim() ? bar("Notas del Sargento") + `<p>${esc(x.notas.trim()).replace(/\n/g, "<br>")}</p>` : ""}
