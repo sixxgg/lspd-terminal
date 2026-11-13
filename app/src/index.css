@@ -244,6 +244,9 @@ html:is([data-head="rajdhani"], [data-head="teko"]) h1.text-2xl { font-size: 1.7
 .upd-ntf { border-radius: 24px; background: linear-gradient(180deg, rgba(38,40,46,.92), rgba(18,19,23,.94)); border: 1px solid rgba(255,255,255,.12);
   backdrop-filter: blur(22px) saturate(1.4); -webkit-backdrop-filter: blur(22px) saturate(1.4); box-shadow: 0 18px 50px -12px rgba(0,0,0,.75), inset 0 1px 0 rgba(255,255,255,.08); transition: transform .25s ease; }
 .upd-host { pointer-events: none; }
+.push-pill { border-radius: 999px; background: linear-gradient(180deg, rgba(30,33,40,.94), rgba(14,16,20,.96)); border: 1px solid rgba(255,255,255,.12);
+  backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); box-shadow: 0 14px 40px -12px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.07); }
+div.push-pill[role="alertdialog"] { border-radius: 22px; }
 .upd-inst { background: radial-gradient(120% 90% at 50% 40%, #071423 0%, #03060c 70%); animation: upd-veil .4s ease both; }
 .upd-orbit { border: 1px dashed rgba(56,189,248,.35); animation: upd-spin 6s linear infinite; }
 .upd-caret { animation: bootBlink .9s steps(1) infinite; }

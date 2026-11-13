@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "2.5.7";
+export const APP_VERSION = "2.5.8";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,11 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[] };
 const LOG: Rel[] = [
+  { v: "2.5.8", f: "13/11/2026", t: "Examen METRO rediseñado · notificaciones de un renglón", items: [
+    "Examen: pantalla nueva, una pregunta por vez con navegador de preguntas, barra de progreso, reloj y strikes arriba; se responde con el mouse o con A/B/C y se avanza con las flechas. Sin marca de agua.",
+    "Examen: inicio, entrega, strikes y resultado con ventanas nuevas.",
+    "Notificaciones: ahora son una píldora de un renglón; las confirmaciones muestran la pregunta, el detalle debajo y los botones al costado.",
+  ] },
   { v: "2.5.7", f: "13/11/2026", t: "Examen escrito en línea de la METRO · registro de actividad", items: [
     "METRO · Examen: nueva pestaña con el estado del examen (Listo en verde o No disponible en rojo con candado). Al iniciarlo, la tablet muestra solo el examen: preguntas de opción múltiple y un reloj.",
     "Durante el examen no se puede copiar, pegar ni seleccionar. Salir de la pestaña, sacar capturas o abrir las herramientas del navegador suma un strike; al tercero se desaprueba.",
