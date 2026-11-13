@@ -26,7 +26,7 @@ type Ois = {
   her: "" | "si" | "no"; ems: boolean; emo: string; emoN: string;
   pss: string[]; ret: boolean; zona: string;
   mod: string; ser: string; est: string; estN: string; car: string; rest: string; disp: string; dot: string; camb: "" | "si" | "no"; otra: string;
-  alc: string; drog: string; testN: string; psb: boolean[]; notas: string; hist?: { t: number; by: string; a: string }[]; armas?: Gun[];
+  alc: string; drog: string; testN: string; psb: boolean[]; notas: string; hist?: { t: number; by: string; a: string }[]; armas?: Gun[]; fid?: string;
 };
 /* armas revisadas en el paso 4 (puede haber más de una si disparó con varias) */
 type Gun = { id: string; mod: string; ser: string; est: string; estN: string; cap: number; mags: string[]; disp: string; camb: "" | "si" | "no" };
@@ -82,9 +82,15 @@ export function OisPanel() {
       hist: [...(x.hist || []), { t: Date.now(), by: me.n, a: `${prev ? "Editó" : "Creó"} el expediente · ${k}/6 pasos completos` }] };
     setL([...L.filter(i => i.id !== r.id), r]); setX(r); setMiss(false);
     /* se remite a la FID: el servidor abre (o actualiza) el caso en la PSB y a sus miembros les llega el aviso */
-    void api("/api/data", { oisFid: { no: r.no, of: r.of, sgt: r.sgt || r.by, lugar: r.lugar, fecha: r.fecha, hora: r.hora, txt: oisSum(r) } }).then(res => {
+    void remit(r).then(res => {
       toast(res.__s === 200 ? `${prev ? "Procedimiento actualizado" : `Procedimiento guardado: ${r.no}`} · ${res.cf} ${res.nuevo ? "abierto" : "actualizado"} en la FID` : `${r.no} guardado, pero no se pudo remitir a la FID: ${res.msg || "probá de nuevo"}`, res.__s === 200 ? "ok" : "err");
-      if (res.__s === 200) syncNow(); });
+      if (res.__s === 200) { setL([...L.filter(i => i.id !== r.id), { ...r, fid: res.cf }]); syncNow(); } });
+  };
+  /* Revisar: los OIS de antes de la remisión a la FID abren su caso solos la primera vez */
+  const review = (r: Ois) => {
+    setRev(r); if (r.fid) return;
+    void remit(r, true).then(res => { if (res.__s !== 200) return; const n = { ...r, fid: res.cf };
+      setL(L.map(i => (i.id === r.id ? n : i))); setRev(v => (v && v.id === r.id ? n : v)); if (res.nuevo) { toast(`${r.no} no estaba remitido: se abrió el caso ${res.cf} en la FID`); syncNow(); } });
   };
   const save = () => { if (!x.of) { toast("Elegí al oficial implicado", "err"); return; } if (base(x).length || faltas(x).some(f => f.length)) setMiss(true); else doSave(); };
   const H = L.slice().sort((a, b) => b.t - a.t);
@@ -100,7 +106,7 @@ export function OisPanel() {
               {k < 6 && <span className="hidden items-center gap-1 text-[11px] font-semibold text-red-500 md:inline-flex"><AlertTriangle className="size-3.5" />Faltan datos</span>}
               <span className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-bold", k === 6 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300" : "bg-amber-500/15 text-amber-700 dark:text-amber-300")}>{k}/6</span></button>
             {o && <div className="flex flex-wrap gap-2 bg-slate-50/60 px-4 py-3 dark:bg-slate-900/40">
-              <Button size="sm" icon={<ClipboardCheck />} onClick={() => setRev(r)}>Revisar</Button>
+              <Button size="sm" icon={<ClipboardCheck />} onClick={() => review(r)}>Revisar</Button>
               <Button size="sm" variant="outline" icon={<FileDown />} onClick={() => oisPdf(r)}>Exportar PDF</Button>
               <Button size="sm" variant="outline" icon={<FileText />} onClick={() => setWeb(r)}>Ver en web</Button>
               <Button size="sm" variant="outline" icon={<Pencil />} onClick={() => { setX(r); setTab("new"); }}>Editar</Button>
@@ -206,6 +212,7 @@ function Review({ r, onClose, onEdit, onWeb }: { r: Ois; onClose: () => void; on
         {okAll ? <Check className="size-5 text-emerald-500" /> : <AlertTriangle className="size-5 text-red-500" />}
         <p className={cn("text-sm font-semibold", okAll ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300")}>{okAll ? "Expediente completo: los 6 pasos están cargados." : `Faltan datos: ${k}/6 pasos completos${b.length ? ` · sin ${b.join(", ").toLowerCase()}` : ""}.`}</p>
       </div>
+      <p className="flex items-center gap-2 text-[13px] text-slate-500"><Send className="size-4 text-red-500" />{r.fid ? <>Remitido a la FID · caso <b className="font-mono text-slate-700 dark:text-slate-200">{r.fid}</b></> : "Remitiendo a la FID…"}</p>
       <ol className="space-y-2">{STEP_T.map((t, i) => { const l = F[i]; return (
         <li key={t} className={cn("rounded-xl border p-3", l.length ? "border-red-500/40 bg-red-500/[.05]" : "border-slate-200 dark:border-slate-800")}>
           <p className="flex items-center gap-2 text-sm font-semibold"><span className={cn("grid size-6 place-items-center rounded-lg text-xs text-white", l.length ? "bg-red-500" : "bg-emerald-500")}>{l.length ? i + 1 : <Check className="size-3.5" />}</span>Paso {i + 1} · {t}</p>
@@ -213,8 +220,8 @@ function Review({ r, onClose, onEdit, onWeb }: { r: Ois; onClose: () => void; on
         </li>); })}</ol>
       <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-[.16em] text-slate-400">Historial</p>
         {(r.hist || []).length ? <ul className="space-y-1 border-l-2 border-slate-200 pl-3 text-xs dark:border-slate-800">{r.hist!.slice().reverse().map((h, i) => (
-          <li key={i}><b>{new Date(h.t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</b> · {h.by} · <span className="text-slate-500">{h.a}</span></li>))}</ul>
-          : <p className="text-xs text-slate-500">Creado el {new Date(r.t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })} por {r.by}. Los cambios desde ahora quedan registrados acá.</p>}
+          <li key={i}><b>{new Date(h.t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}</b> · {h.by} · <span className="text-slate-500">{h.a}</span></li>))}</ul>
+          : <p className="text-xs text-slate-500">Creado el {new Date(r.t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })} por {r.by}. Los cambios desde ahora quedan registrados acá.</p>}
       </div>
     </Modal>);
 }
@@ -296,6 +303,8 @@ const vals = (x: Ois) => ({
       ["Dotación reglamentaria", c.dot ? `${g.mags.length} × ${g.cap} = ${c.dot}` : "—"], ["Cambio de cargador", sn(g.camb)]]; }),
   p5: [["Alcohol", x.alc || "—"], ["Drogas", x.drog || "—"], ...(x.testN ? [["Observaciones", x.testN]] : [])],
 });
+/* remite el OIS a la FID (el servidor abre o actualiza el caso en la PSB); «check» solo lo abre si todavía no existe */
+const remit = (r: Ois, check = false) => api("/api/data", { oisFid: { no: r.no, of: r.of, sgt: r.sgt || r.by, lugar: r.lugar, fecha: r.fecha, hora: r.hora, txt: oisSum(r), check } });
 /* resumen en texto para el caso de la FID */
 function oisSum(x: Ois) {
   const V = vals(x), L = (rows: string[][]) => rows.map(([k, v]) => `- ${k}: ${v}`).join("\n");

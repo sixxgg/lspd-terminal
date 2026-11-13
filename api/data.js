@@ -69,6 +69,7 @@ export default wrap(async (req, res) => {
       await c.query("select pg_advisory_xact_lock(hashtext($1))", [K]);
       let L = []; try { L = JSON.parse((await c.query("select v from kv where k=$1", [K])).rows[0]?.v || "[]"); } catch { /* */ }
       const cf = `CF-${m[1]}-OIS${m[2]}`, i = L.findIndex(x => x.ois === no), doc = { t: "ois", txt, ts: now, by: u.n };
+      if (o.check && i >= 0) return { cf: L[i].cf, nuevo: false, ya: true };
       const hecho = `Uso de la fuerza con arma de fuego (OIS ${no})${o.lugar ? " en " + s(o.lugar) : ""}${o.fecha ? ", el " + s(o.fecha).split("-").reverse().join("/") : ""}${o.hora ? " a las " + s(o.hora) : ""}. Sargento a cargo: ${s(o.sgt)}.`;
       const cs = i >= 0 ? { ...L[i], ag: s(o.of), upd: now, docs: [...(L[i].docs || []).filter(d => d.t !== "ois"), doc] }
         : { id: crypto.randomBytes(6).toString("hex"), cf, ag: s(o.of), dv: "FID", by: u.n, ts: now, upd: now, concl: "", st: "abierto", ois: no, docs: [doc], px: { cA: m[1], cB: "OIS" + m[2], ag: s(o.of), dv: "FID", hecho } };
@@ -76,7 +77,7 @@ export default wrap(async (req, res) => {
       await c.query("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do update set v=excluded.v, t=excluded.t, by=excluded.by, at=excluded.at", [K, JSON.stringify(L), u.n, now]);
       return { cf, nuevo: i < 0 };
     });
-    await audit(u.n, r.nuevo ? "remitió a la FID" : "actualizó en la FID", "lspdt.psbCases", `${no} · ${r.cf} · oficial ${s(o.of)}`, clientIp(req));
+    if (!r.ya) await audit(u.n, r.nuevo ? "remitió a la FID" : "actualizó en la FID", "lspdt.psbCases", `${no} · ${r.cf} · oficial ${s(o.of)}`, clientIp(req));
     return send(res, 200, r);
   }
   if (why === PSB_DENY) { // miembros de la PSB definidos en el panel de administración
