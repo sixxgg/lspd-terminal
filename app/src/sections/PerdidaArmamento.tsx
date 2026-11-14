@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { UserRound, Crosshair, MapPin, Users, PenLine, Plus, Trash2, FilePlus2, Save, Copy, Pencil, ChevronDown, ShieldAlert, Inbox } from "lucide-react";
+import { UserRound, Crosshair, MapPin, Users, PenLine, Plus, Trash2, FilePlus2, Save, Pencil, ChevronDown, ShieldAlert, Inbox } from "lucide-react";
 import { Badge, Button, Card, CardBody, CardHeader, Checkbox, Chip, Empty, Field, Input, Segmented, Textarea, SearchInput } from "@/components/ui";
 import { AgentPicker, Avatar, RankBadge } from "@/components/agents";
-import { DiscordOutput, copyText } from "@/components/output";
+import { CopyMenu, DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { DIVISIONES, LUGARES, getRoster, findAgent, fmtDate, hoyDMY, isDMY, lvl, maskDMY, maskHM, norm, profOf, rankES, uid , myKey } from "@/lib/domain";
 import { LS, useJSON } from "@/lib/store";
@@ -183,7 +183,6 @@ function RosterList({ id }: { id: string }) {
 
 function Registro({ list, me, onEdit, onDelete }: { list: PerdArm[]; me: { n: string; r: string }; onEdit: (r: PerdArm) => void; onDelete: (id: string) => void }) {
   const [q, setQ] = useState(""), [open, setOpen] = useState<string | null>(null);
-  const { toast } = useFeedback();
   const L = list.slice().sort((a, b) => (b.t || 0) - (a.t || 0)).filter(r => !q || norm(r.texto || perdText(r)).includes(norm(q)));
   const canEdit = (r: PerdArm) => r.por === me.n || lvl(me.r) >= 8;
   return (
@@ -213,7 +212,7 @@ function Registro({ list, me, onEdit, onDelete }: { list: PerdArm[]; me: { n: st
                     <div className="flex flex-wrap justify-end gap-2">
                       {canEdit(r) && <Button variant="ghost" size="sm" icon={<Trash2 />} className="text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10" onClick={() => onDelete(r.id!)}>Eliminar</Button>}
                       {canEdit(r) && <Button variant="outline" size="sm" icon={<Pencil />} onClick={() => onEdit(r)}>Editar</Button>}
-                      <Button size="sm" icon={<Copy />} onClick={async () => { if (await copyText(txt)) toast("Copiado"); }}>Copiar</Button>
+                      <CopyMenu text={txt} variant="primary" />
                     </div>
                   </div>
                 )}

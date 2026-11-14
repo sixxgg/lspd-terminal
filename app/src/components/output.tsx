@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Copy, Check, MessageSquareText, FileText, Eye, RotateCcw } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Copy, Check, MessageSquareText, FileText, Eye, RotateCcw, ChevronDown } from "lucide-react";
 import { Button, Card, Segmented } from "./ui";
 import { discordHtml, discordPlain, type DcCtx } from "@/lib/discord";
 import { useFeedback } from "./feedback";
@@ -24,6 +24,23 @@ export function useCopy() {
     if (await copyText(t)) { toast("Copiado"); return true; }
     toast("No se pudo copiar", "err"); return false;
   };
+}
+
+/* «Copiar» con dos formatos: Discord (markdown) o web (texto limpio, sin markdown) */
+export function CopyMenu({ text, web, size = "sm", variant = "outline", label = "Copiar", up }: { text: string; web?: string; size?: "sm" | "md"; variant?: "outline" | "primary" | "ghost"; label?: string; up?: boolean }) {
+  const copy = useCopy(), [o, setO] = useState(false), ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (!o) return; const f = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setO(false); }; document.addEventListener("mousedown", f); return () => document.removeEventListener("mousedown", f); }, [o]);
+  const opt = (I: typeof Copy, t: string, d: string, v: string) => (
+    <button type="button" onClick={() => { setO(false); void copy(v); }} className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800">
+      <I className="mt-0.5 size-4 shrink-0 text-brand-600 dark:text-brand-300" /><span><b className="block text-[13px]">{t}</b><span className="block text-[11.5px] leading-snug text-slate-500">{d}</span></span></button>);
+  return (
+    <div ref={ref} className="relative inline-flex">
+      <Button size={size} variant={variant} icon={<Copy />} onClick={() => setO(!o)} aria-expanded={o}>{label}<ChevronDown className={cn("-mr-1 size-3.5 opacity-70 transition", o && "rotate-180")} /></Button>
+      {o && <div className={cn("absolute right-0 z-40 w-64 rounded-xl border border-slate-200 bg-white p-1 shadow-2xl dark:border-slate-700 dark:bg-[rgb(var(--card))]", up ? "bottom-full mb-1.5" : "top-full mt-1.5")}>
+        {opt(MessageSquareText, "Formato Discord", "Con negritas, títulos y menciones para pegar en Discord.", text)}
+        {opt(FileText, "Formato web", "Texto limpio, sin markdown, para foros, documentos o la web.", web ?? discordPlain(text))}
+      </div>}
+    </div>);
 }
 
 /* Salida para Discord: formato Discord (editable antes de copiar), vista previa y formato web (sin markdown, con los íconos) */

@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.0.5";
+export const APP_VERSION = "3.0.6";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,12 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.0.6", f: "14/11/2026", t: "Copiar en Discord o web · Supervisores A-Z · Entrevistas nuevas", items: [
+    "Informes, OIS, pérdida de arma y feedback: botón «Copiar» con dos opciones, formato Discord o formato web (texto limpio).",
+    "OIS: nuevo texto en formato Discord con los 6 pasos, para copiar desde la lista, la revisión o la vista web.",
+    "Supervisores: las secciones quedan ordenadas de la A a la Z según el nombre que se ve.",
+    "Entrevistas rediseñadas: panel con avance, contadores que filtran y reparto por rama; tarjetas por agente con estado rápido y divisiones; ficha completa en una ventana con estado, rama, divisiones, respuestas, notas, vista previa y «Revisar».",
+  ] },
   { v: "3.0.5", f: "14/11/2026", t: "Patrullas en una sola sección · botón Revisar · entrevistas para Discord", items: [
     "Supervisores › Patrullas: «Revisión de patrullas» y «Registro de patrullas» ahora son dos pestañas de la misma sección.",
     "Checklist del maletero rediseñado: cada elemento con contador (− / +), y marca OK, «Falta N» o «N de más» (ej: 1 cargador de más). El excedente queda anotado en el resumen y en el registro.",

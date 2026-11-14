@@ -4,10 +4,10 @@
    y un historial de quién lo creó, lo abrió, lo editó y le cambió el estado. Todo se guarda en la base (y con versiones).
    Los informes de pérdida de arma (src = "parm") se editan desde Supervisores › Pérdida de arma. */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Archive, Car, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, Clock, Copy, Eye, FilePlus2, FileText, Gavel, History, MapPin, Package, Pencil, Plus, Search, ShieldAlert, Stamp, Tag, Trash2, UserRound, Users, X } from "lucide-react";
+import { Archive, Car, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, Clock, Eye, FilePlus2, FileText, Gavel, History, MapPin, Package, Pencil, Plus, Search, ShieldAlert, Stamp, Tag, Trash2, UserRound, Users, X } from "lucide-react";
 import { Button, Empty } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
-import { useCopy } from "@/components/output";
+import { CopyMenu, useCopy } from "@/components/output";
 import { LS, useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { goTo } from "@/lib/profiles";
@@ -154,7 +154,7 @@ export function InfViewer({ open, setOpen, onEdit, onBase }: { open: string | nu
                 </div>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                <Button size="sm" variant="outline" icon={<Copy />} onClick={() => copy(r.texto || "")}>Copiar</Button>
+                <CopyMenu text={r.texto || ""} />
                 {!parm && <Button size="sm" variant="outline" icon={<FilePlus2 />} onClick={() => onBase(r)} title="Empezar un informe nuevo con las unidades, vehículos policiales, lugares y tipos de este">Usar como base</Button>}
                 {can && <Button size="sm" icon={<Pencil />} onClick={() => (parm ? goTo("sup", "parm") : onEdit(r))} title={parm ? "Se edita desde Supervisores › Pérdida de arma" : undefined}>Editar</Button>}
               </div>

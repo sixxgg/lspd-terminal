@@ -70,7 +70,7 @@ const RAW_AREAS: Area[] = [
 ];
 /* orden A-Z: las áreas (con Inicio siempre primero) y las secciones de cada área; los números van antes que las letras */
 const coll = new Intl.Collator("es", { numeric: true, sensitivity: "base" });
-const byLabel = (a: { l: string }, b: { l: string }) => coll.compare(a.l, b.l);
+const lab = (x: { l: string; sl?: string }) => x.sl || x.l, byLabel = (a: { l: string; sl?: string }, b: { l: string; sl?: string }) => coll.compare(lab(a), lab(b));
 export const AREAS: Area[] = RAW_AREAS
   .map(a => (a.k === "ini" ? a : { ...a, sec: a.sec.slice().sort(byLabel) }))
   .sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));

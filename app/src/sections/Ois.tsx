@@ -7,6 +7,7 @@ import { Button, Card, Checkbox, Empty, Field, Input, Segmented, Textarea } from
 import { AgentCombo } from "@/components/agents";
 import { Modal } from "@/components/modal";
 import { useFeedback } from "@/components/feedback";
+import { CopyMenu } from "@/components/output";
 import { dmy, escHtml, findAgent, hoyISO, rankES, uid } from "@/lib/domain";
 import { syncNow, useJSON } from "@/lib/store";
 import { api } from "@/lib/api";
@@ -125,6 +126,7 @@ export function OisPanel() {
               <Button size="sm" icon={<ClipboardCheck />} onClick={() => review(r)}>Revisar</Button>
               <Button size="sm" variant="outline" icon={<FileDown />} onClick={() => oisPdf(r)}>Exportar PDF</Button>
               <Button size="sm" variant="outline" icon={<FileText />} onClick={() => setWeb(r)}>Ver en web</Button>
+              <CopyMenu text={oisDc(r)} web={oisSum(r)} />
               <Button size="sm" variant="outline" icon={<Pencil />} onClick={() => edit(r)}>Editar</Button>
               {(r.by === me.n || me.l >= 8 || me.admin) && <Button size="sm" variant="ghost" className="ml-auto text-red-600 dark:text-red-400" icon={<Trash2 />} onClick={async () => { if (await confirm(`¿Borrar ${r.no}?`, { danger: true })) setL(L.filter(i => i.id !== r.id)); }}>Borrar</Button>}
             </div>}
@@ -227,7 +229,7 @@ function Review({ r, onClose, onEdit, onWeb, onVers }: { r: Ois; onClose: () => 
   const F = faltas(r), b = base(r), k = F.filter(f => !f.length).length, okAll = k === 6 && !b.length;
   return (
     <Modal open onClose={onClose} size="lg" icon={<ClipboardCheck />} title={`Revisión · ${r.no}`} desc={`${who(r.of)} · ${dmy(r.fecha)} ${r.hora} · Sargento: ${who(r.sgt)}`}
-      footer={<><Button variant="ghost" icon={<FileText />} onClick={onWeb}>Ver en web</Button><Button variant="ghost" icon={<History />} className="mr-auto" onClick={onVers}>Versiones</Button><Button variant="outline" icon={<FileDown />} onClick={() => oisPdf(r)}>PDF</Button><Button icon={<Pencil />} onClick={onEdit}>{okAll ? "Editar" : "Completar lo que falta"}</Button></>}>
+      footer={<><Button variant="ghost" icon={<FileText />} onClick={onWeb}>Ver en web</Button><Button variant="ghost" icon={<History />} className="mr-auto" onClick={onVers}>Versiones</Button><CopyMenu size="md" text={oisDc(r)} web={oisSum(r)} up /><Button variant="outline" icon={<FileDown />} onClick={() => oisPdf(r)}>PDF</Button><Button icon={<Pencil />} onClick={onEdit}>{okAll ? "Editar" : "Completar lo que falta"}</Button></>}>
       <div className={cn("flex items-center gap-3 rounded-2xl border p-3.5", okAll ? "border-emerald-500/40 bg-emerald-500/[.08]" : "border-red-500/40 bg-red-500/[.08]")}>
         {okAll ? <Check className="size-5 text-emerald-500" /> : <AlertTriangle className="size-5 text-red-500" />}
         <p className={cn("text-sm font-semibold", okAll ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300")}>{okAll ? "Expediente completo: los 6 pasos están cargados." : `Faltan datos: ${k}/6 pasos completos${b.length ? ` · sin ${b.join(", ").toLowerCase()}` : ""}.`}</p>
@@ -337,7 +339,7 @@ function Gone({ L, onClose, onRestore }: { L: Ois[]; onClose: () => void; onRest
 function WebView({ r, onClose }: { r: Ois; onClose: () => void }) {
   return (
     <Modal open onClose={onClose} size="xl" icon={<FileText />} title={`Informe · ${r.no}`} desc={`${who(r.of)} · ${dmy(r.fecha)}`}
-      footer={<><Button variant="ghost" onClick={onClose}>Cerrar</Button><Button icon={<FileDown />} onClick={() => oisPdf(r)}>Exportar PDF</Button></>}>
+      footer={<><Button variant="ghost" className="mr-auto" onClick={onClose}>Cerrar</Button><CopyMenu size="md" text={oisDc(r)} web={oisSum(r)} up /><Button icon={<FileDown />} onClick={() => oisPdf(r)}>Exportar PDF</Button></>}>
       <div className="rounded-xl bg-slate-200 p-3 dark:bg-slate-800"><iframe title={`Informe ${r.no}`} srcDoc={oisHtml(r).replace("<body>", '<body style="background:#fff;padding:28px 34px;max-width:820px;margin:0 auto">')} className="h-[68vh] w-full rounded-lg bg-white shadow-lg" /></div>
     </Modal>);
 }
@@ -382,6 +384,20 @@ function oisSum(x: Ois) {
     "1. Estado del oficial", L(V.p1), "", "2. Declaración de Seguridad Pública", ...PSS.map((q, i) => `- ${q}: ${x.pss[i] || "—"}`), "", "3. Retirada de la escena", L(V.p3), "",
     ...V.p4.flatMap((g, i) => [`4. Revisión del arma${V.p4.length > 1 ? ` (${i + 1})` : ""}`, L(g), ""]), ...(legacy(x).length ? ["Datos del formato anterior", L(legacy(x)), ""] : []), "5. Test de alcohol y drogas", L(V.p5),
     ...(x.notas.trim() ? ["", "Notas", x.notas.trim()] : [])].join("\n");
+}
+/* el mismo informe en formato Discord (títulos, negritas y citas) */
+function oisDc(x: Ois) {
+  const V = vals(x), L = (rows: string[][]) => rows.map(([k, v]) => `**${k}:** ${v}`).join("\n");
+  return [`# 🎯 PROCEDIMIENTO OIS — ${x.no}`, `**Los Santos Police Department · Supervisión · Uso interno**`, "",
+    "## 📋 INFORMACIÓN", L([["Oficial implicado", who(x.of) + (placa(x.of) ? ` (#${placa(x.of)})` : "")], ["Sargento a cargo", who(x.sgt || x.by)], ["Fecha y hora", `\`${[x.fecha && dmy(x.fecha), x.hora].filter(Boolean).join(" ") || "—"}\``], ["Lugar", x.lugar || "—"]]), "",
+    "## 1️⃣ ESTADO DEL OFICIAL", L(V.p1), "",
+    "## 2️⃣ DECLARACIÓN DE SEGURIDAD PÚBLICA", ...PSS.flatMap((q, i) => [`**${q}**`, `> ${x.pss[i] || "—"}`]), "",
+    "## 3️⃣ RETIRADA DE LA ESCENA", L(V.p3), "",
+    ...V.p4.flatMap((g, i) => [`## 4️⃣ REVISIÓN DEL ARMA${V.p4.length > 1 ? ` (${i + 1})` : ""}`, L(g), ""]), ...(legacy(x).length ? ["## Datos del formato anterior", L(legacy(x)), ""] : []),
+    "## 5️⃣ TEST DE ALCOHOL Y DROGAS", L(V.p5), "",
+    "## 6️⃣ REMISIÓN A LA FID", ...PSB_AV.map((p, i) => `${x.psb[i] ? "☑" : "☐"} ${p}`), ...(x.fid ? [`**Caso FID:** \`${x.fid}\``] : []),
+    ...(x.notas.trim() ? ["", "## 🗒️ NOTAS DEL SARGENTO", x.notas.trim().split("\n").map(l => "> " + l).join("\n")] : []),
+    "━━━━━━━━━━━━━━━━━━━━", `-# Procedimiento redactado por ${OIS_AUTOR} · Los Santos Police Department`].join("\n");
 }
 const esc = escHtml;
 function oisHtml(x: Ois) {

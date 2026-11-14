@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { MessageSquareWarning, UserRound, FileText, Save, ChevronDown, Copy, Trash2, Pencil, ListChecks, X } from "lucide-react";
+import { MessageSquareWarning, UserRound, FileText, Save, ChevronDown, Trash2, Pencil, ListChecks, X } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input, Segmented, Textarea, SearchInput } from "@/components/ui";
 import { AgentPicker, Avatar, RankBadge } from "@/components/agents";
-import { DiscordOutput, useCopy } from "@/components/output";
+import { CopyMenu, DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { Col, Split } from "@/components/layout";
 import { findAgent, fmtDate, genderOf, lvl, norm, rankES, uid , myKey } from "@/lib/domain";
-import { discordPlain } from "@/lib/discord";
 import { getPenal, penalOf, artCmp } from "@/lib/penal";
 import { LS, useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
@@ -114,7 +113,7 @@ function FbForm({ init, onSaved }: { init: Fb | null; onSaved: (id: string) => v
 }
 
 function FbList({ open, setOpen, onEdit }: { open: string | null; setOpen: (v: string | null) => void; onEdit: (r: Fb) => void }) {
-  const me = useMe(), { confirm } = useFeedback(), copy = useCopy();
+  const me = useMe(), { confirm } = useFeedback();
   const [L, setL] = useJSON<Fb[]>("lspdt.feedback", []);
   const [q, setQ] = useState(""), [t, setT] = useState("");
   const s = norm(q), F = L.slice().sort((a, b) => (b.t || 0) - (a.t || 0)).filter(r => (!t || r.tipo === t) && (!s || norm(r.ag + " " + r.por + " " + r.texto).includes(s)));
@@ -146,8 +145,7 @@ function FbList({ open, setOpen, onEdit }: { open: string | null; setOpen: (v: s
                   {can && <Button variant="ghost" size="sm" className="text-red-600 dark:text-red-400" icon={<Trash2 />} onClick={async () => { if (await confirm("¿Eliminar este feedback del registro?", { danger: true, ok: "Eliminar" })) setL(L.filter(x => x.id !== r.id)); }}>Eliminar</Button>}
                   <span className="flex-1 text-[11px] text-slate-400">{r.t ? "Registrado el " + fmtDate(r.t) : ""}{r.edit ? ` · editado por ${r.edit}` : ""}</span>
                   {can && <Button variant="outline" size="sm" icon={<Pencil />} onClick={() => onEdit(r)}>Editar</Button>}
-                  <Button variant="outline" size="sm" icon={<Copy />} onClick={() => copy(discordPlain(r.texto || ""))}>Copiar formato web</Button>
-                  <Button size="sm" icon={<Copy />} onClick={() => copy(r.texto || "")}>Copiar formato Discord</Button>
+                  <CopyMenu text={r.texto || ""} variant="primary" />
                 </div>
               </div>}
             </div>); })}</div>}
