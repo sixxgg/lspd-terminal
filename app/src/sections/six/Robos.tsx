@@ -3,7 +3,7 @@ import { Camera, Car, Gift, X, CarFront, Copy, Info, Plus, RefreshCw, Search, Sh
 import { toPng } from "html-to-image";
 import { useFeedback } from "@/components/feedback";
 import { cn } from "@/lib/cn";
-import { CATS, INACTIVAS, MISIONES, WPN, catalogo, perfilDe, type Cat, type Item } from "./robosData";
+import { CATS, INACTIVAS, MISIONES, WPN, catalogo, perfilDe, recOf, unidades, type Cat, type Item } from "./robosData";
 
 const NT = {
   act: { l: "Actualizado", c: "#f59e0b", I: RefreshCw }, nuevo: { l: "Nuevo", c: "#a855f7", I: Plus },
@@ -29,23 +29,6 @@ function Armas({ arm }: { arm?: string }) {
     <span key={l} title={`${l}: ${LV[w[i]].toLowerCase()}`} className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold",
       w[i] === 2 ? "border-red-400/50 bg-red-500/15 text-red-200" : w[i] === 1 ? "border-white/15 bg-white/5 text-slate-300" : "border-white/5 text-slate-600 line-through decoration-slate-600")}>
       <G d={d} className={w[i] ? "" : "opacity-40"} />{l}{w[i] === 2 && <b className="text-[9px] text-red-300">OBLIG.</b>}</span>))}</div>;
-}
-
-/* policías en unidades: binomios (2) y, si sobra uno, una unión */
-export const unidades = (n?: number | null) => { if (!n) return ""; const b = Math.floor(n / 2), u = n % 2; return [b ? `${b} binomio${b > 1 ? "s" : ""}` : "", u ? "1 unión" : ""].filter(Boolean).join(" + "); };
-/* recompensa: el dinero por un lado y lo extra (ítems para droga, piezas de armas, objetos) por otro */
-const MONEY = /(\d[\d.,]*)\s*\$/;
-const num = (s: string) => Number(s.replace(/[.,](?=\d{3}\b)/g, "").replace(",", ".")) || 0;
-export function recOf(mis: Item["mis"]) {
-  const amts = new Set<number>(), extra = new Set<string>(); let pend = false;
-  for (const m of mis) {
-    const r = m.rec, mm = r.match(MONEY); if (mm) amts.add(num(mm[1]));
-    if (/revisar|falta/i.test(r)) pend = true;
-    const ex = r.replace(MONEY, "").replace(/revisar|falta hacerla|no activo/gi, "").replace(/^[\s+\-–·]+|[\s+\-–·]+$/g, "").trim();
-    if (ex) extra.add(ex[0].toUpperCase() + ex.slice(1));
-  }
-  const L = [...amts].sort((a, b) => a - b), f = (n: number) => `$${n.toLocaleString("es-AR")}`;
-  return { money: !L.length ? "" : L.length === 1 ? f(L[0]) : `${f(L[0])} – ${f(L[L.length - 1])}`, extra: [...extra], pend };
 }
 
 function Card({ it, obs }: { it: Item; obs: boolean }) {

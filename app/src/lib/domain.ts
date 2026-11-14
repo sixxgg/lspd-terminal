@@ -80,6 +80,8 @@ export const DIVISIONES = ["Patrulla", "Detective Bureau", "Metropolitan Divisio
 export const pad2 = (n: number) => String(n).padStart(2, "0");
 export const hoyDMY = () => { const d = new Date(); return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`; };
 export const isDMY = (s: string) => /^\d{2}\/\d{2}\/\d{4}$/.test(s);
+/* fecha y hora completas (dd/mm/aaaa hh:mm, 24 h) */
+export const fullDT = (t: number | string | Date) => new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 export const fmtDate = (t: number) => new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
 /* tiempo relativo: «hace 10 minutos», «hace 3 días»; pasado el mes, fecha y hora en la zona de quien lo mira */
 export const ago = (t: number, now = Date.now()) => {

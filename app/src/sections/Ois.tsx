@@ -8,7 +8,7 @@ import { AgentCombo } from "@/components/agents";
 import { Modal } from "@/components/modal";
 import { useFeedback } from "@/components/feedback";
 import { CopyMenu } from "@/components/output";
-import { dmy, escHtml, findAgent, hoyISO, rankES, uid } from "@/lib/domain";
+import { dmy, escHtml, findAgent, hoyISO, rankES, uid, fullDT } from "@/lib/domain";
 import { syncNow, useJSON } from "@/lib/store";
 import { api } from "@/lib/api";
 import { useMe } from "@/lib/me";
@@ -244,8 +244,8 @@ function Review({ r, onClose, onEdit, onWeb, onVers }: { r: Ois; onClose: () => 
         <dl className="mt-1.5 grid gap-x-4 gap-y-0.5 text-[13px] sm:grid-cols-2">{legacy(r).map(([k, v]) => <div key={k} className="flex gap-2"><dt className="text-slate-500">{k}:</dt><dd className="font-semibold">{v}</dd></div>)}</dl></div>}
       <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-[.16em] text-slate-400">Historial</p>
         {(r.hist || []).length ? <ul className="space-y-1 border-l-2 border-slate-200 pl-3 text-xs dark:border-slate-800">{r.hist!.slice().reverse().map((h, i) => (
-          <li key={i}><b>{new Date(h.t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}</b> · {h.by} · <span className="text-slate-500">{h.a}</span></li>))}</ul>
-          : <p className="text-xs text-slate-500">Creado el {new Date(r.t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })} por {r.by}. Los cambios desde ahora quedan registrados acá.</p>}
+          <li key={i}><b>{fullDT(h.t)}</b> · {h.by} · <span className="text-slate-500">{h.a}</span></li>))}</ul>
+          : <p className="text-xs text-slate-500">Creado el {fullDT(r.t)} por {r.by}. Los cambios desde ahora quedan registrados acá.</p>}
       </div>
     </Modal>);
 }
@@ -300,7 +300,7 @@ function Versions({ r, onClose, onRestore }: { r: Ois; onClose: () => void; onRe
   const parse = (v: Ver | undefined): Ois | null => { try { return v?.v ? { ...JSON.parse(v.v), __at: v.at } : null; } catch { return null; } };
   const diff = (i: number) => { const a = parse(L![i]), b = parse(L![i + 1]); if (!a) return ["Expediente borrado"]; if (!b) return i === L!.length - 1 ? ["Primera versión registrada"] : [];
     return Object.keys(F_LAB).filter(k => JSON.stringify((a as never)[k] ?? "") !== JSON.stringify((b as never)[k] ?? "")).map(k => F_LAB[k]); };
-  const cur = L ? parse(L[sel]) : null, fmt = (t: number) => (t ? new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "antes del registro");
+  const cur = L ? parse(L[sel]) : null, fmt = (t: number) => (t ? fullDT(t) : "antes del registro");
   return (
     <Modal open onClose={onClose} size="xl" icon={<History />} title={`Versiones · ${r.no}`} desc="Cada vez que se guardó el expediente. Elegí una para verla completa o restaurarla."
       footer={<><Button variant="ghost" onClick={onClose}>Cerrar</Button>{cur && sel > 0 && <Button icon={<RotateCcw />} onClick={async () => { if (await confirm(`¿Restaurar la versión del ${fmt(L![sel].at)}? Lo actual queda guardado como otra versión.`, { ok: "Restaurar" })) onRestore(cur); }}>Restaurar esta versión</Button>}</>}>

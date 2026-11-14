@@ -11,9 +11,10 @@ import { CopyMenu, useCopy } from "@/components/output";
 import { LS, useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { goTo } from "@/lib/profiles";
-import { findAgent, norm, rankES } from "@/lib/domain";
+import { findAgent, norm, rankES, fullDT } from "@/lib/domain";
 import { agTag, dcParts, getPenal, penalOf, type Inf } from "@/lib/penal";
 import { cn } from "@/lib/cn";
+import { useOutside } from "@/lib/outside";
 
 type InfSt = "abierto" | "inv" | "rev" | "cer" | "arc";
 type Hist = { t: number; by: string; a: string };
@@ -29,7 +30,7 @@ const ST: Record<InfSt, { l: string; s?: string; d: string; c: string; I: typeof
 const stOf = (r: InfX): InfSt => r.st || (r.est === "Incidente finalizado" ? "cer" : "abierto");
 /* número de incidente: el guardado o, si es viejo, su orden de registro */
 const numOf = (r: InfX, L: InfX[]) => r.no || L.slice().sort((a, b) => (a.t || 0) - (b.t || 0)).findIndex(x => x.id === r.id) + 1;
-const when = (t?: number) => (t ? new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "—");
+const when = (t?: number) => (t ? fullDT(t) : "—");
 const hm = (t: number) => new Date(t).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const dayOf = (t: number) => { const d = new Date(t), h = new Date(); const k = (x: Date) => x.toDateString();
   if (k(d) === k(h)) return "Hoy"; h.setDate(h.getDate() - 1); if (k(d) === k(h)) return "Ayer"; return d.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" }); };
@@ -63,7 +64,7 @@ function Rich({ text }: { text: string }) {
 
 function StatusPick({ r, can, canSgt, onSet }: { r: InfX; can: boolean; canSgt: boolean; onSet: (s: InfSt) => void }) {
   const [open, setOpen] = useState(false), ref = useRef<HTMLDivElement>(null), s = stOf(r), S = ST[s];
-  useEffect(() => { const f = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); }; document.addEventListener("mousedown", f); return () => document.removeEventListener("mousedown", f); }, []);
+  useOutside(ref, open, () => setOpen(false));
   return (
     <div ref={ref} className="relative">
       <button disabled={!can} onClick={() => setOpen(!open)} className="inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-bold transition disabled:cursor-default" style={{ borderColor: S.c + "70", color: S.c, background: S.c + "18" }}>

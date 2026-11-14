@@ -9,7 +9,7 @@ import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import { Catalogo } from "./Robos";
 import { CATS, catalogo, type Cat, type Item } from "./robosData";
-import { art, leyOf, pena, type Ref } from "./robosLegal";
+import { art, leyOf, pena, pubItems, type Ref, type RobosPub } from "./robosLegal";
 
 type View = "cat" | "art" | "xls";
 const VK = "lspdt.six.robView", KEYS = Object.keys(CATS) as Cat[];
@@ -31,6 +31,9 @@ function CatBar({ cat, set, all }: { cat: Cat | "all"; set: (c: Cat | "all") => 
 /* share: vista de un invitado (link de six): sin Excel, sin foto y sin invitar */
 export function RobosTab({ share }: { share?: boolean }) {
   const all = useMemo(catalogo, []), [inv, setInv] = useState(false);
+  /* publica la versión oficial en la base para Supervisores › Robos (solo si cambió algo) */
+  useEffect(() => { if (share) return; const items = pubItems(all), cur = LS.json<RobosPub | null>("lspdt.robos", null);
+    if (JSON.stringify(cur?.items) !== JSON.stringify(items)) LS.setJSON("lspdt.robos", { at: Date.now(), by: "six", items }); }, [all, share]);
   const [view, setView] = useState<View>(() => { const v = LS.get(VK) as View; return v && !(share && v === "xls") ? v : "cat"; }), [cat, setCat] = useState<Cat | "all">("all");
   const go = (v: View) => { setView(v); LS.set(VK, v); };
   const T: [View, string, typeof BookOpen][] = [["cat", "CATÁLOGO DE ROBOS", BookOpen], ["art", "ARTÍCULOS PARA LOS ROBOS", Gavel], ...(share ? [] : [["xls", "EXPORTAR A EXCEL", FileSpreadsheet] as [View, string, typeof BookOpen]])];
@@ -99,7 +102,7 @@ function Articulos({ all, cat }: { all: Item[]; cat: Cat | "all" }) {
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar robo o artículo (ej: 132.110, rehenes)…" className="w-full rounded-xl border border-six/15 bg-black/40 py-2 pl-8 pr-3 text-sm text-slate-100 outline-none focus:border-six" /></label>
         <p className="text-xs text-slate-500">{list.length} {list.length === 1 ? "robo" : "robos"} · tocá uno para ver el detalle</p>
       </div>
-      <p className="rounded-xl border border-white/[.07] bg-black/30 px-3 py-2 text-[12px] leading-relaxed text-slate-400"><Scale className="mr-1.5 inline size-3.5 text-six" />Artículos del Código Penal de la terminal interpretados a partir de la normativa de cada robo. <b className="text-slate-300">Tentativa</b>: no lo consiguieron · <b className="text-slate-300">Consumado</b>: lo consiguieron · <b className="text-slate-300">Con disparos</b>: además dispararon a agentes. El homicidio doloso (119.1) va solo si hay CK de un jugador. Lo de <b className="text-slate-300">según lo que pase</b> se suma solo si ocurre.</p>
+      <p className="rounded-xl border border-white/[.07] bg-black/30 px-3 py-2 text-[12px] leading-relaxed text-slate-400"><Scale className="mr-1.5 inline size-3.5 text-six" />Artículos del Código Penal de la terminal interpretados a partir de la normativa de cada robo. <b className="text-slate-300">Tentativa</b>: no lo consiguieron · <b className="text-slate-300">Consumado</b>: lo consiguieron · <b className="text-slate-300">Con disparos</b>: además dispararon a agentes. El homicidio doloso (119.1) va solo si hay CK de un jugador. Lo de <b className="text-slate-300">según lo que pase</b> se suma solo si ocurre. <b className="text-emerald-300">Ojo:</b> si el artículo del robo ya trae un agravante (armas, rostro cubierto, huida, hackeo…), ese agravante <b className="text-slate-300">no se imputa aparte</b>.</p>
       {KEYS.filter(k => list.some(x => x.cat === k)).map(k => (
         <section key={k} className="space-y-2">
           <h3 className="flex items-center gap-2 pt-1"><span className="size-2.5 rounded-full" style={{ background: CATS[k].c }} /><b className="text-white">{CATS[k].l}</b>{CATS[k].code && <span className="rounded border border-white/15 px-1 font-mono text-[10px] text-slate-400">Cód. {CATS[k].code}</span>}<span className="text-xs text-slate-500">{list.filter(x => x.cat === k).length}</span></h3>
@@ -111,7 +114,8 @@ function Articulos({ all, cat }: { all: Item[]; cat: Cat | "all" }) {
               <div className="mt-2 space-y-1.5">{COLS.map(([ck, cl, cc]) => (
                 <div key={ck} className="flex items-start gap-2"><span className="w-[5.5rem] shrink-0 pt-0.5 text-[10.5px] font-bold uppercase tracking-wider" style={{ color: cc }}>{cl}</span>
                   <div className="flex min-w-0 flex-wrap items-center gap-1">{ck === "hom" && <span className="text-[11px] text-slate-500">Consumado +</span>}{(ck === "hom" ? L.hom.filter(r => !L.cons.some(c => c.a === r.a)) : L[ck]).map(r => <Chip key={r.a} r={r} c={cc} />)}</div></div>))}</div>
-              {L.nota && <p className="mt-2 text-[11px] italic text-amber-300/80">{L.nota}</p>}
+              {L.inc.length > 0 && <p className="mt-2 text-[11px] text-emerald-300/80">✓ Ya incluye: {L.inc.map(x => x.l.toLowerCase()).join(" · ")}</p>}
+              {L.nota && <p className="mt-1 text-[11px] italic text-amber-300/80">{L.nota}</p>}
             </button>); })}</div>
         </section>))}
       {!list.length && <p className="py-10 text-center text-sm text-slate-500">Nada coincide con la búsqueda.</p>}
@@ -137,11 +141,14 @@ function LeyModal({ it, onClose }: { it: Item; onClose: () => void }) {
       <div className="grid grid-cols-3 gap-1.5 font-sans">{COLS.map(([k, l, c, d]) => (
         <button key={k} onClick={() => setTab(k)} className={cn("rounded-xl border p-2.5 text-left transition", tab === k ? "text-white" : "border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40")}
           style={tab === k ? { borderColor: c, background: c + "22" } : undefined}><p className="text-sm font-bold" style={tab === k ? { color: c } : undefined}>{l}</p><p className="text-[11px] leading-snug opacity-80">{d}</p></button>))}</div>
+      {L.inc.length > 0 && <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[.07] p-3 font-sans text-[12.5px]"><p className="font-bold text-emerald-600 dark:text-emerald-300">Agravantes que ya trae el artículo (no se imputan aparte)</p>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">{L.inc.map(x => <span key={x.k} className="rounded-md border border-emerald-500/30 px-1.5 py-0.5 text-[11px]"><b className="font-mono">{x.a}</b> · {x.l}</span>)}</div></div>}
       <div className="space-y-2 font-sans">{L[tab].map(r => <ArtRow key={r.a} r={r} c={cc[2]} />)}
         <p className="text-right text-xs text-slate-500">Suma orientativa: <b className="text-slate-300">${T.m.toLocaleString("es-AR")}</b> · <b className="text-slate-300">{T.p} meses</b>{tab === "tent" && " (en tentativa se aplica la rebaja que corresponda)"}</p></div>
-      {L.cond.length > 0 && <div className="space-y-2 font-sans"><p className="text-[11px] font-bold uppercase tracking-[.16em] text-slate-400">Según lo que pase · se suma solo si ocurre</p>
+      {L.cond.length > 0 && <div className="space-y-2 font-sans"><p className="text-[11px] font-bold uppercase tracking-[.16em] text-slate-400">Según lo que pase · se suma solo si ocurre y el artículo no lo contempla</p>
         {L.cond.map(c => <div key={c.k} className="space-y-1.5 rounded-2xl border border-slate-200 p-3 dark:border-slate-800">
-          <p className="flex items-center gap-2 text-sm font-semibold"><Layers className="size-4 text-six" />{c.l}<span className="font-normal text-slate-500">· {c.when}</span></p>
+          <p className="flex items-center gap-2 text-sm font-semibold"><Layers className="size-4 text-six" />{c.l}<span className="font-normal text-slate-500">· {c.when}</span>{c.alt && <span className="ml-auto rounded bg-amber-500/15 px-1.5 text-[10px] font-bold text-amber-500">EN LUGAR DEL PRINCIPAL</span>}</p>
+          {c.inc && <p className="rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-[12px] text-emerald-600 dark:text-emerald-300">✓ {c.inc}</p>}
           {c.arts.map(r => <ArtRow key={r.a} r={r} c="#38bdf8" />)}</div>)}</div>}
       {L.nota && <p className="font-sans text-xs italic text-amber-500">{L.nota}</p>}
     </Modal>);

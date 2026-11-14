@@ -11,6 +11,7 @@ import { useMe } from "@/lib/me";
 import { legalFavKey } from "./Legal";
 import { EV_T, INF_EST, INF_FZ, ROLES, fixUnid, isIC, INF_SECS, INF_TIPOS, UNITS, VEH_EST, VEH_REL, VEH_T, dcParts, getPenal, infErrs, infNew, infText, penalOf, penalSearch, artCmp, type Art, type Inf, type Veh } from "@/lib/penal";
 import { cn } from "@/lib/cn";
+import { useOutside } from "@/lib/outside";
 import { VehPick } from "@/components/vehpick";
 import { DivNav } from "./div/DivTools";
 import { OisPanel } from "./Ois";
@@ -288,7 +289,7 @@ function ChargeSearch({ P, onPick }: { P: Art[]; onPick: (a: string) => void }) 
   const [q, setQ] = useState(""), [open, setOpen] = useState(false), [i, setI] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const L = useMemo(() => penalSearch(q, 14, P), [q, P]);
-  useEffect(() => { const f = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); }; document.addEventListener("mousedown", f); return () => document.removeEventListener("mousedown", f); }, []);
+  useOutside(ref, open, () => setOpen(false));
   return (
     <div ref={ref} className="relative">
       <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />

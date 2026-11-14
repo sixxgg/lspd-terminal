@@ -6,6 +6,7 @@ import { useFeedback } from "./feedback";
 import { uiText } from "@/lib/templates";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
+import { useOutside } from "@/lib/outside";
 import { RevButton, RevPanel, revOf } from "./revisar";
 
 export async function copyText(t: string) {
@@ -29,7 +30,7 @@ export function useCopy() {
 /* «Copiar» con dos formatos: Discord (markdown) o web (texto limpio, sin markdown) */
 export function CopyMenu({ text, web, size = "sm", variant = "outline", label = "Copiar", up }: { text: string; web?: string; size?: "sm" | "md"; variant?: "outline" | "primary" | "ghost"; label?: string; up?: boolean }) {
   const copy = useCopy(), [o, setO] = useState(false), ref = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (!o) return; const f = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setO(false); }; document.addEventListener("mousedown", f); return () => document.removeEventListener("mousedown", f); }, [o]);
+  useOutside(ref, o, () => setO(false));
   const opt = (I: typeof Copy, t: string, d: string, v: string) => (
     <button type="button" onClick={() => { setO(false); void copy(v); }} className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800">
       <I className="mt-0.5 size-4 shrink-0 text-brand-600 dark:text-brand-300" /><span><b className="block text-[13px]">{t}</b><span className="block text-[11.5px] leading-snug text-slate-500">{d}</span></span></button>);

@@ -35,6 +35,7 @@ const RAW_AREAS: Area[] = [
     { k: "ent", l: "Entrevistas", d: "Preguntas y seguimiento de los agentes", icon: MessagesSquare, ready: true },
     { k: "vot", l: "Votaciones", d: "Propuestas de ascenso y descenso con debate", icon: Vote, ready: true },
     { k: "fbk", l: "Feedback (incidentes)", sl: "Feedback", d: "Feedback y acciones disciplinarias sobre la actuación de un agente", icon: MessageSquareWarning, ready: true },
+    { k: "rob", l: "Robos", d: "Catálogo oficial de robos y su articulado", icon: Gavel, ready: true },
     { k: "parm", l: "Pérdida de armamento", sl: "Pérdida de arma", d: "Informe de incidente por pérdida de arma de servicio", icon: ShieldAlert, ready: true },
   ] },
   /* Capitanía: los Sargentos II entran solo a la categoría Sargentos (ascenso a Sargento I); el resto pide Teniente */

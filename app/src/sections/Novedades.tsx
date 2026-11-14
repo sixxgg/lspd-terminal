@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.0.6";
+export const APP_VERSION = "3.4";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,15 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.4", f: "14/11/2026", t: "Robos oficiales en Supervisores · articulado corregido · entrevistas con Guardar", items: [
+    "Articulado de robos corregido: si el artículo del robo ya trae un agravante (armas, rostro cubierto, huida, hackeo, grupo, vehículos robados, disparar a los agentes), no se imputa aparte. Cada robo muestra qué agravantes ya incluye.",
+    "Robos actualizados: armerías de Morningwood, industrias y Paleto (132.144), casas de lujo (132.125), comisaría sin cargos dobles, máquinas sin daños dobles, vehículo robado como agravante aparte cuando corresponde y robos sin artículo propio con arma de fuego al 132.12.",
+    "Nueva sección Supervisores › Robos: catálogo oficial y articulado de cada robo, con detalle y copiar en formato Discord o web. La versión oficial se guarda en la base.",
+    "Entrevistas: la ficha ahora tiene «Guardar»; una vez guardada se puede copiar en formato Discord o web. Si cerrás con cambios sin guardar, avisa.",
+    "Entrevistas: lista ordenada por rango en filas prolijas (agente, estado, fecha, rama y divisiones) en vez de tarjetas sueltas.",
+    "Preguntas de la entrevista corregidas y reordenadas (el cierre «¿algo más?» va al final). Se guardan en la base y Sargento I o superior las puede editar, ordenar o volver a las de siempre. Las respuestas que ya estaban se acomodan solas al orden nuevo.",
+    "Limpieza: fecha y hora con una sola función compartida, un solo código para cerrar menús al tocar afuera y funciones de robos sin duplicar.",
+  ] },
   { v: "3.0.6", f: "14/11/2026", t: "Copiar en Discord o web · Supervisores A-Z · Entrevistas nuevas", items: [
     "Informes, OIS, pérdida de arma y feedback: botón «Copiar» con dos opciones, formato Discord o formato web (texto limpio).",
     "OIS: nuevo texto en formato Discord con los 6 pasos, para copiar desde la lista, la revisión o la vista web.",

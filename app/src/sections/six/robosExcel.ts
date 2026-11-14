@@ -1,8 +1,7 @@
 /* Excel de robos (se carga solo al exportar): hoja «Robos» con cada robo explicado, hoja «Articulado» con los artículos
    de cada robo (tentativa, consumado, con disparos y según lo que pase) y, opcional, hoja «Artículos» con el texto y la pena. */
 import ExcelJS from "exceljs";
-import { CATS, perfilDe, type Cat, type Item } from "./robosData";
-import { recOf, unidades } from "./Robos";
+import { CATS, perfilDe, recOf, unidades, type Cat, type Item } from "./robosData";
 import { art, leyOf, type Ref } from "./robosLegal";
 
 const ARGB = (hex: string) => "FF" + hex.replace("#", "").toUpperCase();
@@ -74,18 +73,18 @@ export async function robosXlsx(items: Item[], o: { obs: boolean; desc: boolean 
   s1.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: H1.length } };
 
   /* ---- hoja 2: articulado ---- */
-  const H2 = ["Tipo", "Robo", "Tentativa", "Consumado", "Consumado con disparos a agentes", "CK (Character Kill)", "Rehenes", "Armas a la vista", "Otros (caja fuerte, hackeo, explosivos, herramientas)", "Grupo", "Huida", "Notas"];
-  const W2 = [16, 30, 34, 40, 44, 34, 34, 30, 36, 30, 38, 26];
+  const H2 = ["Tipo", "Robo", "Tentativa", "Consumado", "Consumado con disparos a agentes", "Agravantes que ya trae (no se suman)", "CK (Character Kill)", "Rehenes", "Armas a la vista", "Otros (otra sede, caja fuerte, vehículo robado, hackeo, explosivos, herramientas)", "Grupo", "Huida", "Notas"];
+  const W2 = [16, 30, 34, 40, 44, 34, 34, 34, 30, 36, 30, 38, 26];
   const s2 = wb.addWorksheet("Articulado", { properties: { tabColor: { argb: "FFEF4444" } } });
-  title(s2, H2.length, "Articulado de robos", `Artículos del Código Penal de la Terminal LSPD para cada robo. Tentativa: no lo consiguieron · Consumado: lo consiguieron · Con disparos: además dispararon a agentes. El homicidio doloso (119.1) va solo si hay CK de un jugador. Las columnas de la derecha se suman solo si ocurre. Es una guía: el agente ajusta a lo que pasó.`);
+  title(s2, H2.length, "Articulado de robos", `Artículos del Código Penal de la Terminal LSPD para cada robo. Tentativa: no lo consiguieron · Consumado: lo consiguieron · Con disparos: además dispararon a agentes. El homicidio doloso (119.1) va solo si hay CK de un jugador. Lo que el artículo del robo ya trae como agravante no se suma aparte. Las columnas de la derecha se suman solo si ocurre. Es una guía: el agente ajusta a lo que pasó.`);
   s2.addRow([]); header(s2, 4, H2); s2.columns.forEach((c, i) => { c.width = W2[i]; });
   const used = new Map<string, Set<string>>(); const use = (rs: Ref[], n: string) => rs.forEach(r => { if (!used.has(r.a)) used.set(r.a, new Set()); used.get(r.a)!.add(n); });
-  const cond = (L: ReturnType<typeof leyOf>, ks: string[]) => L.cond.filter(c => ks.includes(c.k)).map(c => `${c.when}:\n${refTxt(c.arts)}`).join("\n\n") || "—";
+  const cond = (L: ReturnType<typeof leyOf>, ks: string[]) => L.cond.filter(c => ks.includes(c.k)).map(c => `${c.when}:${c.alt ? " (en lugar del principal)" : ""}\n${[c.inc, c.arts.length ? refTxt(c.arts) : ""].filter(Boolean).join("\n")}`).join("\n\n") || "—";
   for (const k of cats) {
     const L0 = items.filter(x => x.cat === k); section(s2, H2.length, k, L0.length);
     L0.forEach((it, i) => {
       const L = leyOf(it); use(L.tent, it.n); use(L.hom, it.n); L.cond.forEach(c => use(c.arts, it.n));
-      const r = s2.addRow([CATS[k].l, it.n, refTxt(L.tent), refTxt(L.cons), refTxt(L.hom), cond(L, ["ck"]), cond(L, ["reh"]), cond(L, ["arm"]), cond(L, ["otro", "hack", "boom", "tools"]), cond(L, ["grp"]), cond(L, ["huida"]), L.nota || ""]);
+      const r = s2.addRow([CATS[k].l, it.n, refTxt(L.tent), refTxt(L.cons), refTxt(L.hom), L.inc.map(x => `${x.l} (${x.a})`).join("\n") || "—", cond(L, ["ck"]), cond(L, ["reh"]), cond(L, ["arm"]), cond(L, ["alt", "otro", "veh", "hack", "boom", "tools"]), cond(L, ["grp"]), cond(L, ["huida"]), L.nota || ""]);
       body(r, k, i % 2 === 1);
       ([[3, "FFFEF9C3"], [4, "FFFFEDD5"], [5, "FFFEE2E2"]] as const).forEach(([c, f]) => { r.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: f } }; });
       fit(r, W2);
