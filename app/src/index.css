@@ -371,3 +371,10 @@ html:not([data-head="none"]) header nav .nav-dk-l { font-family: var(--fh, inher
 .ver-chip.is-new { color: #fff; background: linear-gradient(90deg, #e5484d, #ec4899); box-shadow: 0 0 10px rgba(236,72,153,.55); }
 .ver-chip.is-new::after { content: ""; position: absolute; top: -2px; right: -2px; width: 6px; height: 6px; border-radius: 99px; background: #fde047; box-shadow: 0 0 6px #fde047; animation: sec-dot 1.6s ease-in-out infinite; }
 .tab-status svg { width: 10px; height: 10px; }
+
+/* Supervisores: tarjetas y campos más compactos (sin espacio de sobra) */
+.sup-c .card-h { padding: .7rem 1rem; gap: .65rem; align-items: center; }
+.sup-c .card-h > .grid:first-child { width: 2rem; height: 2rem; border-radius: .65rem; }
+.sup-c .card-b { padding: .9rem 1rem; }
+.sup-c .card-b > :not([hidden]) ~ :not([hidden]) { margin-top: .75rem; }
+.sup-c textarea.fx-field { min-height: 64px; }

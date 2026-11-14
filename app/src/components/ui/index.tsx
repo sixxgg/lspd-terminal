@@ -55,14 +55,14 @@ export function Card({ className, ...p }: HTMLAttributes<HTMLDivElement>) {
 }
 export function CardHeader({ icon, title, desc, action }: { icon?: ReactNode; title: ReactNode; desc?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800/80">
+    <div className="card-h flex items-start gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800/80">
       {icon && <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300 [&_svg]:size-[18px]">{icon}</div>}
       <div className="min-w-0 flex-1"><h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>{desc && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{desc}</p>}</div>
       {action}
     </div>
   );
 }
-export const CardBody = ({ className, ...p }: HTMLAttributes<HTMLDivElement>) => <div className={cn("space-y-4 p-5", className)} {...p} />;
+export const CardBody = ({ className, ...p }: HTMLAttributes<HTMLDivElement>) => <div className={cn("card-b space-y-4 p-5", className)} {...p} />;
 
 /* ---------- Selector segmentado ---------- */
 export function Segmented<T extends string>({ value, onChange, options, size = "md", className }: { value: T; onChange: (v: T) => void; options: { value: T; label: ReactNode; icon?: ReactNode }[]; size?: "sm" | "md"; className?: string }) {

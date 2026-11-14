@@ -12,6 +12,7 @@ import { Shell } from "./layout/Shell";
 import { Home } from "./sections/Home";
 import { MeCtx } from "./lib/me";
 import { Division, PerdidaArmamento, VIEWS, lz } from "./routes";
+import { cn } from "./lib/cn";
 const Six = lz(() => import("./sections/six/Six"), "Six");
 const PublicBoard = lz(() => import("./sections/Pizarra"), "PublicBoard");
 const QS = new URLSearchParams(location.search), SHARE = QS.get("pizarra"), VER = QS.get("ver"), ROB = QS.get("robos");
@@ -114,7 +115,7 @@ function Main() {
   else if (area.k === "div") view = <Division d={sec.l} />;
   else if (VIEWS[`${area.k}/${sec.k}`]) view = VIEWS[`${area.k}/${sec.k}`]();
   else view = null;
-  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className="animate-fade-in"><Suspense fallback={<div className="grid min-h-[40vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{view}</Suspense></div></Shell><UpdateBar />{!fx && <CalAlert me={user.n} />}{!fx && !PREV.on && <ExamWatch me={user.n} />}{PREV.on && <PrevBar r={user.r} />}</MeCtx.Provider>{fx && <BootScreen name={me.n} rank={rankES(user.r)} badge={user.p} agents={getRoster().length} no={ACC.names.indexOf(me.n) + 1 || undefined} divs={rosterDivs(me.n)} short={fx === "short"} onDone={() => setFx("")} />}{breach && <ErrorScreen onDone={endBreach} />}{me.must && !PREV.on && <ForcePwPortal n={me.n} onDone={() => { PREV.must = false; setMe({ ...me, must: false }); toast("Contraseña actualizada. ¡Listo!"); }} onLogout={logout} />}</Device>;
+  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className={cn("animate-fade-in", area.k === "sup" && "sup-c")}><Suspense fallback={<div className="grid min-h-[40vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{view}</Suspense></div></Shell><UpdateBar />{!fx && <CalAlert me={user.n} />}{!fx && !PREV.on && <ExamWatch me={user.n} />}{PREV.on && <PrevBar r={user.r} />}</MeCtx.Provider>{fx && <BootScreen name={me.n} rank={rankES(user.r)} badge={user.p} agents={getRoster().length} no={ACC.names.indexOf(me.n) + 1 || undefined} divs={rosterDivs(me.n)} short={fx === "short"} onDone={() => setFx("")} />}{breach && <ErrorScreen onDone={endBreach} />}{me.must && !PREV.on && <ForcePwPortal n={me.n} onDone={() => { PREV.must = false; setMe({ ...me, must: false }); toast("Contraseña actualizada. ¡Listo!"); }} onLogout={logout} />}</Device>;
 }
 
 /* el cambio obligatorio de contraseña va dentro de la pantalla de la tablet (o arriba de todo sin marco) */

@@ -5,7 +5,9 @@ import { AgentPicker, Avatar, RankBadge } from "@/components/agents";
 import { DiscordOutput, copyText } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { DIVISIONES, LUGARES, getRoster, findAgent, fmtDate, hoyDMY, isDMY, lvl, maskDMY, maskHM, norm, profOf, rankES, uid , myKey } from "@/lib/domain";
-import { useJSON } from "@/lib/store";
+import { LS, useJSON } from "@/lib/store";
+import { infNew } from "@/lib/penal";
+import type { InfX } from "./InfViewer";
 import { cn } from "@/lib/cn";
 
 const ARMAS = ["Pistola de combate", "Pistola reglamentaria", "Pistola pesada", "Táser", "Escopeta de corredera", "Carabina", "Subfusil (SMG)", "Rifle"];
@@ -40,6 +42,19 @@ export function perdText(A: PerdArm) {
     "━━━━━━━━━━━━━━━━━━━━", "*Documento interno del LSPD. Prohibida su divulgación fuera de los canales oficiales.*",
   ].join("\n");
 }
+/* cada pérdida de arma también queda como informe (lspdt.informes), con id fijo para no duplicarlo y su historial */
+const INF = "lspdt.informes";
+function toInf(A: PerdArm, by: string) {
+  /* los informes viejos sin número fijo se numeran por orden de registro antes de sumar uno nuevo (así no se corre la numeración) */
+  const L0 = LS.json<InfX[]>(INF, []), ord = L0.slice().sort((p, q) => (p.t || 0) - (q.t || 0)).map(x => x.id);
+  const L = L0.map(x => (x.no ? x : { ...x, no: ord.indexOf(x.id) + 1 })), id = "parm-" + A.id, old = L.find(x => x.id === id), tipo = TIPOS.find(x => x[0] === A.tipo)?.[1] || "";
+  const unid = [{ n: A.ag, r: "Agente afectado" }, ...A.tes.filter(t => t.n.trim()).map(t => ({ n: t.n.trim(), r: t.r.trim() || "Testigo" }))];
+  const f: Partial<InfX> = { fecha: A.fecha, hora: A.hora, ui: A.lugar, ux: "", uf: "", tipos: ["Pérdida de arma de servicio"], motivo: A.tipo === "otro" && A.tipox.trim() ? A.tipox.trim() : tipo, hechos: A.relato, unid,
+    ev: [{ t: "Arma", d: [A.arma, A.serie && `N.º de serie ${A.serie}`].filter(Boolean).join(" · ") }] as InfX["ev"], texto: A.texto || perdText(A), src: "parm", sid: A.id };
+  if (old) { LS.setJSON(INF, L.map(x => (x.id === id ? { ...x, ...f, edit: by, et: Date.now(), hist: [...(x.hist || []), { t: Date.now(), by, a: "Editó el informe de pérdida de arma" }] } : x))); return; }
+  const no = Math.max(0, ...L.map(x => x.no || 0)) + 1;
+  LS.setJSON(INF, [...L, { ...infNew(), suj: [], ...f, id, no, st: "rev", tags: ["Pérdida de arma"], por: A.por || by, t: A.t || Date.now(), hist: [{ t: Date.now(), by, a: "Registró el informe (pérdida de arma)" }] } as InfX]);
+}
 const errsOf = (A: PerdArm) => [!A.ag && "agente", !A.arma.trim() && "tipo de arma", !A.serie.trim() && "n.º de serie", !isDMY(A.fecha) && "fecha",
   !A.lugar.trim() && "lugar", !A.relato.trim() && "relato"].filter(Boolean) as string[];
 
@@ -49,6 +64,8 @@ export function PerdidaArmamento({ me }: { me: { n: string; r: string } }) {
   const [list, setList] = useJSON<PerdArm[]>("lspdt.perdArm", []);
   const { toast, confirm } = useFeedback();
   useEffect(() => { try { localStorage.setItem(myKey("paDraft", me.n), JSON.stringify(A)); } catch { /* */ } }, [A]);
+  /* las que se registraron antes de esto también pasan a Informes (una sola vez cada una) */
+  useEffect(() => { const have = new Set(LS.json<InfX[]>(INF, []).map(x => x.id)); list.filter(r => r.id && !have.has("parm-" + r.id)).forEach(r => toInf(r, r.por || me.n)); }, [list.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const set = <K extends keyof PerdArm>(k: K, v: PerdArm[K]) => setA(x => ({ ...x, [k]: v }));
   const text = useMemo(() => perdText(A), [A]);
   const errs = errsOf(A);
@@ -57,9 +74,11 @@ export function PerdidaArmamento({ me }: { me: { n: string; r: string } }) {
   async function save() {
     if (errs.length) { toast("Falta completar: " + errs.join(", "), "err"); return; }
     const r: PerdArm = { ...structuredClone(A), texto: perdText(A), t: Date.now(), por: A.por || me.n };
-    if (A.id) setList(list.map(x => (x.id === A.id ? { ...x, ...r, edit: me.n } : x)));
-    else setList([...list, { ...r, id: uid() }]);
-    setA(nuevo(me.n)); setTab("list"); toast("Informe registrado");
+    const fin = { ...r, id: A.id || uid() };
+    if (A.id) setList(list.map(x => (x.id === A.id ? { ...x, ...fin, edit: me.n } : x)));
+    else setList([...list, fin]);
+    toInf(fin, me.n);
+    setA(nuevo(me.n)); setTab("list"); toast(A.id ? "Cambios guardados · también en Informes" : "Informe registrado · también quedó en Informes");
   }
   async function reset() { if (await confirm("¿Empezar un informe nuevo? Se borran los datos cargados.")) setA(nuevo(me.n)); }
 

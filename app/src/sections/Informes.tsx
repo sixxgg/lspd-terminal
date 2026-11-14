@@ -276,7 +276,7 @@ function InfForm({ init, base, onSaved }: { init: Inf | null; base: Inf | null; 
           </CardBody>
         </Card>
       </Col>
-      <DiscordOutput title="Informe policial" tag="Discord" text={text} errors={showErr ? errs : undefined}
+      <DiscordOutput title="Informe policial" tag="Discord" text={text} errors={showErr ? errs : undefined} need={errs}
         extra={parts.length > 1 && <span className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">{parts.length} partes:{parts.map((p, i) => <Button key={i} size="sm" variant="outline" onClick={() => { if (errs.length) { setShowErr(true); return; } void copy(p); }}>{i + 1}/{parts.length}</Button>)}</span>}
         footer={<><Button variant="ghost" onClick={async () => { if (!(await confirm("¿Empezar un informe nuevo? Se borran los datos cargados."))) return; LS.del(myKey("infDraft", me.n)); setA(infNew(me.n)); setShowErr(false); }}>Nuevo informe</Button>
           <Button icon={<Save />} onClick={save}>{A.id ? "Guardar cambios" : "Registrar informe"}</Button></>} />

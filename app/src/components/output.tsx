@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Copy, Check, MessageSquareText, FileText, Eye, RotateCcw } from "lucide-react";
 import { Button, Card, Segmented } from "./ui";
 import { discordHtml, discordPlain, type DcCtx } from "@/lib/discord";
@@ -6,6 +6,7 @@ import { useFeedback } from "./feedback";
 import { uiText } from "@/lib/templates";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
+import { RevButton, RevPanel, revOf } from "./revisar";
 
 export async function copyText(t: string) {
   try { await navigator.clipboard.writeText(t); return true; }
@@ -26,8 +27,10 @@ export function useCopy() {
 }
 
 /* Salida para Discord: formato Discord (editable antes de copiar), vista previa y formato web (sin markdown, con los íconos) */
-export function DiscordOutput({ title, text, footer, errors, ctx, tag = "Discord", sticky = true, extra, web = true }: {
+export function DiscordOutput({ title, text, footer, errors, need, pen, ctx, tag = "Discord", sticky = true, extra, web = true }: {
   title: string; text: string; footer?: ReactNode; errors?: string[]; ctx?: DcCtx; tag?: string; sticky?: boolean; extra?: ReactNode; web?: boolean;
+  /* «Revisar»: need = lo obligatorio que falta (si no se pasa, se usan los errores); pen = avisos de pendiente */
+  need?: string[]; pen?: string[];
 }) {
   const [mode, setMode] = useState<"dc" | "pv" | "web">("dc");
   const [val, setVal] = useState(text), [done, setDone] = useState(false);
@@ -35,12 +38,16 @@ export function DiscordOutput({ title, text, footer, errors, ctx, tag = "Discord
   const copy = useCopy();
   const shown = mode === "web" ? discordPlain(val) : val;
   const edited = val !== text;
+  const [ro, setRo] = useState(false);
+  const rev = useMemo(() => revOf(val, need ?? errors ?? [], pen), [val, need, errors, pen]);
   return (
     <Card className={cn("flex flex-col overflow-hidden", sticky && "lg:sticky lg:top-32")}>
       <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
         <div className="grid size-8 place-items-center rounded-lg bg-[#5865F2]/10 text-[#5865F2] dark:bg-[#5865F2]/20 dark:text-[#a5b0ff]"><MessageSquareText className="size-4" /></div>
         <div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{tag}</p><h3 className="truncate text-sm font-semibold">{title}</h3></div>
+        <RevButton r={rev} open={ro} onClick={() => setRo(!ro)} />
       </div>
+      {ro && <RevPanel r={rev} onClose={() => setRo(false)} className="mx-4 mt-3" />}
       <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
         <Segmented size="sm" value={mode} onChange={setMode} options={[
           { value: "dc", label: "Formato Discord", icon: <MessageSquareText /> }, { value: "pv", label: "Vista Discord", icon: <Eye /> },
@@ -74,13 +81,15 @@ export function DiscordOutput({ title, text, footer, errors, ctx, tag = "Discord
 /* Una línea para copiar (comandos /me, /do, /rlspd…) */
 export function CopyLine({ label, text, errors, tag }: { label: string; text: string; errors?: string[]; tag?: string }) {
   const [val, setVal] = useState(text); useEffect(() => setVal(text), [text]);
-  const copy = useCopy();
+  const copy = useCopy(), [ro, setRo] = useState(false), rev = useMemo(() => revOf(val, errors), [val, errors]);
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
         {tag && <span className="rounded-md bg-slate-900 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-100 dark:bg-slate-800">{tag}</span>}
         <span className="flex-1 text-sm font-semibold">{label}</span>
+        <RevButton r={rev} open={ro} onClick={() => setRo(!ro)} />
       </div>
+      {ro && <RevPanel r={rev} onClose={() => setRo(false)} className="m-3" />}
       <textarea value={val} onChange={e => setVal(e.target.value)} rows={3} spellCheck={false}
         className="block w-full resize-y bg-slate-950 px-4 py-3 font-mono text-[12.5px] leading-relaxed text-slate-200 outline-none focus:ring-2 focus:ring-inset focus:ring-brand-500/60" />
       <div className="flex justify-end border-t border-slate-100 px-4 py-2.5 dark:border-slate-800"><Button size="sm" variant="outline" icon={<Copy />} onClick={() => copy(val, errors)}>Copiar</Button></div>

@@ -19,13 +19,16 @@ const fixEq = (l?: (EqItem | string)[]) => (l || []).map(x => (typeof x === "str
 export function eqAll(): EqItem[] { const E = LS.ro<Record<string, (EqItem | string)[]> | null>(EQ_KEY, null); return E ? fixEq(E["*"] || E.stx) : EQ_DEF.map(x => ({ ...x })); }
 export function eqFor(k: string): EqItem[] { const E = LS.ro<Record<string, (EqItem | string)[]> | null>(EQ_KEY, null); return E && E[k] && !E["*"] ? fixEq(E[k]) : eqAll(); }
 export type Miss = { n: string; q: number; h: number; o?: string } | string;
-export type Cell = { s: "" | "ok" | "no" | "na"; m?: Miss[]; o?: string; f?: string[]; io?: Record<string, string>; ck?: boolean; by?: string };
+export type Extra = { n: string; q: number; h: number };
+export type Cell = { s: "" | "ok" | "no" | "na"; m?: Miss[]; x?: Extra[]; o?: string; f?: string[]; io?: Record<string, string>; ck?: boolean; by?: string };
 export type PRow = { n: string; r: string; p?: string; v: Record<string, Cell> };
 export type Patrol = { fecha: string; rows: PRow[]; nota?: string };
 export type PHist = { id: string; fecha: string; t: number; por: { n: string; r: string }; nota: string; rows: PRow[] };
 export const VST: Record<string, string> = { "": "Sin revisar", ok: "Preparado", no: "No preparado", na: "No asignado" };
 const missTxt = (m: Miss) => (typeof m === "string" ? m : `${m.n} (${m.h}/${m.q}, faltan ${m.q - m.h})${m.o ? ` [${m.o}]` : ""}`);
 export const missOf = (c: Cell) => [...(c.m || []).map(missTxt), ...(c.o ? [c.o] : [])];
+/* excedente: lo que tiene de más (ej: «Cargadores de pistola de combate: 1 de más») */
+export const extraOf = (c: Cell) => (c.x || []).map(e => `${e.n}: ${e.h - e.q} de más (${e.h}/${e.q})`);
 export const vcount = (rows: PRow[], s: string) => rows.reduce((n, r) => n + vehOf(r).filter(k => (r.v[k]?.s || "") === s).length, 0);
 export const pfoto = (id: string) => LS.get("lspdt.pfoto." + id) || "";
 export const delPhotos = (rows: PRow[]) => rows.forEach(r => vehOf(r).forEach(k => (r.v[k]?.f || []).forEach(id => LS.del("lspdt.pfoto." + id))));
@@ -36,8 +39,8 @@ export function patReport(rec: { fecha: string; rows: PRow[]; nota?: string }, b
     if (!vehOf(r).length) t += "   - Sin vehículos revisados\n";
     for (const k of vehOf(r)) {
       const c = r.v[k] || { s: "" }, n = vName(k); if (c.s === "na") continue;
-      const miss = missOf(c), nf = (c.f || []).length;
-      t += `   - ${n}: ${c.s === "ok" ? "Preparado" : c.s === "no" ? "No preparado" + (miss.length ? " — falta: " + miss.join(", ") : "") : "Sin revisar"}${nf ? ` (${nf} ${nf === 1 ? "foto" : "fotos"})` : ""}\n`;
+      const miss = missOf(c), ex = extraOf(c), nf = (c.f || []).length;
+      t += `   - ${n}: ${c.s === "ok" ? (c.ck ? "Preparado — todo correcto" : "Preparado") : c.s === "no" ? "No preparado" + (miss.length ? " — falta: " + miss.join(", ") : "") : "Sin revisar"}${ex.length ? " — excedente: " + ex.join(", ") : ""}${nf ? ` (${nf} ${nf === 1 ? "foto" : "fotos"})` : ""}\n`;
     }
   }
   if (rec.nota) t += `\nNotas: ${rec.nota}\n`;

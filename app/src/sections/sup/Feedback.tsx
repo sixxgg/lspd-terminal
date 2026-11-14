@@ -106,7 +106,7 @@ function FbForm({ init, onSaved }: { init: Fb | null; onSaved: (id: string) => v
           </CardBody>
         </Card>
       </Col>
-      <DiscordOutput title="Feedback" tag="Discord" text={text} errors={err ? errs : undefined}
+      <DiscordOutput title="Feedback" tag="Discord" text={text} errors={err ? errs : undefined} need={errs}
         footer={<><Button variant="ghost" onClick={async () => { if (!(await confirm("¿Empezar un feedback nuevo? Se borran los datos cargados."))) return; LS.del(myKey("fbDraft", me.n)); setA(fbNew() as Fb); setErr(false); }}>Nuevo</Button>
           <Button icon={<Save />} onClick={save}>{A.id ? "Guardar cambios" : "Registrar"}</Button></>} />
     </Split>

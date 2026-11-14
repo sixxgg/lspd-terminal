@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.0.4";
+export const APP_VERSION = "3.0.5";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,15 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.0.5", f: "14/11/2026", t: "Patrullas en una sola sección · botón Revisar · entrevistas para Discord", items: [
+    "Supervisores › Patrullas: «Revisión de patrullas» y «Registro de patrullas» ahora son dos pestañas de la misma sección.",
+    "Checklist del maletero rediseñado: cada elemento con contador (− / +), y marca OK, «Falta N» o «N de más» (ej: 1 cargador de más). El excedente queda anotado en el resumen y en el registro.",
+    "Botón «Revisar» en todos los textos para copiar: rojo si falta algo (y dice qué), amarillo si quedó algo pendiente o con el ejemplo sin cambiar, verde si está todo bien.",
+    "Entrevistas: interfaz nueva, divisiones a las que pertenece (salen solas del roster y se pueden sumar) y a las que quiere entrar, respuestas cortas a cada pregunta y «Copiar para Discord» con todo prolijo.",
+    "Pérdida de arma: cada informe también queda en Informes (con número, estado e historial). Los que ya estaban se pasan solos.",
+    "Historial de informes con diseño nuevo: expediente con número y estado, resumen, pestañas (informe, involucrados, pruebas y vehículos, historial por día).",
+    "Supervisores más compacto: tarjetas y cuadros de texto sin tanto espacio vacío.",
+  ] },
   { v: "3.0.4", f: "14/11/2026", t: "Informes como expediente · ventanas nuevas · condecoraciones con descripción", items: [
     "Informes · Historial con estilo MDT: lista a la izquierda, el informe en el centro y los detalles a la derecha (número, fechas, creador, ubicación, civiles, agentes, vehículos, pruebas y cargos).",
     "Estado de cada informe: Abierto, En investigación, Pendiente de revisar, Cerrado o Archivado (cerrar y archivar, de sargento para arriba). Etiquetas editables.",

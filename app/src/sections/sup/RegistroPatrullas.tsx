@@ -10,18 +10,20 @@ import { dmy, fmtDate, norm, rankES } from "@/lib/domain";
 import { useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { carType } from "@/lib/onx";
-import { delPhotos, missOf, patReport, vName, vcount, vehOf, type Cell, type PHist, type PRow } from "@/lib/patrol";
+import { delPhotos, extraOf, missOf, patReport, vName, vcount, vehOf, type Cell, type PHist, type PRow } from "@/lib/patrol";
 import { cn } from "@/lib/cn";
 import { StatusPill, Thumbs } from "./Patrullas";
 
 /* tarjeta de un patrulla revisado */
 function CarCard({ k, c, cap }: { k: string; c: Cell; cap: string }) {
-  const ms = missOf(c), n = vName(k);
+  const ms = missOf(c), ex = extraOf(c), n = vName(k);
   return (
-    <div className={cn("w-[16rem] rounded-xl border p-2.5", c.s === "no" ? "border-red-300/60 bg-red-500/[.04] dark:border-red-500/30" : c.s === "ok" ? "border-emerald-300/60 bg-emerald-500/[.04] dark:border-emerald-500/25" : "border-slate-200 dark:border-slate-800")}>
+    <div className={cn("w-[15rem] rounded-xl border p-2", c.s === "no" ? "border-red-300/60 bg-red-500/[.04] dark:border-red-500/30" : c.s === "ok" ? "border-emerald-300/60 bg-emerald-500/[.04] dark:border-emerald-500/25" : "border-slate-200 dark:border-slate-800")}>
       <div className="flex items-center gap-2"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800"><Car className="size-4" /></span>
         <div className="min-w-0 flex-1"><p className="text-sm font-semibold leading-snug" title={k}>{n}</p><p className="text-[10.5px] text-slate-400">{carType(k, n)}</p></div><StatusPill s={c.s} /></div>
       {ms.length > 0 && <p className="mt-2 text-[11.5px] leading-snug text-red-600 dark:text-red-400"><b>Falta:</b> {ms.join(" · ")}</p>}
+      {ex.length > 0 && <p className="mt-1 text-[11.5px] leading-snug text-amber-700 dark:text-amber-300"><b>De más:</b> {ex.join(" · ")}</p>}
+      {c.s === "ok" && c.ck && !ex.length && <p className="mt-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">✓ Todo correcto</p>}
       {c.by && <p className="mt-1.5 text-[10.5px] text-slate-400">Inspeccionó: {c.by}</p>}
       <Thumbs ids={c.f} cap={cap} />
     </div>);
@@ -49,13 +51,13 @@ export function RegistroPatrullas() {
     return Object.entries(m).sort((a, b) => b[1].ok + b[1].no - (a[1].ok + a[1].no)); }, [list]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {([[list.length, "Revisiones", ""], [new Set(list.flatMap(h => h.rows.map(r => r.n))).size, "Agentes revisados", ""], [ok + no, "Patrullas revisados", ""], [no, "No preparados", "text-red-600 dark:text-red-400"], [ok + no ? Math.round((ok * 100) / (ok + no)) + "%" : "—", "Preparados", "text-emerald-600 dark:text-emerald-400"]] as const).map(([n, k, c]) => (
-          <Card key={k} className="p-4"><p className={cn("text-2xl font-bold tabular-nums", c)}>{n}</p><p className="text-xs text-slate-500">{k}</p></Card>))}
+          <Card key={k} className="px-3 py-2"><p className={cn("text-lg font-bold leading-tight tabular-nums", c)}>{n}</p><p className="text-[11px] text-slate-500">{k}</p></Card>))}
       </div>
       <Card>
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-4 dark:border-slate-800">
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-3 dark:border-slate-800">
           <Segmented size="sm" value={view} onChange={setView} options={[{ value: "rev", label: "Revisiones", icon: <CalendarDays /> }, { value: "ag", label: "Agentes", icon: <Users /> }, { value: "car", label: "Patrullas", icon: <Car /> }]} />
           <SearchInput className="min-w-[13rem] flex-1" value={q} onChange={setQ} placeholder="Buscar agente, placa o patrulla…" />
           <Select className="w-auto text-sm" value={by} onChange={x => setBy(x.target.value)}><option value="">Revisado por: todos</option>{who.map(n => <option key={n}>{n}</option>)}</Select>
