@@ -31,17 +31,19 @@ const Q_DEF: Q[] = [
 const OLD = ["siente", "conf", "rama", "div", "rel", "mas", "asp"];
 const resOf = (e: Ent): Record<string, string> => Object.fromEntries(Object.entries(e.res || {}).map(([k, v]) => [/^\d+$/.test(k) ? OLD[+k] || k : k, v]));
 
-/* div = a las que quiere entrar · act = a las que ya pertenece (además de las del roster de cada división) · res = respuestas por pregunta */
-type Ent = { st?: string; rama?: string; f?: string; div?: string[]; act?: string[]; res?: Record<string, string>; nota?: string; por?: string; t?: number };
+/* nd = no quiere entrar a ninguna (ok: está cómodo donde está · no: no quiere más divisiones) · div = a las que quiere entrar · act = a las que ya pertenece (además de las del roster de cada división) · res = respuestas por pregunta */
+type Ent = { st?: string; rama?: string; f?: string; div?: string[]; nd?: string; act?: string[]; res?: Record<string, string>; nota?: string; por?: string; t?: number };
 const ST = { si: { l: "Realizada", c: "#10b981", I: Check }, pen: { l: "Pendiente", c: "#f59e0b", I: Clock }, no: { l: "No realizada", c: "#ef4444", I: X } } as const;
 const RAMA = { sgt: { l: "Sargentos", c: "#ec4899", I: Shield, d: "Supervisión y mando de patrulla" }, det: { l: "Detectives", c: "#a855f7", I: Compass, d: "Investigación criminal" }, ind: { l: "Indeciso", c: "#06b6d4", I: HelpCircle, d: "Todavía no lo tiene claro" } } as const;
 type StK = keyof typeof ST; type RaK = keyof typeof RAMA;
 const stOf = (e: Ent) => (e.st && e.st in ST ? ST[e.st as StK] : null), raOf = (e: Ent) => (e.rama && e.rama in RAMA ? RAMA[e.rama as RaK] : null);
 const raL = (k: string | undefined, n: string) => (k === "ind" && genderOf(n) === "f" ? "Indecisa" : k && k in RAMA ? RAMA[k as RaK].l : "");
+const ND = { ok: { l: "Está cómodo donde está", c: "#10b981", t: "Está cómodo donde está, no quiere cambiar de división" }, no: { l: "No quiere más divisiones", c: "#64748b", t: "No quiere pertenecer a más divisiones" } } as const;
+const ndOf = (e: Ent) => (e.nd && e.nd in ND ? ND[e.nd as keyof typeof ND] : null);
 const ordDiv = (s: Iterable<string>) => { const x = new Set(s); return ALL_DIVS.filter(d => x.has(d)); };
 const actOf = (n: string, e: Ent) => ordDiv([...rosterDivs(n), ...(e.act || [])]);
-const empty = (e: Ent) => !e.st && !e.rama && !e.f && !(e.div || []).length && !(e.act || []).length && !(e.nota || "").trim() && !Object.values(e.res || {}).some(v => v.trim());
-const clean = (e: Ent): Ent => ({ st: e.st || "", rama: e.rama || "", f: e.f || "", div: e.div || [], act: e.act || [], res: Object.fromEntries(Object.entries(resOf(e)).filter(([, v]) => v.trim())), nota: (e.nota || "").trim() });
+const empty = (e: Ent) => !e.st && !e.rama && !e.f && !e.nd && !(e.div || []).length && !(e.act || []).length && !(e.nota || "").trim() && !Object.values(e.res || {}).some(v => v.trim());
+const clean = (e: Ent): Ent => ({ st: e.st || "", rama: e.rama || "", f: e.f || "", nd: e.div?.length ? "" : e.nd || "", div: e.div || [], act: e.act || [], res: Object.fromEntries(Object.entries(resOf(e)).filter(([, v]) => v.trim())), nota: (e.nota || "").trim() });
 
 /* texto para Discord (el formato web lo saca CopyMenu limpiando el markdown) */
 function entText(a: Agent, e: Ent, QS: Q[]) {
@@ -53,7 +55,7 @@ function entText(a: Agent, e: Ent, QS: Q[]) {
     `**Estado:** ${ico} ${stOf(e)?.l || "Sin marcar"}${e.f ? `  ·  **Fecha:** \`${isoToDMY(e.f)}\`` : ""}`,
     `**Rama de interés:** ${raL(e.rama, a.n)}`, "",
     "### 🏢 Divisiones a las que pertenece", act.length ? act.map(d => `> • ${d}`).join("\n") : "> Ninguna", "",
-    "### 🎯 Divisiones a las que quiere pertenecer", dv.length ? dv.map(d => `> • ${d}`).join("\n") : "> Ninguna por ahora",
+    "### 🎯 Divisiones a las que quiere pertenecer", dv.length ? dv.map(d => `> • ${d}`).join("\n") : ndOf(e) ? `> ${ndOf(e)!.t}` : "> Ninguna por ahora",
     ...(res.length ? ["", "### 📝 Respuestas", ...res.flatMap(([q, r]) => [`**${q}**`, `> ${r.replace(/\n/g, "\n> ")}`])] : []),
     ...(nota ? ["", "### 🗒️ Notas", nota.split("\n").map(l => "> " + l).join("\n")] : []),
     "", `-# Entrevista registrada por ${e.por || "—"}${e.t ? ` · ${fmtDate(e.t)}` : ""}`,
@@ -159,7 +161,7 @@ export function Entrevistas() {
                     <span>{S ? <Pill c={S.c} I={S.I}>{S.l}</Pill> : <span className="inline-flex items-center gap-1 text-[11px] text-slate-400"><CircleDashed className="size-3" />Sin marcar</span>}</span>
                     <span className="text-[12px] tabular-nums text-slate-600 dark:text-slate-300">{e.f ? isoToDMY(e.f) : <span className="text-slate-400">—</span>}</span>
                     <span>{R ? <Pill c={R.c} I={R.I}>{raL(e.rama, a.n)}</Pill> : <span className="text-[11px] text-slate-400">—</span>}</span>
-                    <span className="flex min-w-0 flex-wrap items-center gap-1">{act.map(d => <DivTag key={d} d={d} />)}{dv.map(d => <DivTag key={d} d={d} want />)}{!act.length && !dv.length && <span className="text-[11px] text-slate-400">—</span>}{(e.nota || "").trim() && <StickyNote className="size-3.5 text-amber-500" />}</span>
+                    <span className="flex min-w-0 flex-wrap items-center gap-1">{act.map(d => <DivTag key={d} d={d} />)}{dv.map(d => <DivTag key={d} d={d} want />)}{!dv.length && ndOf(e) && <span title={ndOf(e)!.t} className="rounded border px-1.5 py-px text-[10px] font-bold" style={{ borderColor: ndOf(e)!.c + "88", color: ndOf(e)!.c }}>{e.nd === "ok" ? "Cómodo" : "No quiere más"}</span>}{!act.length && !dv.length && !ndOf(e) && <span className="text-[11px] text-slate-400">—</span>}{(e.nota || "").trim() && <StickyNote className="size-3.5 text-amber-500" />}</span>
                     <span className="flex justify-end" onClick={ev => ev.stopPropagation()}>{e.t ? <CopyMenu text={entText(a, e, QS)} variant="ghost" /> : <span className="pr-2 text-[11px] text-slate-400">Sin guardar</span>}</span>
                   </div>);
               })}</div>}
@@ -212,7 +214,7 @@ function EntModal({ a, e, QS, onSave, onClose }: { a: Agent; e: Ent; QS: Q[]; on
   return (
     <Modal open onClose={() => void close()} size="xl" icon={<UserRoundCheck />} title={<span className="flex items-center gap-2">Entrevista · {a.n}{S && <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: S.c + "22", color: S.c }}>{S.l}</span>}</span>}
       desc={<span className="flex flex-wrap items-center gap-1.5"><RankBadge r={a.r} />{a.p && <span className="font-mono text-xs">#{a.p}</span>}{e.t && <span className="text-xs">· guardada por {e.por}, {fmtDate(e.t)}</span>}</span>}
-      footer={<><Revisar text={txt} err={[!d.st && "estado de la entrevista", d.st === "si" && !d.f && "fecha"].filter(Boolean) as string[]} pen={dv.length ? undefined : ["divisiones a las que quiere entrar"]} className="mr-auto min-w-0 max-w-full flex-1" />
+      footer={<><Revisar text={txt} err={[!d.st && "estado de la entrevista", d.st === "si" && !d.f && "fecha"].filter(Boolean) as string[]} pen={dv.length || d.nd ? undefined : ["divisiones a las que quiere entrar (o marcá que está cómodo / no quiere más)"]} className="mr-auto min-w-0 max-w-full flex-1" />
         <Button variant="ghost" onClick={() => void close()}>Cerrar</Button>
         {saved ? <CopyMenu size="md" variant="primary" text={txt} up /> : <Button icon={<Save />} disabled={!dirty} onClick={doSave}>Guardar</Button>}</>}>
       {dirty && <p className="-mt-1 mb-3 flex items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-1.5 text-[12px] font-semibold text-amber-700 dark:text-amber-300"><Clock className="size-3.5" />Cambios sin guardar · guardá para poder copiarla</p>}
@@ -236,7 +238,11 @@ function EntModal({ a, e, QS, onSave, onClose }: { a: Agent; e: Ent; QS: Q[]; on
           <div><Lbl I={Building2}>Divisiones a las que pertenece</Lbl>
             <DivChips list={ALL_DIVS} on={act} lock={auto} col="#10b981" onToggle={x => { const s = new Set(d.act || []); if (s.has(x)) s.delete(x); else s.add(x); set({ act: ordDiv(s) }); }} /></div>
           <div><Lbl I={Target}>Divisiones a las que quiere pertenecer</Lbl>
-            <DivChips list={ALL_DIVS.filter(x => !act.includes(x))} on={dv} col="rgb(var(--b-500))" onToggle={x => { const s = new Set(dv); if (s.has(x)) s.delete(x); else s.add(x); set({ div: ordDiv(s) }); }} /></div>
+            <div className="mb-2 flex flex-wrap gap-1.5">{(Object.keys(ND) as (keyof typeof ND)[]).map(k => { const N = ND[k], on = d.nd === k && !dv.length; return (
+              <button key={k} type="button" onClick={() => set(on ? { nd: "" } : { nd: k, div: [] })} title={N.t}
+                className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11.5px] font-semibold transition", !on && "border-dashed border-slate-300 text-slate-500 hover:text-slate-800 dark:border-slate-600 dark:text-slate-400 dark:hover:text-slate-100")}
+                style={on ? { borderColor: N.c, background: N.c + "1c", color: N.c } : undefined}>{on ? <Check className="size-3.5" /> : k === "ok" ? <UserRoundCheck className="size-3.5" /> : <X className="size-3.5" />}{N.l}</button>); })}</div>
+            <DivChips list={ALL_DIVS.filter(x => !act.includes(x))} on={dv} col="rgb(var(--b-500))" onToggle={x => { const s = new Set(dv); if (s.has(x)) s.delete(x); else s.add(x); set({ div: ordDiv(s), nd: "" }); }} /></div>
         </div>
         <div className="space-y-5">
           <div><Lbl I={MessagesSquare}>Respuestas <span className="ml-auto font-semibold normal-case tracking-normal text-slate-400">{answered}/{QS.length}</span></Lbl>

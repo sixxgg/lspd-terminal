@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.4";
+export const APP_VERSION = "3.4.1";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,9 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.4.1", f: "14/11/2026", t: "Entrevistas: no quiere más divisiones", items: [
+    "En «Divisiones a las que quiere pertenecer» se puede marcar «Está cómodo donde está» o «No quiere más divisiones». Sale en la lista, en el texto para Discord o web y cuenta como completo en «Revisar».",
+  ] },
   { v: "3.4", f: "14/11/2026", t: "Robos oficiales en Supervisores · articulado corregido · entrevistas con Guardar", items: [
     "Articulado de robos corregido: si el artículo del robo ya trae un agravante (armas, rostro cubierto, huida, hackeo, grupo, vehículos robados, disparar a los agentes), no se imputa aparte. Cada robo muestra qué agravantes ya incluye.",
     "Robos actualizados: armerías de Morningwood, industrias y Paleto (132.144), casas de lujo (132.125), comisaría sin cargos dobles, máquinas sin daños dobles, vehículo robado como agravante aparte cuando corresponde y robos sin artículo propio con arma de fuego al 132.12.",
