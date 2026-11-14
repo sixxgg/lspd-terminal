@@ -2,7 +2,7 @@
    Pestañas: Inicio y, de la A a la Z, Administración · Comunicados · Equipo de ilícitos · Gestión de staff · Notificaciones. Los datos van en lspdt.six.* (el servidor no se los muestra a nadie más). */
 import "./six.css";
 import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
-import { AtSign, Bell, Check, KeyRound, ChevronRight, Copy, FileText, Home, Lock, Megaphone, Plus, Power, RefreshCw, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X, ScrollText, Search } from "lucide-react";
+import { AtSign, Bell, Check, KeyRound, ChevronRight, Copy, FileText, Home, Lock, Megaphone, Plus, Power, RefreshCw, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X, ScrollText, Search, Banknote } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
 import { api, authApi } from "@/lib/api";
 import { discordHtml } from "@/lib/discord";
@@ -10,7 +10,7 @@ import { uid } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 import { TAB_ICONS, cipher, glyphs, tabIcon, useTabFx } from "@/lib/tabfx";
 import { FIRMAS, ILIC_VARS, consultaInteres, firmaDe, ilicText, mentions, type IlicForm } from "./ilicito";
-import { Catalogo } from "./Robos";
+import { RobosTab } from "./RobosTab";
 import { NotifTab, fbList, whoOf, FB_SEEN } from "./Notif";
 import { LS, reloadAll, useJSON } from "@/lib/store";
 import { FB_ST, fbSt, fbX } from "@/components/fbnotif";
@@ -20,7 +20,7 @@ type Staff = { id: string; n: string; rol: string; dc: string; notas: string };
 type Com = { id: string; t: string; body: string; ts: number };
 type Sent = { id: string; ts: number; banda: string; res: IlicForm["res"]; txt: string };
 const ROLES = ["Owner", "Administración", "Moderación", "Soporte", "Ilícitos", "Desarrollo", "Otro"];
-const TABS = [["ini", "INICIO", Home], ["adm", "ADMINISTRACIÓN", Settings2], ["com", "COMUNICADOS", Megaphone], ["ilic", "EQUIPO DE ILÍCITOS", Skull], ["staff", "GESTIÓN DE STAFF", Users], ["not", "NOTIFICACIONES", Bell], ["logs", "LOGS", ScrollText]] as const;
+const TABS = [["ini", "INICIO", Home], ["rob", "ROBOS", Banknote], ["adm", "ADMINISTRACIÓN", Settings2], ["com", "COMUNICADOS", Megaphone], ["ilic", "EQUIPO DE ILÍCITOS", Skull], ["staff", "GESTIÓN DE STAFF", Users], ["not", "NOTIFICACIONES", Bell], ["logs", "LOGS", ScrollText]] as const;
 type Tab = (typeof TABS)[number][0];
 const LOCKED = (): Tab[] => (NS.id === "six" ? ["com", "staff"] : []); // en six: próximamente
 const NAME = () => (NS.id === "six" ? "six" : "anita");
@@ -78,7 +78,7 @@ function Ticker({ f }: { f: () => string }) {
 
 export function Six({ onExit, start = "ini", who = "six" }: { onExit: () => void; start?: "ini" | "not"; who?: Who }) {
   NS.id = who; /* todo lo que sigue usa el espacio de este panel */
-  const C0 = cfg0(who), [cfg, setCfg] = useJSON<SixCfg>(cfgKey(who), C0), c = { ...C0, ...cfg }, tabs = TABS.filter(t => who === "six" || (t[0] !== "not" && t[0] !== "logs"));
+  const C0 = cfg0(who), [cfg, setCfg] = useJSON<SixCfg>(cfgKey(who), C0), c = { ...C0, ...cfg }, tabs = TABS.filter(t => who === "six" || !["not", "logs", "rob"].includes(t[0]));
   const [tab, setTab] = useState<Tab>(start), [out, setOut] = useState(false), [booted, setBooted] = useState(c.intro === "no"), [replay, setReplay] = useState(0);
   const [staff, setStaff] = useJSON<Staff[]>(K("staff"), []);
   const unread = who !== "six" ? 0 : fbList().filter(x => x.t > Number(LS.get(FB_SEEN) || 0)).length;
@@ -113,6 +113,7 @@ export function Six({ onExit, start = "ini", who = "six" }: { onExit: () => void
       <main key={tab} className="six-in relative mx-auto max-w-[1600px] px-4 py-6">
         {LOCKED().includes(tab) ? <Soon t={TABS.find(x => x[0] === tab)![1]} />
           : tab === "ini" ? <HomeTab go={setTab} unread={unread} staff={staff.length} />
+          : tab === "rob" && who === "six" ? <RobosTab />
           : tab === "not" ? <NotifTab />
           : tab === "logs" && who === "six" ? <LogsTab />
           : tab === "adm" ? <AdmTab c={c} set={set} replay={() => { setReplay(x => x + 1); setBooted(false); }} />
@@ -146,12 +147,8 @@ function HomeTab({ go, unread, staff }: { go: (t: Tab) => void; unread: number; 
     ["com", "Comunicados", Megaphone, `${com.length} guardados`, six ? "Próximamente" : "Armalos y copialos"],
     ["adm", "Administración", Settings2, "Tema, efectos e intro", six ? "Avisos de Discord" : "Colores y efectos"],
   ];
-  const [sub, setSub] = useState<"res" | "rob">(() => (LS.get(K("homeSub")) === "rob" && six ? "rob" : "res"));
-  const pick = (v: "res" | "rob") => { setSub(v); LS.set(K("homeSub"), v); };
   return (
     <div className="space-y-5">
-      {six && <div className="max-w-md"><Seg v={sub} set={pick} opts={[["res", "RESUMEN"], ["rob", "CATÁLOGO DE ROBOS"]] as const} /></div>}
-      {sub === "rob" ? <Catalogo /> : <>
       <Panel><p className="font-sans text-sm text-slate-500">{new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}</p>
         <h1 className="six-h mt-1 font-sans text-2xl font-bold">{saludo}, {NAME()}.</h1>
         {six && <p className="mt-1 font-sans text-sm text-slate-400">{abiertos ? `Tenés ${abiertos} feedback ${abiertos === 1 ? "abierto" : "abiertos"} por revisar.` : "No hay feedback pendiente."}</p>}</Panel>
@@ -167,7 +164,7 @@ function HomeTab({ go, unread, staff }: { go: (t: Tab) => void; unread: number; 
           <button key={x.id} onClick={() => go("not")} className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left font-sans text-sm transition hover:bg-six/5">
             <S.I className="size-4 shrink-0" style={{ color: S.c }} /><span className="w-28 shrink-0 truncate font-semibold text-white">{whoOf(x)}</span>
             <span className="min-w-0 flex-1 truncate text-slate-400">{fbX(x.x)}</span></button>); })}</div>}</Panel>}
-      </>}
+
     </div>
   );
 }

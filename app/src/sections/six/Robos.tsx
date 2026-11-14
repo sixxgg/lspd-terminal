@@ -32,11 +32,11 @@ function Armas({ arm }: { arm?: string }) {
 }
 
 /* policías en unidades: binomios (2) y, si sobra uno, una unión */
-const unidades = (n?: number | null) => { if (!n) return ""; const b = Math.floor(n / 2), u = n % 2; return [b ? `${b} binomio${b > 1 ? "s" : ""}` : "", u ? "1 unión" : ""].filter(Boolean).join(" + "); };
+export const unidades = (n?: number | null) => { if (!n) return ""; const b = Math.floor(n / 2), u = n % 2; return [b ? `${b} binomio${b > 1 ? "s" : ""}` : "", u ? "1 unión" : ""].filter(Boolean).join(" + "); };
 /* recompensa: el dinero por un lado y lo extra (ítems para droga, piezas de armas, objetos) por otro */
 const MONEY = /(\d[\d.,]*)\s*\$/;
 const num = (s: string) => Number(s.replace(/[.,](?=\d{3}\b)/g, "").replace(",", ".")) || 0;
-function recOf(mis: Item["mis"]) {
+export function recOf(mis: Item["mis"]) {
   const amts = new Set<number>(), extra = new Set<string>(); let pend = false;
   for (const m of mis) {
     const r = m.rec, mm = r.match(MONEY); if (mm) amts.add(num(mm[1]));
@@ -56,7 +56,7 @@ function Card({ it, obs }: { it: Item; obs: boolean }) {
       <span className="absolute inset-y-0 left-0 w-1" style={{ background: C.c }} />
       <header className="flex items-start gap-2">
         <div className="min-w-0 flex-1"><h3 className="text-[15px] font-bold leading-tight text-white">{it.n}</h3>
-          <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: C.c }}>{C.l}</p></div>
+          <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: C.c }}>{C.l}{C.code && <span className="ml-1.5 text-slate-500">· {C.code}</span>}</p></div>
         {perf.map(p => <span key={p} className={cn("rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase", p === "drogas" ? "border-lime-400/40 bg-lime-500/10 text-lime-300" : "border-orange-400/40 bg-orange-500/10 text-orange-300")}>Banda de {p}</span>)}
         {it.nuevo && it.cat !== "mis" && <span className="rounded-md border border-purple-400/40 bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-bold text-purple-300">NUEVO</span>}
         {it.chg && <span title={`Antes ${it.chg.de}`} className="rounded-md border border-amber-400/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">{it.chg.de} → {it.chg.a}</span>}
@@ -93,9 +93,9 @@ function Card({ it, obs }: { it: Item; obs: boolean }) {
     </article>);
 }
 
-export function Catalogo() {
+export function Catalogo({ cat }: { cat: Cat | "all" }) {
   const { toast } = useFeedback(), all = useMemo(catalogo, []), box = useRef<HTMLDivElement>(null), secs = useRef<Record<string, HTMLElement | null>>({});
-  const [cat, setCat] = useState<Cat | "all">("all"), [flt, setFlt] = useState<"" | "act" | "nuevo" | "pend">(""), [q, setQ] = useState(""), [obs, setObs] = useState(true), [busy, setBusy] = useState(false), [shot, setShot] = useState(false);
+  const [flt, setFlt] = useState<"" | "act" | "nuevo" | "pend">(""), [q, setQ] = useState(""), [obs, setObs] = useState(true), [busy, setBusy] = useState(false), [shot, setShot] = useState(false);
   const isPend = (x: Item) => x.notas.some(n => n.t === "rev" || n.t === "dup");
   const FLT = { act: (x: Item) => !!x.chg, nuevo: (x: Item) => !!x.nuevo && x.cat !== "mis", pend: isPend } as const;
   const list = all.filter(x => (cat === "all" || x.cat === cat) && (!flt || FLT[flt](x)) && (!q.trim() || (x.n + " " + x.mis.map(m => m.n).join(" ")).toLowerCase().includes(q.trim().toLowerCase())));
@@ -123,11 +123,6 @@ export function Catalogo() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex flex-wrap gap-1 rounded-xl border border-six/15 bg-black/40 p-1">
-          {([["all", "Todos", "#94a3b8"], ...Object.entries(CATS).map(([k, v]) => [k, v.l, v.c])] as [Cat | "all", string, string][]).map(([k, l, c]) => (
-            <button key={k} onClick={() => setCat(k)} className={cn("rounded-lg px-2.5 py-1.5 font-sans text-xs font-semibold transition", cat === k ? "bg-white/10 text-white" : "text-slate-500 hover:text-slate-300")}>
-              <span className="mr-1.5 inline-block size-2 rounded-full" style={{ background: c }} />{l} <span className="text-slate-500">{k === "all" ? all.length : all.filter(x => x.cat === k).length}</span></button>))}
-        </div>
         <label className="relative min-w-[200px] flex-1"><Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-500" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar robo o misión…" className="w-full rounded-xl border border-six/15 bg-black/40 py-2 pl-8 pr-3 font-sans text-sm text-slate-100 outline-none focus:border-six" /></label>
         <button onClick={() => setObs(!obs)} className={cn("rounded-xl border px-3 py-2 font-sans text-xs font-semibold", obs ? "border-six/60 bg-six/10 text-six" : "border-six/15 text-slate-500")}>Observaciones {obs ? "ON" : "OFF"}</button>
@@ -159,7 +154,7 @@ export function Catalogo() {
         {(Object.keys(CATS) as Cat[]).filter(k => list.some(x => x.cat === k)).map(k => (
           <section key={k} ref={el => { secs.current[`${Object.keys(CATS).indexOf(k) + 1}-${k}`] = el; }} className={cn(shot && "space-y-4 bg-[#05070a] p-8")}>
             {shot && <Head sub={CATS[k].l} />}
-            <h3 className="mb-2 flex items-baseline gap-2 font-sans"><span className="size-2.5 rounded-full" style={{ background: CATS[k].c }} /><b className="text-white">{CATS[k].l}</b><span className="text-xs text-slate-500">{CATS[k].d}</span></h3>
+            <h3 className="mb-2 flex items-baseline gap-2 font-sans"><span className="size-2.5 rounded-full" style={{ background: CATS[k].c }} /><b className="text-white">{CATS[k].l}</b>{CATS[k].code && <span className="rounded border border-white/15 px-1 font-mono text-[10px] text-slate-400">Cód. {CATS[k].code}</span>}<span className="text-xs text-slate-500">{CATS[k].d}</span></h3>
             <div className={cn("grid gap-3", shot ? "grid-cols-5" : "sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4")}>{list.filter(x => x.cat === k).map(x => <Card key={x.id} it={x} obs={obs} />)}</div>
           </section>))}
         {!list.length && <p className="py-10 text-center font-sans text-sm text-slate-500">Nada coincide con la búsqueda.</p>}

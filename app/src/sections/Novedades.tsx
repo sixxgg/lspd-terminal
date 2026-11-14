@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.0.1";
+export const APP_VERSION = "3.0.2";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,12 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.0.2", f: "14/11/2026", t: "Robos: catálogo, articulado y Excel", items: [
+    "Página de six: nueva pestaña Robos con el catálogo, los artículos de cada robo y la exportación a Excel.",
+    "Artículos para los robos: tentativa, consumado y con disparos, más lo que se suma según lo que pase (rehenes, armas, hackeo, explosivos, grupo, huida).",
+    "Filtro por tipo de robo con el código policial aparte de la cantidad.",
+    "Exportar a Excel: hojas Robos, Articulado y Artículos, con colores por tipo, filtros y encabezado fijo.",
+  ] },
   { v: "3.0.1", f: "13/11/2026", t: "Versiones de los informes OIS", items: [
     "Cada vez que se guarda algo en la terminal queda una versión en el servidor. En el OIS: Revisar → Versiones muestra qué cambió en cada una, la deja ver completa y permite restaurarla.",
     "«Recuperar borrados» (Teniente o superior) lista los expedientes OIS que se borraron y permite traerlos de vuelta.",

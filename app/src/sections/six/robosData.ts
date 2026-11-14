@@ -3,12 +3,12 @@
    misiones que no tienen robo en la normativa (con una propuesta de categoría y policías = atracadores + 2) y lo que se puede sacar. */
 
 export type Cat = "rap" | "men" | "veh" | "esp" | "may" | "mis";
-export const CATS: Record<Cat, { l: string; c: string; d: string }> = {
+export const CATS: Record<Cat, { l: string; c: string; d: string; code?: string }> = {
   rap: { l: "Robos rápidos", c: "#38bdf8", d: "Sin rehenes ni bloqueo · solo cuchillo" },
-  men: { l: "Robos menores 211", c: "#22c55e", d: "Robos de patrulleros · sin interceptor ni helicóptero" },
+  men: { l: "Robos menores", code: "211", c: "#22c55e", d: "Robos de patrulleros · sin interceptor ni helicóptero" },
   veh: { l: "Robos de vehículo", c: "#f59e0b", d: "Cualquier vehículo ilegal" },
-  esp: { l: "Robos especiales 211", c: "#3b82f6", d: "Rehenes y bloqueo · helicóptero" },
-  may: { l: "Robos mayores 487", c: "#ef4444", d: "Patrulla, interceptor y helicóptero" },
+  esp: { l: "Robos especiales", code: "211", c: "#3b82f6", d: "Rehenes y bloqueo · helicóptero" },
+  may: { l: "Robos mayores", code: "487", c: "#ef4444", d: "Patrulla, interceptor y helicóptero" },
   mis: { l: "Misiones (no son robos)", c: "#a855f7", d: "Asesinato, escolta, entrega, destrucción e infiltración" },
 };
 type PV = [boolean, boolean, boolean, boolean?]; // patrulla, interceptor, helicóptero, barco
