@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.0.3";
+export const APP_VERSION = "3.0.4";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,14 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.0.4", f: "14/11/2026", t: "Informes como expediente · ventanas nuevas · condecoraciones con descripción", items: [
+    "Informes · Historial con estilo MDT: lista a la izquierda, el informe en el centro y los detalles a la derecha (número, fechas, creador, ubicación, civiles, agentes, vehículos, pruebas y cargos).",
+    "Estado de cada informe: Abierto, En investigación, Pendiente de revisar, Cerrado o Archivado (cerrar y archivar, de sargento para arriba). Etiquetas editables.",
+    "Historial de cada informe: quién lo registró, lo abrió, lo editó (y qué cambió), le cambió el estado o las etiquetas.",
+    "Autocompletado con informes anteriores: ID del sujeto, modelo y color por matrícula, unidad de cada agente, lugares y evidencias más usados, y «Usar como base» para empezar uno nuevo desde otro.",
+    "Ventanas rediseñadas: toman el fondo y los bordes del tema que uses (claro u oscuro) y el color de acento.",
+    "Condecoraciones: cada una muestra qué reconoce y cómo se gana; la ventana para otorgar quedó más prolija.",
+  ] },
   { v: "3.0.3", f: "14/11/2026", t: "Robos: CK y vista compartida", items: [
     "Artículos de robos: el homicidio doloso (119.1) va solo cuando hay CK de un jugador (y 119.17 si es a un agente), nunca por un NPC. «Con disparos» suma el atentado agravado contra agentes.",
     "Robos · Invitar a ver: six crea links de solo lectura (1 a 30 días) para que otra persona vea el Catálogo y los Artículos con su tema, sin iniciar sesión y sin el Excel. Se ven las vistas y se revocan al instante.",

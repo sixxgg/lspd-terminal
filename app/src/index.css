@@ -267,14 +267,22 @@ div.push-pill[role="alertdialog"] { border-radius: 22px; }
 @keyframes upd-out { to { transform: translateY(-140%); opacity: 0; } }
 
 /* ventanas y campos con luz: borde con degradé del color de marca, halo suave y foco de neón */
-.fx-modal { position: relative; border-color: transparent !important; background: linear-gradient(var(--fxm-bg, #fff), var(--fxm-bg, #fff)) padding-box, linear-gradient(140deg, rgb(var(--b-400) / .9), rgba(168, 85, 247, .55) 45%, rgb(var(--b-500) / .15) 75%, rgba(236, 72, 153, .5)) border-box !important; border-width: 1px;
-  box-shadow: 0 30px 80px -20px rgba(2, 6, 23, .75), 0 0 0 1px rgba(255, 255, 255, .03), 0 0 46px -10px rgb(var(--b-500) / .55) !important; }
-.dark .fx-modal { --fxm-bg: #0b1020; }
-.fx-modal::before { content: ""; position: absolute; inset: 0 0 auto; height: 140px; border-radius: inherit; pointer-events: none; background: radial-gradient(70% 100% at 20% 0%, rgb(var(--b-500) / .16), transparent 70%), radial-gradient(50% 90% at 95% 0%, rgba(168, 85, 247, .12), transparent 70%); }
+/* ventanas: toman el fondo y los bordes del tema activo (claro u oscuro) y el color de acento */
+.fx-modal { position: relative; --fxm-bg: rgb(var(--card, 255 255 255)); border-color: transparent !important; border-width: 1px;
+  background: linear-gradient(var(--fxm-bg), var(--fxm-bg)) padding-box, linear-gradient(165deg, rgb(var(--b-500) / .55), rgb(var(--n-200) / .9) 38%, rgb(var(--n-200) / .9)) border-box !important;
+  box-shadow: 0 28px 70px -24px rgba(15, 23, 42, .45), 0 0 0 1px rgba(255, 255, 255, .02) !important; }
+.dark .fx-modal { background: linear-gradient(var(--fxm-bg), var(--fxm-bg)) padding-box, linear-gradient(165deg, rgb(var(--b-400) / .6), rgb(var(--n-800)) 38%, rgb(var(--n-800))) border-box !important;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .75), 0 0 40px -14px rgb(var(--b-500) / .45) !important; }
+.fx-modal::before { content: ""; position: absolute; inset: 0 0 auto; height: 120px; border-radius: inherit; pointer-events: none; background: radial-gradient(80% 100% at 15% 0%, rgb(var(--b-500) / .09), transparent 70%); }
+.dark .fx-modal::before { background: radial-gradient(80% 100% at 15% 0%, rgb(var(--b-500) / .14), transparent 70%); }
 .fx-modal-h { position: relative; }
-.fx-modal-h::after { content: ""; position: absolute; left: 1.25rem; right: 1.25rem; bottom: -1px; height: 1px; background: linear-gradient(90deg, transparent, rgb(var(--b-400) / .7), rgba(168, 85, 247, .6), transparent); }
-.dark .fx-modal-i { background: radial-gradient(circle at 30% 25%, rgb(var(--b-400) / .35), rgb(var(--b-500) / .12)); box-shadow: 0 0 18px -2px rgb(var(--b-500) / .6), inset 0 0 0 1px rgb(var(--b-400) / .35); }
-.dark .fx-modal-bg { background: radial-gradient(80% 60% at 50% 40%, rgb(var(--b-500) / .12), rgba(2, 6, 23, .72)); }
+.fx-modal-h::after { content: ""; position: absolute; left: 1.25rem; right: 1.25rem; bottom: -1px; height: 1px; background: linear-gradient(90deg, rgb(var(--b-500) / .55), rgb(var(--b-500) / .12) 60%, transparent); }
+.fx-modal-i { background: rgb(var(--b-500) / .1); color: rgb(var(--b-600)); box-shadow: inset 0 0 0 1px rgb(var(--b-500) / .22); }
+.dark .fx-modal-i { background: radial-gradient(circle at 30% 25%, rgb(var(--b-400) / .3), rgb(var(--b-500) / .1)); color: rgb(var(--b-300)); box-shadow: 0 0 16px -4px rgb(var(--b-500) / .55), inset 0 0 0 1px rgb(var(--b-400) / .3); }
+.fx-modal-bg { background: rgb(var(--n-950) / .38); }
+.dark .fx-modal-bg { background: radial-gradient(80% 60% at 50% 40%, rgb(var(--b-500) / .08), rgba(0, 0, 0, .68)); }
+.fx-modal-f { background: rgb(var(--n-50) / .7); }
+.dark .fx-modal-f { background: rgb(var(--n-950) / .35); }
 .dark .fx-field { background: linear-gradient(180deg, rgba(15, 23, 42, .9), rgba(2, 6, 23, .75)); border-color: rgba(148, 163, 184, .16); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(255, 255, 255, .02); }
 .dark .fx-field:hover { border-color: rgb(var(--b-400) / .35); }
 .dark .fx-field:focus { border-color: rgb(var(--b-400) / .9); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .45), 0 0 0 3px rgb(var(--b-500) / .18), 0 0 22px -4px rgb(var(--b-500) / .7); }

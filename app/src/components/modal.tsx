@@ -13,16 +13,16 @@ export function Modal({ open, onClose, title, desc, icon, children, footer, size
   }, [open, onClose]);
   if (!open) return null;
   return createPortal(
-    <div className="fx-modal-bg fixed inset-0 z-[65] grid place-items-center bg-slate-950/50 p-3 backdrop-blur-sm animate-fade-in sm:p-6" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+    <div className="fx-modal-bg fixed inset-0 z-[65] grid place-items-center p-3 backdrop-blur-[3px] animate-fade-in sm:p-6" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div role="dialog" aria-modal="true" className={cn("fx-modal flex max-h-[calc(100dvh-1.5rem)] w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900",
         { xs: "max-w-[23rem]", sm: "max-w-md", md: "max-w-xl", lg: "max-w-3xl", xl: "max-w-5xl" }[size])}>
-        <div className={cn("fx-modal-h flex items-start gap-3 border-b border-slate-100 dark:border-slate-800", size === "xs" ? "px-4 py-3" : "px-5 py-4")}>
-          {icon && <div className="fx-modal-i grid size-9 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300 [&_svg]:size-[18px]">{icon}</div>}
-          <div className="min-w-0 flex-1"><h3 className="font-semibold">{title}</h3>{desc && <p className="mt-0.5 text-xs text-slate-500">{desc}</p>}</div>
+        <div className={cn("fx-modal-h flex items-start gap-3", size === "xs" ? "px-4 py-3" : "px-5 py-4")}>
+          {icon && <div className="fx-modal-i grid size-10 shrink-0 place-items-center rounded-xl [&_svg]:size-[18px]">{icon}</div>}
+          <div className="min-w-0 flex-1 self-center"><h3 className="text-[16.5px] font-bold leading-tight tracking-tight">{title}</h3>{desc && <div className="mt-1 text-[12.5px] leading-snug text-slate-500 dark:text-slate-400">{desc}</div>}</div>
           <button aria-label="Cerrar" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:bg-slate-800 dark:hover:text-white"><X className="size-4" /></button>
         </div>
         <div className={cn("scrollbar-thin flex-1 overflow-y-auto", size === "xs" ? "space-y-3 p-4" : "space-y-4 p-5")}>{children}</div>
-        {footer && <div className={cn("flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900", size === "xs" ? "px-4 py-2.5" : "px-5 py-3")}>{footer}</div>}
+        {footer && <div className={cn("fx-modal-f flex flex-wrap items-center justify-end gap-2 border-t border-slate-200/80 dark:border-slate-800", size === "xs" ? "px-4 py-2.5" : "px-5 py-3")}>{footer}</div>}
       </div>
     </div>, document.body);
 }

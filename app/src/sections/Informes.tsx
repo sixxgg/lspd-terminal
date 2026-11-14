@@ -1,19 +1,20 @@
 import { scrollTopApp } from "@/lib/appearance";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileText, Search, Plus, X, Users, UserRound, Shield, Package, ScrollText, ChevronDown, Pencil, Trash2, Copy, Save, FilePlus2, Info, Star, Car, ListChecks, Radio, Check, GripVertical, ArrowDownUp, ShieldAlert } from "lucide-react";
-import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Select, Textarea, SearchInput } from "@/components/ui";
+import { FileText, Search, Plus, X, Users, UserRound, Shield, Package, ScrollText, Save, FilePlus2, Info, Star, Car, ListChecks, Radio, Check, GripVertical, ArrowDownUp, ShieldAlert } from "lucide-react";
+import { Button, Card, CardBody, CardHeader, Field, Input, Segmented, Select, Textarea } from "@/components/ui";
 import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { Col, Split } from "@/components/layout";
-import { LUGARES, fmtDate, getRoster, norm, rankES, uid , myKey } from "@/lib/domain";
+import { LUGARES, getRoster, norm, rankES, uid , myKey } from "@/lib/domain";
 import { LS, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { legalFavKey } from "./Legal";
-import { EV_T, INF_EST, INF_FZ, ROLES, fixUnid, isIC, INF_SECS, INF_TIPOS, UNITS, VEH_EST, VEH_REL, VEH_T, agTag, dcParts, getPenal, infErrs, infNew, infText, penalOf, penalSearch, artCmp, type Art, type Inf, type Veh } from "@/lib/penal";
+import { EV_T, INF_EST, INF_FZ, ROLES, fixUnid, isIC, INF_SECS, INF_TIPOS, UNITS, VEH_EST, VEH_REL, VEH_T, dcParts, getPenal, infErrs, infNew, infText, penalOf, penalSearch, artCmp, type Art, type Inf, type Veh } from "@/lib/penal";
 import { cn } from "@/lib/cn";
 import { VehPick } from "@/components/vehpick";
 import { DivNav } from "./div/DivTools";
 import { OisPanel } from "./Ois";
+import { InfViewer, type InfX } from "./InfViewer";
 
 const fmtMoney = (n: number) => Number(n).toLocaleString("es-AR") + " $";
 export function PenMeta({ x }: { x: Art }) {
@@ -29,23 +30,47 @@ export function PenMeta({ x }: { x: Art }) {
 export function Informes() {
   useStoreVersion();
   const [INFS] = useJSON<Inf[]>("lspdt.informes", []);
-  const [tab, setTab] = useState<"new" | "list">("new"), [edit, setEdit] = useState<Inf | null>(null), [open, setOpen] = useState<string | null>(null);
+  const [tab, setTab] = useState<"new" | "list">("new"), [edit, setEdit] = useState<Inf | null>(null), [open, setOpen] = useState<string | null>(null), [base, setBase] = useState<{ r: Inf; k: string } | null>(null);
   const [sub, setSub] = useState(() => LS.get("lspdt.next.infsub") || "inf"), go = (v: string) => { setSub(v); LS.set("lspdt.next.infsub", v); };
   return (
     <div className="space-y-5">
       <DivNav value={sub} onChange={go} options={[{ value: "inf", label: "Informe policial", icon: <FileText />, txt: "Informe policial" }, { value: "ois", label: "Procedimiento OIS con fallecido", icon: <ShieldAlert />, txt: "Procedimiento OIS con fallecido" }]} />
       {sub === "ois" ? <OisPanel /> : <>
       <Segmented value={tab} onChange={setTab} options={[{ value: "new", label: "Nuevo informe", icon: <FilePlus2 /> }, { value: "list", label: `Historial (${INFS.length})`, icon: <FileText /> }]} />
-      {tab === "new" ? <InfForm key={edit?.id || "new"} init={edit} onSaved={id => { setEdit(null); setOpen(id); setTab("list"); }} />
-        
-        : <InfList open={open} setOpen={setOpen} onEdit={r => { setEdit(r); setTab("new"); scrollTopApp(); }} />}</>}
+      {tab === "new" ? <InfForm key={edit?.id || base?.k || "new"} init={edit} base={base?.r || null} onSaved={id => { setEdit(null); setBase(null); setOpen(id); setTab("list"); }} />
+        : <InfViewer open={open} setOpen={setOpen} onEdit={r => { setEdit(r); setBase(null); setTab("new"); scrollTopApp(); }} onBase={r => { setEdit(null); setBase({ r, k: String(Date.now()) }); setTab("new"); scrollTopApp(); }} />}</>}
     </div>
   );
 }
 
-function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) => void }) {
-  const me = useMe(), { toast, confirm } = useFeedback();
-  const [A, setA] = useState<Inf>(() => { const a = init ? structuredClone(init) : Object.assign(infNew(me.n), LS.json<Partial<Inf>>(myKey("infDraft", me.n), {})); a.unid = (a.unid || []).map(fixUnid); return a; });
+/* lo que se fue cargando en informes anteriores, para autocompletar */
+function usePrev(me: string) {
+  const [L] = useJSON<InfX[]>("lspdt.informes", []);
+  return useMemo(() => {
+    const S = L.slice().sort((a, b) => (b.t || 0) - (a.t || 0)), suj = new Map<string, string>(), veh = new Map<string, Partial<Veh>>(), unit = new Map<string, { u: string; r: string }>(), lug = new Map<string, number>(), ev = new Map<string, number>();
+    for (const r of S) {
+      (r.suj || []).forEach(x => { if (x.n && x.id && !suj.has(norm(x.n))) suj.set(norm(x.n), x.id); });
+      [...(r.veh || []), ...(r.ev || []).filter(e => e.t === "Vehículo")].forEach(v => { const m = (v.mat || "").trim().toUpperCase(); if (m && !veh.has(m)) veh.set(m, { mo: v.mo, co: v.co, cat: v.cat }); });
+      (r.unid || []).forEach(u => { if (u.n && u.u && !unit.has(u.n)) unit.set(u.n, { u: u.u, r: u.r }); });
+      [r.ui, r.ux, r.uf].forEach(x => { if (x?.trim()) lug.set(x.trim(), (lug.get(x.trim()) || 0) + 1); });
+      (r.ev || []).forEach(e => { if (e.t !== "Vehículo" && e.d?.trim()) ev.set(e.d.trim(), (ev.get(e.d.trim()) || 0) + 1); });
+    }
+    const top = (m: Map<string, number>, n: number) => [...m].sort((a, b) => b[1] - a[1]).slice(0, n).map(x => x[0]);
+    return { suj, sujN: S.flatMap(r => (r.suj || []).filter(x => x.n)).filter((x, i, a) => a.findIndex(y => norm(y.n) === norm(x.n)) === i).slice(0, 400), veh, unit, lug: top(lug, 120), ev: top(ev, 200), mine: unit.get(me) };
+  }, [L, me]);
+}
+const LBL: Record<string, string> = { fecha: "fecha", hora: "hora", ui: "ubicaciones", ux: "ubicaciones", uf: "ubicaciones", tipos: "tipo de incidente", est: "estado del incidente", motivo: "motivo", hechos: "relato", unid: "unidades", suj: "sujetos y cargos", fz: "uso de la fuerza", fzd: "uso de la fuerza", ev: "evidencia", veh: "vehículos", extra: "procesamiento", off: "secciones" };
+
+function InfForm({ init, base, onSaved }: { init: Inf | null; base: Inf | null; onSaved: (id: string) => void }) {
+  const me = useMe(), { toast, confirm } = useFeedback(), prev = usePrev(me.n);
+  const [A, setA] = useState<Inf>(() => {
+    let a: Inf;
+    if (init) a = structuredClone(init);
+    else if (base) { const n = infNew(me.n); a = { ...n, ui: base.ui, ux: base.ux, uf: base.uf, tipos: [...(base.tipos || [])], unid: structuredClone(base.unid || []), veh: structuredClone((base.veh || []).filter(v => v.t === "Policial")), off: [...(base.off || [])] }; }
+    else { a = Object.assign(infNew(me.n), LS.json<Partial<Inf>>(myKey("infDraft", me.n), {}));
+      /* informe nuevo: tu última unidad y rol */
+      const m = prev.mine; if (m && a.unid.length === 1 && a.unid[0].n === me.n && !a.unid[0].u) a.unid[0] = { ...a.unid[0], u: m.u, r: m.r || a.unid[0].r }; }
+    a.unid = (a.unid || []).map(fixUnid); return a; });
   const [showErr, setShowErr] = useState(false), [otro, setOtro] = useState(""), [drag, setDrag] = useState<number | null>(null), [over, setOver] = useState<number | null>(null);
   const moveU = (from: number, to: number) => { if (from === to) return; up(x => { const [m] = x.unid.splice(from, 1); x.unid.splice(to, 0, m); }); };
   useEffect(() => { LS.setJSON(myKey("infDraft", me.n), A); }, [A]);
@@ -58,11 +83,17 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
   const tot = useMemo(() => { const t = { n: 0, m: 0, p: 0 }; A.suj.forEach(s => s.cg.forEach(c => { const x = penalOf(c.a, P); t.n++; t.m += x?.m || 0; t.p += x?.p || 0; })); return t; }, [A.suj, P]);
   const save = async () => {
     if (errs.length) { setShowErr(true); toast("Falta completar: " + errs.join(", "), "err"); return; }
-    const INFS = LS.json<Inf[]>("lspdt.informes", []);
-    const r: Inf = { ...structuredClone(A), por: A.por || me.n, t: A.id && A.t ? A.t : Date.now(), ...(A.id ? { edit: me.n, et: Date.now() } : {}) }; // al editar se conserva la fecha de registro r.texto = infText(r, me.n, P);
-    let L: Inf[];
-    if (A.id) { const i = INFS.findIndex(x => x.id === A.id); L = i >= 0 ? INFS.map((x, j) => (j === i ? { ...x, ...r, edit: me.n } : x)) : [...INFS, r]; }
-    else { r.id = uid(); L = [...INFS, r]; }
+    const INFS = LS.json<InfX[]>("lspdt.informes", []);
+    /* solo los campos del formulario: estado, número, etiquetas e historial se toman de lo último guardado */
+    const { no: _n, st: _s, tags: _g, hist: _h, ...F } = structuredClone(A) as InfX; void _n; void _s; void _g; void _h;
+    const r: InfX = { ...F, por: A.por || me.n, t: A.id && A.t ? A.t : Date.now(), ...(A.id ? { edit: me.n, et: Date.now() } : {}) };
+    r.texto = infText(r, me.n, P);
+    let L: InfX[];
+    if (A.id) { const i = INFS.findIndex(x => x.id === A.id), old = INFS[i];
+      const ch = old ? [...new Set((Object.keys(LBL) as (keyof Inf)[]).filter(k => JSON.stringify(old[k] ?? "") !== JSON.stringify(r[k] ?? "")).map(k => LBL[k]))] : [];
+      L = i >= 0 ? INFS.map((x, j) => (j === i ? { ...x, ...r, edit: me.n, hist: [...(x.hist || []), { t: Date.now(), by: me.n, a: ch.length ? `Editó: ${ch.join(", ")}` : "Guardó sin cambios" }] } : x)) : [...INFS, r]; }
+    else { r.id = uid(); r.no = Math.max(0, ...INFS.map((x, _j, a) => x.no || a.slice().sort((p, q) => (p.t || 0) - (q.t || 0)).findIndex(y => y.id === x.id) + 1)) + 1;
+      r.st = r.est === "Incidente finalizado" ? "rev" : "inv"; r.hist = [{ t: Date.now(), by: me.n, a: "Registró el informe" }]; L = [...INFS, r]; }
     LS.setJSON("lspdt.informes", L); LS.del(myKey("infDraft", me.n)); toast(A.id ? "Cambios guardados" : "Informe registrado"); onSaved(r.id);
   };
   const evRow = (e: Inf["ev"][number], i: number, subj: boolean) => (
@@ -75,18 +106,20 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
           <Input value={e.co || ""} onChange={v => up(x => { x.ev[i].co = v.target.value; })} placeholder="Color" />
           <Input value={e.mat || ""} onChange={v => up(x => { x.ev[i].mat = v.target.value.toUpperCase(); })} placeholder="Matrícula" className="font-mono uppercase" />
         </div>
-      </div> : <Input value={e.d || ""} onChange={v => up(x => { x.ev[i].d = v.target.value; })} placeholder="Descripción (ej: 2 bolsas de marihuana, Pistola SNS)" />}
+      </div> : <Input list="evDL" value={e.d || ""} onChange={v => up(x => { x.ev[i].d = v.target.value; })} placeholder="Descripción (ej: 2 bolsas de marihuana, Pistola SNS)" />}
       <Button variant="ghost" size="icon" aria-label="Quitar evidencia" onClick={() => up(x => { x.ev.splice(i, 1); })}><X /></Button>
       {e.t === "Vehículo" && <Input className={subj ? "sm:col-span-4" : "sm:col-span-3"} value={e.d || ""} onChange={v => up(x => { x.ev[i].d = v.target.value; })} placeholder="Nota (opcional, ej: queda identificada como el vehículo sustraído)" />}
     </div>);
   const linked = (n: string) => !!n && A.suj.some(s => s.n === n);
-  const renameSuj = (si: number, v: string) => up(x => { const old = x.suj[si].n; x.suj[si].n = v; if (old) { x.ev.forEach(e => { if (e.s === old) e.s = v; }); (x.veh || []).forEach(z => { if (z.s === old) z.s = v; }); } });
+  const renameSuj = (si: number, v: string) => up(x => { const old = x.suj[si].n; x.suj[si].n = v; const id = prev.suj.get(norm(v)); if (id && !x.suj[si].id) x.suj[si].id = id; if (old) { x.ev.forEach(e => { if (e.s === old) e.s = v; }); (x.veh || []).forEach(z => { if (z.s === old) z.s = v; }); } });
   const tipos = [...INF_TIPOS as string[], ...A.tipos.filter(x => !(INF_TIPOS as string[]).includes(x))].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
   return (
     <Split>
       <datalist id="rosterDL">{R.map(a => <option key={a.n} value={a.n}>{rankES(a.r)}{a.p ? " · #" + a.p : ""}</option>)}</datalist>
       <datalist id="unitDL">{UNITS.map(u => <option key={u} value={u} />)}</datalist>
-      <datalist id="lugDL">{LUGARES.slice(0, 600).map(x => <option key={x} value={x} />)}</datalist>
+      <datalist id="lugDL">{[...prev.lug, ...LUGARES.slice(0, 600).filter(x => !prev.lug.includes(x))].map(x => <option key={x} value={x} />)}</datalist>
+      <datalist id="sujDL">{prev.sujN.map(x => <option key={x.n} value={x.n}>{x.id ? `ID ${x.id}` : ""}</option>)}</datalist>
+      <datalist id="evDL">{prev.ev.map(x => <option key={x} value={x} />)}</datalist>
       <Col>
         <Card className="flex flex-wrap items-center gap-2 p-3">
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500"><ListChecks className="size-4 text-brand-500" />Secciones del informe</span>
@@ -122,7 +155,7 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
             {A.suj.map((s, si) => (
               <div key={si} className="space-y-2 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
                 <div className="flex gap-2">
-                  <Input value={s.n} onChange={e => renameSuj(si, e.target.value)} placeholder="Nombre y apellido" />
+                  <Input list="sujDL" value={s.n} onChange={e => renameSuj(si, e.target.value)} placeholder="Nombre y apellido (se autocompleta con informes anteriores)" />
                   <Input value={s.id} onChange={e => up(x => { x.suj[si].id = e.target.value.toUpperCase(); })} placeholder="ID (CitizenID)" className="max-w-[11rem] font-mono uppercase" />
                   <Button variant="ghost" size="icon" aria-label="Quitar sujeto" onClick={() => up(x => { x.suj.splice(si, 1); })}><X /></Button>
                 </div>
@@ -170,7 +203,7 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
                   onDragEnd={() => { setDrag(null); setOver(null); }}
                   onKeyDown={e => { if (e.key === "ArrowUp" && i > 0) { e.preventDefault(); moveU(i, i - 1); } if (e.key === "ArrowDown" && i < A.unid.length - 1) { e.preventDefault(); moveU(i, i + 1); } }}
                   className="grid w-6 shrink-0 cursor-grab place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing dark:hover:bg-slate-800"><GripVertical className="size-4" /></button>
-                <Input list="rosterDL" value={u.n} onChange={e => up(x => { x.unid[i].n = e.target.value; })} placeholder="Agente (opcional si ponés la unidad)" />
+                <Input list="rosterDL" value={u.n} onChange={e => up(x => { x.unid[i].n = e.target.value; const m = prev.unit.get(e.target.value); if (m && !x.unid[i].u) x.unid[i].u = m.u; })} placeholder="Agente (opcional si ponés la unidad)" />
                 <div className="relative w-44 shrink-0"><Radio className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
                   <Input list="unitDL" value={u.u || ""} onChange={e => up(x => { x.unid[i].u = e.target.value.toUpperCase(); })} placeholder="Unidad" className="pl-8 font-mono text-sm uppercase" /></div>
                 <Select value={u.r} onChange={e => up(x => { x.unid[i].r = e.target.value; })} className="max-w-[16rem] text-sm">{[...ROLES, ...(ROLES.includes(u.r) ? [] : [u.r])].map(r => <option key={r}>{r}</option>)}</Select>
@@ -195,7 +228,7 @@ function InfForm({ init, onSaved }: { init: Inf | null; onSaved: (id: string) =>
                 <Button variant="ghost" size="icon" aria-label="Quitar vehículo" onClick={() => up(x => { x.veh!.splice(i, 1); })}><X /></Button>
                 <div className={cn("grid grid-cols-2 gap-2 sm:col-span-3", v.t !== "Policial" && "sm:grid-cols-[1fr_1fr_11rem]")}>
                   <Input value={v.co} onChange={e => up(x => { x.veh![i].co = e.target.value; })} placeholder="Color" />
-                  <Input value={v.mat} onChange={e => up(x => { x.veh![i].mat = e.target.value.toUpperCase(); })} placeholder="Matrícula" className="font-mono uppercase" />
+                  <Input value={v.mat} onChange={e => up(x => { const m = e.target.value.toUpperCase(); x.veh![i].mat = m; const k = prev.veh.get(m.trim()); if (k) { if (!x.veh![i].mo && k.mo) x.veh![i].mo = k.mo; if (!x.veh![i].co && k.co) x.veh![i].co = k.co; if (!x.veh![i].cat && k.cat) x.veh![i].cat = k.cat; } })} placeholder="Matrícula (si ya apareció, completa modelo y color)" className="font-mono uppercase" />
                   {v.t !== "Policial" && <Select value={v.rob || ""} onChange={e => up(x => { x.veh![i].rob = e.target.value as Veh["rob"]; })} title="Obligatorio: indicar si el vehículo es robado"
                     className={cn("col-span-2 text-sm sm:col-span-1", !v.rob && (v.mo || v.mat) && "border-amber-400 dark:border-amber-500", v.rob === "si" && "text-red-600 dark:text-red-400")}>
                     <option value="">¿Robado?</option><option value="no">No robado</option><option value="si">Robado</option></Select>}
@@ -273,53 +306,3 @@ function ChargeSearch({ P, onPick }: { P: Art[]; onPick: (a: string) => void }) 
     </div>
   );
 }
-
-function InfList({ open, setOpen, onEdit }: { open: string | null; setOpen: (id: string | null) => void; onEdit: (r: Inf) => void }) {
-  const me = useMe(), { confirm } = useFeedback(), copy = useCopy();
-  const [INFS, setINFS] = useJSON<Inf[]>("lspdt.informes", []);
-  const [q, setQ] = useState(""), [ag, setAg] = useState(""), [desde, setDesde] = useState(""), [hasta, setHasta] = useState(""); const s = norm(q);
-  const AGS = useMemo(() => [...new Set(INFS.map(r => r.por || "").filter(Boolean))].sort((a, b) => a.localeCompare(b, "es")), [INFS]);
-  const day = (t?: number) => { if (!t) return ""; const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
-  const L = INFS.slice().sort((a, b) => (b.t || 0) - (a.t || 0)).filter(r => (!s || norm(r.texto).includes(s)) && (!ag || r.por === ag) && (!desde || day(r.t) >= desde) && (!hasta || day(r.t) <= hasta));
-  const dayLbl = (t?: number) => t ? new Date(t).toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }) : "Sin fecha de registro";
-  return (
-    <Card>
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-4 dark:border-slate-800">
-        <SearchInput className="min-w-[14rem] flex-1 sm:max-w-sm" value={q} onChange={setQ} placeholder="Buscar por sujeto, ID, artículo o lugar…" />
-        <Select value={ag} onChange={e => setAg(e.target.value)} className="w-auto text-sm" title="Agente que redactó el informe"><option value="">Todos los agentes</option><option value={me.n}>Mis informes</option>{AGS.filter(a => a !== me.n).map(a => <option key={a}>{a}</option>)}</Select>
-        <Input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="w-auto text-sm" title="Desde" />
-        <Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-auto text-sm" title="Hasta" />
-        {(q || ag || desde || hasta) && <Button variant="ghost" size="sm" icon={<X />} onClick={() => { setQ(""); setAg(""); setDesde(""); setHasta(""); }}>Limpiar</Button>}
-        <span className="ml-auto text-xs text-slate-400">{L.length} de {INFS.length} informes</span>
-      </div>
-      {!L.length ? <Empty icon={<FileText />} title={INFS.length ? "Ningún informe coincide" : "Todavía no hay informes registrados"} />
-        : <div className="divide-y divide-slate-100 dark:divide-slate-800">{L.map((r, ix) => { const S = (r.suj || []).filter(x => x.n), isO = open === r.id, can = r.por === me.n || me.l >= 8 || me.admin, parts = dcParts(r.texto || ""), newDay = ix === 0 || day(L[ix - 1].t) !== day(r.t); return (
-          <div key={r.id}>
-            {newDay && <p className="sticky top-0 z-[1] bg-slate-50/95 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 backdrop-blur dark:bg-slate-900/95">{dayLbl(r.t)}</p>}
-            <button onClick={() => setOpen(isO ? null : r.id)} className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/40">
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300"><FileText className="size-4" /></span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{(r.tipos || []).join(" · ") || "Informe"}</p>
-                <p className="truncate text-xs text-slate-500">{r.fecha} {r.hora} · {r.ui}{r.uf && ` → ${r.uf}`}</p>
-                <p className="truncate text-xs text-slate-400">{S.length > 0 && S.map(x => x.n + (x.id ? ` (${x.id})` : "")).join(", ") + " · "}registrado por {agTag(r.por || "")}{r.t ? ` el ${fmtDate(r.t)}` : ""}{r.edit ? ` · editado por ${agTag(r.edit)}${r.et ? ` el ${fmtDate(r.et)}` : ""}` : ""}</p>
-              </div>
-              <span className={cn("shrink-0 rounded-md px-1.5 py-0.5 text-[10.5px] font-bold uppercase", r.est === "Incidente finalizado" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-amber-400/15 text-amber-700 dark:text-amber-300")}>{r.est}</span>
-              <ChevronDown className={cn("mt-1 size-4 shrink-0 text-slate-400 transition-transform", isO && "rotate-180")} />
-            </button>
-            {isO && (
-              <div className="space-y-3 bg-slate-50/60 p-4 dark:bg-slate-950/30">
-                <pre className="scrollbar-thin max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 font-mono text-[12.5px] leading-relaxed text-slate-200">{r.texto}</pre>
-                <div className="flex flex-wrap items-center gap-2">
-                  {can && <Button variant="ghost" size="sm" className="text-red-600 dark:text-red-400" icon={<Trash2 />} onClick={async () => { if (await confirm("¿Eliminar el informe del registro?", { danger: true, ok: "Eliminar" })) setINFS(INFS.filter(x => x.id !== r.id)); }}>Eliminar</Button>}
-                  <span className="flex-1" />
-                  {parts.length > 1 && parts.map((p, i) => <Button key={i} size="sm" variant="outline" onClick={() => copy(p)}>Parte {i + 1}/{parts.length}</Button>)}
-                  {can && <Button variant="outline" size="sm" icon={<Pencil />} onClick={() => onEdit(r)}>Editar</Button>}
-                  <Button size="sm" icon={<Copy />} onClick={() => copy(r.texto || "")}>Copiar</Button>
-                </div>
-              </div>
-            )}
-          </div>); })}</div>}
-    </Card>
-  );
-}
-

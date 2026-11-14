@@ -44,7 +44,7 @@ export function Condecoraciones() {
           <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{g} ({l.length})<span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" /></div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {l.map(d => { const n = H.get(d.k)?.length || 0; return (
-              <button key={d.k} onClick={() => setOpen(d)} title={`${d.t} · ${d.c}`} className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition hover:border-brand-400/60 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/60">
+              <button key={d.k} onClick={() => setOpen(d)} title={`${d.t} · ${d.c}${d.d ? `\n${d.d}` : ""}`} className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition hover:border-brand-400/60 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/60">
                 <span className="shrink-0"><Ribbon d={d} /></span>
                 <span className="min-w-0 flex-1"><b className="font-display block truncate text-[13px] font-semibold leading-tight">{d.t}</b>
                   <small className="block truncate text-[11px] text-slate-500 dark:text-slate-400">{d.c}{n > 0 && <span className="font-semibold text-brand-600 dark:text-brand-300"> · {n} {n === 1 ? "condecorado" : "condecorados"}</span>}</small></span>
@@ -68,30 +68,47 @@ function DecorModal({ d, onClose }: { d: Decor; onClose: () => void }) {
     updateProf(a.n, p => { p.cond = [...((p.cond || []) as unknown as Award[]), { id: uid(), t: d.t, k: d.k, f, m: m.trim(), by: me.n }] as unknown as string[]; });
     toast(`${d.t} otorgada a ${a.n}`); setAg(""); setM("");
   };
+  const ini = (n: string) => n.split(/\s+/).map(x => x[0]).slice(0, 2).join("").toUpperCase();
   return (
-    <Modal open onClose={onClose} title={d.t} desc={`${d.c} · ${d.g}`} icon={<AwardI />} size="lg">
-      <div className="flex items-center gap-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/40"><Ribbon d={d} className="h-[34px] w-[120px]" /><p className="text-sm text-slate-500 dark:text-slate-400">{list.length ? `${list.length} ${list.length === 1 ? "agente la tiene" : "agentes la tienen"}.` : "Nadie la tiene todavía."}</p></div>
-      <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Otorgar</p>
-        <div className="grid gap-3 sm:grid-cols-[1fr_10rem]">
+    <Modal open onClose={onClose} title={d.t} desc={<span className="flex flex-wrap items-center gap-1.5"><span className="rounded-md bg-brand-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-brand-700 dark:text-brand-300">{d.g}</span><span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{d.c}</span><span>{d.sec}</span></span>} icon={<AwardI />} size="lg"
+      footer={<Button variant="ghost" icon={<X />} onClick={onClose}>Cerrar</Button>}>
+      {/* cinta y qué reconoce */}
+      <div className="grid gap-4 sm:grid-cols-[11rem_minmax(0,1fr)]">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-800/30">
+          <Ribbon d={d} className="h-[38px] w-[132px] shadow-lg" />
+          <p className="text-center text-xs text-slate-500 dark:text-slate-400"><b className="block text-2xl font-bold tabular-nums text-slate-800 dark:text-slate-100">{list.length}</b>{list.length === 1 ? "agente la tiene" : "agentes la tienen"}</p>
+        </div>
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800"><p className="text-[11px] font-bold uppercase tracking-[.14em] text-slate-400">Qué reconoce</p>
+            <p className="mt-1 text-[14px] leading-relaxed">{d.d || <span className="text-slate-400">Sin descripción cargada.</span>}</p></div>
+          <div className="rounded-2xl border border-brand-500/25 bg-brand-500/[.05] p-4"><p className="text-[11px] font-bold uppercase tracking-[.14em] text-brand-600 dark:text-brand-300">Cómo se gana</p>
+            <p className="mt-1 text-[14px] leading-relaxed">{d.h || <span className="text-slate-400">Sin criterio cargado.</span>}</p></div>
+        </div>
+      </div>
+      {/* otorgar */}
+      <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+        <p className="mb-3 flex items-center gap-2 text-sm font-bold"><Plus className="size-4 text-brand-500" />Otorgar</p>
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
           <Field label="Agente"><AgentCombo value={ag} onChange={setAg} /></Field>
           <Field label="Fecha"><Input type="date" value={f} onChange={e => setF(e.target.value)} /></Field>
         </div>
-        <Field label="Motivo" hint="(opcional)" className="mt-3"><Input value={m} onChange={e => setM(e.target.value)} placeholder="Ej: rescate de rehenes en el Pacific Bank" /></Field>
-        <div className="mt-3 flex justify-end"><Button icon={<Plus />} onClick={give}>Otorgar</Button></div>
+        <div className="mt-3 flex flex-wrap items-end gap-3"><Field label="Motivo" hint="(opcional)" className="min-w-[14rem] flex-1"><Input value={m} onChange={e => setM(e.target.value)} placeholder="Ej: rescate de rehenes en el Pacific Bank" /></Field>
+          <Button icon={<Plus />} onClick={give}>Otorgar</Button></div>
       </div>
-      <div className="space-y-2">
-        {list.map(({ n, a }) => { const ag2 = findAgent(n); return (
-          <div key={a.id} className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-800">
+      {/* condecorados */}
+      <div>
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-[.14em] text-slate-400">Condecorados · {list.length}</p>
+        {list.length ? <div className="grid gap-2 sm:grid-cols-2">{list.map(({ n, a }) => { const ag2 = findAgent(n); return (
+          <div key={a.id} className="group flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 transition hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-700">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-500/10 text-[11px] font-bold text-brand-700 dark:text-brand-300">{ini(n)}</span>
             <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{ag2 ? `${rankES(ag2.r)} ${n}` : n}</p>
-              <p className="truncate text-xs text-slate-500">{a.f ? dmy(a.f) : "Sin fecha"}{a.m ? ` · ${a.m}` : ""}{a.by ? ` · otorgada por ${a.by}` : ""}</p></div>
+              <p className="truncate text-xs text-slate-500">{a.f ? dmy(a.f) : "Sin fecha"}{a.m ? ` · ${a.m}` : ""}{a.by ? ` · por ${a.by}` : ""}</p></div>
             <button aria-label={`Quitar a ${n}`} title="Quitar" onClick={async () => { if (!(await confirm(`¿Quitarle «${d.t}» a ${n}?`, { danger: true }))) return;
               updateProf(n, p => { p.cond = ((p.cond || []) as unknown as Award[]).filter(x => x.id !== a.id) as unknown as string[]; }); }}
-              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><Trash2 className="size-4" /></button>
-          </div>); })}
-        {!list.length && <p className="py-4 text-center text-sm text-slate-400">Sin condecorados.</p>}
+              className="rounded-lg p-1.5 text-slate-400 opacity-60 transition hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 dark:hover:bg-red-500/10"><Trash2 className="size-4" /></button>
+          </div>); })}</div>
+          : <p className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400 dark:border-slate-800">Nadie la tiene todavía.</p>}
       </div>
-      <div className="flex justify-end"><Button variant="ghost" icon={<X />} onClick={onClose}>Cerrar</Button></div>
     </Modal>
   );
 }
