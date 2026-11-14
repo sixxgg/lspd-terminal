@@ -14,7 +14,8 @@ import { MeCtx } from "./lib/me";
 import { Division, PerdidaArmamento, VIEWS, lz } from "./routes";
 const Six = lz(() => import("./sections/six/Six"), "Six");
 const PublicBoard = lz(() => import("./sections/Pizarra"), "PublicBoard");
-const SHARE = new URLSearchParams(location.search).get("pizarra"), VER = new URLSearchParams(location.search).get("ver");
+const QS = new URLSearchParams(location.search), SHARE = QS.get("pizarra"), VER = QS.get("ver"), ROB = QS.get("robos");
+const RobosShare = lz(() => import("./sections/six/RobosShare"), "RobosShare");
 const PublicSection = lz(() => import("./sections/div/DivTools"), "PublicSection");
 import { AREAS, canArea, secsOf } from "./nav";
 import { api, authApi } from "./lib/api";
@@ -38,6 +39,8 @@ export default function App() {
   if (SHARE && /^[a-f0-9]{32}$/.test(SHARE)) return <Suspense fallback={null}><PublicBoard tok={SHARE} /></Suspense>;
   /* enlace temporal de una sección (uniformidad): solo lectura, sin sesión */
   if (VER && /^[a-f0-9]{32}$/.test(VER)) return <Suspense fallback={null}><PublicSection tok={VER} /></Suspense>;
+  /* sección Robos de six compartida por link: catálogo y artículos, solo lectura */
+  if (ROB && /^[a-f0-9]{32}$/.test(ROB)) return <Suspense fallback={null}><RobosShare tok={ROB} /></Suspense>;
   return <Main />;
 }
 /* barra de «Ver como»: recuerda que es una vista previa y permite salir */

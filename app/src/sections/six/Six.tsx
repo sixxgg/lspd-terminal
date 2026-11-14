@@ -439,7 +439,7 @@ function PostTab({ users }: { users: Record<string, string> }) {
 
 /* ---------- logs: todo lo que se hace en la terminal (quién, qué, dónde y cuándo) ---------- */
 type Log = { id: number; t: number; n: string; a: string; k: string; d: string; ip: string };
-const KL: [RegExp, string][] = [[/^login$/, "Sesión"], [/^cuenta$/, "Cuentas"], [/^feedback$/, "Feedback"], [/^mdexam$/, "METRO · Examen en línea"],
+const KL: [RegExp, string][] = [[/^login$/, "Sesión"], [/^cuenta$/, "Cuentas"], [/^feedback$/, "Feedback"], [/^mdexam$/, "METRO · Examen en línea"], [/^robos$/, "Robos (vista compartida)"],
   [/^lspdt\.roster$/, "Roster general"], [/^lspdt\.ui$/, "Ajustes de la terminal"], [/^lspdt\.profiles$/, "Perfiles de agentes"], [/^lspdt\.(foto|pfoto)\./, "Foto de perfil"], [/^lspdt\.uprof\./, "Preferencias de su perfil"], [/^lspdt\.cover\./, "Portada de perfil"],
   [/^lspdt\.informes$/, "Informes policiales"], [/^lspdt\.ois$/, "Informes OIS"], [/^lspdt\.votes$/, "Votaciones"], [/^lspdt\.(entrev|sgt\.)/, "Entrevistas / exámenes de sargento"], [/^lspdt\.alertas$/, "Alertas"],
   [/^lspdt\.huellas/, "Huellas"], [/^lspdt\.perdArm$/, "Pérdida de armamento"], [/^lspdt\.patHist$/, "Registro de patrullas"], [/^lspdt\.penal$/, "Código penal"], [/^lspdt\.faltas$/, "Catálogo de faltas (PSB)"],

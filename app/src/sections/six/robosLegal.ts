@@ -45,8 +45,8 @@ const MIS: [RegExp, Ref[]][] = [
   [/gimnasio/i, [{ a: "132.137" }]], [/walker/i, [{ a: "132.127", why: "Depósito clandestino" }]], [/guante blanco/i, [{ a: "132.142", why: "Interpretado: golpe en Sandy" }]],
   [/frasco|fenta|euforia|materia prohibida|c[oó]digo m|ne[oó]n/i, [{ a: "132.134", why: "La recompensa son ítems para droga" }]],
   [/smg la cosa/i, [{ a: "132.12", why: "Robo con armas y persecución" }]], [/[uú]ltimo v[ií]nculo/i, [{ a: "132.12", why: "Interpretado: golpe armado" }]],
-  [/ajuste de cuentas|deudor|socio inc[oó]modo|sapo|carlson|pintando|justicia comprada|chatarreros/i, [{ a: "119.3", why: "Encargo para matar a alguien" }]],
-  [/control de masas/i, [{ a: "119.3" }, { a: "143.9", why: "Violencia en grupo en la vía pública" }]],
+  [/ajuste de cuentas|deudor|socio inc[oó]modo|sapo|carlson|pintando|justicia comprada|chatarreros/i, [{ a: "119.6", why: "Encargo para matar a alguien (objetivo NPC); si es un jugador con CK, ver CK" }]],
+  [/control de masas/i, [{ a: "119.6", why: "Encargo para matar (objetivos NPC)" }, { a: "143.9", why: "Violencia en grupo en la vía pública" }]],
   [/tractor|desaparecer el cami[oó]n|activo quemado|transporte comprometido/i, [{ a: "132.55", why: "Destruir con fuego o explosión" }]],
   [/boom boom/i, [{ a: "132.56", why: "Explosión con peligro para personas" }]],
   [/contabilidad|dinero en movimiento/i, [{ a: "132.90", why: "Mover dinero ilícito" }]], [/transporte de armas/i, [{ a: "143.23" }]],
@@ -80,11 +80,13 @@ export function leyOf(it: Item): Ley {
   if (BOOM.has(it.id)) cond.push({ k: "boom", l: "Explosivos", when: "Si usan explosivos (termitas, cargas)", arts: [{ a: "143.48" }, { a: "132.55" }] });
   if (TOOLS.has(it.cat)) cond.push({ k: "tools", l: "Herramientas", when: "Si los detienen con ganzúas, taladro o similares", arts: [{ a: "143.47" }] });
   if ((it.max || 0) >= 3) cond.push({ k: "grp", l: "Grupo", when: "Si actúan 3 o más", arts: [{ a: "143.28", why: "Grupo criminal" }, ...(it.cat === "may" ? [{ a: "143.26", why: "Si es una banda organizada con jerarquía" }] : [])] });
+  /* homicidio doloso solo cuando muere un jugador con CK (Character Kill), nunca por un NPC */
+  cond.push({ k: "ck", l: "CK", when: "Si matan a un jugador con CK (Character Kill). Por NPC no se aplica", arts: [{ a: "119.1", why: "Muerte de un jugador con CK" }, { a: "119.17", why: "Si el CK es a un agente en servicio" }] });
   cond.push({ k: "huida", l: "Huida", when: "Si escapan de la policía", arts: [{ a: "143.52" }, { a: "138.31", why: "Si la huida en vehículo pone en peligro a otros" }, { a: "143.39", why: "Si se resisten al ser detenidos" }] });
   return {
     tent: base.map(r => ({ a: r.a, why: "En grado de tentativa" })).filter(r => penalOf(r.a)),
     cons,
-    hom: uniq([...cons, { a: "143.3", why: "Disparos contra agentes (atentado agravado)" }, { a: "119.1", why: "Contra civiles o rehenes, en grado de tentativa" }]),
+    hom: uniq([...cons, { a: "143.3", why: "Disparos contra agentes (atentado agravado)" }]),
     cond: cond.map(c => ({ ...c, arts: uniq(c.arts) })).filter(c => c.arts.length),
     nota: [...base].find(r => /interpretado|sin artículo propio|no tiene artículo propio/i.test(r.why || ""))?.why,
   };

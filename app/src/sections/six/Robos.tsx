@@ -93,7 +93,7 @@ function Card({ it, obs }: { it: Item; obs: boolean }) {
     </article>);
 }
 
-export function Catalogo({ cat }: { cat: Cat | "all" }) {
+export function Catalogo({ cat, share }: { cat: Cat | "all"; share?: boolean }) {
   const { toast } = useFeedback(), all = useMemo(catalogo, []), box = useRef<HTMLDivElement>(null), secs = useRef<Record<string, HTMLElement | null>>({});
   const [flt, setFlt] = useState<"" | "act" | "nuevo" | "pend">(""), [q, setQ] = useState(""), [obs, setObs] = useState(true), [busy, setBusy] = useState(false), [shot, setShot] = useState(false);
   const isPend = (x: Item) => x.notas.some(n => n.t === "rev" || n.t === "dup");
@@ -126,7 +126,7 @@ export function Catalogo({ cat }: { cat: Cat | "all" }) {
         <label className="relative min-w-[200px] flex-1"><Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-500" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar robo o misión…" className="w-full rounded-xl border border-six/15 bg-black/40 py-2 pl-8 pr-3 font-sans text-sm text-slate-100 outline-none focus:border-six" /></label>
         <button onClick={() => setObs(!obs)} className={cn("rounded-xl border px-3 py-2 font-sans text-xs font-semibold", obs ? "border-six/60 bg-six/10 text-six" : "border-six/15 text-slate-500")}>Observaciones {obs ? "ON" : "OFF"}</button>
-        <button onClick={foto} disabled={busy} className="six-btn inline-flex items-center gap-1.5 rounded-xl border border-six/60 bg-six/10 px-3.5 py-2 text-xs font-bold tracking-[0.12em] text-six disabled:opacity-40"><Camera className="size-3.5" />{busy ? "GENERANDO…" : "FOTO 4K"}</button>
+        {!share && <button onClick={foto} disabled={busy} className="six-btn inline-flex items-center gap-1.5 rounded-xl border border-six/60 bg-six/10 px-3.5 py-2 text-xs font-bold tracking-[0.12em] text-six disabled:opacity-40"><Camera className="size-3.5" />{busy ? "GENERANDO…" : "FOTO 4K"}</button>}
       </div>
 
       <div ref={box} style={shot ? { width: 1920 } : undefined} className={cn("space-y-5 rounded-2xl bg-[#05070a] p-4", shot && "p-0")}>

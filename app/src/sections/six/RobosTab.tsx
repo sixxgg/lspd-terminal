@@ -1,7 +1,8 @@
 /* six · ROBOS: el catálogo de robos, el articulado de cada robo (qué artículos del Código Penal corresponden) y la exportación a Excel.
    Las tres vistas comparten el filtro por tipo de robo. */
-import { useMemo, useState } from "react";
-import { BookOpen, Check, Download, FileSpreadsheet, Gavel, Layers, Scale, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { BookOpen, Check, Copy, Download, FileSpreadsheet, Gavel, Layers, Link2, Scale, Search, Trash2, UserPlus } from "lucide-react";
+import { api } from "@/lib/api";
 import { Modal } from "@/components/modal";
 import { useFeedback } from "@/components/feedback";
 import { LS } from "@/lib/store";
@@ -27,23 +28,62 @@ function CatBar({ cat, set, all }: { cat: Cat | "all"; set: (c: Cat | "all") => 
       </button>); })}</div>);
 }
 
-export function RobosTab() {
-  const all = useMemo(catalogo, []);
-  const [view, setView] = useState<View>(() => (LS.get(VK) as View) || "cat"), [cat, setCat] = useState<Cat | "all">("all");
+/* share: vista de un invitado (link de six): sin Excel, sin foto y sin invitar */
+export function RobosTab({ share }: { share?: boolean }) {
+  const all = useMemo(catalogo, []), [inv, setInv] = useState(false);
+  const [view, setView] = useState<View>(() => { const v = LS.get(VK) as View; return v && !(share && v === "xls") ? v : "cat"; }), [cat, setCat] = useState<Cat | "all">("all");
   const go = (v: View) => { setView(v); LS.set(VK, v); };
-  const T: [View, string, typeof BookOpen][] = [["cat", "CATÁLOGO DE ROBOS", BookOpen], ["art", "ARTÍCULOS PARA LOS ROBOS", Gavel], ["xls", "EXPORTAR A EXCEL", FileSpreadsheet]];
+  const T: [View, string, typeof BookOpen][] = [["cat", "CATÁLOGO DE ROBOS", BookOpen], ["art", "ARTÍCULOS PARA LOS ROBOS", Gavel], ...(share ? [] : [["xls", "EXPORTAR A EXCEL", FileSpreadsheet] as [View, string, typeof BookOpen]])];
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-1 rounded-2xl border border-six/15 bg-black/40 p-1">{T.map(([k, l, I]) => (
         <button key={k} onClick={() => go(k)} className={cn("six-btn inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold tracking-[0.12em] transition", view === k ? "border border-six/60 bg-six/15 text-six" : "border border-transparent text-slate-500 hover:text-slate-300")}>
-          <I className="size-4" />{l}</button>))}</div>
+          <I className="size-4" />{l}</button>))}
+        {!share && <button onClick={() => setInv(true)} className="six-btn inline-flex items-center justify-center gap-2 rounded-xl border border-transparent px-3 py-2.5 text-xs font-bold tracking-[0.12em] text-slate-400 transition hover:text-six"><UserPlus className="size-4" />INVITAR A VER</button>}</div>
       {view !== "xls" && <CatBar cat={cat} set={setCat} all={all} />}
-      {view === "cat" ? <Catalogo cat={cat} /> : view === "art" ? <Articulos all={all} cat={cat} /> : <Exportar all={all} />}
+      {view === "cat" ? <Catalogo cat={cat} share={share} /> : view === "art" ? <Articulos all={all} cat={cat} /> : !share && <Exportar all={all} />}
+      {inv && <Invite onClose={() => setInv(false)} />}
     </div>);
 }
 
+/* ---------- invitar: links de solo lectura a Catálogo y Artículos (con el tema de six), con vencimiento y revocables ---------- */
+type Lnk = { t: string; exp: number; views: number; title: string; last: number; at: number };
+const DUR: [number, string][] = [[24, "1 día"], [72, "3 días"], [168, "7 días"], [720, "30 días"]];
+function Invite({ onClose }: { onClose: () => void }) {
+  const { toast, confirm } = useFeedback(), [L, setL] = useState<Lnk[] | null>(null), [n, setN] = useState(""), [h, setH] = useState(168), [busy, setBusy] = useState(false), [last, setLast] = useState("");
+  const url = (t: string) => `${location.origin}/next/?robos=${t}`;
+  const load = () => void api("/api/share", { list: "lspdt.six.cfg" }).then(r => setL(r.__s === 200 ? r.list : []));
+  useEffect(load, []);
+  const make = async () => {
+    setBusy(true); const r = await api("/api/share", { k: "lspdt.six.cfg", h, title: n.trim() || "Invitado" }); setBusy(false);
+    if (r.__s !== 200) { toast(r.msg || "No se pudo crear el link", "err"); return; }
+    const u = url(r.t); setLast(u); void navigator.clipboard?.writeText(u).catch(() => {}); toast("Link copiado"); setN(""); load();
+  };
+  const del = async (x: Lnk) => { if (!(await confirm(`¿Revocar el link de ${x.title}? Deja de funcionar al instante.`, { danger: true, ok: "Revocar" }))) return; await api("/api/share", { del: x.t }); load(); };
+  const left = (e: number) => { const d = e - Date.now(); return d > 864e5 ? `${Math.round(d / 864e5)} d` : `${Math.max(1, Math.round(d / 36e5))} h`; };
+  return (
+    <Modal open onClose={onClose} size="md" icon={<UserPlus />} title="Invitar a ver Robos" desc="Quien tenga el link ve el Catálogo y los Artículos tal cual los ves vos, sin iniciar sesión. El Excel no aparece.">
+      <div className="space-y-3 font-sans">
+        <label className="block space-y-1"><span className="text-xs font-semibold text-slate-500">Para quién</span>
+          <input value={n} onChange={e => setN(e.target.value)} maxLength={60} placeholder="Ej: Bernal, staff de ilícitos…" className="w-full rounded-xl border border-slate-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-six dark:border-slate-700" /></label>
+        <div><span className="text-xs font-semibold text-slate-500">Vence en</span>
+          <div className="mt-1 grid grid-cols-4 gap-1.5">{DUR.map(([v, l]) => <button key={v} onClick={() => setH(v)} className={cn("rounded-lg border py-1.5 text-xs font-semibold transition", h === v ? "border-six bg-six/15 text-six" : "border-slate-200 text-slate-500 dark:border-slate-700")}>{l}</button>)}</div></div>
+        <button disabled={busy} onClick={make} className="six-btn inline-flex w-full items-center justify-center gap-2 rounded-xl border border-six/60 bg-six/15 px-4 py-2.5 text-xs font-bold tracking-[0.12em] text-six disabled:opacity-40"><Link2 className="size-4" />{busy ? "CREANDO…" : "CREAR Y COPIAR LINK"}</button>
+        {last && <p className="break-all rounded-lg bg-black/30 px-3 py-2 font-mono text-[11.5px] text-six">{last}</p>}
+        <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-[.16em] text-slate-400">Links activos</p>
+          {!L ? <p className="text-sm text-slate-500">Cargando…</p> : !L.length ? <p className="text-sm text-slate-500">No hay links activos.</p> :
+          <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">{L.map(x => (
+            <div key={x.t} className="flex items-center gap-2 px-3 py-2">
+              <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{x.title}</p>
+                <p className="text-[11.5px] text-slate-500">Vence en {left(x.exp)} · {x.views} {x.views === 1 ? "vista" : "vistas"}{x.last ? ` · última ${new Date(x.last).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}` : ""}</p></div>
+              <button onClick={() => { void navigator.clipboard?.writeText(url(x.t)).catch(() => {}); toast("Link copiado"); }} aria-label="Copiar link" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-six dark:hover:bg-slate-800"><Copy className="size-4" /></button>
+              <button onClick={() => void del(x)} aria-label="Revocar" className="rounded-lg p-1.5 text-slate-400 hover:bg-red-500/10 hover:text-red-500"><Trash2 className="size-4" /></button></div>))}</div>}</div>
+      </div>
+    </Modal>);
+}
+
 /* ---------- artículos ---------- */
-const COLS = [["tent", "Tentativa", "#eab308", "Lo intentaron pero no lo consiguieron"], ["cons", "Consumado", "#f97316", "Lo consiguieron"], ["hom", "Con disparos", "#ef4444", "Consumado con disparos a agentes o intento de homicidio"]] as const;
+const COLS = [["tent", "Tentativa", "#eab308", "Lo intentaron pero no lo consiguieron"], ["cons", "Consumado", "#f97316", "Lo consiguieron"], ["hom", "Con disparos", "#ef4444", "Consumado y además dispararon a agentes"]] as const;
 const Chip = ({ r, c }: { r: Ref; c: string }) => { const x = art(r.a); return (
   <span title={`${r.a} · ${x?.t || ""}${r.why ? `\n${r.why}` : ""}`} className="inline-flex max-w-full items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[11px]" style={{ borderColor: c + "55", background: c + "14" }}>
     <b className="font-mono" style={{ color: c }}>{r.a}</b><span className="truncate text-slate-300">{x?.t}</span></span>); };
@@ -59,7 +99,7 @@ function Articulos({ all, cat }: { all: Item[]; cat: Cat | "all" }) {
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar robo o artículo (ej: 132.110, rehenes)…" className="w-full rounded-xl border border-six/15 bg-black/40 py-2 pl-8 pr-3 text-sm text-slate-100 outline-none focus:border-six" /></label>
         <p className="text-xs text-slate-500">{list.length} {list.length === 1 ? "robo" : "robos"} · tocá uno para ver el detalle</p>
       </div>
-      <p className="rounded-xl border border-white/[.07] bg-black/30 px-3 py-2 text-[12px] leading-relaxed text-slate-400"><Scale className="mr-1.5 inline size-3.5 text-six" />Artículos del Código Penal de la terminal interpretados a partir de la normativa de cada robo. <b className="text-slate-300">Tentativa</b>: no lo consiguieron · <b className="text-slate-300">Consumado</b>: lo consiguieron · <b className="text-slate-300">Con disparos</b>: además dispararon a agentes o intentaron matar a alguien. Lo de <b className="text-slate-300">según lo que pase</b> se suma solo si ocurre.</p>
+      <p className="rounded-xl border border-white/[.07] bg-black/30 px-3 py-2 text-[12px] leading-relaxed text-slate-400"><Scale className="mr-1.5 inline size-3.5 text-six" />Artículos del Código Penal de la terminal interpretados a partir de la normativa de cada robo. <b className="text-slate-300">Tentativa</b>: no lo consiguieron · <b className="text-slate-300">Consumado</b>: lo consiguieron · <b className="text-slate-300">Con disparos</b>: además dispararon a agentes. El homicidio doloso (119.1) va solo si hay CK de un jugador. Lo de <b className="text-slate-300">según lo que pase</b> se suma solo si ocurre.</p>
       {KEYS.filter(k => list.some(x => x.cat === k)).map(k => (
         <section key={k} className="space-y-2">
           <h3 className="flex items-center gap-2 pt-1"><span className="size-2.5 rounded-full" style={{ background: CATS[k].c }} /><b className="text-white">{CATS[k].l}</b>{CATS[k].code && <span className="rounded border border-white/15 px-1 font-mono text-[10px] text-slate-400">Cód. {CATS[k].code}</span>}<span className="text-xs text-slate-500">{list.filter(x => x.cat === k).length}</span></h3>

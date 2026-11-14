@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.0.2";
+export const APP_VERSION = "3.0.3";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,10 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.0.3", f: "14/11/2026", t: "Robos: CK y vista compartida", items: [
+    "Artículos de robos: el homicidio doloso (119.1) va solo cuando hay CK de un jugador (y 119.17 si es a un agente), nunca por un NPC. «Con disparos» suma el atentado agravado contra agentes.",
+    "Robos · Invitar a ver: six crea links de solo lectura (1 a 30 días) para que otra persona vea el Catálogo y los Artículos con su tema, sin iniciar sesión y sin el Excel. Se ven las vistas y se revocan al instante.",
+  ] },
   { v: "3.0.2", f: "14/11/2026", t: "Robos: catálogo, articulado y Excel", items: [
     "Página de six: nueva pestaña Robos con el catálogo, los artículos de cada robo y la exportación a Excel.",
     "Artículos para los robos: tentativa, consumado y con disparos, más lo que se suma según lo que pase (rehenes, armas, hackeo, explosivos, grupo, huida).",
