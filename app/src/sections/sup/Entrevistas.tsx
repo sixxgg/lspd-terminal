@@ -12,7 +12,7 @@ import { Avatar, RankBadge } from "@/components/agents";
 import { CopyMenu } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { ALL_DIVS, RANK_COLOR, findAgent, insigniaUrl, divAb, dmyToISO, fmtDate, genderOf, getRoster, hoyISO, isoToDMY, lvl, maskDMY, norm, rankES, uid, type Agent } from "@/lib/domain";
-import { useJSON } from "@/lib/store";
+import { LS, useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { AgentMenu } from "@/components/sgtpick";
 import { cn } from "@/lib/cn";
@@ -181,13 +181,14 @@ export function Entrevistas() {
                 const e = g(a.n), S = stOf(e), R = raOf(e), act = actOf(a.n, e), dv = (e.div || []).filter(d => !act.includes(d)), nd = !dv.length ? ndOf(e) : null;
                 return (
                   <li key={a.n} role="button" tabIndex={0} onClick={() => setOpen(a.n)} onKeyDown={ev => ev.key === "Enter" && setOpen(a.n)}
-                    className="group grid cursor-pointer items-center gap-x-4 gap-y-2 px-4 py-2.5 transition hover:bg-brand-500/[.045] focus-visible:bg-brand-500/[.07] focus-visible:outline-none md:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_auto]">
+                    className="group grid cursor-pointer items-center gap-x-4 gap-y-2 px-4 py-2.5 transition hover:bg-brand-500/[.045] focus-visible:bg-brand-500/[.07] focus-visible:outline-none md:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_auto]">
                     {/* agente */}
                     <span className="flex min-w-0 items-center gap-3">
                       <span className="relative shrink-0 rounded-full p-[2px]" style={{ background: S?.c || "rgb(var(--n-300) / .5)" }}><span className="block rounded-full bg-white p-[1.5px] dark:bg-[rgb(var(--card))]"><Avatar n={a.n} size={34} /></span>
                         {S && <span className="absolute -bottom-0.5 -right-0.5 grid size-4 place-items-center rounded-full border-2 border-white text-white dark:border-[rgb(var(--card))]" style={{ background: S.c }}><S.I className="size-2.5" strokeWidth={3} /></span>}</span>
-                      <span className="min-w-0"><b className="block truncate text-[13.5px] group-hover:text-brand-700 dark:group-hover:text-brand-300">{a.n}</b>
-                        <span className="block truncate text-[11px] text-slate-500">{a.p ? `#${a.p}` : "Sin placa"}{e.f ? ` · ${isoToDMY(e.f)}` : ""}{e.ent || e.t ? ` · ${e.ent ? "entrevistó" : "cargó"} ${e.ent || e.por}` : ""}</span></span>
+                      <span className="min-w-0"><b className="block text-[13.5px] leading-tight group-hover:text-brand-700 dark:group-hover:text-brand-300">{a.n}</b>
+                        <span className="block text-[11px] text-slate-500">{a.p ? `#${a.p}` : "Sin placa"}{e.f ? ` · ${isoToDMY(e.f)}` : ""}</span>
+                        {(e.ent || e.t) && <span className="block text-[11px] leading-tight text-slate-500">{e.ent ? "Entrevistó" : "Cargó"} <b className="font-semibold text-slate-700 dark:text-slate-300">{e.ent || e.por}</b></span>}</span>
                     </span>
                     {/* divisiones: las que tiene y a las que quiere entrar */}
                     <span className="grid min-w-0 gap-1">
@@ -277,7 +278,8 @@ function EntModal({ a, e, QS, onSave, onClose }: { a: Agent; e: Ent; QS: Q[]; on
           onBlur={() => { const v = fd.trim(); if (!v) { set({ f: "" }); return; } const iso = dmyToISO(v); if (!iso) { toast("Fecha inválida · escribila como dd/mm/aaaa", "err"); return; } set({ f: iso }); }} />
           <button type="button" className="rounded-md px-1.5 py-1 text-[11px] font-bold text-brand-600 hover:bg-brand-500/10 dark:text-brand-300" onClick={() => { set({ f: hoyISO() }); setFd(isoToDMY(hoyISO())); }}>Hoy</button></div>
         <div className="flex items-center gap-1.5"><span className="text-[11px] font-semibold text-slate-500">Entrevistó</span>
-          <AgentMenu value={d.ent || ""} list={SGTS} onChange={n => set({ ent: n })} placeholder="Sargento I o II…" /></div>
+          <AgentMenu value={d.ent || ""} list={SGTS} onChange={n => set({ ent: n })} title="¿Quién hizo la entrevista?" placeholder="Elegir sargento" me={me.n}
+            extra={x => { const n = Object.values(LS.json<Record<string, Ent>>("lspdt.entrev", {})).filter(z => z.ent === x.n).length; return n ? `${n} ${n === 1 ? "entrevista" : "entrevistas"}` : ""; }} /></div>
         <div className="flex flex-wrap items-center gap-1"><span className="mr-1 text-[11px] font-semibold text-slate-500">Rama</span>{(Object.keys(RAMA) as RaK[]).map(k => { const Ra = RAMA[k]; return (
           <Seg key={k} on={d.rama === k} c={Ra.c} title={Ra.d} onClick={() => set({ rama: d.rama === k ? "" : k })}><Ra.I />{raL(k, a.n)}</Seg>); })}</div>
       </div>

@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.5.2";
+export const APP_VERSION = "3.5.3";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,10 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.5.3", f: "15/11/2026", t: "Entrevistas: textos completos y nuevo selector", items: [
+    "Lista de entrevistas: el nombre y quién entrevistó ya no se cortan (van en su propio renglón).",
+    "Nuevo selector de «Entrevistó»: panel flotante con buscador, filtro por rango, foto, insignia, placa y cuántas entrevistas hizo cada uno; marca «Vos» y se maneja con el teclado (↑ ↓ Enter Esc).",
+  ] },
   { v: "3.5.2", f: "15/11/2026", t: "Entrevistas: quién entrevistó", items: [
     "Ficha de la entrevista: nuevo campo «Entrevistó» con un menú desplegable de los Sargentos I y II (con buscador). El menú se abre por encima de todo, así que nunca queda cortado.",
     "Si el que abre la ficha es sargento, queda puesto solo. Sale en la lista, en el texto para Discord o web y «Revisar» avisa si falta.",

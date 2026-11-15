@@ -392,3 +392,6 @@ html:not([data-head="none"]) header nav .nav-dk-l { font-family: var(--fh, inher
 @keyframes ops-tape { to { transform: translateX(-33.33%); } }
 @keyframes ops-indet { from { background-position: 200% 0; } to { background-position: 0 0; } }
 @media (prefers-reduced-motion: reduce) { .ops-l, .ops-r, .ops-tape span, .ops-indet, .ops-live i { animation: none; } }
+.agm { animation: agm-in .16s cubic-bezier(.2,.8,.2,1) both; transform-origin: top; }
+@keyframes agm-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .agm { animation: none; } }
