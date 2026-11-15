@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.4.1";
+export const APP_VERSION = "3.4.2";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,13 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.4.2", f: "14/11/2026", t: "Entrevistas más compactas y con respuestas automáticas", items: [
+    "La pregunta de la rama cambia según el rango (oficial, detective o sargento) y la respuesta se completa sola con la rama que marques.",
+    "La pregunta de divisiones cambia si ya pertenece a alguna, y la respuesta se arma sola con las del roster y las que marques que quiere (o «cómodo» / «no quiere más»). Si escribís algo, queda lo tuyo; con ↺ volvés a la automática.",
+    "Ficha de la entrevista más chica: estado, fecha y rama en una sola fila, divisiones en etiquetas cortas y respuestas en una lista compacta.",
+    "Al copiar para Discord, la fecha y la hora van con la marca de tiempo de Discord: cada uno la ve en su zona horaria.",
+    "Metropolitan Division: se agregan las subdivisiones SIERRA y Pelotón H (también salen solas del roster de la METRO).",
+  ] },
   { v: "3.4.1", f: "14/11/2026", t: "Entrevistas: no quiere más divisiones", items: [
     "En «Divisiones a las que quiere pertenecer» se puede marcar «Está cómodo donde está» o «No quiere más divisiones». Sale en la lista, en el texto para Discord o web y cuenta como completo en «Revisar».",
   ] },

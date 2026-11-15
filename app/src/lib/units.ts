@@ -130,7 +130,7 @@ const RTD_DEF = ["Charles Jhonson Smith", "Daniel López", "Derek McGarrett", "E
 export const isRTD = (n: string) => !!ME_ROLES.admin || rtdMem().includes(n);
 
 /* divisiones e indicativo que salen de los rosters cargados (se suman a lo que tenga el perfil del agente) */
-const MD_SUB_DIV: Record<string, string> = { swat: "Special Weapons And Tactics", bq: "Bomb Squad", cnt: "Crisis Negotiation Team", udu: "Underwater Dive Unit" };
+const MD_SUB_DIV: Record<string, string> = { swat: "Special Weapons And Tactics", sierra: "SIERRA", h: "Pelotón H", bq: "Bomb Squad", cnt: "Crisis Negotiation Team", udu: "Underwater Dive Unit" };
 export function rosterDivs(n: string): string[] {
   const out: string[] = [], md = uMap("md")[n];
   if (md) { out.push("Metropolitan Division"); for (const r of md) if (MD_SUB_DIV[r]) out.push(MD_SUB_DIV[r]); }

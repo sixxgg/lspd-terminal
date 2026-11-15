@@ -115,12 +115,12 @@ export const rkFem = (r: string, n: string) => { let s = rankES(r); if (genderOf
 export const dcIdOfAgent = (a?: Agent | null) => { const d = String(a?.i || a?.d || "").trim(); return /^\d{15,21}$/.test(d) ? d : ""; };
 
 export const DIVS: [string, string[]?][] = [["Detective Bureau", ["High Tech Crime Unit", "Gang and Narcotics Division", "Major Crimes Division"]],
-  ["Metropolitan Division", ["Special Weapons And Tactics", "Bomb Squad", "Metropolitan Drone Support Operations", "Crisis Negotiation Team", "Underwater Dive Unit"]],
+  ["Metropolitan Division", ["Special Weapons And Tactics", "SIERRA", "Pelotón H", "Bomb Squad", "Metropolitan Drone Support Operations", "Crisis Negotiation Team", "Underwater Dive Unit"]],
   ["Air Support Division"], ["Administration Services Bureau"], ["High Speed Interception Unit"], ["Recruitment and Training Division"], ["Professional Standards Bureau"], ["K-9 Division"]];
 export const ALL_DIVS = DIVS.flatMap(d => [d[0], ...(d[1] || [])]);
 const DIV_INFO: Record<string, [string, string]> = {
   "Detective Bureau": ["DB", "#7c3aed"], "High Tech Crime Unit": ["HTCU", "#b8975a"], "Gang and Narcotics Division": ["GND", "#3f8f3a"], "Major Crimes Division": ["MCD", "#d4a937"], "Metropolitan Division": ["METRO", "#1f6fb0"],
-  "Special Weapons And Tactics": ["SWAT", "#111827"], "Bomb Squad": ["BS", "#b91c1c"], "Metropolitan Drone Support Operations": ["MDSO", "#0f766e"], "Crisis Negotiation Team": ["CNT", "#9333ea"], "Underwater Dive Unit": ["UDU", "#b7985d"],
+  "Special Weapons And Tactics": ["SWAT", "#111827"], "SIERRA": ["SIERRA", "#b45309"], "Pelotón H": ["PEL. H", "#0e7490"], "Bomb Squad": ["BS", "#b91c1c"], "Metropolitan Drone Support Operations": ["MDSO", "#0f766e"], "Crisis Negotiation Team": ["CNT", "#9333ea"], "Underwater Dive Unit": ["UDU", "#b7985d"],
   "Air Support Division": ["ASD", "#1b8cb9"], "Administration Services Bureau": ["ASB", "#475569"], "High Speed Interception Unit": ["HSIU", "#dc2626"], "Recruitment and Training Division": ["RTD", "#b3262a"],
   "Professional Standards Bureau": ["PSB", "#1e3a8a"], "K-9 Division": ["K-9", "#1f8f4a"] };
 export const divAb = (d: string) => DIV_INFO[d] || [d.split(/\s+/).map(w => w[0]).join("").slice(0, 4).toUpperCase(), "#334155"];

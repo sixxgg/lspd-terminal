@@ -14,6 +14,8 @@ export const DIV_DESC: Record<string, string> = {
   "Professional Standards Bureau": "Asuntos internos: vela por la integridad, la conducta y la ética de todo el personal del departamento.",
   "Underwater Dive Unit": "Unidad de buceo de la Metropolitan Division: rescate y búsqueda subacuática, persecución marítima y apoyo en operativos en el agua.",
   "Special Weapons And Tactics": "Unidad táctica de la Metropolitan Division para intervenciones de alto riesgo, rescate de rehenes y sujetos armados atrincherados.",
+  "SIERRA": "Subdivisión SIERRA de la Metropolitan Division.",
+  "Pelotón H": "Pelotón H de la Metropolitan Division: manifestaciones y operativos de gran magnitud.",
   "Bomb Squad": "Desactivación y manejo de artefactos explosivos y materiales peligrosos.",
   "Metropolitan Drone Support Operations": "Apoyo aéreo con drones de la Metropolitan Division: licencias, vigilancia y seguimiento.",
   "Crisis Negotiation Team": "Negociación en crisis: rehenes, personas atrincheradas e intentos de suicidio.",

@@ -45,36 +45,57 @@ const actOf = (n: string, e: Ent) => ordDiv([...rosterDivs(n), ...(e.act || [])]
 const empty = (e: Ent) => !e.st && !e.rama && !e.f && !e.nd && !(e.div || []).length && !(e.act || []).length && !(e.nota || "").trim() && !Object.values(e.res || {}).some(v => v.trim());
 const clean = (e: Ent): Ent => ({ st: e.st || "", rama: e.rama || "", f: e.f || "", nd: e.div?.length ? "" : e.nd || "", div: e.div || [], act: e.act || [], res: Object.fromEntries(Object.entries(resOf(e)).filter(([, v]) => v.trim())), nota: (e.nota || "").trim() });
 
+/* la pregunta de la rama y la de divisiones cambian según el rango y lo que ya tiene (si no se editaron) */
+const famOf = (a: Agent) => { const r = rankES(a.r); return /sargento/i.test(r) ? "sgt" : /detective/i.test(r) ? "det" : "of"; };
+const def = (id: string) => Q_DEF.find(x => x.id === id)?.q;
+const qOf = (x: Q, a: Agent, e: Ent): string => {
+  if (x.id === "rama" && x.q === def("rama")) { const f = famOf(a);
+    return f === "sgt" ? "Ya está en la rama de Sargentos. ¿Quiere seguir creciendo en ella o le interesaría la rama de Detectives? ¿Por qué?"
+      : f === "det" ? "Ya está en la rama de Detectives. ¿Quiere seguir en ella o le interesaría pasar a la rama de Sargentos? ¿Por qué?" : x.q; }
+  if (x.id === "div" && x.q === def("div")) return actOf(a.n, e).length ? "¿Cómo se encuentra en sus divisiones actuales? ¿Le gustaría incorporarse a alguna otra?" : "No pertenece a ninguna división. ¿Le gustaría incorporarse a alguna? ¿A cuál o cuáles?";
+  return x.q;
+};
+const lst = (L: string[]) => (L.length < 2 ? L.join("") : `${L.slice(0, -1).join(", ")} y ${L[L.length - 1]}`);
+/* respuesta automática de la rama y de divisiones, armada con lo que se marcó en la ficha */
+const autoOf = (id: string, a: Agent, e: Ent): string => {
+  if (id === "rama") { const f = famOf(a), r = e.rama;
+    if (r === "ind") return `Todavía no lo tiene claro; está ${genderOf(a.n) === "f" ? "indecisa" : "indeciso"}.`;
+    if (r === "sgt") return f === "sgt" ? "Quiere seguir creciendo en la rama de Sargentos." : f === "det" ? "Le interesaría pasar a la rama de Sargentos." : "Le gustaría desarrollarse en la rama de Sargentos.";
+    if (r === "det") return f === "det" ? "Quiere seguir en la rama de Detectives." : f === "sgt" ? "Le interesaría pasar a la rama de Detectives." : "Le gustaría desarrollarse en la rama de Detectives.";
+    return ""; }
+  if (id === "div") { const act = actOf(a.n, e), dv = (e.div || []).filter(d => !act.includes(d));
+    const p1 = act.length ? `Pertenece a ${lst(act)}.` : "No pertenece a ninguna división.";
+    const p2 = dv.length ? `Le gustaría incorporarse a ${lst(dv)}.` : e.nd === "ok" ? "Está cómodo donde está y no busca cambiar de división." : e.nd === "no" ? "No quiere pertenecer a más divisiones." : "";
+    return act.length || dv.length || e.nd ? [p1, p2].filter(Boolean).join(" ") : ""; }
+  return "";
+};
+const AUTO = new Set(["rama", "div"]);
+/* respuesta final: lo escrito o, en rama y divisiones, la automática */
+const ansOf = (x: Q, a: Agent, e: Ent) => { const v = resOf(e)[x.id]; return v?.trim() ? v : AUTO.has(x.id) ? autoOf(x.id, a, e) : ""; };
+/* marca de tiempo de Discord: cada uno la ve en su zona horaria (la fecha va a las 12:00 de Argentina para no correr de día) */
+const dts = (t: number, f = "f") => `<t:${Math.floor(t / 1000)}:${f}>`;
+const dayTs = (iso: string) => dts(new Date(`${iso}T12:00:00-03:00`).getTime(), "D");
+
 /* texto para Discord (el formato web lo saca CopyMenu limpiando el markdown) */
 function entText(a: Agent, e: Ent, QS: Q[]) {
-  const act = actOf(a.n, e), dv = (e.div || []).filter(d => !act.includes(d)), R = resOf(e);
+  const act = actOf(a.n, e), dv = (e.div || []).filter(d => !act.includes(d));
   const ico = { si: "✅", no: "❌", pen: "⏳" }[e.st || ""] || "▫️";
-  const res = QS.map(x => [x.q, (R[x.id] || "").trim()] as const).filter(([, r]) => r), nota = (e.nota || "").trim();
+  const res = QS.map(x => [qOf(x, a, e), ansOf(x, a, e).trim()] as const).filter(([, r]) => r), nota = (e.nota || "").trim();
   return [
     `## 🗣️ ENTREVISTA — ${rankES(a.r)} ${a.n}${a.p ? ` (#${a.p})` : ""}`,
-    `**Estado:** ${ico} ${stOf(e)?.l || "Sin marcar"}${e.f ? `  ·  **Fecha:** \`${isoToDMY(e.f)}\`` : ""}`,
+    `**Estado:** ${ico} ${stOf(e)?.l || "Sin marcar"}${e.f ? `  ·  **Fecha:** ${dayTs(e.f)}` : ""}`,
     `**Rama de interés:** ${raL(e.rama, a.n)}`, "",
     "### 🏢 Divisiones a las que pertenece", act.length ? act.map(d => `> • ${d}`).join("\n") : "> Ninguna", "",
     "### 🎯 Divisiones a las que quiere pertenecer", dv.length ? dv.map(d => `> • ${d}`).join("\n") : ndOf(e) ? `> ${ndOf(e)!.t}` : "> Ninguna por ahora",
     ...(res.length ? ["", "### 📝 Respuestas", ...res.flatMap(([q, r]) => [`**${q}**`, `> ${r.replace(/\n/g, "\n> ")}`])] : []),
     ...(nota ? ["", "### 🗒️ Notas", nota.split("\n").map(l => "> " + l).join("\n")] : []),
-    "", `-# Entrevista registrada por ${e.por || "—"}${e.t ? ` · ${fmtDate(e.t)}` : ""}`,
+    "", `-# Entrevista registrada por ${e.por || "—"}${e.t ? ` · ${dts(e.t)}` : ""}`,
   ].join("\n");
 }
 
 const DivTag = ({ d, want }: { d: string; want?: boolean }) => { const [ab, col] = divAb(d); return (
   <span title={(want ? "Quiere entrar: " : "Pertenece: ") + d} className={cn("inline-flex items-center rounded px-1.5 py-px text-[10px] font-bold", want ? "border border-dashed" : "text-white")}
     style={want ? { borderColor: col + "aa", color: col } : { background: col }}>{want && "→"}{ab}</span>); };
-function DivChips({ list, on, lock, onToggle, col }: { list: string[]; on: string[]; lock?: string[]; onToggle: (d: string) => void; col: string }) {
-  return (
-    <div className="flex flex-wrap gap-1.5">{list.map(d => { const [ab, c] = divAb(d), sel = on.includes(d), lk = lock?.includes(d); return (
-      <button key={d} type="button" disabled={lk} onClick={() => onToggle(d)} title={lk ? `${d} · sale del roster de la división` : d}
-        className={cn("inline-flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 text-[11.5px] font-semibold transition", !sel && "border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:text-slate-100", lk && "cursor-default")}
-        style={sel ? { borderColor: col + "80", background: col + "18", color: col } : undefined}>
-        <span className="rounded-full px-1.5 py-px text-[9.5px] font-black text-white" style={{ background: c }}>{ab}</span><span className="max-w-[12rem] truncate">{d}</span>
-        {lk ? <span className="rounded-full bg-black/10 px-1.5 text-[9px] font-bold uppercase tracking-wide dark:bg-white/10">roster</span> : sel && <Check className="size-3" />}
-      </button>); })}</div>);
-}
 function Ring({ v, c, size = 84, w = 8, children }: { v: number; c: string; size?: number; w?: number; children?: ReactNode }) {
   const r = (size - w) / 2, L = 2 * Math.PI * r;
   return (
@@ -201,64 +222,68 @@ function PregModal({ QS, can, onSave, onClose }: { QS: Q[]; can: boolean; onSave
     </Modal>);
 }
 
-/* ficha de la entrevista: se edita un borrador y se guarda con «Guardar»; guardada y sin cambios se puede copiar */
+/* ficha de la entrevista: compacta. Se edita un borrador y se guarda con «Guardar»; guardada y sin cambios se puede copiar */
+const Seg = ({ on, c, onClick, children, title }: { on: boolean; c: string; onClick: () => void; children: ReactNode; title?: string }) => (
+  <button type="button" title={title} onClick={onClick} className={cn("inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-semibold transition [&_svg]:size-3.5", !on && "border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:text-slate-100")}
+    style={on ? { borderColor: c, background: c + "1c", color: c } : undefined}>{children}</button>);
+function Divs({ list, on, lock, col, onToggle }: { list: string[]; on: string[]; lock?: string[]; col: string; onToggle: (d: string) => void }) {
+  return <div className="flex flex-wrap gap-1">{list.map(d => { const [ab, c] = divAb(d), sel = on.includes(d), lk = lock?.includes(d); return (
+    <button key={d} type="button" disabled={lk} onClick={() => onToggle(d)} title={lk ? `${d} · sale del roster` : d}
+      className={cn("inline-flex h-6 items-center gap-1 rounded-md border px-1.5 text-[10.5px] font-bold transition", !sel && "border-slate-200 text-slate-500 hover:border-slate-400 dark:border-slate-700 dark:text-slate-400", lk && "cursor-default")}
+      style={sel ? { borderColor: col, background: col + "1c", color: col } : undefined}>
+      <span className="size-1.5 rounded-full" style={{ background: c }} />{ab}{lk && <span className="text-[8.5px] opacity-70">R</span>}</button>); })}</div>;
+}
 function EntModal({ a, e, QS, onSave, onClose }: { a: Agent; e: Ent; QS: Q[]; onSave: (x: Ent) => void; onClose: () => void }) {
   const { toast, confirm } = useFeedback();
   const [d, setD] = useState<Ent>(() => clean(e)), [pv, setPv] = useState(false), [fd, setFd] = useState(isoToDMY(e.f));
   const set = (x: Partial<Ent>) => setD(o => ({ ...o, ...x }));
   const dirty = JSON.stringify(clean(d)) !== JSON.stringify(clean(e)), saved = !!e.t && !dirty;
   const act = actOf(a.n, d), auto = rosterDivs(a.n), dv = d.div || [], R = resOf(d), S = stOf(d);
-  const txt = entText(a, saved ? e : { ...d, por: "(sin guardar)" }, QS), answered = QS.filter(x => (R[x.id] || "").trim()).length;
+  const txt = entText(a, saved ? e : { ...d, por: "(sin guardar)" }, QS), answered = QS.filter(x => ansOf(x, a, d).trim()).length;
   const close = async () => { if (dirty && !(await confirm("Hay cambios sin guardar. ¿Salir igual?", { danger: true, ok: "Salir sin guardar" }))) return; onClose(); };
   const doSave = () => { if (d.st === "si" && !d.f) { toast("Poné la fecha de la entrevista", "err"); return; } onSave(d); toast(empty(d) ? "Entrevista borrada" : "Entrevista guardada · ya la podés copiar"); };
+  const togSet = (cur: string[], x: string) => { const s = new Set(cur); if (s.has(x)) s.delete(x); else s.add(x); return ordDiv(s); };
   return (
-    <Modal open onClose={() => void close()} size="xl" icon={<UserRoundCheck />} title={<span className="flex items-center gap-2">Entrevista · {a.n}{S && <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: S.c + "22", color: S.c }}>{S.l}</span>}</span>}
+    <Modal open onClose={() => void close()} size="xl" icon={<UserRoundCheck />} title={<span className="flex items-center gap-2">{a.n}{S && <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: S.c + "22", color: S.c }}>{S.l}</span>}{dirty && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10.5px] font-bold text-amber-600 dark:text-amber-300">Sin guardar</span>}</span>}
       desc={<span className="flex flex-wrap items-center gap-1.5"><RankBadge r={a.r} />{a.p && <span className="font-mono text-xs">#{a.p}</span>}{e.t && <span className="text-xs">· guardada por {e.por}, {fmtDate(e.t)}</span>}</span>}
-      footer={<><Revisar text={txt} err={[!d.st && "estado de la entrevista", d.st === "si" && !d.f && "fecha"].filter(Boolean) as string[]} pen={dv.length || d.nd ? undefined : ["divisiones a las que quiere entrar (o marcá que está cómodo / no quiere más)"]} className="mr-auto min-w-0 max-w-full flex-1" />
+      footer={<><Revisar text={txt} err={[!d.st && "estado de la entrevista", d.st === "si" && !d.f && "fecha"].filter(Boolean) as string[]} pen={dv.length || d.nd ? undefined : ["divisiones a las que quiere entrar (o «cómodo» / «no quiere más»)"]} className="mr-auto min-w-0 max-w-full flex-1" />
         <Button variant="ghost" onClick={() => void close()}>Cerrar</Button>
         {saved ? <CopyMenu size="md" variant="primary" text={txt} up /> : <Button icon={<Save />} disabled={!dirty} onClick={doSave}>Guardar</Button>}</>}>
-      {dirty && <p className="-mt-1 mb-3 flex items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-1.5 text-[12px] font-semibold text-amber-700 dark:text-amber-300"><Clock className="size-3.5" />Cambios sin guardar · guardá para poder copiarla</p>}
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-        <div className="space-y-5">
-          <div><Lbl I={Check}>Estado</Lbl>
-            <div className="grid grid-cols-3 gap-2">{(Object.keys(ST) as StK[]).map(k => { const X = ST[k], on = d.st === k; return (
-              <button key={k} onClick={() => { set({ st: on ? "" : k }); if (k === "si" && !on && !d.f) { set({ st: k, f: hoyISO() }); setFd(isoToDMY(hoyISO())); } }} className={cn("flex flex-col items-center gap-1 rounded-xl border-2 py-2.5 text-[12px] font-bold transition", !on && "border-slate-200 text-slate-500 hover:border-slate-300 dark:border-slate-800")}
-                style={on ? { borderColor: X.c, background: X.c + "18", color: X.c } : undefined}><X.I className="size-5" />{X.l}</button>); })}</div>
-            <div className="mt-2 flex items-center gap-2"><span className="text-xs text-slate-500">Fecha</span>
-              <Input value={fd} placeholder="dd/mm/aaaa" inputMode="numeric" className="h-9 w-36 text-sm" onChange={ev => setFd(maskDMY(ev.target.value))}
-                onBlur={() => { const v = fd.trim(); if (!v) { set({ f: "" }); return; } const iso = dmyToISO(v); if (!iso) { toast("Fecha inválida · escribila como dd/mm/aaaa", "err"); return; } set({ f: iso }); }} />
-              <Button size="sm" variant="ghost" onClick={() => { set({ f: hoyISO() }); setFd(isoToDMY(hoyISO())); }}>Hoy</Button></div>
-          </div>
-          <div><Lbl I={Compass}>Rama de interés</Lbl>
-            <div className="grid grid-cols-3 gap-2">{(Object.keys(RAMA) as RaK[]).map(k => { const Ra = RAMA[k], on = d.rama === k; return (
-              <button key={k} onClick={() => set({ rama: on ? "" : k })} className={cn("rounded-xl border-2 p-2.5 text-left transition", on ? "text-white" : "border-slate-200 hover:border-slate-300 dark:border-slate-800")}
-                style={on ? { borderColor: Ra.c, background: `linear-gradient(135deg, ${Ra.c}, ${Ra.c}bb)` } : undefined}>
-                <Ra.I className="size-5" style={on ? undefined : { color: Ra.c }} /><b className="mt-1 block text-[13px]">{raL(k, a.n)}</b><span className={cn("block text-[10.5px] leading-tight", on ? "text-white/80" : "text-slate-500")}>{Ra.d}</span></button>); })}</div>
-          </div>
-          <div><Lbl I={Building2}>Divisiones a las que pertenece</Lbl>
-            <DivChips list={ALL_DIVS} on={act} lock={auto} col="#10b981" onToggle={x => { const s = new Set(d.act || []); if (s.has(x)) s.delete(x); else s.add(x); set({ act: ordDiv(s) }); }} /></div>
-          <div><Lbl I={Target}>Divisiones a las que quiere pertenecer</Lbl>
-            <div className="mb-2 flex flex-wrap gap-1.5">{(Object.keys(ND) as (keyof typeof ND)[]).map(k => { const N = ND[k], on = d.nd === k && !dv.length; return (
-              <button key={k} type="button" onClick={() => set(on ? { nd: "" } : { nd: k, div: [] })} title={N.t}
-                className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11.5px] font-semibold transition", !on && "border-dashed border-slate-300 text-slate-500 hover:text-slate-800 dark:border-slate-600 dark:text-slate-400 dark:hover:text-slate-100")}
-                style={on ? { borderColor: N.c, background: N.c + "1c", color: N.c } : undefined}>{on ? <Check className="size-3.5" /> : k === "ok" ? <UserRoundCheck className="size-3.5" /> : <X className="size-3.5" />}{N.l}</button>); })}</div>
-            <DivChips list={ALL_DIVS.filter(x => !act.includes(x))} on={dv} col="rgb(var(--b-500))" onToggle={x => { const s = new Set(dv); if (s.has(x)) s.delete(x); else s.add(x); set({ div: ordDiv(s), nd: "" }); }} /></div>
-        </div>
-        <div className="space-y-5">
-          <div><Lbl I={MessagesSquare}>Respuestas <span className="ml-auto font-semibold normal-case tracking-normal text-slate-400">{answered}/{QS.length}</span></Lbl>
-            <div className="space-y-2">{QS.map((x, i) => { const v = R[x.id] || ""; return (
-              <div key={x.id} className={cn("rounded-xl border p-2.5 transition focus-within:border-brand-500/60", v.trim() ? "border-emerald-500/30 bg-emerald-500/[.03]" : "border-slate-200 dark:border-slate-800")}>
-                <p className="mb-1.5 flex gap-2 text-[12.5px] font-semibold leading-snug"><span className={cn("grid size-5 shrink-0 place-items-center rounded-md text-[10px] font-black", v.trim() ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-500 dark:bg-slate-800")}>{v.trim() ? <Check className="size-3" /> : i + 1}</span>{x.q}</p>
-                {x.n && <p className="mb-1.5 ml-7 text-[11px] text-amber-600 dark:text-amber-300">⚠ {x.n}</p>}
-                <textarea rows={Math.min(6, Math.max(1, v.split("\n").length, Math.ceil(v.length / 70)))} value={v} placeholder="Respuesta…" onChange={ev => set({ res: { ...R, [x.id]: ev.target.value } })}
-                  className="ml-7 block w-[calc(100%-1.75rem)] resize-none bg-transparent text-[13px] leading-relaxed outline-none placeholder:text-slate-400" />
-              </div>); })}</div></div>
+      {/* fila de datos: estado, fecha y rama */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/40">
+        <div className="flex flex-wrap items-center gap-1">{(Object.keys(ST) as StK[]).map(k => { const X = ST[k], on = d.st === k; return (
+          <Seg key={k} on={on} c={X.c} onClick={() => { if (on) { set({ st: "" }); return; } set(k === "si" && !d.f ? { st: k, f: hoyISO() } : { st: k }); if (k === "si" && !d.f) setFd(isoToDMY(hoyISO())); }}><X.I />{X.l}</Seg>); })}</div>
+        <div className="flex items-center gap-1"><Input value={fd} placeholder="dd/mm/aaaa" inputMode="numeric" aria-label="Fecha" className="h-8 w-28 text-[12.5px]" onChange={ev => setFd(maskDMY(ev.target.value))}
+          onBlur={() => { const v = fd.trim(); if (!v) { set({ f: "" }); return; } const iso = dmyToISO(v); if (!iso) { toast("Fecha inválida · escribila como dd/mm/aaaa", "err"); return; } set({ f: iso }); }} />
+          <button type="button" className="rounded-md px-1.5 py-1 text-[11px] font-bold text-brand-600 hover:bg-brand-500/10 dark:text-brand-300" onClick={() => { set({ f: hoyISO() }); setFd(isoToDMY(hoyISO())); }}>Hoy</button></div>
+        <div className="flex flex-wrap items-center gap-1"><span className="mr-1 text-[11px] font-semibold text-slate-500">Rama</span>{(Object.keys(RAMA) as RaK[]).map(k => { const Ra = RAMA[k]; return (
+          <Seg key={k} on={d.rama === k} c={Ra.c} title={Ra.d} onClick={() => set({ rama: d.rama === k ? "" : k })}><Ra.I />{raL(k, a.n)}</Seg>); })}</div>
+      </div>
+      <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
+        <div className="space-y-3">
+          <div><Lbl I={Building2}>Pertenece <span className="ml-1 font-medium normal-case tracking-normal text-slate-400">· R = del roster</span></Lbl>
+            <Divs list={ALL_DIVS} on={act} lock={auto} col="#10b981" onToggle={x => set({ act: togSet(d.act || [], x) })} /></div>
+          <div><Lbl I={Target}>Quiere pertenecer</Lbl>
+            <div className="mb-1.5 flex flex-wrap gap-1">{(Object.keys(ND) as (keyof typeof ND)[]).map(k => { const N = ND[k]; return (
+              <Seg key={k} on={d.nd === k && !dv.length} c={N.c} title={N.t} onClick={() => set(d.nd === k && !dv.length ? { nd: "" } : { nd: k, div: [] })}>{k === "ok" ? <Check /> : <X />}{N.l}</Seg>); })}</div>
+            <Divs list={ALL_DIVS.filter(x => !act.includes(x))} on={dv} col="rgb(var(--b-500))" onToggle={x => set({ div: togSet(dv, x), nd: "" })} /></div>
           <div><Lbl I={StickyNote}>Notas</Lbl>
-            <Textarea rows={3} value={d.nota || ""} placeholder="Observaciones, compromisos, lo que haga falta…" onChange={ev => set({ nota: ev.target.value })} /></div>
-          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-            <button onClick={() => setPv(!pv)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] font-semibold"><MessagesSquare className="size-4 text-[#5865F2]" />Vista previa para Discord<ChevronDown className={cn("ml-auto size-4 text-slate-400 transition", pv && "rotate-180")} /></button>
-            {pv && <pre className="scrollbar-thin max-h-64 overflow-auto whitespace-pre-wrap bg-slate-950 p-3 font-mono text-[11.5px] leading-relaxed text-slate-200">{txt}</pre>}
-          </div>
+            <Textarea rows={2} value={d.nota || ""} placeholder="Observaciones, compromisos…" onChange={ev => set({ nota: ev.target.value })} className="text-[13px]" /></div>
+        </div>
+        <div><Lbl I={MessagesSquare}>Respuestas <span className="ml-auto font-semibold normal-case tracking-normal text-slate-400">{answered}/{QS.length}</span></Lbl>
+          <ol className="divide-y divide-slate-100 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">{QS.map((x, i) => {
+            const own = R[x.id] || "", au = AUTO.has(x.id) ? autoOf(x.id, a, d) : "", v = own || au, isAuto = !own && !!au;
+            return (
+              <li key={x.id} className="px-2.5 py-1.5 focus-within:bg-brand-500/[.04]">
+                <p className="flex gap-1.5 text-[11.5px] font-semibold leading-snug text-slate-600 dark:text-slate-300"><span className={cn("mt-px grid size-4 shrink-0 place-items-center rounded text-[9px] font-black", v.trim() ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-500 dark:bg-slate-700")}>{v.trim() ? <Check className="size-2.5" /> : i + 1}</span>
+                  <span className="flex-1">{qOf(x, a, d)}{x.n && <span className="ml-1 font-normal text-amber-600 dark:text-amber-400" title={x.n}>⚠</span>}</span>
+                  {isAuto && <span className="h-fit rounded bg-sky-500/15 px-1 text-[9px] font-bold uppercase text-sky-600 dark:text-sky-300" title="Se completa solo con lo que marcaste; si escribís, queda tu respuesta">auto</span>}
+                  {!!own && !!au && <button type="button" title="Volver a la respuesta automática" onClick={() => set({ res: { ...R, [x.id]: "" } })} className="text-slate-400 hover:text-brand-600"><RotateCcw className="size-3" /></button>}</p>
+                <textarea rows={Math.min(5, Math.max(1, v.split("\n").length, Math.ceil(v.length / 80)))} value={v} placeholder="Respuesta…" onChange={ev => set({ res: { ...R, [x.id]: ev.target.value } })}
+                  className={cn("ml-[22px] mt-0.5 block w-[calc(100%-22px)] resize-none bg-transparent text-[12.5px] leading-snug outline-none placeholder:text-slate-400", isAuto && "italic text-slate-500 dark:text-slate-400")} />
+              </li>); })}</ol>
+          <button type="button" onClick={() => setPv(!pv)} className="mt-2 flex items-center gap-1.5 text-[11.5px] font-semibold text-slate-500 hover:text-brand-600"><MessagesSquare className="size-3.5 text-[#5865F2]" />Vista previa para Discord<ChevronDown className={cn("size-3.5 transition", pv && "rotate-180")} /></button>
+          {pv && <pre className="scrollbar-thin mt-1.5 max-h-56 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-3 font-mono text-[11px] leading-relaxed text-slate-200">{txt}</pre>}
         </div>
       </div>
     </Modal>);
