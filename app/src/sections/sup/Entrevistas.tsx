@@ -11,9 +11,10 @@ import { rosterDivs } from "@/lib/units";
 import { Avatar, RankBadge } from "@/components/agents";
 import { CopyMenu } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
-import { ALL_DIVS, RANK_COLOR, insigniaUrl, divAb, dmyToISO, fmtDate, genderOf, getRoster, hoyISO, isoToDMY, lvl, maskDMY, norm, rankES, uid, type Agent } from "@/lib/domain";
+import { ALL_DIVS, RANK_COLOR, findAgent, insigniaUrl, divAb, dmyToISO, fmtDate, genderOf, getRoster, hoyISO, isoToDMY, lvl, maskDMY, norm, rankES, uid, type Agent } from "@/lib/domain";
 import { useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
+import { AgentMenu } from "@/components/sgtpick";
 import { cn } from "@/lib/cn";
 
 /* preguntas: de lo general a lo particular y el cierre siempre al final. n = recordatorio para el sargento */
@@ -32,7 +33,7 @@ const OLD = ["siente", "conf", "rama", "div", "rel", "mas", "asp"];
 const resOf = (e: Ent): Record<string, string> => Object.fromEntries(Object.entries(e.res || {}).map(([k, v]) => [/^\d+$/.test(k) ? OLD[+k] || k : k, v]));
 
 /* nd = no quiere entrar a ninguna (ok: está cómodo donde está · no: no quiere más divisiones) · div = a las que quiere entrar · act = a las que ya pertenece (además de las del roster de cada división) · res = respuestas por pregunta */
-type Ent = { st?: string; rama?: string; f?: string; div?: string[]; nd?: string; act?: string[]; res?: Record<string, string>; nota?: string; por?: string; t?: number };
+type Ent = { st?: string; rama?: string; f?: string; div?: string[]; nd?: string; act?: string[]; res?: Record<string, string>; nota?: string; ent?: string; por?: string; t?: number };
 const ST = { si: { l: "Realizada", c: "#10b981", I: Check }, pen: { l: "Pendiente", c: "#f59e0b", I: Clock }, no: { l: "No realizada", c: "#ef4444", I: X } } as const;
 const RAMA = { sgt: { l: "Sargentos", c: "#ec4899", I: Shield, d: "Supervisión y mando de patrulla" }, det: { l: "Detectives", c: "#a855f7", I: Compass, d: "Investigación criminal" }, ind: { l: "Indeciso", c: "#06b6d4", I: HelpCircle, d: "Todavía no lo tiene claro" } } as const;
 type StK = keyof typeof ST; type RaK = keyof typeof RAMA;
@@ -43,7 +44,7 @@ const ndOf = (e: Ent) => (e.nd && e.nd in ND ? ND[e.nd as keyof typeof ND] : nul
 const ordDiv = (s: Iterable<string>) => { const x = new Set(s); return ALL_DIVS.filter(d => x.has(d)); };
 const actOf = (n: string, e: Ent) => ordDiv([...rosterDivs(n), ...(e.act || [])]);
 const empty = (e: Ent) => !e.st && !e.rama && !e.f && !e.nd && !(e.div || []).length && !(e.act || []).length && !(e.nota || "").trim() && !Object.values(e.res || {}).some(v => v.trim());
-const clean = (e: Ent): Ent => ({ st: e.st || "", rama: e.rama || "", f: e.f || "", nd: e.div?.length ? "" : e.nd || "", div: e.div || [], act: e.act || [], res: Object.fromEntries(Object.entries(resOf(e)).filter(([, v]) => v.trim())), nota: (e.nota || "").trim() });
+const clean = (e: Ent): Ent => ({ st: e.st || "", rama: e.rama || "", f: e.f || "", nd: e.div?.length ? "" : e.nd || "", div: e.div || [], act: e.act || [], res: Object.fromEntries(Object.entries(resOf(e)).filter(([, v]) => v.trim())), nota: (e.nota || "").trim(), ent: e.ent || "" });
 
 /* la pregunta de la rama y la de divisiones cambian según el rango y lo que ya tiene (si no se editaron) */
 const famOf = (a: Agent) => { const r = rankES(a.r); return /sargento/i.test(r) ? "sgt" : /detective/i.test(r) ? "det" : "of"; };
@@ -84,7 +85,8 @@ function entText(a: Agent, e: Ent, QS: Q[]) {
   return [
     `## 🗣️ ENTREVISTA — ${rankES(a.r)} ${a.n}${a.p ? ` (#${a.p})` : ""}`,
     `**Estado:** ${ico} ${stOf(e)?.l || "Sin marcar"}${e.f ? `  ·  **Fecha:** ${dayTs(e.f)}` : ""}`,
-    `**Rama de interés:** ${raL(e.rama, a.n)}`, "",
+    `**Rama de interés:** ${raL(e.rama, a.n)}`,
+    `**Entrevistó:** ${e.ent ? `${rankES(findAgent(e.ent)?.r || "")} ${e.ent}`.trim() : "—"}`, "",
     "### 🏢 Divisiones a las que pertenece", act.length ? act.map(d => `> • ${d}`).join("\n") : "> Ninguna", "",
     "### 🎯 Divisiones a las que quiere pertenecer", dv.length ? dv.map(d => `> • ${d}`).join("\n") : ndOf(e) ? `> ${ndOf(e)!.t}` : "> Ninguna por ahora",
     ...(res.length ? ["", "### 📝 Respuestas", ...res.flatMap(([q, r]) => [`**${q}**`, `> ${r.replace(/\n/g, "\n> ")}`])] : []),
@@ -93,9 +95,12 @@ function entText(a: Agent, e: Ent, QS: Q[]) {
   ].join("\n");
 }
 
-const DivTag = ({ d, want }: { d: string; want?: boolean }) => { const [ab, col] = divAb(d); return (
-  <span title={(want ? "Quiere entrar: " : "Pertenece: ") + d} className={cn("inline-flex h-[18px] items-center rounded-[5px] px-1.5 text-[9.5px] font-bold tracking-wide", want ? "border border-dashed" : "text-white")}
-    style={want ? { borderColor: col + "aa", color: col } : { background: col }}>{want && "→"}{ab}</span>); };
+/* color de la división, aclarado si es muy oscuro (ej: SWAT) para que se vea sobre el fondo */
+const dcol = (d: string) => { const c = divAb(d)[1], n = parseInt(c.slice(1), 16), l = ((n >> 16) & 255) * .3 + ((n >> 8) & 255) * .59 + (n & 255) * .11; return l < 60 ? "#94a3b8" : c; };
+const DivTag = ({ d, want }: { d: string; want?: boolean }) => { const ab = divAb(d)[0], col = dcol(d); return (
+  <span title={(want ? "Quiere entrar: " : "Pertenece: ") + d} className={cn("inline-flex h-[19px] items-center gap-1 rounded-full pl-1.5 pr-2 text-[10px] font-bold tracking-wide", want ? "border border-dashed" : "")}
+    style={want ? { borderColor: col + "99", color: col } : { background: col + "24", color: "rgb(var(--n-700))", boxShadow: `inset 0 0 0 1px ${col}55` }}>
+    {want ? <span aria-hidden>→</span> : <i className="size-1.5 rounded-full" style={{ background: col }} />}<span className="dark:text-slate-100">{ab}</span></span>); };
 function Ring({ v, c, size = 84, w = 8, children }: { v: number; c: string; size?: number; w?: number; children?: ReactNode }) {
   const r = (size - w) / 2, L = 2 * Math.PI * r;
   return (
@@ -166,7 +171,7 @@ export function Entrevistas() {
             <section key={r} className="border-b border-slate-100 last:border-b-0 dark:border-slate-800">
               <button onClick={() => setClosed(c => { const n = new Set(c); if (n.has(r)) n.delete(r); else n.add(r); return n; })} className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:brightness-110"
                 style={{ background: `linear-gradient(90deg, ${rc}26, ${rc}08 55%, transparent)` }}>
-                <span className="grid size-8 place-items-center rounded-lg" style={{ background: rc + "26" }}>{ins ? <img src={ins} alt="" className="h-4 w-auto" /> : <Shield className="size-4" style={{ color: rc }} />}</span>
+                <span className="grid w-7 place-items-center">{ins ? <img src={ins} alt="" className="h-5 w-auto drop-shadow" /> : <Shield className="size-5" style={{ color: rc }} />}</span>
                 <span className="min-w-0"><b className="block text-[13.5px] font-bold" style={{ color: rc }}>{rankES(r)}</b><span className="block text-[11px] text-slate-500">{gl.length} {gl.length === 1 ? "agente" : "agentes"} · {gd} {gd === 1 ? "entrevistado" : "entrevistados"}</span></span>
                 <span className="ml-auto hidden h-1.5 w-40 overflow-hidden rounded-full bg-slate-200 sm:block dark:bg-slate-800"><span className="block h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${(gd * 100) / gl.length}%` }} /></span>
                 <span className="w-12 text-right text-[12px] font-bold tabular-nums text-slate-600 dark:text-slate-300">{Math.round((gd * 100) / gl.length)}%</span>
@@ -182,7 +187,7 @@ export function Entrevistas() {
                       <span className="relative shrink-0 rounded-full p-[2px]" style={{ background: S?.c || "rgb(var(--n-300) / .5)" }}><span className="block rounded-full bg-white p-[1.5px] dark:bg-[rgb(var(--card))]"><Avatar n={a.n} size={34} /></span>
                         {S && <span className="absolute -bottom-0.5 -right-0.5 grid size-4 place-items-center rounded-full border-2 border-white text-white dark:border-[rgb(var(--card))]" style={{ background: S.c }}><S.I className="size-2.5" strokeWidth={3} /></span>}</span>
                       <span className="min-w-0"><b className="block truncate text-[13.5px] group-hover:text-brand-700 dark:group-hover:text-brand-300">{a.n}</b>
-                        <span className="block truncate text-[11px] text-slate-500">{a.p ? `#${a.p}` : "Sin placa"}{e.f ? ` · ${isoToDMY(e.f)}` : ""}{e.t ? ` · por ${e.por}` : ""}</span></span>
+                        <span className="block truncate text-[11px] text-slate-500">{a.p ? `#${a.p}` : "Sin placa"}{e.f ? ` · ${isoToDMY(e.f)}` : ""}{e.ent || e.t ? ` · ${e.ent ? "entrevistó" : "cargó"} ${e.ent || e.por}` : ""}</span></span>
                     </span>
                     {/* divisiones: las que tiene y a las que quiere entrar */}
                     <span className="grid min-w-0 gap-1">
@@ -241,15 +246,16 @@ const Seg = ({ on, c, onClick, children, title }: { on: boolean; c: string; onCl
   <button type="button" title={title} onClick={onClick} className={cn("inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-semibold transition [&_svg]:size-3.5", !on && "border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:text-slate-100")}
     style={on ? { borderColor: c, background: c + "1c", color: c } : undefined}>{children}</button>);
 function Divs({ list, on, lock, col, onToggle }: { list: string[]; on: string[]; lock?: string[]; col: string; onToggle: (d: string) => void }) {
-  return <div className="flex flex-wrap gap-1">{list.map(d => { const [ab, c] = divAb(d), sel = on.includes(d), lk = lock?.includes(d); return (
+  return <div className="flex flex-wrap gap-1">{list.map(d => { const ab = divAb(d)[0], c = dcol(d), sel = on.includes(d), lk = lock?.includes(d); return (
     <button key={d} type="button" disabled={lk} onClick={() => onToggle(d)} title={lk ? `${d} · sale del roster` : d}
-      className={cn("inline-flex h-6 items-center gap-1 rounded-md border px-1.5 text-[10.5px] font-bold transition", !sel && "border-slate-200 text-slate-500 hover:border-slate-400 dark:border-slate-700 dark:text-slate-400", lk && "cursor-default")}
+      className={cn("inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[10.5px] font-bold transition", !sel && "border-slate-200 text-slate-500 hover:border-slate-400 dark:border-slate-700 dark:text-slate-400", lk && "cursor-default")}
       style={sel ? { borderColor: col, background: col + "1c", color: col } : undefined}>
       <span className="size-1.5 rounded-full" style={{ background: c }} />{ab}{lk && <span className="text-[8.5px] opacity-70">R</span>}</button>); })}</div>;
 }
 function EntModal({ a, e, QS, onSave, onClose }: { a: Agent; e: Ent; QS: Q[]; onSave: (x: Ent) => void; onClose: () => void }) {
   const { toast, confirm } = useFeedback();
-  const [d, setD] = useState<Ent>(() => clean(e)), [pv, setPv] = useState(false), [fd, setFd] = useState(isoToDMY(e.f));
+  const me = useMe(), SGTS = useMemo(() => getRoster().filter(x => x.r === "Sergeant I" || x.r === "Sergeant II").sort((x, y) => lvl(y.r) - lvl(x.r) || x.n.localeCompare(y.n)), []);
+  const [d, setD] = useState<Ent>(() => { const c = clean(e); if (!c.ent && !e.t && SGTS.some(x => x.n === me.n)) c.ent = me.n; return c; }), [pv, setPv] = useState(false), [fd, setFd] = useState(isoToDMY(e.f));
   const set = (x: Partial<Ent>) => setD(o => ({ ...o, ...x }));
   const dirty = JSON.stringify(clean(d)) !== JSON.stringify(clean(e)), saved = !!e.t && !dirty;
   const act = actOf(a.n, d), auto = rosterDivs(a.n), dv = d.div || [], R = resOf(d), S = stOf(d);
@@ -260,7 +266,7 @@ function EntModal({ a, e, QS, onSave, onClose }: { a: Agent; e: Ent; QS: Q[]; on
   return (
     <Modal open onClose={() => void close()} size="xl" icon={<UserRoundCheck />} title={<span className="flex items-center gap-2">{a.n}{S && <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: S.c + "22", color: S.c }}>{S.l}</span>}{dirty && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10.5px] font-bold text-amber-600 dark:text-amber-300">Sin guardar</span>}</span>}
       desc={<span className="flex flex-wrap items-center gap-1.5"><RankBadge r={a.r} />{a.p && <span className="font-mono text-xs">#{a.p}</span>}{e.t && <span className="text-xs">· guardada por {e.por}, {fmtDate(e.t)}</span>}</span>}
-      footer={<><Revisar text={txt} err={[!d.st && "estado de la entrevista", d.st === "si" && !d.f && "fecha"].filter(Boolean) as string[]} pen={dv.length || d.nd ? undefined : ["divisiones a las que quiere entrar (o «cómodo» / «no quiere más»)"]} className="mr-auto min-w-0 max-w-full flex-1" />
+      footer={<><Revisar text={txt} err={[!d.st && "estado de la entrevista", d.st === "si" && !d.f && "fecha"].filter(Boolean) as string[]} pen={[...(d.ent ? [] : ["quién hizo la entrevista"]), ...(dv.length || d.nd ? [] : ["divisiones a las que quiere entrar (o «cómodo» / «no quiere más»)"])]} className="mr-auto min-w-0 max-w-full flex-1" />
         <Button variant="ghost" onClick={() => void close()}>Cerrar</Button>
         {saved ? <CopyMenu size="md" variant="primary" text={txt} up /> : <Button icon={<Save />} disabled={!dirty} onClick={doSave}>Guardar</Button>}</>}>
       {/* fila de datos: estado, fecha y rama */}
@@ -270,6 +276,8 @@ function EntModal({ a, e, QS, onSave, onClose }: { a: Agent; e: Ent; QS: Q[]; on
         <div className="flex items-center gap-1"><Input value={fd} placeholder="dd/mm/aaaa" inputMode="numeric" aria-label="Fecha" className="h-8 w-28 text-[12.5px]" onChange={ev => setFd(maskDMY(ev.target.value))}
           onBlur={() => { const v = fd.trim(); if (!v) { set({ f: "" }); return; } const iso = dmyToISO(v); if (!iso) { toast("Fecha inválida · escribila como dd/mm/aaaa", "err"); return; } set({ f: iso }); }} />
           <button type="button" className="rounded-md px-1.5 py-1 text-[11px] font-bold text-brand-600 hover:bg-brand-500/10 dark:text-brand-300" onClick={() => { set({ f: hoyISO() }); setFd(isoToDMY(hoyISO())); }}>Hoy</button></div>
+        <div className="flex items-center gap-1.5"><span className="text-[11px] font-semibold text-slate-500">Entrevistó</span>
+          <AgentMenu value={d.ent || ""} list={SGTS} onChange={n => set({ ent: n })} placeholder="Sargento I o II…" /></div>
         <div className="flex flex-wrap items-center gap-1"><span className="mr-1 text-[11px] font-semibold text-slate-500">Rama</span>{(Object.keys(RAMA) as RaK[]).map(k => { const Ra = RAMA[k]; return (
           <Seg key={k} on={d.rama === k} c={Ra.c} title={Ra.d} onClick={() => set({ rama: d.rama === k ? "" : k })}><Ra.I />{raL(k, a.n)}</Seg>); })}</div>
       </div>
