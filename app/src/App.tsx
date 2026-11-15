@@ -2,7 +2,8 @@ import { scrollTopApp, setDeptUi } from "@/lib/appearance";
 import { Device } from "./components/device";
 import { ErrorScreen } from "./sections/six/ErrorScreen";
 import { readCfg } from "./sections/six/cfg";
-import { UpdateBar } from "./components/update";
+import { UPD_RESUME, UpdateBar } from "./components/update";
+import { OpsLoad } from "./components/opsload";
 import { CalAlert } from "./components/calalert";
 import { ExamWatch } from "./components/mdexam";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
@@ -32,6 +33,7 @@ import { confetti } from "./lib/confetti";
 import { ACC, LS, ME_ROLES, PREV, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
 import { emailOf, findAgent, getRoster, rankES } from "./lib/domain";
 import { useFeedback } from "./components/feedback";
+import { APP_VERSION } from "./sections/Novedades";
 
 type Boot = { me: string | null; names: string[]; brand?: Record<string, string>; roster?: PubInfo["roster"]; data?: Parameters<typeof loadStore>[0] };
 
@@ -97,7 +99,8 @@ function Main() {
   useEffect(() => { if (!me || !profOk(me.n) || !ACC.names.length) return;
     stampLogros(me.n, me.r, l => { if (goodTier(l.tier)) { confetti(); toast(`¡Logro desbloqueado: ${l.t}!`); } }); }, [me, sv]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (me && LS.get("lspdt.ui") != null) setDeptUi(LS.json<Record<string, string>>("lspdt.ui", {})); });
-  if (!boot) return <Device><div className="grid min-h-[var(--app-h,100dvh)] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div></Device>;
+  /* al volver de una actualización sigue la misma pantalla de carga (no un segundo cargando distinto) */
+  if (!boot) return <Device><div className="relative grid min-h-[var(--app-h,100dvh)] place-items-center text-slate-400">{UPD_RESUME != null ? <OpsLoad v={UPD_RESUME || APP_VERSION} pct={100} n={5} inside resume /> : <Loader2 className="size-6 animate-spin" />}</div></Device>;
   if (!me) return <Device brand={boot.brand}><UpdateBar /><Login pub={boot} onDone={r => enter((r as { data: Parameters<typeof loadStore>[0] }).data, true)} /></Device>;
 
   const ag = findAgent(me.n), user = { n: me.n, r: ag?.r || me.r, p: ag?.p };

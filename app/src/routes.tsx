@@ -22,6 +22,7 @@ const Permisos = lz(() => import("./sections/cap/Permisos"), "Permisos");
 const EstadoRoster = lz(() => import("./sections/jef/Jefatura"), "EstadoRoster");
 const HistorialVotaciones = lz(() => import("./sections/jef/Jefatura"), "HistorialVotaciones");
 const AdmAccesos = lz(() => import("./sections/adm/Admin"), "AdmAccesos");
+const AdmLogs = lz(() => import("./sections/adm/Logs"), "AdmLogs");
 const AdmDatos = lz(() => import("./sections/adm/Admin"), "AdmDatos");
 const AdmMarca = lz(() => import("./sections/adm/Admin"), "AdmMarca");
 const RobosSup = lz(() => import("./sections/sup/RobosSup"), "RobosSup");
@@ -36,5 +37,5 @@ const Equipamiento = lz(() => import("./sections/cap/Equipamiento"), "Equipamien
 
 export const VIEWS: Record<string, () => ReactNode> = {
   "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/cond": () => <Condecoraciones />, "cap/exa": () => <Sargentos tab="exa" />, "cap/ent": () => <Sargentos tab="ent" />, "cap/list": () => <Sargentos tab="list" />, "piz/piz": () => <Pizarra />, "cod/cod": () => <Codigos />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "sup/fbk": () => <Feedback />, "cap/vot": () => <Votaciones />, "sup/pat": () => <PatrullasHub />, "sup/rob": () => <RobosSup />, "sup/prof": () => <Agentes />, "age/prof": () => <Agentes />, "ini/nov": () => <Novedades />, "ini/ts": () => <Timestamps />, "inf/inf": () => <Informes />, "leg/ley": () => <Legal />, "fb/env": () => <FeedbackApp />, "sup/hue": () => <Huellas />, "cap/equ": () => <Equipamiento />, "cap/perm": () => <Permisos />, "jef/ros": () => <EstadoRoster />, "jef/his": () => <HistorialVotaciones />,
-  "cal/cal": () => <Calendario />, "me/perfil": () => <Perfil />, "adm/acc": () => <AdmAccesos />, "adm/brand": () => <AdmMarca />, "adm/data": () => <AdmDatos />,
+  "cal/cal": () => <Calendario />, "me/perfil": () => <Perfil />, "adm/acc": () => <AdmAccesos />, "adm/brand": () => <AdmMarca />, "adm/data": () => <AdmDatos />, "adm/logs": () => <AdmLogs />,
 };

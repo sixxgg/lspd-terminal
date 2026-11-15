@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.4.2";
+export const APP_VERSION = "3.5";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,13 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.5", f: "15/11/2026", t: "Inicio nuevo · una sola carga al actualizar · registro de bajas del roster", items: [
+    "Inicio rehecho con aire de foro: ficha del agente (portada, avatar, rango con barras, cintas y divisiones), escalafón con tu rango marcado y el que sigue, y las áreas como categorías con sus secciones en filas.",
+    "Columna lateral en el inicio: próximos eventos, la última versión y los números del departamento.",
+    "Actualización de la terminal: una sola pantalla de carga, estilo briefing de operativo (objetivos, consejo y barra de progreso), que sigue hasta que la terminal vuelve a estar lista. Ya no aparece un segundo «cargando».",
+    "Administración › Logs: queda anotado cada agente que sale del roster (quitado a mano o que no vino en el CSV nuevo), con rango, placa, quién lo quitó y cuándo. Se puede buscar y copiar.",
+    "Limpieza: estilos de la pantalla de actualización vieja eliminados y revisión general de código y textos.",
+  ] },
   { v: "3.4.2", f: "14/11/2026", t: "Entrevistas más compactas y con respuestas automáticas", items: [
     "La pregunta de la rama cambia según el rango (oficial, detective o sargento) y la respuesta se completa sola con la rama que marques.",
     "La pregunta de divisiones cambia si ya pertenece a alguna, y la respuesta se arma sola con las del roster y las que marques que quiere (o «cómodo» / «no quiere más»). Si escribís algo, queda lo tuyo; con ↺ volvés a la automática.",
@@ -127,6 +134,8 @@ const LOG: Rel[] = [
   { v: "0.3", f: "Octubre 2026", t: "Primera versión web", items: ["Primera versión publicada de la Terminal de Mando. Se puede ver tal cual en la pestaña «Primera versión»."] },
 ];
 
+/* la última versión, para el inicio */
+export const latest = () => LOG[0];
 export function Novedades() {
   const [tab, setTab] = useState<"log" | "v03">("log");
   useEffect(() => { markSeen(); }, []);

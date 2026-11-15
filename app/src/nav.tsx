@@ -3,8 +3,7 @@ import { divVisible } from "@/lib/divisions";
 import type { LucideIcon } from "lucide-react";
 import {
   CalendarDays, Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
-  Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint, UserRound, Presentation,
-} from "lucide-react";
+  Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint, UserRound, Presentation, UserMinus } from "lucide-react";
 import { LS, ME_ROLES } from "./lib/store";
 import { Helicopter } from "./components/icons";
 import { lvl } from "./lib/domain";
@@ -66,6 +65,7 @@ const RAW_AREAS: Area[] = [
   { k: "adm", l: "Administración", icon: Settings, min: 0, admin: true, sec: [
     { k: "acc", l: "Accesos y administradores", d: "Solicitudes de acceso, administradores y accesos a RTD/PSB", icon: UserCheck, ready: true },
     { k: "brand", l: "Marca e imágenes", d: "Logos, fondos, fotos por defecto, textos y emblemas", icon: Palette, ready: true },
+    { k: "logs", l: "Logs", d: "Agentes que salieron del roster: quién, cuándo y quién lo quitó", icon: UserMinus, ready: true },
     { k: "data", l: "Roster y respaldo", d: "Cargar el roster en CSV y exportar o importar los datos", icon: Database, ready: true },
   ] },
 ];

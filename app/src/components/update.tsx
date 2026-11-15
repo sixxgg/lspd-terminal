@@ -4,6 +4,7 @@ import { Check, Loader2, RotateCw } from "lucide-react";
 import { LS, ME_ROLES } from "@/lib/store";
 import { usePref } from "@/lib/appearance";
 import { APP_VERSION } from "@/sections/Novedades";
+import { OPS_STEPS, OpsLoad } from "./opsload";
 
 /* aviso de versión nueva: notificación del sistema que baja desde el borde de arriba de la pantalla de la tablet, como en un teléfono.
    Detrás, la pantalla se puede desenfocar (Apariencia). «Reiniciar» recarga sin caché; «Más tarde» o deslizarla hacia arriba la guarda
@@ -63,55 +64,31 @@ export function UpdateBar() {
     </div>);
   if (inst) return createPortal(<Installing v={nueva.v || APP_VERSION} inside={inside} test={test} onEnd={() => {
     if (test) { setInst(false); setNueva(null); setBusy(false); return; }
-    try { sessionStorage.setItem(DONE, nueva.v || ""); } catch { /* */ } reloadFresh(); }} />, host || document.body);
+    try { sessionStorage.setItem(DONE, nueva.v || APP_VERSION); } catch { /* */ } reloadFresh(); }} />, host || document.body);
   return createPortal(ui, host || document.body);
 }
 
-/* pantalla de «actualización en curso»: baja el paquete nuevo de verdad (precarga la página y sus archivos) mientras muestra los pasos */
-const STEPS = ["Descargando paquete de actualización", "Verificando firma digital", "Instalando módulos", "Migrando configuración local", "Optimizando la terminal", "Reiniciando el sistema"];
+/* pantalla de «actualización en curso»: baja el paquete nuevo de verdad (precarga la página y sus archivos) mientras avanza el briefing.
+   Al terminar recarga; la misma pantalla sigue hasta que la terminal vuelve a estar lista (ver UPD_RESUME en App), así es una sola carga. */
 function Installing({ v, inside, test, onEnd }: { v: string; inside: boolean; test: boolean; onEnd: () => void }) {
-  const [n, setN] = useState(0), [pct, setPct] = useState(0), [log, setLog] = useState<string[]>([]);
+  const [pct, setPct] = useState(0);
   useEffect(() => {
     let alive = true, real = 0;
     /* precarga: la página nueva y sus scripts quedan en caché, así el reinicio es instantáneo */
     if (!test) void fetch("/next/?v=" + Date.now().toString(36), { cache: "reload" }).then(r => r.text()).then(h => Promise.all([...h.matchAll(/(?:src|href)="(\/next\/assets\/[^"]+)"/g)].map(m => fetch(m[1]).catch(() => null))))
       .catch(() => null).finally(() => { real = 1; });
     else real = 1;
-    const t0 = Date.now(), MIN = 4200;
+    const t0 = Date.now(), MIN = 3600;
     const iv = setInterval(() => {
       if (!alive) return; const k = Math.min(1, (Date.now() - t0) / MIN), p = Math.round((real ? k : Math.min(k, 0.86)) * 100);
-      setPct(p); const step = Math.min(STEPS.length - 1, Math.floor((p / 100) * STEPS.length));
-      setN(o => { if (step > o) setLog(L => [...L.slice(-4), `0x${Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, "0").toUpperCase()} · ${STEPS[o]} … OK`]); return step; });
-      if (p >= 100) { clearInterval(iv); setTimeout(() => alive && onEnd(), 600); }
+      setPct(p); if (p >= 100) { clearInterval(iv); setTimeout(() => alive && onEnd(), 350); }
     }, 90);
     return () => { alive = false; clearInterval(iv); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const logo = LS.get("lspdt.logo.boot") || LS.get("lspdt.logo") || "/next/logo.svg", R = 54, C = 2 * Math.PI * R;
-  return (
-    <div role="status" aria-live="polite" aria-label="Actualización en curso" className={`upd-inst ${inside ? "absolute" : "fixed"} inset-0 z-[96] grid place-items-center overflow-hidden font-mono text-sky-100`}>
-      <div aria-hidden className="boot-grid absolute inset-0" /><div aria-hidden className="boot-scan absolute inset-0" />
-      <div className="relative flex w-[min(520px,calc(100%-32px))] flex-col items-center text-center">
-        <div className="relative grid size-40 place-items-center">
-          <svg viewBox="0 0 120 120" className="absolute inset-0 -rotate-90"><circle cx="60" cy="60" r={R} fill="none" stroke="rgba(56,189,248,.12)" strokeWidth="5" />
-            <circle cx="60" cy="60" r={R} fill="none" stroke="url(#ug)" strokeWidth="5" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - pct / 100)} style={{ transition: "stroke-dashoffset .2s linear" }} />
-            <defs><linearGradient id="ug" x1="0" x2="1"><stop offset="0" stopColor="#38bdf8" /><stop offset="1" stopColor="#34d399" /></linearGradient></defs></svg>
-          <span aria-hidden className="upd-orbit absolute inset-3 rounded-full" />
-          <img src={logo} alt="" className="boot-logo size-16 object-contain" />
-        </div>
-        <p className="mt-5 text-[11px] tracking-[0.32em] text-sky-400/80">LSPD · MOBILE DATA TERMINAL</p>
-        <p className="mt-1 font-display text-2xl font-bold tracking-[0.18em] text-white">ACTUALIZACIÓN EN CURSO</p>
-        <p className="mt-1 text-xs tracking-[0.2em] text-emerald-300">INSTALANDO v{v}</p>
-        <div className="mt-6 w-full">
-          <div className="flex justify-between text-[11px] text-sky-300/80"><span className="truncate">{STEPS[n]}…</span><span className="tabular-nums">{pct}%</span></div>
-          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-sky-950"><div className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-400" style={{ width: pct + "%", transition: "width .2s linear" }} /></div>
-        </div>
-        <div className="mt-4 h-[5.5rem] w-full overflow-hidden rounded-lg border border-sky-400/15 bg-black/40 p-2.5 text-left text-[10.5px] leading-[1.55] text-sky-200/70">
-          {log.map((l, i) => <div key={i + l} className="truncate">{l}</div>)}<span className="upd-caret inline-block h-3 w-1.5 bg-sky-400 align-middle" />
-        </div>
-        <p className="mt-4 text-[10px] tracking-[0.25em] text-amber-300/80">NO CIERRES NI RECARGUES LA TERMINAL</p>
-      </div>
-    </div>);
+  return <OpsLoad v={v} pct={pct} n={Math.min(OPS_STEPS.length - 1, Math.floor((pct / 100) * OPS_STEPS.length))} inside={inside} />;
 }
+/* versión que se acaba de instalar, si esta carga viene de un reinicio por actualización */
+export const UPD_RESUME: string | null = (() => { try { return sessionStorage.getItem(DONE); } catch { return null; } })();
 /* al volver del reinicio: aviso de que quedó actualizada */
 function DoneToast({ v, inside, onEnd }: { v: string; inside: boolean; onEnd: () => void }) {
   const [out, setOut] = useState(false);

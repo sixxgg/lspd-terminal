@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { q, tx } from "../lib/db.js";
-import { audit, auditList, diffSum, keepVersion, versions, HIST_SKIP } from "../lib/audit.js";
+import { audit, auditList, auditRoster, diffSum, keepVersion, versions, HIST_SKIP, ROSTER_OUT } from "../lib/audit.js";
 import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp } from "../lib/core.js";
 
 async function downloadImg(url) {
@@ -44,6 +44,10 @@ export default wrap(async (req, res) => {
       const hk = String(qs.hist);
       if (!canRead(hk, u)) return send(res, 403, { msg: "Sin acceso" });
       return send(res, 200, { list: await versions(hk, qs.id ? String(qs.id) : "") });
+    }
+    if (qs.logs === "roster") { // bajas del roster: administración
+      if (!u.admin) return send(res, 403, { msg: "Solo administradores" });
+      return send(res, 200, await auditList({ before: qs.before, act: ROSTER_OUT, limit: 500 }));
     }
     if (qs.logs) { // registro de actividad: solo six
       if (!isSix(u)) return send(res, 403, { msg: "Solo six" });
@@ -129,6 +133,7 @@ export default wrap(async (req, res) => {
   });
   const sum = del ? diffSum(out.old, null) : diffSum(out.exists ? out.old : null, out.v);
   if (!out.same && !/^Cambió: (seen|t|ts|last)$/.test(sum)) await audit(u.n, del ? "borró" : out.exists ? "editó" : "creó", k, sum, clientIp(req));
+  if (k === "lspdt.roster" && !del && !out.same && out.exists) await auditRoster(u.n, out.old, out.v, clientIp(req));
   if (k === "lspdt.roster" || k === "lspdt.ui" || /^lspdt\.(asd|k9|psb|md)Roster$|^lspdt\.(groster|groles|divacc)\./.test(k)) invalidate(); // cambió el rango o las divisiones de alguien
   const r = { t: out.t };
   if (out.v !== mine || b.url || b.from) r.v = out.v && out.v.startsWith("data:") ? imgUrl(k, out.t) : out.v; // devuelve el resultado solo si cambió por la fusión
