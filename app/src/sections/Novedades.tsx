@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.6.1";
+export const APP_VERSION = "3.6.2";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,12 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.6.2", f: "15/11/2026", t: "10-80: etiquetas, varios citados y presentes", items: [
+    "Etiquetas (Bronca, Ascenso, Felicitación, Disciplinario, Seguimiento…) o cualquier otra que escribas. Se ven en el historial y se puede filtrar por ellas.",
+    "Se puede citar a varios agentes en un mismo 10-80: el mensaje de radio queda en plural («acudan… confirmen lectura»).",
+    "Se carga quiénes citan y, en la justificación, quiénes estuvieron presentes en el 10-80. Las dos cosas se ven en el historial.",
+    "Con varios citados, la asistencia se marca por agente y el texto formal queda redactado en plural.",
+  ] },
   { v: "3.6.1", f: "15/11/2026", t: "10-80: justificación mejorada", items: [
     "«Escenario» pasa a llamarse «Lugar», en la citación y en el mensaje.",
     "Motivo con texto predictivo: sugiere mientras escribís (Tab para completar) y trae muchos más motivos, como ascensos, condecoraciones, cambios de división o de turno. Se puede escribir cualquier otro.",

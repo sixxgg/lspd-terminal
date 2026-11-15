@@ -12,7 +12,7 @@ import { isPSB } from "@/lib/units";
 import { useMe } from "@/lib/me";
 import { useJSON, useStoreVersion } from "@/lib/store";
 import { DivNav } from "../div/DivTools";
-import { Cit1080, Historial1080, keyOf } from "./T1080Hist";
+import { AgChips, Cit1080, Historial1080, joinY, keyOf, TagEditor } from "./T1080Hist";
 
 export const ESCENARIOS = [
   { k: "wc", l: "Watch Commander", t: "a la oficina del Watch Commander", h: "Oficina del mando del turno: llamados de atención y temas del servicio." },
@@ -37,19 +37,28 @@ function Nueva({ psbOnly, onSaved }: { psbOnly?: boolean; onSaved: () => void })
   useStoreVersion();
   const { toast } = useFeedback(), [L, setL] = useJSON<Cit1080[]>(keyOf(psbOnly), []);
   const me = useMe(), psb = isPSB(me.n) || me.admin;
-  const [ag, setAg] = useState(""), [esc, setEsc] = useState(psbOnly ? "conf" : "wc"), [otro, setOtro] = useState(""), [art, setArt] = useState<"el" | "la">("el");
-  const a = ag ? findAgent(ag) : null, s = ESCENARIOS.find(x => x.k === esc)!;
-  const canCite = (x: { n: string; r: string }) => x.n !== me.n && (lvl(x.r) < me.l || !!excOf()[me.n]?.t1080);
+  const [ags, setAgs] = useState<string[]>([]), [art, setArt] = useState<Record<string, string>>({}), [cit, setCit] = useState<string[]>([me.n]), [tags, setTags] = useState<string[]>([]);
+  const [esc, setEsc] = useState(psbOnly ? "conf" : "wc"), [otro, setOtro] = useState("");
+  const s = ESCENARIOS.find(x => x.k === esc)!, A = ags.map(n => findAgent(n)).filter(Boolean) as NonNullable<ReturnType<typeof findAgent>>[], many = A.length > 1;
+  const canCite = (x: { n: string; r: string }) => x.n !== me.n && !ags.includes(x.n) && (lvl(x.r) < me.l || !!excOf()[me.n]?.t1080);
   const lugar = esc === "otro" ? otro.trim() || "[lugar]" : s.t;
-  const txt = `/rlspd Para ${art} ${a ? rkTxt(a.r) : "[Rango]"} ${a?.n || "[Nombre del agente]"}: acuda ${lugar} con la vestimenta Clase A al finalizar sus actividades. Por favor, confirme lectura.`;
-  const errs = [!a && "agente a citar", esc === "otro" && !otro.trim() && "lugar"].filter(Boolean) as string[];
+  const quien = A.length ? joinY(A.map(a => `${art[a.n] || "el"} ${rkTxt(a.r)} ${a.n}`)) : "el [Rango] [Nombre del agente]";
+  const txt = `/rlspd Para ${quien}: ${many ? "acudan" : "acuda"} ${lugar} con la vestimenta Clase A al finalizar sus actividades. Por favor, ${many ? "confirmen" : "confirme"} lectura.`;
+  const errs = [!A.length && "agente a citar", esc === "otro" && !otro.trim() && "lugar"].filter(Boolean) as string[];
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
       <Card>
         <CardHeader icon={<Radio />} title="Datos de la citación" />
         <CardBody>
-          <Field label="Agente"><AgentPicker value={ag} onChange={n => { setAg(n); setArt(genderOf(n) === "f" ? "la" : "el"); }} filter={canCite} empty="No hay agentes que puedas citar con tu rango" /></Field>
-          <Note>Solo podés citar a agentes de rango inferior al tuyo.</Note>
+          <Field label={`Agentes a citar${A.length ? ` · ${A.length}` : ""}`}>
+            {!!ags.length && <AgChips list={ags} art={art} onArt={n => setArt(o => ({ ...o, [n]: o[n] === "la" ? "el" : "la" }))} onRemove={n => setAgs(ags.filter(x => x !== n))} />}
+            <AgentPicker value={ags} multiple onChange={n => { if (ags.includes(n)) return; setAgs([...ags, n]); setArt(o => ({ ...o, [n]: genderOf(n) === "f" ? "la" : "el" })); }} filter={canCite} empty="No hay agentes que puedas citar con tu rango" />
+          </Field>
+          <Note>Podés citar a varios a la vez. Solo a agentes de rango inferior al tuyo; tocá «el/la» para cambiar el artículo.</Note>
+          <Field label="Citan" hint="(supervisión que hace el 10-80)">
+            <AgChips list={cit} lock={me.n} onRemove={n => setCit(cit.filter(x => x !== n))} />
+            <AgentPicker value={cit} multiple onChange={n => !cit.includes(n) && setCit([...cit, n])} filter={a => lvl(a.r) >= 6 && !cit.includes(a.n)} empty="No hay más supervisores" />
+          </Field>
           <Field label="Lugar">
             <div className="flex flex-wrap gap-1.5">
               {ESCENARIOS.filter(x => !psbOnly || x.k === "conf" || x.k === "otro").map(x => {
@@ -60,6 +69,7 @@ function Nueva({ psbOnly, onSaved }: { psbOnly?: boolean; onSaved: () => void })
             <p className="pt-1 text-xs text-slate-500 dark:text-slate-400">{s.h}</p>
           </Field>
           {esc === "otro" && <Input value={otro} onChange={e => setOtro(e.target.value)} placeholder="a la sala de reuniones…" autoFocus />}
+          <Field label="Etiquetas" hint="(opcional · para filtrar en el historial)"><TagEditor value={tags} onChange={setTags} /></Field>
         </CardBody>
       </Card>
       <div className="space-y-3">
@@ -67,9 +77,10 @@ function Nueva({ psbOnly, onSaved }: { psbOnly?: boolean; onSaved: () => void })
         <Card className="flex flex-wrap items-center gap-3 p-3">
           <p className="min-w-0 flex-1 text-[12.5px] text-slate-500">Guardala en el historial para cargar la justificación después.</p>
           <Button icon={<Save />} disabled={!!errs.length} onClick={() => {
-            const no = Math.max(0, ...L.map(x => x.no || 0)) + 1;
-            setL([{ id: uid(), no, t: Date.now(), ag: a!.n, r: a!.r, p: a!.p || "", esc: esc === "otro" ? otro.trim() : s.l, lugar, por: me.n, pr: me.r }, ...L]);
-            toast(`10-80 Nº ${no} guardado en el historial`); setAg(""); onSaved();
+            const no = Math.max(0, ...L.map(x => x.no || 0)) + 1, f = A[0];
+            setL([{ id: uid(), no, t: Date.now(), ag: f.n, r: f.r, p: f.p || "", ags: A.map(a => ({ n: a.n, r: a.r, p: a.p || "" })), esc: esc === "otro" ? otro.trim() : s.l, lugar,
+              por: me.n, pr: me.r, cit, tags }, ...L]);
+            toast(`10-80 Nº ${no} guardado en el historial`); setAgs([]); setTags([]); onSaved();
           }}>Guardar en el historial</Button>
         </Card>
       </div>
