@@ -3,7 +3,7 @@
    (estado, fecha, rama, divisiones, respuestas y notas) y se GUARDA; recién guardada se puede copiar (Discord o web).
    Todo va a la base: las entrevistas en lspdt.entrev y las preguntas en lspdt.entrevQ (las edita Sargento I o superior). */
 import { useMemo, useState, type ReactNode } from "react";
-import { ArrowDown, ArrowUp, Building2, Check, ChevronDown, CircleDashed, Clock, Compass, HelpCircle, MessagesSquare, Pencil, Plus, RotateCcw, Save, Search, Shield, StickyNote, Target, Trash2, UserRoundCheck, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Building2, Check, ChevronDown, ChevronRight, CircleDashed, Clock, Compass, HelpCircle, MessagesSquare, Pencil, Plus, RotateCcw, Save, Search, Shield, StickyNote, Target, Trash2, UserRoundCheck, X } from "lucide-react";
 import { Button, Card, Empty, Input, Textarea, SearchInput } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { Revisar } from "@/components/revisar";
@@ -11,7 +11,7 @@ import { rosterDivs } from "@/lib/units";
 import { Avatar, RankBadge } from "@/components/agents";
 import { CopyMenu } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
-import { ALL_DIVS, divAb, dmyToISO, fmtDate, genderOf, getRoster, hoyISO, isoToDMY, lvl, maskDMY, norm, rankES, uid, type Agent } from "@/lib/domain";
+import { ALL_DIVS, RANK_COLOR, insigniaUrl, divAb, dmyToISO, fmtDate, genderOf, getRoster, hoyISO, isoToDMY, lvl, maskDMY, norm, rankES, uid, type Agent } from "@/lib/domain";
 import { useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { cn } from "@/lib/cn";
@@ -94,7 +94,7 @@ function entText(a: Agent, e: Ent, QS: Q[]) {
 }
 
 const DivTag = ({ d, want }: { d: string; want?: boolean }) => { const [ab, col] = divAb(d); return (
-  <span title={(want ? "Quiere entrar: " : "Pertenece: ") + d} className={cn("inline-flex items-center rounded px-1.5 py-px text-[10px] font-bold", want ? "border border-dashed" : "text-white")}
+  <span title={(want ? "Quiere entrar: " : "Pertenece: ") + d} className={cn("inline-flex h-[18px] items-center rounded-[5px] px-1.5 text-[9.5px] font-bold tracking-wide", want ? "border border-dashed" : "text-white")}
     style={want ? { borderColor: col + "aa", color: col } : { background: col }}>{want && "→"}{ab}</span>); };
 function Ring({ v, c, size = 84, w = 8, children }: { v: number; c: string; size?: number; w?: number; children?: ReactNode }) {
   const r = (size - w) / 2, L = 2 * Math.PI * r;
@@ -160,32 +160,46 @@ export function Entrevistas() {
           {(f || rf) && <Button size="sm" variant="ghost" icon={<X />} onClick={() => { setF(""); setRf(""); }}>Quitar filtros</Button>}
           <span className="ml-auto text-xs text-slate-500">{L.length} de {A.length} agentes</span>
         </div>
-        <div className="hidden grid-cols-[minmax(0,1.5fr)_8.5rem_6rem_7.5rem_minmax(0,1.4fr)_6.5rem] gap-3 border-b border-slate-100 bg-slate-50/70 px-4 py-2 text-[10.5px] font-bold uppercase tracking-wider text-slate-400 lg:grid dark:border-slate-800 dark:bg-slate-900/40">
-          <span>Agente</span><span>Estado</span><span>Fecha</span><span>Rama</span><span>Divisiones</span><span /></div>
         {!L.length ? <Empty icon={<Search />} title="Nadie coincide con el filtro" /> : ranks.map(r => {
-          const gl = L.filter(a => a.r === r), isOpen = !!s || !closed.has(r), gd = gl.filter(x => g(x.n).st === "si").length;
+          const gl = L.filter(a => a.r === r), isOpen = !!s || !closed.has(r), gd = gl.filter(x => g(x.n).st === "si").length, rc = RANK_COLOR[r] || "#94a3b8", ins = insigniaUrl(r);
           return (
             <section key={r} className="border-b border-slate-100 last:border-b-0 dark:border-slate-800">
-              <button onClick={() => setClosed(c => { const n = new Set(c); if (n.has(r)) n.delete(r); else n.add(r); return n; })} className="flex w-full items-center gap-3 bg-slate-50/40 px-4 py-2 text-left transition hover:bg-slate-50 dark:bg-slate-900/20 dark:hover:bg-slate-800/40">
-                <RankBadge r={r} /><span className="text-xs text-slate-500">{gl.length} {gl.length === 1 ? "agente" : "agentes"}</span>
-                <span className="h-1.5 max-w-[10rem] flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"><span className="block h-full rounded-full bg-emerald-500" style={{ width: `${(gd * 100) / gl.length}%` }} /></span>
-                <span className="text-[11px] font-semibold tabular-nums text-slate-500">{gd}/{gl.length}</span>
-                <ChevronDown className={cn("ml-auto size-4 text-slate-400 transition-transform", isOpen && "rotate-180")} />
+              <button onClick={() => setClosed(c => { const n = new Set(c); if (n.has(r)) n.delete(r); else n.add(r); return n; })} className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:brightness-110"
+                style={{ background: `linear-gradient(90deg, ${rc}26, ${rc}08 55%, transparent)` }}>
+                <span className="grid size-8 place-items-center rounded-lg" style={{ background: rc + "26" }}>{ins ? <img src={ins} alt="" className="h-4 w-auto" /> : <Shield className="size-4" style={{ color: rc }} />}</span>
+                <span className="min-w-0"><b className="block text-[13.5px] font-bold" style={{ color: rc }}>{rankES(r)}</b><span className="block text-[11px] text-slate-500">{gl.length} {gl.length === 1 ? "agente" : "agentes"} · {gd} {gd === 1 ? "entrevistado" : "entrevistados"}</span></span>
+                <span className="ml-auto hidden h-1.5 w-40 overflow-hidden rounded-full bg-slate-200 sm:block dark:bg-slate-800"><span className="block h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${(gd * 100) / gl.length}%` }} /></span>
+                <span className="w-12 text-right text-[12px] font-bold tabular-nums text-slate-600 dark:text-slate-300">{Math.round((gd * 100) / gl.length)}%</span>
+                <ChevronDown className={cn("size-4 text-slate-400 transition-transform", isOpen && "rotate-180")} />
               </button>
-              {isOpen && <div className="divide-y divide-slate-100 dark:divide-slate-800">{gl.map(a => {
-                const e = g(a.n), S = stOf(e), R = raOf(e), act = actOf(a.n, e), dv = (e.div || []).filter(d => !act.includes(d));
+              {isOpen && <ul className="divide-y divide-slate-100 dark:divide-slate-800/70">{gl.map(a => {
+                const e = g(a.n), S = stOf(e), R = raOf(e), act = actOf(a.n, e), dv = (e.div || []).filter(d => !act.includes(d)), nd = !dv.length ? ndOf(e) : null;
                 return (
-                  <div key={a.n} role="button" tabIndex={0} onClick={() => setOpen(a.n)} onKeyDown={ev => ev.key === "Enter" && setOpen(a.n)}
-                    className="relative grid cursor-pointer items-center gap-x-3 gap-y-1.5 px-4 py-2 transition hover:bg-brand-500/[.04] sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1.5fr)_8.5rem_6rem_7.5rem_minmax(0,1.4fr)_6.5rem]">
-                    <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: S?.c || "transparent" }} />
-                    <span className="flex min-w-0 items-center gap-2.5"><Avatar n={a.n} size={30} /><span className="min-w-0"><b className="block truncate text-[13px]">{a.n}</b><span className="block truncate text-[11px] text-slate-500">{a.p ? `#${a.p}` : "Sin placa"}{e.t ? ` · ${e.por}` : ""}</span></span></span>
-                    <span>{S ? <Pill c={S.c} I={S.I}>{S.l}</Pill> : <span className="inline-flex items-center gap-1 text-[11px] text-slate-400"><CircleDashed className="size-3" />Sin marcar</span>}</span>
-                    <span className="text-[12px] tabular-nums text-slate-600 dark:text-slate-300">{e.f ? isoToDMY(e.f) : <span className="text-slate-400">—</span>}</span>
-                    <span>{R ? <Pill c={R.c} I={R.I}>{raL(e.rama, a.n)}</Pill> : <span className="text-[11px] text-slate-400">—</span>}</span>
-                    <span className="flex min-w-0 flex-wrap items-center gap-1">{act.map(d => <DivTag key={d} d={d} />)}{dv.map(d => <DivTag key={d} d={d} want />)}{!dv.length && ndOf(e) && <span title={ndOf(e)!.t} className="rounded border px-1.5 py-px text-[10px] font-bold" style={{ borderColor: ndOf(e)!.c + "88", color: ndOf(e)!.c }}>{e.nd === "ok" ? "Cómodo" : "No quiere más"}</span>}{!act.length && !dv.length && !ndOf(e) && <span className="text-[11px] text-slate-400">—</span>}{(e.nota || "").trim() && <StickyNote className="size-3.5 text-amber-500" />}</span>
-                    <span className="flex justify-end" onClick={ev => ev.stopPropagation()}>{e.t ? <CopyMenu text={entText(a, e, QS)} variant="ghost" /> : <span className="pr-2 text-[11px] text-slate-400">Sin guardar</span>}</span>
-                  </div>);
-              })}</div>}
+                  <li key={a.n} role="button" tabIndex={0} onClick={() => setOpen(a.n)} onKeyDown={ev => ev.key === "Enter" && setOpen(a.n)}
+                    className="group grid cursor-pointer items-center gap-x-4 gap-y-2 px-4 py-2.5 transition hover:bg-brand-500/[.045] focus-visible:bg-brand-500/[.07] focus-visible:outline-none md:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_auto]">
+                    {/* agente */}
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className="relative shrink-0 rounded-full p-[2px]" style={{ background: S?.c || "rgb(var(--n-300) / .5)" }}><span className="block rounded-full bg-white p-[1.5px] dark:bg-[rgb(var(--card))]"><Avatar n={a.n} size={34} /></span>
+                        {S && <span className="absolute -bottom-0.5 -right-0.5 grid size-4 place-items-center rounded-full border-2 border-white text-white dark:border-[rgb(var(--card))]" style={{ background: S.c }}><S.I className="size-2.5" strokeWidth={3} /></span>}</span>
+                      <span className="min-w-0"><b className="block truncate text-[13.5px] group-hover:text-brand-700 dark:group-hover:text-brand-300">{a.n}</b>
+                        <span className="block truncate text-[11px] text-slate-500">{a.p ? `#${a.p}` : "Sin placa"}{e.f ? ` · ${isoToDMY(e.f)}` : ""}{e.t ? ` · por ${e.por}` : ""}</span></span>
+                    </span>
+                    {/* divisiones: las que tiene y a las que quiere entrar */}
+                    <span className="grid min-w-0 gap-1">
+                      <span className="flex min-w-0 items-center gap-1.5"><span className="w-[3.6rem] shrink-0 text-[9.5px] font-bold uppercase tracking-wider text-slate-400">Pertenece</span>
+                        <span className="flex min-w-0 flex-wrap gap-1">{act.length ? <>{act.slice(0, 7).map(d => <DivTag key={d} d={d} />)}{act.length > 7 && <span title={act.slice(7).join(", ")} className="text-[10px] font-bold text-slate-400">+{act.length - 7}</span>}</> : <span className="text-[11px] text-slate-400">Ninguna</span>}</span></span>
+                      <span className="flex min-w-0 items-center gap-1.5"><span className="w-[3.6rem] shrink-0 text-[9.5px] font-bold uppercase tracking-wider text-slate-400">Quiere</span>
+                        <span className="flex min-w-0 flex-wrap gap-1">{dv.length ? dv.map(d => <DivTag key={d} d={d} want />) : nd ? <span title={nd.t} className="rounded px-1.5 py-px text-[10px] font-bold" style={{ background: nd.c + "1f", color: nd.c }}>{nd.l}</span> : <span className="text-[11px] text-slate-400">—</span>}</span></span>
+                    </span>
+                    {/* estado, rama y acciones */}
+                    <span className="flex items-center justify-end gap-2" onClick={ev => ev.stopPropagation()}>
+                      <span className="flex flex-col items-end gap-1">{S ? <Pill c={S.c} I={S.I}>{S.l}</Pill> : <span className="inline-flex items-center gap-1 text-[11px] text-slate-400"><CircleDashed className="size-3" />Sin marcar</span>}
+                        {R ? <Pill c={R.c} I={R.I}>{raL(e.rama, a.n)}</Pill> : <span className="text-[10.5px] text-slate-400">Sin rama</span>}</span>
+                      {e.t ? <CopyMenu text={entText(a, e, QS)} variant="ghost" label="" /> : <span className="w-[3.25rem]" />}
+                      <button onClick={() => setOpen(a.n)} aria-label={`Abrir la ficha de ${a.n}`} className="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-brand-500/10 hover:text-brand-600"><ChevronRight className="size-4" /></button>
+                    </span>
+                  </li>);
+              })}</ul>}
             </section>);
         })}
       </Card>

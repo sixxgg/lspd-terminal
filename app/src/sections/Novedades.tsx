@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.5";
+export const APP_VERSION = "3.5.1";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,11 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.5.1", f: "15/11/2026", t: "Calendario y entrevistas rediseñados", items: [
+    "Calendario: cabecera con el mes grande y los números (este mes, hoy, anotados), filtros por vista y división más claros, días con los eventos como píldoras con hora y el fin de semana marcado.",
+    "Calendario: agenda al costado agrupada por día (Hoy, Mañana…) con el próximo evento destacado.",
+    "Entrevistas: cada rango con su banda de color, insignia y avance; cada agente con el estado en el avatar, las divisiones separadas en «Pertenece» y «Quiere», y estado, rama y copiar a la derecha.",
+  ] },
   { v: "3.5", f: "15/11/2026", t: "Inicio nuevo · una sola carga al actualizar · registro de bajas del roster", items: [
     "Inicio rehecho con aire de foro: ficha del agente (portada, avatar, rango con barras, cintas y divisiones), escalafón con tu rango marcado y el que sigue, y las áreas como categorías con sus secciones en filas.",
     "Columna lateral en el inicio: próximos eventos, la última versión y los números del departamento.",

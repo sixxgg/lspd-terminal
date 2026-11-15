@@ -1,14 +1,20 @@
-/* Calendario del departamento: mes con los eventos de las divisiones (los que cada uno puede ver), próximos con banner y filtros */
+/* Calendario del departamento: cabecera con el mes y sus números, filtros por vista y división, grilla del mes con los
+   eventos como píldoras (hora + nombre) y, al costado, la agenda agrupada por día (o el día elegido) con el próximo destacado. */
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Star } from "lucide-react";
-import { Button, Card, Empty, Segmented } from "@/components/ui";
-import { EvCard, EvModal, tipoC } from "@/components/calui";
-import { calAck, calAll, calMarkSeen, calMine, dayKey, fmtWhen, type CalItem } from "@/lib/calendar";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, Eye, Globe2, Star, UserRound } from "lucide-react";
+import { Card, Empty } from "@/components/ui";
+import { EvModal, banSrc, tipoC } from "@/components/calui";
+import { calAck, calAll, calMarkSeen, calMine, dayKey, fmtWhen, hasTime, isToday, type CalItem } from "@/lib/calendar";
 import { useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { cn } from "@/lib/cn";
 
 const WD = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+const hhmm = (e: CalItem) => (hasTime(e) ? new Date(e.at).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "");
+const dayLbl = (t: number) => { const d = new Date(t), k = dayKey(t), h = new Date(); if (k === dayKey(+h)) return "Hoy"; h.setDate(h.getDate() + 1); if (k === dayKey(+h)) return "Mañana";
+  const s = d.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" }); return s.charAt(0).toUpperCase() + s.slice(1); };
+const VIEWS = [["mine", "Para mí", UserRound], ["all", "Todo lo que veo", Eye], ["ano", "Anotados", Star]] as const;
+
 export function Calendario() {
   useStoreVersion();
   const me = useMe(), [, bump] = useState(0);
@@ -18,60 +24,111 @@ export function Calendario() {
   const ack = calAck(me.n);
   const ALL = calAll(), L = ALL.filter(e => (ver === "all" || (ver === "ano" ? !!ack[e.id]?.a : calMine(e, me.n))) && (!div || e.d === div));
   const divs = useMemo(() => [...new Map(ALL.map(e => [e.d, e])).values()].sort((a, b) => a.ab.localeCompare(b.ab)), [ALL.length]); // eslint-disable-line react-hooks/exhaustive-deps
-  const by = useMemo(() => { const o = new Map<string, CalItem[]>(); for (const e of L) { const k = dayKey(e.at); o.set(k, [...(o.get(k) || []), e]); } return o; }, [L]);
+  const by = useMemo(() => { const o = new Map<string, CalItem[]>(); for (const e of L) { const k = dayKey(e.at); o.set(k, [...(o.get(k) || []), e]); } o.forEach(v => v.sort((a, b) => a.at - b.at)); return o; }, [L]);
   /* grilla del mes empezando en lunes */
-  const first = new Date(m), off = (first.getDay() + 6) % 7, cells = Array.from({ length: Math.ceil((off + new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate()) / 7) * 7 }, (_, i) => new Date(m.getFullYear(), m.getMonth(), 1 - off + i));
+  const off = (m.getDay() + 6) % 7, cells = Array.from({ length: Math.ceil((off + new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate()) / 7) * 7 }, (_, i) => new Date(m.getFullYear(), m.getMonth(), 1 - off + i));
   const today = dayKey(Date.now()), now = Date.now() - 3 * 36e5;
-  const list = day ? L.filter(e => dayKey(e.at) === day) : L.filter(e => e.at >= now).slice(0, 24);
+  const inMonth = L.filter(e => { const d = new Date(e.at); return d.getMonth() === m.getMonth() && d.getFullYear() === m.getFullYear(); });
+  const list = day ? (by.get(day) || []) : L.filter(e => e.at >= now).slice(0, 20);
+  const groups = useMemo(() => { const g: [string, CalItem[]][] = []; for (const e of list) { const k = dayLbl(e.at), last = g[g.length - 1]; if (last && last[0] === k) last[1].push(e); else g.push([k, [e]]); } return g; }, [list]);
+  const next = !day ? list[0] : undefined;
   const mv = (k: number) => { setM(new Date(m.getFullYear(), m.getMonth() + k, 1)); setDay(""); };
+  const stat = (n: number, l: string, c?: string) => <div className="rounded-xl bg-white/10 px-3 py-1.5 text-center backdrop-blur-sm"><b className="block text-lg font-black leading-tight tabular-nums" style={c ? { color: c } : undefined}>{n}</b><span className="text-[10.5px] text-white/75">{l}</span></div>;
   return (
-    <div className="space-y-5">
-      <Card className="flex flex-wrap items-center gap-2 p-3">
-        <Segmented size="sm" value={ver} onChange={v => setVer(v)} options={[{ value: "mine", label: "Para mí" }, { value: "all", label: "Todo lo que veo" }, { value: "ano", label: <span className="inline-flex items-center gap-1"><Star className="size-3.5" />Anotados</span> }]} />
-        <div className="scrollbar-none flex min-w-0 flex-1 gap-1 overflow-x-auto">
-          <button onClick={() => setDiv("")} className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold transition", !div ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800")}>Todas</button>
-          {divs.map(e => <button key={e.d} onClick={() => setDiv(div === e.d ? "" : e.d)} className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition", div === e.d ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800")}>
-            <span className="size-2 rounded-full" style={{ background: e.col }} />{e.ab}</button>)}
+    <div className="space-y-4">
+      {/* cabecera: mes, navegación y números */}
+      <Card className="overflow-hidden">
+        <div className="relative px-5 py-4 text-white" style={{ background: "linear-gradient(120deg, rgb(var(--b-700)), rgb(var(--b-500)) 60%, rgb(var(--b-400)))" }}>
+          <div className="pointer-events-none absolute inset-0 opacity-25 [background:repeating-linear-gradient(135deg,transparent_0_14px,rgba(255,255,255,.08)_14px_15px)]" aria-hidden />
+          <div className="relative flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-1">
+              <button aria-label="Mes anterior" onClick={() => mv(-1)} className="grid size-9 place-items-center rounded-xl bg-white/10 transition hover:bg-white/20"><ChevronLeft className="size-5" /></button>
+              <button aria-label="Mes siguiente" onClick={() => mv(1)} className="grid size-9 place-items-center rounded-xl bg-white/10 transition hover:bg-white/20"><ChevronRight className="size-5" /></button>
+            </div>
+            <div className="mr-auto"><p className="text-[11px] font-bold uppercase tracking-[.2em] text-white/70">{m.getFullYear()}</p>
+              <h2 className="font-display text-3xl font-bold capitalize leading-none">{m.toLocaleDateString("es-AR", { month: "long" })}</h2></div>
+            <div className="flex gap-2">{stat(inMonth.length, "este mes")}{stat(by.get(today)?.length || 0, "hoy")}{stat(L.filter(e => ack[e.id]?.a).length, "anotados")}</div>
+            <button onClick={() => { const d = new Date(); setM(new Date(d.getFullYear(), d.getMonth(), 1)); setDay(today); }} className="rounded-xl bg-white px-3.5 py-2 text-[12.5px] font-bold text-brand-700 shadow transition hover:bg-white/90">Hoy</button>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
+          <div className="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800/70">{VIEWS.map(([k, l, I]) => (
+            <button key={k} onClick={() => setVer(k)} className={cn("inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition", ver === k ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200")}><I className="size-3.5" />{l}</button>))}</div>
+          <div className="scrollbar-none flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
+            <button onClick={() => setDiv("")} className={cn("shrink-0 rounded-full border px-3 py-1 text-[11.5px] font-semibold transition", !div ? "border-transparent bg-brand-600 text-white dark:bg-brand-500" : "border-slate-200 text-slate-500 hover:border-slate-300 dark:border-slate-700")}>Todas</button>
+            {divs.map(e => { const on = div === e.d; return (
+              <button key={e.d} onClick={() => setDiv(on ? "" : e.d)} className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11.5px] font-semibold transition", !on && "border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300")}
+                style={on ? { background: e.col, borderColor: e.col, color: "#fff" } : undefined}><span className="size-2 rounded-full" style={{ background: on ? "#fff" : e.col }} />{e.ab}</button>); })}
+          </div>
         </div>
       </Card>
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        {/* mes */}
         <Card className="overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-            <h2 className="flex-1 font-display text-lg font-semibold first-letter:uppercase">{m.toLocaleDateString("es-AR", { month: "long", year: "numeric" })}</h2>
-            <Button size="sm" variant="outline" onClick={() => { const d = new Date(); setM(new Date(d.getFullYear(), d.getMonth(), 1)); setDay(today); }}>Hoy</Button>
-            <Button size="sm" variant="ghost" icon={<ChevronLeft />} aria-label="Mes anterior" onClick={() => mv(-1)} /><Button size="sm" variant="ghost" icon={<ChevronRight />} aria-label="Mes siguiente" onClick={() => mv(1)} />
-          </div>
-          <div className="grid grid-cols-7 border-b border-slate-100 text-center text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:border-slate-800">{WD.map(w => <div key={w} className="py-2">{w}</div>)}</div>
+          <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50/70 text-center text-[10.5px] font-bold uppercase tracking-[.14em] text-slate-400 dark:border-slate-800 dark:bg-slate-900/40">{WD.map((w, i) => <div key={w} className={cn("py-2", i > 4 && "text-brand-500/80")}>{w}</div>)}</div>
           <div className="grid grid-cols-7">
-            {cells.map(d => { const k = dayKey(+d), ev = by.get(k) || [], out = d.getMonth() !== m.getMonth(), sel = day === k; return (
+            {cells.map((d, i) => { const k = dayKey(+d), ev = by.get(k) || [], out = d.getMonth() !== m.getMonth(), sel = day === k, isT = k === today, wk = i % 7 > 4; return (
               <button key={k} onClick={() => setDay(sel ? "" : k)} aria-pressed={sel} aria-label={`${d.toLocaleDateString("es-AR", { day: "numeric", month: "long" })}: ${ev.length} eventos`}
-                className={cn("relative flex min-h-[5.2rem] flex-col items-stretch gap-0.5 border-b border-r border-slate-100 p-1.5 text-left transition last:border-r-0 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500 dark:border-slate-800/80 dark:hover:bg-slate-800/40 [&:nth-child(7n)]:border-r-0",
-                  out && "opacity-40", sel && "bg-brand-50 dark:bg-brand-500/10")}>
-                <span className={cn("grid size-6 place-items-center rounded-full text-xs font-semibold tabular-nums", k === today ? "bg-red-500 text-white" : "text-slate-500")}>{d.getDate()}</span>
-                {ev.slice(0, 3).map(e => <span key={e.id} className="truncate rounded px-1 py-px text-[10.5px] font-semibold text-white" style={{ background: e.col }} title={`${e.ab} · ${e.n}`}>{e.n}</span>)}
-                {ev.length > 3 && <span className="px-1 text-[10px] font-semibold text-slate-400">+{ev.length - 3} más</span>}
+                className={cn("group relative flex min-h-[5.6rem] flex-col gap-1 border-b border-r border-slate-100 p-1.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500 dark:border-slate-800/70 [&:nth-child(7n)]:border-r-0",
+                  wk && !out && "bg-slate-500/[.025] dark:bg-white/[.012]", out ? "opacity-35" : "hover:bg-brand-500/[.05]", sel && "!bg-brand-500/10 ring-2 ring-inset ring-brand-500/60", isT && !sel && "bg-brand-500/[.06]")}>
+                <span className="flex items-center justify-between">
+                  <span className={cn("grid size-7 place-items-center rounded-lg text-[12.5px] font-bold tabular-nums", isT ? "bg-brand-600 text-white shadow-md shadow-brand-500/30 dark:bg-brand-500" : "text-slate-600 dark:text-slate-300")}>{d.getDate()}</span>
+                  {ev.length > 0 && <span className="flex gap-0.5">{ev.slice(0, 4).map(e => <i key={e.id} className="size-1.5 rounded-full" style={{ background: e.col }} />)}</span>}
+                </span>
+                {ev.slice(0, 2).map(e => <span key={e.id} title={`${e.ab} · ${e.n}`} className="flex min-w-0 items-center gap-1 overflow-hidden rounded-r-md py-[3px] pl-1.5 pr-1 text-[10.5px] font-semibold leading-none" style={{ background: e.col + "22", color: e.col, borderLeft: `2.5px solid ${e.col}` }}>
+                  {hhmm(e) && <span className="shrink-0 tabular-nums opacity-80">{hhmm(e)}</span>}<span className="truncate text-slate-700 dark:text-slate-200">{e.n}</span></span>)}
+                {ev.length > 2 && <span className="px-1 text-[10px] font-bold text-slate-400">+{ev.length - 2} más</span>}
               </button>); })}
           </div>
         </Card>
 
-        <div className="space-y-3">
-          <div className="flex items-center gap-2"><h3 className="font-semibold first-letter:uppercase">{day ? new Date(cells.find(c => dayKey(+c) === day) || Date.now()).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" }) : "Próximos"}</h3>
-            <span className="rounded-md bg-slate-100 px-1.5 text-xs text-slate-500 dark:bg-slate-800">{list.length}</span>
-            {day && <button className="ml-auto text-xs font-semibold text-brand-600 hover:underline dark:text-brand-300" onClick={() => setDay("")}>Ver próximos</button>}</div>
-          {!list.length ? <Card><Empty icon={<CalendarDays />} title={day ? "Nada ese día" : "Sin eventos próximos"} desc={ver === "mine" ? "Probá con «Todo lo que veo»." : "Las divisiones los cargan desde su pestaña Calendario."} /></Card>
-            : list.length > 4 || day ? <div className="space-y-2">{list.map(e => <Row key={e.id} e={e} onClick={() => setCur(e)} />)}</div>
-            : <div className="grid gap-3 sm:grid-cols-2">{list.map(e => <EvCard key={e.id} e={e} onClick={() => setCur(e)} />)}</div>}
-        </div>
+        {/* agenda */}
+        <Card className="overflow-hidden">
+          <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+            <CalendarDays className="size-4 text-brand-600 dark:text-brand-300" />
+            <h3 className="font-display text-[15px] font-bold">{day ? dayLbl(+(cells.find(c => dayKey(+c) === day) || Date.now())) : "Agenda"}</h3>
+            <span className="rounded-full bg-slate-100 px-2 text-[11px] font-bold tabular-nums text-slate-500 dark:bg-slate-800">{list.length}</span>
+            {day && <button className="ml-auto text-[11.5px] font-semibold text-brand-600 hover:underline dark:text-brand-300" onClick={() => setDay("")}>Ver lo próximo</button>}
+          </div>
+          {!list.length ? <Empty icon={<CalendarDays />} title={day ? "Nada ese día" : "Sin eventos próximos"} desc={ver === "mine" ? "Probá con «Todo lo que veo»." : "Las divisiones los cargan desde su pestaña Calendario."} />
+            : <div className="space-y-4 p-3">
+              {next && <Next e={next} onClick={() => setCur(next)} />}
+              {groups.map(([g, es]) => { const rest = es.filter(e => e !== next); if (!rest.length) return null; return (
+                <div key={g}><p className="mb-1.5 flex items-center gap-2 px-1 text-[10.5px] font-bold uppercase tracking-[.14em] text-slate-400">{g}<span className="h-px flex-1 bg-slate-100 dark:bg-slate-800" /></p>
+                  <div className="space-y-1.5">{rest.map(e => <Row key={e.id} e={e} star={!!ack[e.id]?.a} onClick={() => setCur(e)} />)}</div></div>); })}
+            </div>}
+        </Card>
       </div>
       <EvModal e={cur} onClose={() => setCur(null)} />
     </div>);
 }
-function Row({ e, onClick }: { e: CalItem; onClick: () => void }) {
-  const d = new Date(e.at);
+function Row({ e, star, onClick }: { e: CalItem; star: boolean; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white p-2.5 text-left transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:bg-slate-800/50">
-      <span className="grid w-12 shrink-0 place-items-center rounded-xl py-1.5 text-white" style={{ background: e.col }}><b className="text-lg leading-none tabular-nums">{d.getDate()}</b><span className="text-[9.5px] font-bold uppercase">{d.toLocaleDateString("es-AR", { month: "short" })}</span></span>
-      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{e.n}</span><span className="block truncate text-xs text-slate-500"><span className="font-semibold" style={{ color: tipoC(e.tipo) }}>{e.tipo}</span> · {e.ab} · {fmtWhen(e, { day: false })}</span></span>
+    <button onClick={onClick} className="group flex w-full items-stretch gap-3 rounded-xl border border-slate-200 bg-white text-left transition hover:border-brand-400/50 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/50">
+      <span className="w-1 shrink-0 rounded-l-xl" style={{ background: e.col }} />
+      <span className="flex w-12 shrink-0 flex-col items-center justify-center py-2 text-center"><Clock className="mb-0.5 size-3 text-slate-400" /><b className="text-[12.5px] tabular-nums">{hhmm(e) || "Día"}</b></span>
+      <span className="min-w-0 flex-1 py-2 pr-3">
+        <span className="flex items-center gap-1.5"><b className="truncate text-[13.5px] group-hover:text-brand-700 dark:group-hover:text-brand-300">{e.n}</b>{star && <Star className="size-3 shrink-0 fill-amber-400 text-amber-400" />}{e.pub && <Globe2 className="size-3 shrink-0 text-slate-400" />}</span>
+        <span className="mt-0.5 flex items-center gap-1.5 text-[11px]"><span className="rounded px-1.5 py-px font-bold text-white" style={{ background: e.col }}>{e.ab}</span><span className="font-semibold" style={{ color: tipoC(e.tipo) }}>{e.tipo}</span>{e.cre && <span className="truncate text-slate-500">· {e.cre}</span>}</span>
+      </span>
+    </button>);
+}
+/* el próximo evento, destacado: banner (si tiene) de fondo, fecha grande y datos */
+function Next({ e, onClick }: { e: CalItem; onClick: () => void }) {
+  const d = new Date(e.at), src = banSrc(e), h = Math.max(0, Math.round((e.at - Date.now()) / 36e5));
+  return (
+    <button onClick={onClick} className="group relative block w-full overflow-hidden rounded-2xl text-left text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+      style={{ background: `linear-gradient(120deg, ${e.col}, ${e.col}99 55%, #0b1120)` }}>
+      {src && <img src={src} alt="" className="absolute inset-0 size-full object-cover opacity-35 transition group-hover:opacity-45" />}
+      <div className="absolute inset-0 bg-gradient-to-r from-black/45 to-transparent" aria-hidden />
+      <div className="relative flex items-center gap-4 p-4">
+        <span className="grid w-16 shrink-0 place-items-center rounded-xl bg-white/15 py-2 backdrop-blur-sm"><b className="font-display text-3xl font-bold leading-none tabular-nums">{d.getDate()}</b><span className="text-[10px] font-bold uppercase tracking-wider">{d.toLocaleDateString("es-AR", { month: "short" })}</span></span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-white/80">Lo próximo{isToday(e.at) && <span className="rounded bg-red-500 px-1.5 py-px tracking-wider text-white">Hoy</span>}{!isToday(e.at) && h < 48 && <span className="rounded bg-white/20 px-1.5 py-px tracking-wider">en {h} h</span>}</span>
+          <b className="mt-0.5 block truncate text-[17px] leading-tight">{e.n}</b>
+          <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11.5px] text-white/85"><span className="rounded bg-black/25 px-1.5 py-px font-bold">{e.ab}</span><span className="rounded px-1.5 py-px font-bold" style={{ background: tipoC(e.tipo) }}>{e.tipo}</span><span>{fmtWhen(e, { day: false })}</span></span>
+        </span>
+      </div>
     </button>);
 }
