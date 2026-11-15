@@ -40,9 +40,9 @@ function Nueva({ psbOnly, onSaved }: { psbOnly?: boolean; onSaved: () => void })
   const [ag, setAg] = useState(""), [esc, setEsc] = useState(psbOnly ? "conf" : "wc"), [otro, setOtro] = useState(""), [art, setArt] = useState<"el" | "la">("el");
   const a = ag ? findAgent(ag) : null, s = ESCENARIOS.find(x => x.k === esc)!;
   const canCite = (x: { n: string; r: string }) => x.n !== me.n && (lvl(x.r) < me.l || !!excOf()[me.n]?.t1080);
-  const lugar = esc === "otro" ? otro.trim() || "[escenario]" : s.t;
+  const lugar = esc === "otro" ? otro.trim() || "[lugar]" : s.t;
   const txt = `/rlspd Para ${art} ${a ? rkTxt(a.r) : "[Rango]"} ${a?.n || "[Nombre del agente]"}: acuda ${lugar} con la vestimenta Clase A al finalizar sus actividades. Por favor, confirme lectura.`;
-  const errs = [!a && "agente a citar", esc === "otro" && !otro.trim() && "escenario"].filter(Boolean) as string[];
+  const errs = [!a && "agente a citar", esc === "otro" && !otro.trim() && "lugar"].filter(Boolean) as string[];
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
       <Card>
@@ -50,7 +50,7 @@ function Nueva({ psbOnly, onSaved }: { psbOnly?: boolean; onSaved: () => void })
         <CardBody>
           <Field label="Agente"><AgentPicker value={ag} onChange={n => { setAg(n); setArt(genderOf(n) === "f" ? "la" : "el"); }} filter={canCite} empty="No hay agentes que puedas citar con tu rango" /></Field>
           <Note>Solo podés citar a agentes de rango inferior al tuyo.</Note>
-          <Field label="Escenario">
+          <Field label="Lugar">
             <div className="flex flex-wrap gap-1.5">
               {ESCENARIOS.filter(x => !psbOnly || x.k === "conf" || x.k === "otro").map(x => {
                 const lk = x.psb && !psb;

@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.6";
+export const APP_VERSION = "3.6.1";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,13 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.6.1", f: "15/11/2026", t: "10-80: justificación mejorada", items: [
+    "«Escenario» pasa a llamarse «Lugar», en la citación y en el mensaje.",
+    "Motivo con texto predictivo: sugiere mientras escribís (Tab para completar) y trae muchos más motivos, como ascensos, condecoraciones, cambios de división o de turno. Se puede escribir cualquier otro.",
+    "Medidas adoptadas: frases genéricas para sumar o quitar con un toque.",
+    "«Revisar redacción»: ordena espacios, mayúsculas, signos y puntos finales de lo que escribiste, y avisa qué corrigió. Al guardar se aplica sola.",
+    "Mensaje más formal: «…fue citado mediante radio interna para realizarle un 10-80 ejecutado por…, quien se presentó en tiempo y forma, además de ser atendido por la supervisión».",
+  ] },
   { v: "3.6", f: "15/11/2026", t: "10-80 con historial y justificación", items: [
     "10-80: dos pestañas, «Nueva citación» e «Historial de 10-80». Después de armar la citación, «Guardar en el historial» la deja registrada con número, agente, escenario, fecha y quién citó.",
     "Historial: buscador y filtro (todos, sin justificar, justificados). Cada 10-80 se puede justificar después, sin apuro: motivo, fecha de la reunión, asistencia, exposición de los hechos, medidas adoptadas y observaciones.",

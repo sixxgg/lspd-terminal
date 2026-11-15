@@ -2,8 +2,9 @@
    La justificación genera un mensaje formal (estilo feedback) en formato Discord o web, para publicarlo en la página.
    Supervisores usan lspdt.t1080; la PSB, lspdt.psbCit (solo la ven sus miembros). */
 import { useMemo, useState } from "react";
-import { CheckCircle2, Clock, FileText, MapPin, Pencil, Radio, Search, Trash2 } from "lucide-react";
-import { Button, Card, Empty, Field, Input, SearchInput, Select, Textarea } from "@/components/ui";
+import { CheckCircle2, Clock, FileText, MapPin, Pencil, Radio, Search, SpellCheck, Trash2 } from "lucide-react";
+import { Button, Card, Empty, Field, Input, SearchInput, Textarea } from "@/components/ui";
+import { Predict } from "@/components/predict";
 import { Modal } from "@/components/modal";
 import { Avatar, RankBadge } from "@/components/agents";
 import { CopyMenu, DiscordOutput } from "@/components/output";
@@ -18,28 +19,45 @@ type Just = { mot: string; motx?: string; asis: string; f: string; hechos: strin
 export type Cit1080 = { id: string; no: number; t: number; ag: string; r: string; p?: string; esc: string; lugar: string; por: string; pr?: string; j?: Just };
 export const keyOf = (psb?: boolean) => (psb ? "lspdt.psbCit" : "lspdt.t1080");
 
-const MOT = ["Llamado de atención", "Seguimiento del servicio", "Feedback", "Entrevista personal", "Medida disciplinaria", "Reconocimiento", "Investigación interna", "Otro"];
+/* motivos sugeridos (texto predictivo: se puede escribir cualquier otro) */
+const MOT = ["Llamado de atención", "Ascenso", "Felicitación por ascenso", "Notificación de ascenso denegado", "Descenso de rango", "Seguimiento del servicio", "Feedback de desempeño",
+  "Entrevista personal", "Entrevista de seguimiento", "Medida disciplinaria", "Apercibimiento", "Suspensión", "Reconocimiento", "Entrega de condecoración", "Investigación interna",
+  "Ingreso a una división", "Baja de una división", "Cambio de turno", "Incumplimiento de la normativa", "Conducta impropia", "Uso indebido del equipamiento", "Uso indebido del vehículo policial",
+  "Falta de respeto a un superior", "Inasistencia reiterada", "Uniformidad incorrecta", "Mala praxis en un procedimiento", "Revisión de un informe", "Pérdida de armamento", "Solicitud del agente", "Asunto administrativo"];
+/* medidas genéricas para sumar con un toque */
+const MED = ["Se le recordó la normativa vigente y se le solicitó su cumplimiento.", "Se le realizó un llamado de atención verbal.", "Se le aplicó un apercibimiento por escrito.",
+  "Queda en seguimiento por la supervisión durante las próximas dos semanas.", "Se le comunicó su ascenso y las responsabilidades del nuevo rango.", "Se le felicitó por su desempeño.",
+  "Se elevó el caso a la PSB para su evaluación.", "Se elevó el caso a Capitanía.", "No se adoptaron medidas: la situación quedó aclarada.", "Se le notificó la medida disciplinaria correspondiente.",
+  "Se acordó una nueva entrevista de seguimiento.", "El agente tomó conocimiento y se comprometió a corregir la conducta."];
 const ASIS = [["si", "Se presentó en tiempo y forma", "#10b981"], ["tarde", "Se presentó con demora", "#f59e0b"], ["no", "No se presentó", "#ef4444"]] as const;
 const dts = (t: number, f = "f") => `<t:${Math.floor(t / 1000)}:${f}>`;
 const q = (s: string) => s.trim().split("\n").map(l => "> " + l).join("\n");
 
+/* deja un texto prolijo: espacios, mayúscula al empezar cada oración, signos bien pegados y punto final */
+function tidy(t: string) {
+  return t.split("\n").map(l => { let x = l.replace(/\s+/g, " ").trim(); if (!x) return "";
+    x = x.replace(/\s+([,.;:!?)])/g, "$1").replace(/([,;:])(?=[^\s\d])/g, "$1 ").replace(/([.!?])(?=[A-Za-zÁÉÍÓÚÑáéíóúñ¿¡])/g, "$1 ").replace(/\(\s+/g, "(").replace(/\.{4,}/g, "...");
+    x = x.replace(/(^|[.!?]\s+|^[-•]\s*)([a-záéíóúñ¿¡])/g, (_m, a: string, c: string) => a + c.toUpperCase());
+    if (!/[.!?:…)»"]$/.test(x)) x += "."; return x; }).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
 /* mensaje formal: encabezado, datos, desarrollo y constancia final */
 function justText(c: Cit1080, j: Just) {
   const art = genderOf(c.ag) === "f" ? "la" : "el", ag = `${rankES(c.r)} ${c.ag}${c.p ? ` (#${String(c.p).replace(/\D/g, "")})` : ""}`, sup = `${rankES(c.pr || "")} ${c.por}`.trim();
-  const mot = j.mot === "Otro" ? j.motx?.trim() || "Otro" : j.mot, asis = ASIS.find(x => x[0] === j.asis)?.[1] || "";
+  const mot = (j.mot === "Otro" && j.motx?.trim() ? j.motx.trim() : j.mot.trim()) || "Sin especificar", asis = ASIS.find(x => x[0] === j.asis)?.[1] || "";
   const fecha = j.f ? dts(new Date(`${j.f}T12:00:00-03:00`).getTime(), "D") : dts(c.t, "D");
-  const cierre = j.asis === "no" ? `quien no se presentó a la citación. La inasistencia queda registrada a los efectos que correspondan.`
-    : `quien se presentó${j.asis === "tarde" ? " con demora" : " en tiempo y forma"} y fue atendid${art === "la" ? "a" : "o"} por la supervisión.`;
+  const o = art === "la" ? "a" : "o";
+  const cierre = j.asis === "no" ? `quien no se presentó a la citación en el horario indicado. La inasistencia queda registrada a los efectos que correspondan.`
+    : `quien se presentó${j.asis === "tarde" ? " con demora" : " en tiempo y forma"}, además de ser atendid${o} por la supervisión.`;
   return [
     `## 📻 JUSTIFICACIÓN DE 10-80 · Nº ${String(c.no).padStart(4, "0")}`,
     `**Los Santos Police Department — Supervisión**`, "",
     `**Agente citado:** ${ag}`, `**Citado por:** ${sup}`, `**Fecha de la citación:** ${dts(c.t)}`, `**Fecha de la reunión:** ${fecha}`,
-    `**Escenario:** ${c.esc}`, `**Motivo:** ${mot}`, `**Asistencia:** ${asis}`, "",
-    `Por medio de la presente se deja constancia de que ${art} ${ag} fue citad${art === "la" ? "a" : "o"} mediante el código 10-80 por ${sup}, ${cierre}`, "",
+    `**Lugar:** ${c.esc}`, `**Motivo:** ${mot}`, `**Asistencia:** ${asis}`, "",
+    `Por medio de la presente se deja constancia de que ${art} ${ag} fue citad${o} mediante radio interna para realizarle un 10-80 ejecutado por ${sup}, ${cierre} El motivo de la citación fue: ${mot.charAt(0).toLowerCase() + mot.slice(1)}.`, "",
     "### 📝 Exposición de los hechos", q(j.hechos), "",
     "### ⚖️ Medidas adoptadas y resolución", q(j.med),
     ...(j.obs?.trim() ? ["", "### 🗒️ Observaciones", q(j.obs)] : []), "",
-    "Sin otro particular, se eleva la presente a los efectos que correspondan.", "",
+    "Sin otro particular, se eleva la presente a los efectos administrativos que correspondan, quedando a disposición de la superioridad.", "",
     `-# Redactado por ${j.por} · ${dts(j.t)} · Los Santos Police Department`,
   ].join("\n");
 }
@@ -84,27 +102,40 @@ function JustModal({ c, onClose, onSave }: { c: Cit1080; onClose: () => void; on
   const me = useMe(), { toast } = useFeedback();
   const [j, setJ] = useState<Just>(() => c.j || { mot: MOT[0], asis: "si", f: hoyISO(), hechos: "", med: "", obs: "", por: me.n, t: Date.now() });
   const [fd, setFd] = useState(isoToDMY(j.f)), set = (x: Partial<Just>) => setJ(o => ({ ...o, ...x }));
-  const need = [!j.hechos.trim() && "exposición de los hechos", !j.med.trim() && "medidas adoptadas", j.mot === "Otro" && !j.motx?.trim() && "motivo", !j.f && "fecha de la reunión"].filter(Boolean) as string[];
+  const need = [!j.mot.trim() && "motivo", !j.hechos.trim() && "exposición de los hechos", !j.med.trim() && "medidas adoptadas", !j.f && "fecha de la reunión"].filter(Boolean) as string[];
+  /* «Revisar»: ordena la redacción de los textos y avisa qué cambió */
+  const [fixed, setFixed] = useState<string[] | null>(null);
+  const revisar = () => { const ch: string[] = [], n: Partial<Just> = {};
+    (["hechos", "med", "obs"] as const).forEach(k => { const v = j[k] || "", t = tidy(v); if (v && t !== v) { n[k] = t; ch.push(k === "hechos" ? "Exposición de los hechos" : k === "med" ? "Medidas adoptadas" : "Observaciones"); } });
+    const m = j.mot.trim(); if (m && m !== m.charAt(0).toUpperCase() + m.slice(1)) { n.mot = m.charAt(0).toUpperCase() + m.slice(1); ch.push("Motivo"); }
+    set(n); setFixed(ch); };
   const txt = justText(c, { ...j, por: me.n, t: c.j?.t || Date.now() });
   return (
     <Modal open onClose={onClose} size="xl" icon={<FileText />} title={`Justificación del 10-80 Nº ${String(c.no).padStart(4, "0")}`}
       desc={<span className="flex flex-wrap items-center gap-1.5"><b>{c.ag}</b><RankBadge r={c.r} /><span className="text-xs">· {c.esc} · {fullDT(c.t)} · citó {c.por}</span></span>}
       footer={<><Button variant="ghost" className="mr-auto" onClick={onClose}>Cerrar</Button>
-        <Button icon={<CheckCircle2 />} onClick={() => { if (need.length) { toast("Falta: " + need.join(", "), "err"); return; } onSave({ ...j, hechos: j.hechos.trim(), med: j.med.trim(), obs: j.obs?.trim(), por: me.n, t: Date.now() }); }}>Guardar justificación</Button></>}>
+        <Button icon={<CheckCircle2 />} onClick={() => { if (need.length) { toast("Falta: " + need.join(", "), "err"); return; } onSave({ ...j, mot: j.mot.trim(), hechos: tidy(j.hechos), med: tidy(j.med), obs: j.obs ? tidy(j.obs) : "", por: me.n, t: Date.now() }); }}>Guardar justificación</Button></>}>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Motivo"><Select value={j.mot} onChange={e => set({ mot: e.target.value })}>{MOT.map(m => <option key={m}>{m}</option>)}</Select></Field>
+            <Field label="Motivo"><Predict value={j.mot} onChange={v => set({ mot: v })} list={MOT} placeholder="Ej: Ascenso, llamado de atención…" /></Field>
             <Field label="Fecha de la reunión"><Input value={fd} placeholder="dd/mm/aaaa" inputMode="numeric" onChange={e => setFd(maskDMY(e.target.value))}
               onBlur={() => { const v = fd.trim(); if (!v) { set({ f: "" }); return; } const iso = dmyToISO(v); if (!iso) { toast("Fecha inválida · dd/mm/aaaa", "err"); return; } set({ f: iso }); }} /></Field>
           </div>
-          {j.mot === "Otro" && <Field label="¿Cuál?"><Input value={j.motx || ""} onChange={e => set({ motx: e.target.value })} placeholder="Motivo de la citación" /></Field>}
           <Field label="Asistencia"><div className="flex flex-wrap gap-1.5">{ASIS.map(([k, l, col]) => (
             <button key={k} type="button" onClick={() => set({ asis: k })} className={cn("rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition", j.asis !== k && "border-slate-200 text-slate-500 hover:border-slate-300 dark:border-slate-700")}
               style={j.asis === k ? { borderColor: col, background: col + "1c", color: col } : undefined}>{l}</button>))}</div></Field>
           <Field label="Exposición de los hechos"><Textarea rows={4} value={j.hechos} onChange={e => set({ hechos: e.target.value })} placeholder="Qué motivó la citación y qué se habló en la reunión…" /></Field>
-          <Field label="Medidas adoptadas y resolución"><Textarea rows={3} value={j.med} onChange={e => set({ med: e.target.value })} placeholder="Ej: se le recordó el artículo 7 de la normativa; queda en seguimiento por 2 semanas…" /></Field>
+          <Field label="Medidas adoptadas y resolución"><Textarea rows={3} value={j.med} onChange={e => set({ med: e.target.value })} placeholder="Escribí o sumá una de las de abajo…" />
+            <div className="mt-1.5 flex flex-wrap gap-1">{MED.map(m => { const on = j.med.includes(m); return (
+              <button key={m} type="button" title={on ? "Quitar" : "Agregar"} onClick={() => set({ med: on ? j.med.replace(m, "").replace(/\s{2,}/g, " ").trim() : (j.med.trim() ? j.med.trim() + " " : "") + m })}
+                className={cn("rounded-full border px-2 py-0.5 text-[11px] transition", on ? "border-brand-500/60 bg-brand-500/10 text-brand-700 dark:text-brand-300" : "border-slate-200 text-slate-500 hover:border-brand-400 hover:text-brand-600 dark:border-slate-700")}>
+                {on ? "✓ " : "+ "}{m.replace(/\.$/, "")}</button>); })}</div></Field>
           <Field label="Observaciones" hint="(opcional)"><Textarea rows={2} value={j.obs || ""} onChange={e => set({ obs: e.target.value })} /></Field>
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 p-2.5 dark:border-slate-800">
+            <Button size="sm" variant="outline" icon={<SpellCheck />} onClick={revisar}>Revisar redacción</Button>
+            <span className="min-w-0 flex-1 text-[11.5px] text-slate-500">{fixed == null ? "Ordena espacios, mayúsculas, signos y puntos finales de lo que escribiste." : fixed.length ? <span className="text-emerald-600 dark:text-emerald-400">✓ Corregido: {fixed.join(", ")}</span> : <span className="text-emerald-600 dark:text-emerald-400">✓ Está prolijo, no hubo nada que corregir.</span>}</span>
+          </div>
         </div>
         <DiscordOutput title="Justificación del 10-80" text={txt} need={need} sticky={false} />
       </div>
