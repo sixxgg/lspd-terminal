@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.5.3";
+export const APP_VERSION = "3.6";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,12 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.6", f: "15/11/2026", t: "10-80 con historial y justificación", items: [
+    "10-80: dos pestañas, «Nueva citación» e «Historial de 10-80». Después de armar la citación, «Guardar en el historial» la deja registrada con número, agente, escenario, fecha y quién citó.",
+    "Historial: buscador y filtro (todos, sin justificar, justificados). Cada 10-80 se puede justificar después, sin apuro: motivo, fecha de la reunión, asistencia, exposición de los hechos, medidas adoptadas y observaciones.",
+    "La justificación arma un mensaje formal, como un feedback, para publicar en la página: formato Discord o web, con fechas en la zona horaria de cada uno y «Revisar».",
+    "En la PSB, las citaciones van a un historial aparte que solo ven sus miembros.",
+  ] },
   { v: "3.5.3", f: "15/11/2026", t: "Entrevistas: textos completos y nuevo selector", items: [
     "Lista de entrevistas: el nombre y quién entrevistó ya no se cortan (van en su propio renglón).",
     "Nuevo selector de «Entrevistó»: panel flotante con buscador, filtro por rango, foto, insignia, placa y cuántas entrevistas hizo cada uno; marca «Vos» y se maneja con el teclado (↑ ↓ Enter Esc).",

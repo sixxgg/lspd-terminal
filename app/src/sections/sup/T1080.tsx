@@ -1,13 +1,18 @@
+/* 10-80: arma el mensaje de radio para citar a un agente y lo guarda en el historial.
+   Después, desde el historial, se carga la justificación y se genera el mensaje formal (Discord o web). */
 import { useState } from "react";
-import { Radio, Lock } from "lucide-react";
-import { Card, CardBody, CardHeader, Chip, Field, Input } from "@/components/ui";
+import { Radio, Lock, Save, History } from "lucide-react";
+import { Button, Card, CardBody, CardHeader, Chip, Field, Input } from "@/components/ui";
 import { AgentPicker } from "@/components/agents";
 import { CopyLine } from "@/components/output";
 import { Note } from "@/components/layout";
-import { excOf, findAgent, genderOf, lvl, rkTxt } from "@/lib/domain";
+import { useFeedback } from "@/components/feedback";
+import { excOf, findAgent, genderOf, lvl, rkTxt, uid } from "@/lib/domain";
 import { isPSB } from "@/lib/units";
 import { useMe } from "@/lib/me";
-import { useStoreVersion } from "@/lib/store";
+import { useJSON, useStoreVersion } from "@/lib/store";
+import { DivNav } from "../div/DivTools";
+import { Cit1080, Historial1080, keyOf } from "./T1080Hist";
 
 export const ESCENARIOS = [
   { k: "wc", l: "Watch Commander", t: "a la oficina del Watch Commander", h: "Oficina del mando del turno: llamados de atención y temas del servicio." },
@@ -18,7 +23,19 @@ export const ESCENARIOS = [
 ];
 
 export function T1080({ psbOnly }: { psbOnly?: boolean }) {
+  const [tab, setTab] = useState<"new" | "his">("new"), [L] = useJSON<Cit1080[]>(keyOf(psbOnly), []);
+  const pend = L.filter(x => !x.j).length;
+  return (
+    <div className="space-y-4">
+      <DivNav value={tab} onChange={v => setTab(v as "new" | "his")} options={[{ value: "new", label: "Nueva citación", icon: <Radio />, txt: "Nueva" },
+        { value: "his", label: `Historial de 10-80${pend ? ` · ${pend} sin justificar` : ""}`, icon: <History />, txt: "Historial" }]} />
+      {tab === "new" ? <Nueva psbOnly={psbOnly} onSaved={() => setTab("his")} /> : <Historial1080 psbOnly={psbOnly} />}
+    </div>);
+}
+
+function Nueva({ psbOnly, onSaved }: { psbOnly?: boolean; onSaved: () => void }) {
   useStoreVersion();
+  const { toast } = useFeedback(), [L, setL] = useJSON<Cit1080[]>(keyOf(psbOnly), []);
   const me = useMe(), psb = isPSB(me.n) || me.admin;
   const [ag, setAg] = useState(""), [esc, setEsc] = useState(psbOnly ? "conf" : "wc"), [otro, setOtro] = useState(""), [art, setArt] = useState<"el" | "la">("el");
   const a = ag ? findAgent(ag) : null, s = ESCENARIOS.find(x => x.k === esc)!;
@@ -45,7 +62,17 @@ export function T1080({ psbOnly }: { psbOnly?: boolean }) {
           {esc === "otro" && <Input value={otro} onChange={e => setOtro(e.target.value)} placeholder="a la sala de reuniones…" autoFocus />}
         </CardBody>
       </Card>
-      <CopyLine tag="/rlspd" label="Mensaje de radio" text={txt} errors={errs} />
+      <div className="space-y-3">
+        <CopyLine tag="/rlspd" label="Mensaje de radio" text={txt} errors={errs} />
+        <Card className="flex flex-wrap items-center gap-3 p-3">
+          <p className="min-w-0 flex-1 text-[12.5px] text-slate-500">Guardala en el historial para cargar la justificación después.</p>
+          <Button icon={<Save />} disabled={!!errs.length} onClick={() => {
+            const no = Math.max(0, ...L.map(x => x.no || 0)) + 1;
+            setL([{ id: uid(), no, t: Date.now(), ag: a!.n, r: a!.r, p: a!.p || "", esc: esc === "otro" ? otro.trim() : s.l, lugar, por: me.n, pr: me.r }, ...L]);
+            toast(`10-80 Nº ${no} guardado en el historial`); setAg(""); onSaved();
+          }}>Guardar en el historial</Button>
+        </Card>
+      </div>
     </div>
   );
 }
