@@ -7,7 +7,7 @@ import { CalendarDays, ChevronRight, CornerDownLeft, FileText, Gavel, Scale, Sea
 import { AREAS, canArea, secsOf } from "@/nav";
 import { getRoster, norm, rankES, RANK_COLOR, fullDT } from "@/lib/domain";
 import { LS } from "@/lib/store";
-import { getPenal, type Inf } from "@/lib/penal";
+import type { Art, Inf } from "@/lib/penal";
 import { calAll } from "@/lib/calendar";
 import { JUMP, jumpNow } from "@/lib/jump";
 import { Avatar } from "@/components/agents";
@@ -21,7 +21,9 @@ const RK = "lspdt.next.cmdk";
 
 export function CommandK({ go, me }: { go: (a: string, s: string) => void; me: { n: string; r: string } }) {
   const [o, setO] = useState(false), [q, setQ] = useState(""), [hi, setHi] = useState(0), [sc, setSc] = useState<"" | Kind>("");
-  const inp = useRef<HTMLInputElement>(null), lst = useRef<HTMLDivElement>(null);
+  const inp = useRef<HTMLInputElement>(null), lst = useRef<HTMLDivElement>(null), [pen, setPen] = useState<Art[]>([]);
+  /* el código penal es pesado: se carga recién la primera vez que se abre el buscador */
+  useEffect(() => { if (o && !pen.length) void import("@/lib/penal").then(m => setPen(m.getPenal())); }, [o]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const h = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "k") { e.preventDefault(); setO(v => !v); } };
     const ev = () => setO(true); addEventListener("keydown", h); addEventListener("lspdt:cmdk", ev); return () => { removeEventListener("keydown", h); removeEventListener("lspdt:cmdk", ev); }; }, []);
   useEffect(() => { if (o) { setQ(""); setSc(""); setHi(0); setTimeout(() => inp.current?.focus(), 30); } }, [o]);
@@ -43,9 +45,9 @@ export function CommandK({ go, me }: { go: (a: string, s: string) => void; me: {
     try { calAll().filter(e => e.at > Date.now() - 864e5 * 30).forEach(e => H.push({ id: `cal:${e.id}`, k: "cal", t: e.n, s: `${e.ab || e.dn} · ${fullDT(e.at)}`, icon: CalendarDays, col: e.col,
       txt: `${e.n} ${e.tipo} ${e.dn} ${e.desc || ""}`, go: () => { go("cal", "cal"); close(); } })); } catch { /* */ }
     if (robOk) (LS.json<{ items?: { id: string; n: string; cat: string }[] } | null>("lspdt.robos", null)?.items || []).forEach(r => H.push({ id: `rob:${r.id}`, k: "rob", t: r.n, s: "Catálogo de robos", icon: Gavel, txt: r.n, go: () => { go("sup", "rob"); close(); } }));
-    if (leyOk) getPenal().forEach(x => H.push({ id: `ley:${x.a}`, k: "ley", t: `Art. ${x.a} · ${x.t}`, s: [x.c, x.p ? `${x.p} meses` : "", x.m ? `$${x.m.toLocaleString("es-AR")}` : ""].filter(Boolean).join(" · "), icon: Scale,
+    if (leyOk) pen.forEach(x => H.push({ id: `ley:${x.a}`, k: "ley", t: `Art. ${x.a} · ${x.t}`, s: [x.c, x.p ? `${x.p} meses` : "", x.m ? `$${x.m.toLocaleString("es-AR")}` : ""].filter(Boolean).join(" · "), icon: Scale,
       txt: `${x.a} ${x.t} ${x.d} ${x.c}`, go: () => { JUMP.ley = x.a; go("leg", "ley"); close(); } }));
-    return H; }, [o, me.r, go]);
+    return H; }, [o, me.r, go, pen]);
   const recent = (() => { try { return JSON.parse(localStorage.getItem(RK) || "[]") as string[]; } catch { return []; } })();
   const R = useMemo(() => { const toks = norm(q.trim()).split(/\s+/).filter(Boolean), base = sc ? all.filter(h => h.k === sc) : all;
     if (!toks.length) { const rec = recent.map(id => base.find(h => h.id === id)).filter(Boolean) as Hit[]; return [...rec.map(h => ({ ...h, rec: true })), ...base.filter(h => h.k === "sec" && !recent.includes(h.id)).slice(0, sc ? 60 : 8)]; }

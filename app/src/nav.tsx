@@ -3,7 +3,7 @@ import { divVisible } from "@/lib/divisions";
 import type { LucideIcon } from "lucide-react";
 import {
   CalendarDays, Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
-  Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint, UserRound, Presentation, UserMinus, RadioTower, UsersRound } from "lucide-react";
+  Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint, UserRound, Presentation, UserMinus, RadioTower, UsersRound, Images } from "lucide-react";
 import { LS, ME_ROLES } from "./lib/store";
 import { Helicopter } from "./components/icons";
 import { lvl } from "./lib/domain";
@@ -48,6 +48,8 @@ const RAW_AREAS: Area[] = [
     { k: "perm", l: "Permisos y cuentas", d: "Excepciones de rango y cuentas de la terminal", icon: KeyRound, ready: true, min: 8 },
   ] },
   { k: "piz", l: "Pizarra", icon: Presentation, min: 0, beta: true, sec: [{ k: "piz", l: "Pizarra", d: "Lienzo compartido para planear operativos, mapas mentales y flujos", icon: Presentation, ready: true }] },
+  /* oculta para todos menos six (por ahora): sus fotos de Fivemanager */
+  { k: "gal", l: "Galería", icon: Images, min: 0, sec: [{ k: "gal", l: "Galería", d: "Fotos de Fivemanager en un carrusel (privado)", icon: Images, ready: true }] },
   { k: "rad", l: "Radio", icon: RadioTower, min: 0, sec: [{ k: "rad", l: "Comunicados por radio", d: "10.03 con sujetos y vehículo de huida, por /rlspd o /rsapd", icon: RadioTower, ready: true }] },
   { k: "cod", l: "Códigos", icon: Radio, min: 0, sec: [{ k: "cod", l: "Códigos radiales", d: "Códigos de radio, 10-X, terminología, derechos y alfabeto NATO", icon: Radio, ready: true }] },
   { k: "jef", l: "Jefatura", icon: Star, min: 10, req: "Comandante", sec: [
@@ -80,7 +82,7 @@ export const AREAS: Area[] = RAW_AREAS
 
 /* Legal: solo six y a quien six le da acceso desde Administración */
 const legalOk = () => !!ME_ROLES.six || LS.json<string[]>("lspdt.legacc", []).includes(PROF.me);
-export const canArea = (a: Area, r?: string) => (a.k === "me" ? profOk() : a.k === "leg" ? legalOk() : a.admin ? !!ME_ROLES.admin : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : lvl(r) >= a.min);
+export const canArea = (a: Area, r?: string) => (a.k === "gal" ? !!ME_ROLES.six : a.k === "me" ? profOk() : a.k === "leg" ? legalOk() : a.admin ? !!ME_ROLES.admin : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : lvl(r) >= a.min);
 /* áreas del menú (sin las ocultas) */
 export const menuAreas = (r?: string) => AREAS.filter(a => !a.hidden && canArea(a, r));
 /* secciones bloqueadas para ese rango (se muestran con candado) */

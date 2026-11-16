@@ -7,18 +7,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, CalendarDays, CheckCircle2, ChevronDown, ChevronUp, X, ClipboardList, FileText, Hash, Lock, LockOpen, MessageSquarePlus, Pencil, Plus, Send, Trash2, Users } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input } from "@/components/ui";
-import { Avatar } from "@/components/agents";
+import { AgentPicker, Avatar } from "@/components/agents";
 import { DiscordOutput } from "@/components/output";
 import { RichEditor, type RichRef } from "@/components/richedit";
 import { useFeedback } from "@/components/feedback";
-import { dmyToISO, findAgent, fullDT, hoyISO, isoToDMY, maskDMY, norm, RANK_COLOR, rankES, uid } from "@/lib/domain";
+import { dmyToISO, findAgent, genderOf, getRoster, lvl, fullDT, hoyISO, isoToDMY, maskDMY, norm, RANK_COLOR, rankES, uid } from "@/lib/domain";
 import { htmlToDc, mdToHtml, richOf, safeHtml } from "@/lib/richtext";
 import { LS, useJSON, useStoreVersion } from "@/lib/store";
 import { JUMP, useJump } from "@/lib/jump";
 import { useMe } from "@/lib/me";
 import { cn } from "@/lib/cn";
 
-type Reu = { id: string; tpl: string; t: string; f: string; h?: string; by: string; at: number; secs: string[]; closed?: boolean; acta?: string };
+type Reu = { id: string; tpl: string; t: string; f: string; h?: string; by: string; enc?: string[]; pres?: string[]; at: number; secs: string[]; closed?: boolean; acta?: string };
 type Ap = { n: string; at: number; s: Record<string, string> };
 /* parte del documento: autor, hora, tema (opcional) y texto con formato */
 type Part = { id: string; n: string; at: number; html: string; tema?: string; ed?: number };
@@ -29,6 +29,11 @@ const TPL: Record<string, { l: string; c: string; d: string; secs: string[] }> =
   po3: { l: "Reunión PO III y III+", c: "#10b981", d: "Oficiales de referencia: patrulla, apoyo a la supervisión y formación", secs: ["Desempeño de los patrulleros", "Apoyo a la supervisión", "Formación e instrucciones", "Propuestas", "Dudas"] },
   libre: { l: "Libre", c: "#64748b", d: "Temas a elección", secs: ["Temas"] },
 };
+/* quienes encabezan: la capitanía (obligatoria) y la Assistant Watch Commander; el resto se suma a mano */
+const AWC = "Evelyn Molina";
+const encDef = () => [...getRoster().filter(a => a.r === "Captain").map(a => a.n), ...(findAgent(AWC) ? [AWC] : [])];
+const roleOf = (n: string) => { const a = findAgent(n); if (a?.r === "Captain") return genderOf(n) === "f" ? { l: "Capitana", must: "obligatoria" } : { l: "Capitán", must: "obligatorio" };
+  if (norm(n) === norm(AWC)) return { l: "Assistant Watch Commander", must: "" }; return { l: rankES(a?.r || ""), must: "" }; };
 const dmy = (iso: string) => isoToDMY(iso) || iso;
 
 /* acta de la reunión de sargentos del 15/11/2026 (la primera, para tenerla a mano) */
@@ -117,7 +122,7 @@ function Nueva({ onCreate }: { onCreate: (r: Reu) => void }) {
         <div className="flex justify-end"><Button icon={<CheckCircle2 />} onClick={() => {
           const f = dmyToISO(fd.trim()), S = secs;
           if (!t.trim() || !f || !S.length) { toast("Falta el título, una fecha válida o los temas", "err"); return; }
-          onCreate({ id: uid(), tpl, t: t.trim(), f, ...(hh ? { h: hh } : {}), by: me.n, at: Date.now(), secs: S }); toast("Reunión abierta · ya está en el calendario y se avisó a todos");
+          onCreate({ id: uid(), tpl, t: t.trim(), f, ...(hh ? { h: hh } : {}), enc: encDef(), pres: [], by: me.n, at: Date.now(), secs: S }); toast("Reunión abierta · ya está en el calendario y se avisó a todos");
         }}>Abrir reunión</Button></div>
       </CardBody>
     </Card>);
@@ -165,7 +170,9 @@ function Detalle({ r, onBack, onSave, onDel }: { r: Reu; onBack: () => void; onS
     const T2 = t.charAt(0).toUpperCase() + t.slice(1); onSave({ ...r, secs: [...r.secs, T2] }); setTema(T2); setNt(""); toast(`Tema «${T2}» agregado`); };
   /* documento para copiar: acta, después las partes por tema (en el orden de la reunión) y al final las generales */
   const out = useMemo(() => { const grp = [...r.secs, ""].map(t => [t, P.filter(p => (p.tema || "") === t)] as const).filter(([, L]) => L.length);
-    return [`# 📋 ${r.t} · ${dmy(r.f)}`, `-# ${T.l} · abierta por ${r.by}${W.length ? ` · participaron ${W.join(", ")}` : ""}`, "",
+    const E = r.enc || encDef();
+    return [`# 📋 ${r.t} · ${dmy(r.f)}${r.h ? ` · ${r.h} h` : ""}`, `-# ${T.l} · abierta por ${r.by}${W.length ? ` · aportaron ${W.join(", ")}` : ""}`, "",
+      ...(E.length ? [`**Encabezan:** ${E.map(n => `${n} (${roleOf(n).l})`).join(", ")}`] : []), ...(r.pres?.length ? [`**Presentes:** ${r.pres.join(", ")}`] : []), ...(E.length || r.pres?.length ? [""] : []),
       ...(r.acta?.trim() ? ["## 🗒️ Acta", htmlToDc(mdToHtml(r.acta)), ""] : []),
       ...grp.flatMap(([t, L]) => [`## ${t || "General"}`, ...L.flatMap(p => [`**${p.n}** · <t:${Math.floor(p.at / 1000)}:f>`, htmlToDc(p.html), ""])]),
     ].join("\n").replace(/\n{3,}/g, "\n\n").trim(); }, [r, P, W, T]);
@@ -195,6 +202,7 @@ function Detalle({ r, onBack, onSave, onDel }: { r: Reu; onBack: () => void; onS
           {cnt("") > 0 && chip("__", "General", cnt(""), f === "__", () => setF(f === "__" ? "" : "__"))}
           {boss && <button type="button" onClick={() => setTemasEd(!temasEd)} className={cn("ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11.5px] font-semibold transition", temasEd ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200")}><Pencil className="size-3" />{temasEd ? "Listo" : "Editar temas"}</button>}
         </div>
+      <Gente r={r} boss={boss} onSave={onSave} />
       </Card>
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         <div className="space-y-3">
@@ -259,5 +267,27 @@ function EditPart({ p, onDone }: { p: Part; onDone: (html: string | null) => voi
     <div className="space-y-2 p-3">
       <RichEditor ref={ed} md init={p.html} placeholder="Texto" minH="min-h-[6rem]" onSubmit={() => onDone(ed.current?.el?.innerHTML || "")} />
       <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => onDone(null)}>Cancelar</Button><Button size="sm" icon={<CheckCircle2 />} onClick={() => { if (ed.current?.empty()) return; onDone(ed.current?.el?.innerHTML || ""); }}>Guardar</Button></div>
+    </div>);
+}
+
+/* encabezan (con su cargo) y presentes, como tags */
+function Gente({ r, boss, onSave }: { r: Reu; boss: boolean; onSave: (r: Reu) => void }) {
+  const enc = r.enc || encDef(), pres = r.pres || [], [ed, setEd] = useState<"" | "enc" | "pres">("");
+  const tag = (n: string, rm?: () => void, lead?: boolean) => { const a = findAgent(n), c = RANK_COLOR[a?.r || ""] || "#64748b", ro = roleOf(n); return (
+    <span key={n} className={cn("inline-flex items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2 text-[12px] font-semibold", lead && "pr-2.5")} style={{ background: c + "1a", boxShadow: `inset 0 0 0 1px ${c}55` }}>
+      <Avatar n={n} size={lead ? 26 : 22} /><span className="leading-tight">{n}{lead ? <span className="block text-[10px] font-bold" style={{ color: c }}>{ro.l}{ro.must && ` · ${ro.must}`}</span> : <span className="ml-1 text-[10px] font-bold" style={{ color: c }}>{ro.l}</span>}</span>
+      {rm && <button type="button" aria-label={`Quitar a ${n}`} onClick={rm} className="rounded-full p-0.5 text-slate-400 hover:text-red-500"><X className="size-3" /></button>}
+    </span>); };
+  const row = (k: "enc" | "pres", l: string, L: string[], can: boolean, empty: string, filter: (a: { n: string; r: string }) => boolean) => (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="w-[5.5rem] shrink-0 text-[11px] font-bold uppercase tracking-wider text-slate-400">{l}</span>
+      {L.length ? L.map(n => tag(n, ed === k && can ? () => onSave({ ...r, [k]: L.filter(x => x !== n) }) : undefined, k === "enc")) : <span className="text-[12px] text-slate-400">{empty}</span>}
+      {can && (ed === k ? <span className="min-w-[14rem] flex-1"><AgentPicker value={L} multiple onChange={n => !L.includes(n) && onSave({ ...r, [k]: [...L, n] })} filter={a => filter(a) && !L.includes(a.n)} /></span> : null)}
+      {can && <button type="button" onClick={() => setEd(ed === k ? "" : k)} className={cn("inline-flex items-center gap-1 rounded-full border border-dashed px-2 py-0.5 text-[11.5px] font-semibold transition", ed === k ? "border-brand-500 text-brand-600" : "border-slate-300 text-slate-400 hover:text-slate-700 dark:border-slate-600 dark:hover:text-slate-200")}>{ed === k ? <><CheckCircle2 className="size-3" />Listo</> : <><Plus className="size-3" />Agregar</>}</button>}
+    </div>);
+  return (
+    <div className="space-y-2 border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+      {row("enc", "Encabezan", enc, boss, "Sin cargar", a => lvl(a.r) >= 6)}
+      {row("pres", "Presentes", pres, !r.closed || boss, "Todavía nadie marcado", a => lvl(a.r) > 0)}
     </div>);
 }
