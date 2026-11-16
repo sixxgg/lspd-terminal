@@ -16,12 +16,12 @@ import { calAll, calMine, fmtWhen, hasTime, isToday } from "@/lib/calendar";
 import { LS, useJSON, useStoreVersion } from "@/lib/store";
 import { latest } from "./Novedades";
 import { cn } from "@/lib/cn";
+import { fotoStyle, GAL_KEY, type Foto } from "@/lib/gal";
 
 const LADDER = Object.entries(LEVEL).filter(([r]) => r !== "Administrativo").sort((a, b) => a[1] - b[1]).map(([r]) => r);
 const isDet = (r: string) => /^Detective/.test(r);
 /* colores de división muy oscuros (ej. SWAT negro) se aclaran para que se lean sobre el fondo */
 const lum = (c: string) => { const n = parseInt(c.replace("#", "").slice(0, 6), 16); return Number.isNaN(n) ? 255 : ((n >> 16) & 255) * .3 + ((n >> 8) & 255) * .59 + (n & 255) * .11; };
-type Foto = { id: string; url: string; cap?: string; on: boolean };
 
 export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go: (a: string, s: string) => void }) {
   useStoreVersion();
@@ -31,7 +31,7 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
   const col = RANK_COLOR[me.r] || "rgb(var(--b-500))", ins = insigniaUrl(me.r);
   const track = LADDER.filter(r => (isDet(me.r) ? isDet(r) || LEVEL[r] < 4.5 : !isDet(r))), at = track.indexOf(me.r), next = at >= 0 ? track[at + 1] : undefined;
   const evs = useMemo(() => calAll().filter(e => e.at >= Date.now() - 36e5 && calMine(e, me.n)).sort((a, b) => a.at - b.at).slice(0, 5), [me.n]); // eslint-disable-line react-hooks/exhaustive-deps
-  const rel = latest(), [G] = useJSON<Foto[]>("lspdt.galeria", []), fotos = G.filter(f => f.on);
+  const rel = latest(), [G] = useJSON<Foto[]>(GAL_KEY, []), fotos = G.filter(f => f.on);
   const fecha = new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
   return (
     <div className="space-y-6">
@@ -121,7 +121,7 @@ function Hero({ fotos, children }: { fotos: Foto[]; children: React.ReactNode })
       <div className="relative h-[46vh] min-h-[300px] max-h-[560px] w-full bg-slate-950">
         {n ? fotos.map((f, k) => (
           <button key={f.id} type="button" onClick={() => setBox(k)} aria-label="Ver la foto en grande" className={cn("absolute inset-0 transition-opacity duration-[1400ms]", k === i ? "opacity-100" : "pointer-events-none opacity-0")}>
-            <img src={f.url} alt="" decoding="async" loading={k === i || k === (i + 1) % n ? "eager" : "lazy"} className={cn("size-full object-cover transition-transform duration-[7000ms] ease-out", k === i ? "scale-[1.08]" : "scale-100")} />
+            <img src={f.url} alt="" decoding="async" loading={k === i || k === (i + 1) % n ? "eager" : "lazy"} className="size-full object-cover transition-transform duration-[7000ms] ease-out" style={fotoStyle(f, k === i ? 1.08 : 1)} />
           </button>))
           : <div className="absolute inset-0" style={{ background: "radial-gradient(120% 90% at 20% 10%, rgb(var(--b-500) / .55), transparent 60%), linear-gradient(135deg, rgb(var(--b-800)), #05070c)" }} />}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
