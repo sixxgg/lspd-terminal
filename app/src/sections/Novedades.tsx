@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.6.2";
+export const APP_VERSION = "3.7";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,14 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.7", f: "15/11/2026", t: "Radio, reuniones colaborativas y revisión de ortografía", items: [
+    "Nueva pestaña «Radio»: comunicado 10.03 por /rlspd (interna) o /rsapd (todos los departamentos) con frecuencia, código (211, 487, 207), robo, calle, sujetos y vehículo de huida.",
+    "Sujetos con sexo, piel, máscara, chaqueta, camiseta, pantalones, calzado y otros rasgos, todo autocompletable. Se pueden sumar y duplicar sujetos.",
+    "Vehículo de huida desde la base de vehículos, con color y matrícula (o sin matrícula, tapada o no visible). Las sugerencias aprenden de los comunicados guardados y se puede cargar el último como corrección.",
+    "Supervisores › Reuniones: Briefing, Reunión de sargentos, Reunión PO III y III+ o libre. Cada uno carga su opinión y lo de los demás se ve recién al enviarla. Quien la abre escribe el acta y la cierra. Ya está cargada el acta de la reunión de sargentos del 15/11.",
+    "«Revisar» ahora también marca faltas de ortografía (tildes y errores comunes) y las corrige con un toque.",
+    "Inicio: la foto de la ficha ahora encuadra en su marco.",
+  ] },
   { v: "3.6.2", f: "15/11/2026", t: "10-80: etiquetas, varios citados y presentes", items: [
     "Etiquetas (Bronca, Ascenso, Felicitación, Disciplinario, Seguimiento…) o cualquier otra que escribas. Se ven en el historial y se puede filtrar por ellas.",
     "Se puede citar a varios agentes en un mismo 10-80: el mensaje de radio queda en plural («acudan… confirmen lectura»).",

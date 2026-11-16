@@ -7,7 +7,7 @@ import { uiText } from "@/lib/templates";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import { useOutside } from "@/lib/outside";
-import { RevButton, RevPanel, revOf } from "./revisar";
+import { fixSpell, RevButton, RevPanel, revOf } from "./revisar";
 
 export async function copyText(t: string) {
   try { await navigator.clipboard.writeText(t); return true; }
@@ -65,7 +65,7 @@ export function DiscordOutput({ title, text, footer, errors, need, pen, ctx, tag
         <div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{tag}</p><h3 className="truncate text-sm font-semibold">{title}</h3></div>
         <RevButton r={rev} open={ro} onClick={() => setRo(!ro)} />
       </div>
-      {ro && <RevPanel r={rev} onClose={() => setRo(false)} className="mx-4 mt-3" />}
+      {ro && <RevPanel r={rev} onClose={() => setRo(false)} onFix={() => setVal(fixSpell(val))} className="mx-4 mt-3" />}
       <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
         <Segmented size="sm" value={mode} onChange={setMode} options={[
           { value: "dc", label: "Formato Discord", icon: <MessageSquareText /> }, { value: "pv", label: "Vista Discord", icon: <Eye /> },
@@ -107,7 +107,7 @@ export function CopyLine({ label, text, errors, tag }: { label: string; text: st
         <span className="flex-1 text-sm font-semibold">{label}</span>
         <RevButton r={rev} open={ro} onClick={() => setRo(!ro)} />
       </div>
-      {ro && <RevPanel r={rev} onClose={() => setRo(false)} className="m-3" />}
+      {ro && <RevPanel r={rev} onClose={() => setRo(false)} onFix={() => setVal(fixSpell(val))} className="m-3" />}
       <textarea value={val} onChange={e => setVal(e.target.value)} rows={3} spellCheck={false}
         className="block w-full resize-y bg-slate-950 px-4 py-3 font-mono text-[12.5px] leading-relaxed text-slate-200 outline-none focus:ring-2 focus:ring-inset focus:ring-brand-500/60" />
       <div className="flex justify-end border-t border-slate-100 px-4 py-2.5 dark:border-slate-800"><Button size="sm" variant="outline" icon={<Copy />} onClick={() => copy(val, errors)}>Copiar</Button></div>

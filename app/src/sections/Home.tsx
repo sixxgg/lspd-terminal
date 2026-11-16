@@ -53,7 +53,7 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
           {ins && <img src={ins} alt="" className="absolute bottom-2 right-5 h-14 w-auto opacity-25 sm:h-16" aria-hidden />}
         </div>
         <div className="flex flex-col gap-4 px-5 pb-4 sm:flex-row sm:items-end">
-          <button onClick={() => go("me", "perfil")} title="Ver mi perfil" className="relative z-10 -mt-10 w-fit shrink-0 overflow-hidden rounded-2xl border-4 border-white bg-white shadow-lg transition hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-[rgb(var(--card))] dark:bg-[rgb(var(--card))]"><Avatar n={me.n} size={88} /></button>
+          <button onClick={() => go("me", "perfil")} title="Ver mi perfil" className="relative z-10 -mt-10 w-fit shrink-0 overflow-hidden rounded-2xl border-4 border-white bg-white shadow-lg transition hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-[rgb(var(--card))] dark:bg-[rgb(var(--card))]"><Avatar n={me.n} size={88} className="rounded-xl ring-0" /></button>
           <div className="min-w-0 flex-1 sm:pb-1">
             <p className="text-xs text-slate-500">{sal},</p>
             <h2 className="truncate text-2xl font-bold leading-tight tracking-tight">{me.n}</h2>
