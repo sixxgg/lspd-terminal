@@ -2,7 +2,7 @@
    Si la pantalla ya estaba abierta (misma sección), se entera por el evento «lspdt:jump» y cambia de pestaña igual. */
 import { useEffect } from "react";
 
-type J = { inf?: string; ag?: string; ley?: string; infSub?: string; oisTab?: "new" | "list" | "guia" };
+type J = { inf?: string; ag?: string; ley?: string; infSub?: string; oisTab?: "new" | "list" | "guia"; reu?: string };
 export const JUMP: J = {};
 const take = <K extends keyof J>(k: K): J[K] => { const v = JUMP[k]; JUMP[k] = undefined; return v; };
 export const jumpNow = () => setTimeout(() => dispatchEvent(new Event("lspdt:jump")), 0);

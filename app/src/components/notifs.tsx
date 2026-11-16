@@ -5,15 +5,16 @@
 import { nickOf, profOk } from "@/lib/nick";
 import { LOGROS, TIER, goodTier } from "@/components/logros";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, CalendarClock, CalendarPlus, CheckCheck, Eye, Heart, Trophy, UserPlus, MessageSquare, Shield, Sparkles, TrendingDown, TrendingUp, type LucideIcon } from "lucide-react";
+import { Bell, CalendarClock, CalendarPlus, CheckCheck, Eye, Heart, Trophy, UserPlus, MessageSquare, Shield, Sparkles, TrendingDown, TrendingUp, UsersRound, type LucideIcon } from "lucide-react";
 import { FB_ST, fbSt, fbX, useMyFeedback, useTick } from "@/components/fbnotif";
 import { LS, useStoreVersion } from "@/lib/store";
 import { uMap } from "@/lib/units";
 import { emailOf } from "@/lib/domain";
-import { ago, lvl, rankES } from "@/lib/domain";
+import { ago, dmy, lvl, rankES } from "@/lib/domain";
+import { JUMP, jumpNow } from "@/lib/jump";
 import { APP_VERSION, hasNews } from "@/sections/Novedades";
 import { cn } from "@/lib/cn";
-import { calAck, calAll, calMine, fmtWhen, isToday } from "@/lib/calendar";
+import { calAck, calAll, calMine, fmtWhen, isToday, reuLabel, reuList, reuVisible } from "@/lib/calendar";
 
 type N = { id: string; t: number; I: LucideIcon; c: string; title: string; body: string; go: [string, string] };
 type Ev = { id: string; t: number; title: string; body: string; up: boolean };
@@ -65,7 +66,10 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
     { const ack = calAck(me.n), d0 = new Date(); d0.setHours(0, 0, 0, 0);
       for (const e of calAll()) { if (!calMine(e, me.n) || e.at < Date.now() - 3 * 36e5) continue; const tl = e.tipo === "Otro" ? "evento" : e.tipo.toLowerCase();
         if (isToday(e.at) && !ack[e.id]?.r) L.push({ id: "cal:hoy:" + e.id, t: Math.max(+d0, e.t), I: CalendarClock, c: "#f59e0b", title: `ATENCIÓN · hoy hay ${["práctica", "instrucción", "reunión"].includes(tl) ? "una" : "un"} ${tl}`, body: `${e.n} · ${e.ab} · ${fmtWhen(e, { day: false })}`, go: ["cal", "cal"] });
-        else if (e.by !== me.n && Date.now() - e.t < 14 * 864e5) L.push({ id: "cal:new:" + e.id, t: e.t, I: CalendarPlus, c: e.col, title: `${e.ab} · nuevo en el calendario`, body: `${e.n} · ${fmtWhen(e)}`, go: ["cal", "cal"] }); } }
+        else if (e.src !== "reu" && e.by !== me.n && Date.now() - e.t < 14 * 864e5) L.push({ id: "cal:new:" + e.id, t: e.t, I: CalendarPlus, c: e.col, title: `${e.ab} · nuevo en el calendario`, body: `${e.n} · ${fmtWhen(e)}`, go: ["cal", "cal"] }); } }
+    /* reuniones nuevas que abrió otro (Supervisores › Reuniones) */
+    for (const r of reuList()) if (r.by !== me.n && Date.now() - r.at < 14 * 864e5 && reuVisible(r))
+      L.push({ id: "reu:" + r.id, t: r.at, I: UsersRound, c: "#ec4899", title: `Se abrió una reunión: ${r.t}`, body: `${reuLabel(r.tpl)} · ${dmy(r.f)}${r.h ? ` · ${r.h} h` : ""} · abierta por ${r.by}`, go: ["sup", "reu"] });
     if (hasNews()) L.push({ id: "ver:" + APP_VERSION, t: lsGet<number>("lspdt.next.verT:" + APP_VERSION, 0) || (lsSet("lspdt.next.verT:" + APP_VERSION, Date.now()), Date.now()), I: Sparkles, c: "#f472b6", title: `Versión ${APP_VERSION} disponible`, body: "Mirá las novedades de la terminal.", go: ["ini", "nov"] });
     return L.sort((a, b) => b.t - a.t).slice(0, 30);
   }, [fb.list, cases, psb, me.n, kEv, ver]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -84,7 +88,7 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
         <div className="scrollbar-thin max-h-[70vh] overflow-y-auto">
           {!items.length ? <p className="px-4 py-10 text-center text-sm text-slate-400">No tenés notificaciones.</p>
             : items.map(x => (
-              <button key={x.id} onClick={() => { setOpen(false); readAll(); go(...x.go); }} className={cn("flex w-full gap-3 border-b border-slate-100 px-4 py-3 text-left transition last:border-0 hover:bg-slate-50 dark:border-slate-800/70 dark:hover:bg-slate-800/50", x.t > seen && "bg-pink-500/[.04]")}>
+              <button key={x.id} onClick={() => { setOpen(false); readAll(); if (x.id.startsWith("reu:")) { JUMP.reu = x.id.slice(4); jumpNow(); } go(...x.go); }} className={cn("flex w-full gap-3 border-b border-slate-100 px-4 py-3 text-left transition last:border-0 hover:bg-slate-50 dark:border-slate-800/70 dark:hover:bg-slate-800/50", x.t > seen && "bg-pink-500/[.04]")}>
                 <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg" style={{ color: x.c, background: x.c + "1f" }}><x.I className="size-4" /></span>
                 <span className="min-w-0 flex-1"><span className="flex items-center gap-2"><b className="truncate text-[13px]">{x.title}</b>{x.t > seen && <span className="size-1.5 shrink-0 rounded-full bg-pink-500" />}</span>
                   <span className="line-clamp-2 block text-xs text-slate-500 dark:text-slate-400">{x.body}</span><span className="text-[10.5px] text-slate-400">{ago(x.t)}</span></span>

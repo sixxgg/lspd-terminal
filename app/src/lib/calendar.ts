@@ -4,12 +4,13 @@
    Lo personal (leído, anotado, recordatorio) vive en este navegador. */
 import { GEN, UNITS, gMap, isGCo, isGMem, isUCoord, rtdMem, uMap, type UnitKey } from "./units";
 import { LS, ME_ROLES } from "./store";
-import { divAb, findAgent } from "./domain";
+import { divAb, findAgent, lvl } from "./domain";
+import { PROF } from "./nick";
 import { htmlToDc } from "./richtext";
 
 export const CAL_TIPOS = ["Práctica", "Instrucción", "Evento", "Reunión", "Operativo", "Otro"] as const;
 export type CalEv = { id: string; t: number; by: string; n: string; tipo: string; at: number; cre: string; desc?: string; ban?: boolean; d: string; pub?: boolean };
-export type CalItem = CalEv & { src: "cal" | "ins" | "pub"; dn: string; ab: string; col: string; imp?: string[] };
+export type CalItem = CalEv & { src: "cal" | "ins" | "pub" | "reu"; dn: string; ab: string; col: string; imp?: string[] };
 
 /* divisiones con calendario: id → nombre completo */
 const CAL_DIVS: [string, string][] = [
@@ -46,17 +47,28 @@ export function calAll(): CalItem[] {
       imp: [...x.ins.map(i => i.n), ...x.imp.map(i => i.n)], ...deco(id) });
   }
   for (const e of LS.ro<CalEv[]>(PUB_KEY, [])) if (e && e.at && !seen.has(e.id)) { seen.add(e.id); out.push({ ...e, src: "pub", pub: true, ...deco(e.d || "asb") }); }
+  /* reuniones de Supervisores: salen solas del índice de reuniones (si se borra la reunión, desaparece del calendario) */
+  for (const r of reuList()) if (reuVisible(r)) out.push({ id: "reu:" + r.id, t: r.at, by: r.by, n: r.t, tipo: "Reunión", at: at(r.f, r.h || ""), cre: r.by, d: "sup", src: "reu",
+    desc: `${REU_T[r.tpl] || "Reunión"} colaborativa en Supervisores › Reuniones.${r.secs?.length ? `<br>Temas: ${r.secs.slice(0, 12).map(x => x.replace(/[<>&]/g, "")).join(" · ")}` : ""}`,
+    dn: REU_T[r.tpl] || "Supervisión", ab: "SUP", col: REU_C[r.tpl] || "#ec4899" });
   return out.sort((a, b) => a.at - b.at);
 }
+/* reuniones (Supervisores › Reuniones): quién las ve y cómo se nombran */
+type ReuIdx = { id: string; tpl: string; t: string; f: string; h?: string; by: string; at: number; secs: string[]; closed?: boolean };
+const REU_T: Record<string, string> = { brief: "Briefing", sgt: "Reunión de sargentos", po3: "Reunión PO III y III+", libre: "Reunión" };
+const REU_C: Record<string, string> = { brief: "#3b82f6", sgt: "#ec4899", po3: "#10b981", libre: "#64748b" };
+export const reuList = () => LS.ro<ReuIdx[]>("lspdt.reuniones", []).filter(r => r && r.id && r.f);
+export const reuVisible = (r: ReuIdx) => { const l = lvl(findAgent(PROF.me)?.r); return !!ME_ROLES.admin || l >= 6 || (r.tpl === "po3" && l >= 3); };
+export const reuLabel = (tpl: string) => REU_T[tpl] || "Reunión";
 const shortAb = (id: string, ab: string) => ({ md: "METRO", asd: "A.S.D", k9: "K-9", psb: "PSB", rtd: "RTD" } as Record<string, string>)[id] || ab;
 
 /* ¿me toca? eventos de mis divisiones, instrucciones donde figuro y lo abierto a todos */
-export const calMine = (e: CalItem, n: string) => e.src === "pub" || (e.src === "ins" ? !!e.imp?.includes(n) : calMem(e.d, n));
+export const calMine = (e: CalItem, n: string) => e.src === "pub" || e.src === "reu" || (e.src === "ins" ? !!e.imp?.includes(n) : calMem(e.d, n));
 
 /* fechas */
 export const dayKey = (t: number) => { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
 export const isToday = (t: number) => dayKey(t) === dayKey(Date.now());
-export const hasTime = (e: CalItem) => { const d = new Date(e.at); return e.src !== "ins" || d.getHours() + d.getMinutes() > 0; };
+export const hasTime = (e: CalItem) => { const d = new Date(e.at); return (e.src !== "ins" && e.src !== "reu") || d.getHours() + d.getMinutes() > 0; };
 export const fmtWhen = (e: CalItem, o: { day?: boolean } = {}) => {
   const d = new Date(e.at), day = d.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
   const h = hasTime(e) ? d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) + " h" : "";

@@ -54,7 +54,7 @@ export function EvModal({ e, onClose }: { e: CalItem | null; onClose: () => void
     <Modal open onClose={onClose} size="md" icon={<CalendarDays />} title={e.n} desc={`${e.tipo} · ${e.dn}`}
       footer={<>
         <Button variant="ghost" icon={<Copy />} className="mr-auto" onClick={() => void copy(calText(e, e.ab))}>Comunicado para Discord</Button>
-        {e.src !== "ins" && (calOwn(e, me.n) || (e.pub ? calPubCan(me.n) : calCan(e.d, me.n))) && <Button variant="ghost" className="text-red-600 dark:text-red-400" icon={<Trash2 />} aria-label="Borrar evento" onClick={async () => {
+        {e.src !== "ins" && e.src !== "reu" && (calOwn(e, me.n) || (e.pub ? calPubCan(me.n) : calCan(e.d, me.n))) && <Button variant="ghost" className="text-red-600 dark:text-red-400" icon={<Trash2 />} aria-label="Borrar evento" onClick={async () => {
           if (!(await confirm(`¿Borrar «${e.n}» del calendario?`, { danger: true }))) return;
           const k = e.pub ? PUB_KEY : calKey(e.d); LS.setJSON(k, LS.json<CalEv[]>(k, []).filter(x => x.id !== e.id)); if (e.ban) LS.del(banKey(e.id)); toast("Evento borrado"); onClose(); }} />}
         {e.at > Date.now() && <Button variant="outline" icon={ack.at ? <BellOff /> : <Bell />} onClick={() => calSetAck(me.n, e.id, { at: ack.at ? 0 : remindAt })}>{ack.at ? "Quitar recordatorio" : "Recordármelo"}</Button>}
@@ -64,7 +64,7 @@ export function EvModal({ e, onClose }: { e: CalItem | null; onClose: () => void
         <Info i={<CalendarDays />} k="Cuándo (tu hora)">{fmtWhen(e)}</Info>
         <Info i={<UserRound />} k="Creador del evento">{e.cre || "—"}</Info>
         <Info i={<MapPin />} k="División">{e.dn}</Info>
-        <Info i={<Globe2 />} k="Para">{e.pub ? "Todo el departamento" : e.src === "ins" ? "Instructores e implicados" : `Integrantes de ${e.ab}`}</Info>
+        <Info i={<Globe2 />} k="Para">{e.pub ? "Todo el departamento" : e.src === "ins" ? "Instructores e implicados" : e.src === "reu" ? (e.dn.includes("PO III") ? "Supervisores y PO III / III+" : "Supervisores") : `Integrantes de ${e.ab}`}</Info>
       </div>
       {hasTime(e) && <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[#313338] px-3 py-2 font-mono text-xs text-slate-200">
         <span className="text-slate-400">Discord</span><code className="rounded bg-black/30 px-1.5 py-0.5">{`<t:${u}:F>`}</code><code className="rounded bg-black/30 px-1.5 py-0.5">{`<t:${u}:R>`}</code>
