@@ -5,7 +5,7 @@
    Índice en lspdt.reuniones; cada parte en su propia clave (lspdt.reu.<id>.e.<parte>) para que nadie pise a nadie.
    Los aportes del formato anterior (lspdt.reu.<id>.<agente>) se muestran como partes. */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, CalendarDays, CheckCircle2, ChevronDown, ChevronUp, X, ClipboardList, FileText, Hash, Lock, LockOpen, MessageSquarePlus, Pencil, Plus, Send, Trash2, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, Link2, CheckCircle2, ChevronDown, ChevronUp, X, ClipboardList, FileText, Hash, Lock, LockOpen, MessageSquarePlus, Pencil, Plus, Send, Trash2, Users } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input } from "@/components/ui";
 import { AgentPicker, Avatar } from "@/components/agents";
 import { DiscordOutput } from "@/components/output";
@@ -193,6 +193,7 @@ function Detalle({ r, onBack, onSave, onDel }: { r: Reu; onBack: () => void; onS
           <div className="min-w-0 flex-1"><p className="flex items-center gap-2"><span className="rounded-full px-2 py-0.5 text-[10.5px] font-bold" style={{ background: T.c + "1f", color: T.c }}>{T.l}</span>{r.closed && <Badge c="#64748b" I={Lock} t="Cerrada" />}</p>
             <h2 className="mt-1 truncate text-lg font-bold">{r.t}</h2><p className="text-[12px] text-slate-500">{dmy(r.f)}{r.h ? ` · ${r.h} h` : ""} · abierta por {r.by} · {P.length} parte{P.length === 1 ? "" : "s"}</p></div>
           <span className="flex -space-x-2">{W.map(n => <span key={n} title={n} className="rounded-full ring-2 ring-white dark:ring-slate-900"><Avatar n={n} size={28} /></span>)}</span>
+          <Button size="sm" variant="ghost" icon={<Link2 />} title="Copiar el link de esta reunión para pasarlo a otros sargentos" onClick={() => { const u = `${location.origin}/next/?ir=reu:${r.id}`; void navigator.clipboard?.writeText(u).then(() => toast("Link de la reunión copiado"), () => toast(u)); }}>Copiar link</Button>
           {boss && <Button size="sm" variant={r.closed ? "outline" : "ghost"} icon={r.closed ? <LockOpen /> : <Lock />} onClick={() => { onSave({ ...r, closed: !r.closed }); toast(r.closed ? "Reunión reabierta" : "Reunión cerrada: ya no se pueden agregar partes"); }}>{r.closed ? "Reabrir" : "Cerrar"}</Button>}
           {boss && <Button size="sm" variant="ghost" icon={<Trash2 />} onClick={async () => { if (await confirm(`¿Borrar «${r.t}» con todas sus partes?`, { danger: true, ok: "Borrar" })) onDel(); }}>Borrar</Button>}
         </div>

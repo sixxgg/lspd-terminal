@@ -30,6 +30,7 @@ import { prevGet, prevStop } from "./lib/preview";
 import { Eye } from "lucide-react";
 import { goodTier, stampLogros } from "./components/logros";
 import { confetti } from "./lib/confetti";
+import { JUMP, jumpNow } from "./lib/jump";
 import { ACC, GUEST, LS, ME_ROLES, PREV, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
 import { emailOf, findAgent, getRoster, rankES } from "./lib/domain";
 import { useFeedback } from "./components/feedback";
@@ -107,7 +108,10 @@ function Main() {
   useEffect(() => { storeHooks(toast, lost); }, [toast, lost]);
   /* enlace directo desde Discord (?ir=six-not): abre six en Notificaciones */
   useEffect(() => { if (!me) return; const ir = new URLSearchParams(location.search).get("ir"); if (!ir) return;
-    if (ir === "six-not" && ME_ROLES.six) setNav({ a: "six", s: "not" }); history.replaceState(null, "", location.pathname); }, [me]);
+    if (ir === "six-not" && ME_ROLES.six) setNav({ a: "six", s: "not" });
+    /* link de una reunión (?ir=reu:<id>, botón «Copiar link» en Supervisores › Reuniones) */
+    if (ir.startsWith("reu:")) { JUMP.reu = ir.slice(4); setNav({ a: "sup", s: "reu" }); jumpNow(); }
+    history.replaceState(null, "", location.pathname); }, [me]);
   /* six: aviso cuando llega un feedback nuevo (lo trae la sincronización cada 5 s) */
   const fbKnown = useRef<Set<string> | null>(null);
   useEffect(() => { if (!me || !ME_ROLES.six) return; const ks = LS.keys("lspdt.six.fb.");

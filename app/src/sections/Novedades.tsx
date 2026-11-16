@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "4.0.4";
+export const APP_VERSION = "4.0.5";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,9 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "4.0.5", f: "16/11/2026", t: "Link de reuniones", items: [
+    "Supervisores › Reuniones: botón «Copiar link» en cada reunión. Lo pegás en Discord o donde sea y al abrirlo te lleva directo a esa reunión (si no iniciaste sesión, primero te pide entrar).",
+  ] },
   { v: "4.0.4", f: "16/11/2026", t: "Rangos en PSB y 10-80", items: [
     "PSB › Notificación: cualquier miembro puede notificar a cualquier agente, sin importar el rango.",
     "Supervisores › 10-80: los Sargentos II ya no citan a Sargentos I; la única que puede es la Assistant Watch Commander, Evelyn Molina.",
