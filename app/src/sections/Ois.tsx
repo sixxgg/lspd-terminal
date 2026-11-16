@@ -13,7 +13,7 @@ import { syncNow, useJSON } from "@/lib/store";
 import { api } from "@/lib/api";
 import { useMe } from "@/lib/me";
 import { OisGuia, guiaInit } from "./OisGuia";
-import { JUMP } from "@/lib/jump";
+import { JUMP, useJump } from "@/lib/jump";
 import { cn } from "@/lib/cn";
 
 const PSS = ["¿Has disparado? ¿Cuántas veces y en qué dirección?", "¿Hay alguien más herido? ¿Dónde?", "¿Hay sospechosos huidos? Descripción, dirección y armamento.",
@@ -82,6 +82,7 @@ export function OisPanel() {
   const [tab, setTab] = useState<"new" | "list" | "guia">(() => { const j = JUMP.oisTab; JUMP.oisTab = undefined; return j || "new"; }), [x, setX] = useState<Ois>(() => blank(me.n, L)), [open, setOpen] = useState(""), [miss, setMiss] = useState(false), [rev, setRev] = useState<Ois | null>(null), [web, setWeb] = useState<Ois | null>(null), [orig, setOrig] = useState<Ois | null>(null), [vers, setVers] = useState<Ois | null>(null), [gone, setGone] = useState(false);
   /* abrir un expediente en el formulario: se guarda cómo estaba para, al guardar, aplicar solo lo que se cambió */
   const edit = (r: Ois) => { setX(r); setOrig(r); setTab("new"); };
+  useJump("oisTab", v => setTab(v));
   const up = (p: Partial<Ois>) => setX({ ...x, ...p }), ok = steps(x), done = ok.filter(Boolean).length;
   const guns = gunsOf(x), setGuns = (L: Gun[]) => up({ armas: L });
   /* expedientes con el mismo número (de antes del arreglo): el más nuevo pasa al siguiente libre */

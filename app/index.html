@@ -16,6 +16,7 @@
   <body class="bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
     <div id="root"></div>
     <!-- al volver de una actualización: fondo de la pantalla de carga desde el primer instante (sin parpadeo entre las dos páginas) -->
+    <script>try{var b=JSON.parse(localStorage.getItem("lspdt.next.brandCache")||"{}");if(b.fav){var l=document.querySelector('link[rel="icon"]');if(l)l.href=b.fav}}catch(e){}</script>
     <script>try{if(sessionStorage.getItem("lspdt.next.updDone")!=null){var d=document.createElement("div");d.id="preboot";d.style.cssText="position:fixed;inset:0;z-index:999;background:#05070c";document.body.appendChild(d)}}catch(e){}</script>
     <script type="module" src="/src/main.tsx"></script>
   </body>

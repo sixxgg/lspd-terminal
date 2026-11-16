@@ -9,7 +9,7 @@ import { getRoster, norm, rankES, RANK_COLOR, fullDT } from "@/lib/domain";
 import { LS } from "@/lib/store";
 import { getPenal, type Inf } from "@/lib/penal";
 import { calAll } from "@/lib/calendar";
-import { JUMP } from "@/lib/jump";
+import { JUMP, jumpNow } from "@/lib/jump";
 import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
 
@@ -53,7 +53,7 @@ export function CommandK({ go, me }: { go: (a: string, s: string) => void; me: {
     return base.filter(h => { const x = norm(h.txt + " " + h.t); return toks.every(t => x.includes(t)); }).sort((a, b) => sc2(a) - sc2(b)).slice(0, 60); }, [q, sc, all]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => setHi(0), [q, sc]);
   useEffect(() => { lst.current?.querySelector(`[data-i="${hi}"]`)?.scrollIntoView({ block: "nearest" }); }, [hi]);
-  const run = (h: Hit) => { try { localStorage.setItem(RK, JSON.stringify([h.id, ...recent.filter(x => x !== h.id)].slice(0, 6))); } catch { /* */ } h.go(); };
+  const run = (h: Hit) => { jumpNow(); try { localStorage.setItem(RK, JSON.stringify([h.id, ...recent.filter(x => x !== h.id)].slice(0, 6))); } catch { /* */ } h.go(); };
   if (!o) return null;
   const counts = Object.fromEntries(SCOPES.map(k => [k, k ? all.filter(h => h.k === k).length : all.length]));
   let last = "";

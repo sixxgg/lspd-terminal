@@ -1,5 +1,6 @@
 import { DraftZone } from "@/components/drafts";
 import { CommandK } from "@/components/cmdk";
+import { brandSave } from "@/lib/brand";
 import { profOk } from "@/lib/nick";
 import { cipher, onlineIcons, useTabFx } from "@/lib/tabfx";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
@@ -101,6 +102,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
   const net = getNet();
   useEffect(() => setOpen(false), [area.k, sec.k]);
   useEffect(() => { LS.set("lspdt.sec." + area.k, sec.k); }, [area.k, sec.k]);
+  useEffect(brandSave, [LS.get("lspdt.logo"), LS.get("lspdt.logo.upd"), LS.get("lspdt.fav")]); // eslint-disable-line react-hooks/exhaustive-deps
   const { nav: mode } = usePref();
   const logo = <img decoding="async" src={LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className="h-9 w-9 object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />;
   /* estado de sincronización: barra que recorre el indicador cada pocos segundos (guardando: barra continua; sin conexión: rojo) */

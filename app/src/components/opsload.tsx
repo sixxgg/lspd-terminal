@@ -3,6 +3,7 @@
    Se usa mientras se instala y también al volver del reinicio (resume), así se ve como UNA sola carga. */
 import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
+import { updLogo } from "@/lib/brand";
 
 export const OPS_STEPS = ["Descargar el paquete de actualización", "Verificar la firma digital", "Instalar los módulos", "Migrar la configuración local", "Optimizar la terminal", "Reiniciar el sistema"];
 const TIPS = [
@@ -23,7 +24,7 @@ export function OpsLoad({ v, pct, n, inside, resume }: { v: string; pct: number;
     <div role="status" aria-live="polite" aria-label="Actualización en curso" className={`ops ${inside ? "absolute" : "fixed"} inset-0 z-[96] overflow-hidden text-white`}>
       <div aria-hidden className="ops-l" /><div aria-hidden className="ops-r" /><div aria-hidden className="ops-stripes" /><div aria-hidden className="ops-vig" />
       <header className="absolute inset-x-0 top-0 flex items-center gap-3 px-6 py-5 sm:px-10">
-        <img src="/next/logo.svg" alt="" className="size-8 object-contain" />
+        <img src={updLogo()} alt="" className="size-9 object-contain drop-shadow-[0_0_12px_rgba(56,189,248,.35)]" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />
         <p className="font-mono text-[11px] tracking-[.3em] text-white/70">LSPD <span className="text-white/30">//</span> CENTRO DE DESPLIEGUE</p>
         <span className="ops-live ml-auto inline-flex items-center gap-2 rounded-sm border border-white/20 px-2.5 py-1 font-mono text-[10px] tracking-[.25em]"><i className="size-1.5 rounded-full bg-red-500" />OPERATIVO EN CURSO</span>
       </header>

@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.7.3";
+export const APP_VERSION = "3.7.4";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,11 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.7.4", f: "15/11/2026", t: "Buscador más preciso y logo en la actualización", items: [
+    "Ctrl + K: si ya estás en la sección, igual te lleva a la pestaña que elegiste (por ejemplo, de «Procedimiento OIS» a «Guía /me y /do»), y lo mismo con informes, agentes y leyes.",
+    "La pantalla de actualización y el ícono de la pestaña usan el logo de la terminal en vez del de por defecto, incluso antes de que carguen los datos.",
+    "Administración › Marca e imágenes: nuevo casillero «Logo de la pantalla de actualización» (si está vacío, se usa el logo general).",
+  ] },
   { v: "3.7.3", f: "15/11/2026", t: "Radio sin frecuencia", items: [
     "Radio: se quitó la frecuencia, porque la radio ya la pone sola. El mensaje queda «/rlspd 10.03 | 211 - Robo - Calle: | Sujetos: …».",
     "Radio: canal, código y corrección rediseñados con tarjetas más claras.",
