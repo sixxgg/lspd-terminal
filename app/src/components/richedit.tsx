@@ -4,12 +4,12 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import { Bold, EyeOff, ImagePlus, Italic, List, Palette, RemoveFormatting, Strikethrough, Underline, X } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
 import { readImg } from "@/lib/patrol";
-import { FB_COLORS, safeHtml } from "@/lib/richtext";
+import { FB_COLORS, mdToHtml, safeHtml } from "@/lib/richtext";
 import { cn } from "@/lib/cn";
 
 export type RichRef = { el: HTMLDivElement | null; clear: () => void; empty: () => boolean };
-export const RichEditor = forwardRef<RichRef, { init?: string; onChange?: (html: string) => void; placeholder: string; images?: number; className?: string; minH?: string }>(
-  function RichEditor({ init = "", onChange, placeholder, images = 0, className, minH = "min-h-[8rem]" }, ref) {
+export const RichEditor = forwardRef<RichRef, { init?: string; onChange?: (html: string) => void; placeholder: string; images?: number; className?: string; minH?: string; md?: boolean; onSubmit?: () => void }>(
+  function RichEditor({ init = "", onChange, placeholder, images = 0, className, minH = "min-h-[8rem]", md, onSubmit }, ref) {
   const { toast } = useFeedback(), ed = useRef<HTMLDivElement>(null), file = useRef<HTMLInputElement>(null);
   const [pal, setPal] = useState(false), [empty, setEmpty] = useState(!init), [over, setOver] = useState(false);
   const isEmpty = () => { const e = ed.current; return !e || (!e.textContent?.trim() && !e.querySelector("img")); };
@@ -31,7 +31,8 @@ export const RichEditor = forwardRef<RichRef, { init?: string; onChange?: (html:
   useEffect(() => { const e = ed.current; if (!e) return;
     const paste = (ev: ClipboardEvent) => { const fs = [...(ev.clipboardData?.items || [])].filter(i => i.type.startsWith("image/")).map(i => i.getAsFile()!).filter(Boolean);
       if (fs.length && images) { ev.preventDefault(); void addImgs(fs); return; }
-      const h = ev.clipboardData?.getData("text/html"); if (h) { ev.preventDefault(); document.execCommand("insertHTML", false, safeHtml(h)); check(); } };
+      const h = ev.clipboardData?.getData("text/html"); if (h) { ev.preventDefault(); document.execCommand("insertHTML", false, safeHtml(h)); check(); return; }
+      const t = ev.clipboardData?.getData("text/plain"); if (md && t) { ev.preventDefault(); document.execCommand("insertHTML", false, mdToHtml(t)); check(); } };
     e.addEventListener("paste", paste); return () => e.removeEventListener("paste", paste); });
   const tb = "grid size-8 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-brand-600 dark:text-slate-400 dark:hover:bg-slate-800 [&>svg]:size-4";
   return (
@@ -51,7 +52,7 @@ export const RichEditor = forwardRef<RichRef, { init?: string; onChange?: (html:
           {FB_COLORS.map(c => <button key={c} type="button" title={c} onClick={() => { cmd("foreColor", c); setPal(false); }} className="size-6 rounded-full ring-1 ring-black/10 transition hover:scale-110" style={{ background: c }} />)}
           <button type="button" title="Sin color" onClick={() => { cmd("removeFormat"); setPal(false); }} className="grid size-6 place-items-center rounded-full ring-1 ring-slate-300 dark:ring-slate-600"><X className="size-3" /></button></div>}
       </div>
-      <div ref={ed} contentEditable role="textbox" aria-multiline aria-label={placeholder} onInput={check} data-ph={placeholder}
+      <div ref={ed} contentEditable role="textbox" aria-multiline aria-label={placeholder} onInput={check} data-ph={placeholder} onKeyDown={e => { if (onSubmit && e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); onSubmit(); } }}
         onDragOver={e => { if (images && [...e.dataTransfer.items].some(i => i.kind === "file")) { e.preventDefault(); setOver(true); } }} onDragLeave={() => setOver(false)}
         onDrop={e => { if (images && e.dataTransfer.files.length) { e.preventDefault(); setOver(false); void addImgs(e.dataTransfer.files); } }}
         className={cn("fb-rich relative max-h-[60vh] overflow-y-auto px-4 py-3 text-sm leading-relaxed outline-none", minH, empty && "fb-empty", over && "bg-brand-50/60 dark:bg-brand-500/5")} />

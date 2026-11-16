@@ -1,29 +1,33 @@
-/* Reuniones colaborativas (Supervisores): se abre una reunión desde una plantilla (Briefing, Reunión de sargentos,
-   Reunión PO III y III+ o libre) y cada uno carga lo que tiene para decir en cada tema.
-   Lo de los demás queda oculto hasta que envías tu opinión (así nadie se condiciona). Quien la abre puede escribir el acta y cerrarla.
-   Índice en lspdt.reuniones; el aporte de cada uno en su propia clave (lspdt.reu.<id>.<agente>) para que nadie pise a nadie. */
-import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, X, ClipboardList, EyeOff, Lock, LockOpen, Plus, Send, Trash2, Users } from "lucide-react";
-import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Textarea } from "@/components/ui";
+/* Reuniones colaborativas (Supervisores): como un incidente de la tablet donde todos meten mano.
+   Se abre desde una plantilla (Briefing, Reunión de sargentos, Reunión PO III y III+ o libre) que trae los temas iniciales.
+   Cualquiera agrega partes en texto libre (pegar desde Discord, Notion o Docs mantiene el formato), con o sin tema,
+   y cada parte queda firmada con su autor y la hora. Quien la abre escribe el acta y la cierra.
+   Índice en lspdt.reuniones; cada parte en su propia clave (lspdt.reu.<id>.e.<parte>) para que nadie pise a nadie.
+   Los aportes del formato anterior (lspdt.reu.<id>.<agente>) se muestran como partes. */
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, X, ClipboardList, FileText, Hash, Lock, LockOpen, MessageSquarePlus, Pencil, Plus, Send, Trash2, Users } from "lucide-react";
+import { Button, Card, CardBody, CardHeader, Empty, Field, Input } from "@/components/ui";
 import { Avatar } from "@/components/agents";
 import { DiscordOutput } from "@/components/output";
-import { Revisar, fixSpell } from "@/components/revisar";
+import { RichEditor, type RichRef } from "@/components/richedit";
 import { useFeedback } from "@/components/feedback";
-import { dmyToISO, hoyISO, isoToDMY, maskDMY, norm, uid } from "@/lib/domain";
+import { dmyToISO, findAgent, fullDT, hoyISO, isoToDMY, maskDMY, norm, RANK_COLOR, rankES, uid } from "@/lib/domain";
+import { htmlToDc, mdToHtml, richOf, safeHtml } from "@/lib/richtext";
 import { LS, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { cn } from "@/lib/cn";
 
 type Reu = { id: string; tpl: string; t: string; f: string; by: string; at: number; secs: string[]; closed?: boolean; acta?: string };
 type Ap = { n: string; at: number; s: Record<string, string> };
-const IDX = "lspdt.reuniones", apKey = (id: string, n: string) => `lspdt.reu.${id}.${norm(n).replace(/[^a-z0-9]/g, "")}`;
+/* parte del documento: autor, hora, tema (opcional) y texto con formato */
+type Part = { id: string; n: string; at: number; html: string; tema?: string; ed?: number };
+const IDX = "lspdt.reuniones", pKey = (id: string, pid: string) => `lspdt.reu.${id}.e.${pid}`;
 const TPL: Record<string, { l: string; c: string; d: string; secs: string[] }> = {
   brief: { l: "Briefing", c: "#3b82f6", d: "Antes del servicio: novedades, situación y objetivos", secs: ["Novedades del turno", "Situación y alerta táctica", "Objetivos del servicio", "Asignación de unidades", "Recordatorios"] },
   sgt: { l: "Reunión de sargentos", c: "#ec4899", d: "Ascensos, seguimiento de agentes, coordinación y normativa", secs: ["Ascensos", "Ascensos futuros (en valoración)", "Vigilancia", "Coordinación con otros departamentos", "Registro de patrullas", "Usos de la fuerza", "Normativa y MDP", "Otros temas"] },
   po3: { l: "Reunión PO III y III+", c: "#10b981", d: "Oficiales de referencia: patrulla, apoyo a la supervisión y formación", secs: ["Desempeño de los patrulleros", "Apoyo a la supervisión", "Formación e instrucciones", "Propuestas", "Dudas"] },
   libre: { l: "Libre", c: "#64748b", d: "Temas a elección", secs: ["Temas"] },
 };
-const GEN = "Otros temas que traigo";
 const dmy = (iso: string) => isoToDMY(iso) || iso;
 
 /* acta de la reunión de sargentos del 15/11/2026 (la primera, para tenerla a mano) */
@@ -45,36 +49,44 @@ const SEED: Reu = { id: "sgt-20261115", tpl: "sgt", t: "Reunión de sargentos", 
   "## Información falsa", "No dar información falsa: lo correcto es lo que dice el MDP. Ante la duda, consultar el MDP.",
 ].join("\n") };
 
-const apsOf = (id: string) => LS.keys(`lspdt.reu.${id}.`).map(k => LS.ro<Ap | null>(k, null)).filter(Boolean) as Ap[];
+/* todas las partes de una reunión (las nuevas y las del formato anterior), en orden */
+function partsOf(id: string): (Part & { k: string })[] {
+  const out: (Part & { k: string })[] = [];
+  for (const k of LS.keys(`lspdt.reu.${id}.`)) {
+    if (k.includes(".e.")) { const p = LS.ro<Part | null>(k, null); if (p) out.push({ ...p, k }); continue; }
+    const a = LS.ro<Ap | null>(k, null); if (a?.s) Object.entries(a.s).forEach(([t, v], i) => v && out.push({ id: `${k}:${i}`, k, n: a.n, at: a.at + i, html: richOf(v), tema: t === "Otros temas que traigo" ? "" : t }));
+  }
+  return out.sort((a, b) => a.at - b.at);
+}
+const whoOf = (L: Part[]) => [...new Set(L.map(p => p.n))];
 
 export function Reuniones() {
   useStoreVersion();
-  const me = useMe(), [L, setL] = useJSON<Reu[]>(IDX, []), [sel, setSel] = useState(""), [nueva, setNueva] = useState(false);
+  const [L, setL] = useJSON<Reu[]>(IDX, []), [sel, setSel] = useState(""), [nueva, setNueva] = useState(false);
   /* la primera reunión (acta del 15/11) se agrega una sola vez */
   useEffect(() => { if (!LS.get("lspdt.reuSeed") && !L.some(x => x.id === SEED.id)) { setL([SEED, ...L]); LS.set("lspdt.reuSeed", "1"); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const cur = L.find(x => x.id === sel);
-  if (cur) return <Detalle r={cur} onBack={() => setSel("")} onSave={r => setL(L.map(x => (x.id === r.id ? r : x)))} onDel={() => { apsOf(cur.id).forEach(a => LS.del(apKey(cur.id, a.n))); setL(L.filter(x => x.id !== cur.id)); setSel(""); }} />;
+  if (cur) return <Detalle r={cur} onBack={() => setSel("")} onSave={r => setL(L.map(x => (x.id === r.id ? r : x)))} onDel={() => { LS.keys(`lspdt.reu.${cur.id}.`).forEach(k => LS.del(k)); setL(L.filter(x => x.id !== cur.id)); setSel(""); }} />;
   const S = L.slice().sort((a, b) => b.f.localeCompare(a.f) || b.at - a.at);
   return (
     <div className="space-y-4">
       <Card className="flex flex-wrap items-center gap-3 p-4">
         <span className="grid size-10 place-items-center rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-300"><Users className="size-5" /></span>
-        <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Reuniones colaborativas</p><p className="text-[12.5px] text-slate-500">Cada uno carga lo suyo. Lo de los demás se ve recién cuando enviás tu opinión.</p></div>
+        <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Reuniones colaborativas</p><p className="text-[12.5px] text-slate-500">Un documento abierto para todos: cada uno suma lo suyo (se puede pegar con formato) y queda firmado con su nombre.</p></div>
         <Button icon={<Plus />} onClick={() => setNueva(!nueva)}>Nueva reunión</Button>
       </Card>
       {nueva && <Nueva onCreate={r => { setL([r, ...L]); setNueva(false); setSel(r.id); }} />}
       {!S.length ? <Card><Empty icon={<ClipboardList />} title="Todavía no hay reuniones" desc="Abrí una desde una plantilla con «Nueva reunión»." /></Card> : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{S.map(r => { const T = TPL[r.tpl] || TPL.libre, A = apsOf(r.id), mine = A.some(a => a.n === me.n); return (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{S.map(r => { const T = TPL[r.tpl] || TPL.libre, P = partsOf(r.id), W = whoOf(P), last = P[P.length - 1]; return (
           <button key={r.id} onClick={() => setSel(r.id)} className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/60">
             <span className="absolute inset-y-0 left-0 w-1" style={{ background: T.c }} />
             <span className="flex items-center gap-2"><span className="rounded-full px-2 py-0.5 text-[10.5px] font-bold" style={{ background: T.c + "1f", color: T.c }}>{T.l}</span>
-              <span className="ml-auto text-[11.5px] tabular-nums text-slate-400">{dmy(r.f)}</span></span>
+              {r.closed && <Badge c="#64748b" I={Lock} t="Cerrada" />}<span className="ml-auto text-[11.5px] tabular-nums text-slate-400">{dmy(r.f)}</span></span>
             <b className="mt-2 block truncate text-[15px]">{r.t}</b>
-            <span className="mt-0.5 block text-[12px] text-slate-500">Abierta por {r.by} · {r.secs.length} temas</span>
+            <span className="mt-0.5 block text-[12px] text-slate-500">Abierta por {r.by} · {r.secs.length} temas{r.acta?.trim() ? " · con acta" : ""}</span>
             <span className="mt-3 flex items-center gap-2">
-              <span className="flex -space-x-2">{A.slice(0, 5).map(a => <span key={a.n} className="rounded-full ring-2 ring-white dark:ring-slate-900"><Avatar n={a.n} size={24} /></span>)}</span>
-              <span className="text-[11.5px] text-slate-500">{A.length ? `${A.length} aporte${A.length > 1 ? "s" : ""}` : "Sin aportes"}</span>
-              <span className="ml-auto">{r.closed ? <Badge c="#64748b" I={Lock} t="Cerrada" /> : mine ? <Badge c="#10b981" I={CheckCircle2} t="Opinaste" /> : <Badge c="#f59e0b" I={EyeOff} t="Falta tu opinión" />}</span>
+              <span className="flex -space-x-2">{W.slice(0, 5).map(n => <span key={n} className="rounded-full ring-2 ring-white dark:ring-slate-900"><Avatar n={n} size={24} /></span>)}</span>
+              <span className="min-w-0 truncate text-[11.5px] text-slate-500">{P.length ? `${P.length} parte${P.length > 1 ? "s" : ""} · última de ${last.n}` : "Todavía sin partes"}</span>
             </span>
           </button>); })}</div>)}
     </div>);
@@ -133,18 +145,28 @@ function Temas({ list, base, onChange }: { list: string[]; base: string[]; onCha
 
 function Detalle({ r, onBack, onSave, onDel }: { r: Reu; onBack: () => void; onSave: (r: Reu) => void; onDel: () => void }) {
   useStoreVersion();
-  const me = useMe(), { toast, confirm } = useFeedback(), T = TPL[r.tpl] || TPL.libre, A = apsOf(r.id), mine = A.find(a => a.n === me.n);
-  const [edit, setEdit] = useState(!mine && !r.closed), [s, setS] = useState<Record<string, string>>(mine?.s || {}), [acta, setActa] = useState(r.acta || "");
-  const SECS: string[] = r.secs.includes(GEN) ? r.secs : [...r.secs, GEN], [nt, setNt] = useState("");
-  const boss = r.by === me.n || me.l >= 7 || me.admin, see = !!mine || !!r.closed;
-  const myTxt = SECS.filter(x => s[x]?.trim()).map(x => `**${x}:** ${s[x].trim()}`).join("\n");
-  const send = () => { const c = Object.fromEntries(Object.entries(s).map(([k, v]) => [k, v.trim()]).filter(([, v]) => v));
-    if (!Object.keys(c).length) { toast("Escribí al menos un tema", "err"); return; }
-    LS.setJSON(apKey(r.id, me.n), { n: me.n, at: Date.now(), s: c }); setEdit(false); toast(mine ? "Aporte actualizado" : "Opinión enviada · ya podés ver la de los demás"); };
-  const out = [`# 📋 ${r.t} · ${dmy(r.f)}`, `-# ${T.l} · abierta por ${r.by}${A.length ? ` · aportes de ${A.map(a => a.n).join(", ")}` : ""}`, "",
-    ...(r.acta?.trim() ? [r.acta.trim(), ""] : []),
-    ...(A.length ? ["## 🗣️ Aportes", ...SECS.flatMap(x => { const v = A.filter(a => a.s[x]); return v.length ? [`### ${x}`, ...v.map(a => `- **${a.n}:** ${a.s[x]}`), ""] : []; })] : []),
-  ].join("\n").trim();
+  const me = useMe(), { toast, confirm } = useFeedback(), T = TPL[r.tpl] || TPL.libre, P = partsOf(r.id), W = whoOf(P);
+  const boss = r.by === me.n || me.l >= 7 || me.admin;
+  const [tema, setTema] = useState(""), [f, setF] = useState(""), [nt, setNt] = useState(""), [edit, setEdit] = useState(""), [actaEd, setActaEd] = useState(false), [acta, setActa] = useState(r.acta || "");
+  const ed = useRef<RichRef>(null), [kEd, setKEd] = useState(0), DK = `lspdt.next.reuDraft.${r.id}`;
+  const draft = () => { try { return localStorage.getItem(DK) || ""; } catch { return ""; } };
+  const [empty, setEmpty] = useState(() => !draft());
+  const cnt = (t: string) => P.filter(p => (p.tema || "") === t).length;
+  const V = f === "" ? P : P.filter(p => (p.tema || "") === (f === "__" ? "" : f));
+  const publish = () => { const el = ed.current?.el; if (!el || ed.current?.empty()) { toast("Escribí o pegá algo primero", "err"); return; }
+    const id = uid(); LS.setJSON(pKey(r.id, id), { id, n: me.n, at: Date.now(), html: safeHtml(el.innerHTML), ...(tema ? { tema } : {}) } satisfies Part);
+    try { localStorage.removeItem(DK); } catch { /* */ } ed.current?.clear(); setKEd(k => k + 1); setEmpty(true); toast("Parte agregada a la reunión"); };
+  const addTema = () => { const t = nt.trim().replace(/\s+/g, " "); if (!t) return; if (r.secs.some(x => norm(x) === norm(t))) { setTema(r.secs.find(x => norm(x) === norm(t))!); setNt(""); return; }
+    const T2 = t.charAt(0).toUpperCase() + t.slice(1); onSave({ ...r, secs: [...r.secs, T2] }); setTema(T2); setNt(""); toast(`Tema «${T2}» agregado`); };
+  /* documento para copiar: acta, después las partes por tema (en el orden de la reunión) y al final las generales */
+  const out = useMemo(() => { const grp = [...r.secs, ""].map(t => [t, P.filter(p => (p.tema || "") === t)] as const).filter(([, L]) => L.length);
+    return [`# 📋 ${r.t} · ${dmy(r.f)}`, `-# ${T.l} · abierta por ${r.by}${W.length ? ` · participaron ${W.join(", ")}` : ""}`, "",
+      ...(r.acta?.trim() ? ["## 🗒️ Acta", htmlToDc(mdToHtml(r.acta)), ""] : []),
+      ...grp.flatMap(([t, L]) => [`## ${t || "General"}`, ...L.flatMap(p => [`**${p.n}** · <t:${Math.floor(p.at / 1000)}:f>`, htmlToDc(p.html), ""])]),
+    ].join("\n").replace(/\n{3,}/g, "\n\n").trim(); }, [r, P, W, T]);
+  const chip = (k: string, l: string, n: number, on: boolean, onClick: () => void) => (
+    <button key={k || "_"} type="button" onClick={onClick} className={cn("inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition", on ? "border-transparent text-white" : "border-slate-200 text-slate-500 hover:border-slate-300 dark:border-slate-700")}
+      style={on ? { background: T.c } : undefined}>{l}{n > 0 && <span className={cn("rounded-full px-1.5 text-[10px] tabular-nums", on ? "bg-white/25" : "bg-slate-100 dark:bg-slate-800")}>{n}</span>}</button>);
   return (
     <div className="space-y-4">
       <Card className="overflow-hidden">
@@ -152,53 +174,79 @@ function Detalle({ r, onBack, onSave, onDel }: { r: Reu; onBack: () => void; onS
         <div className="flex flex-wrap items-center gap-3 p-4">
           <Button variant="ghost" size="sm" icon={<ArrowLeft />} onClick={onBack}>Reuniones</Button>
           <div className="min-w-0 flex-1"><p className="flex items-center gap-2"><span className="rounded-full px-2 py-0.5 text-[10.5px] font-bold" style={{ background: T.c + "1f", color: T.c }}>{T.l}</span>{r.closed && <Badge c="#64748b" I={Lock} t="Cerrada" />}</p>
-            <h2 className="mt-1 truncate text-lg font-bold">{r.t}</h2><p className="text-[12px] text-slate-500">{dmy(r.f)} · abierta por {r.by}</p></div>
-          <span className="flex items-center gap-2"><span className="flex -space-x-2">{A.map(a => <span key={a.n} title={a.n} className="rounded-full ring-2 ring-white dark:ring-slate-900"><Avatar n={a.n} size={28} /></span>)}</span>
-            <span className="text-[12px] text-slate-500">{A.length} aporte{A.length === 1 ? "" : "s"}</span></span>
-          {boss && <Button size="sm" variant="ghost" icon={<Trash2 />} onClick={async () => { if (await confirm(`¿Borrar «${r.t}» con todos sus aportes?`, { danger: true, ok: "Borrar" })) onDel(); }}>Borrar</Button>}
+            <h2 className="mt-1 truncate text-lg font-bold">{r.t}</h2><p className="text-[12px] text-slate-500">{dmy(r.f)} · abierta por {r.by} · {P.length} parte{P.length === 1 ? "" : "s"}</p></div>
+          <span className="flex -space-x-2">{W.map(n => <span key={n} title={n} className="rounded-full ring-2 ring-white dark:ring-slate-900"><Avatar n={n} size={28} /></span>)}</span>
+          {boss && <Button size="sm" variant={r.closed ? "outline" : "ghost"} icon={r.closed ? <LockOpen /> : <Lock />} onClick={() => { onSave({ ...r, closed: !r.closed }); toast(r.closed ? "Reunión reabierta" : "Reunión cerrada: ya no se pueden agregar partes"); }}>{r.closed ? "Reabrir" : "Cerrar"}</Button>}
+          {boss && <Button size="sm" variant="ghost" icon={<Trash2 />} onClick={async () => { if (await confirm(`¿Borrar «${r.t}» con todas sus partes?`, { danger: true, ok: "Borrar" })) onDel(); }}>Borrar</Button>}
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 px-4 py-2.5 dark:border-slate-800"><Hash className="size-3.5 text-slate-400" />
+          {chip("", "Todo", P.length, f === "", () => setF(""))}
+          {r.secs.map(t => chip(t, t, cnt(t), f === t, () => setF(f === t ? "" : t)))}
+          {cnt("") > 0 && chip("__", "General", cnt(""), f === "__", () => setF(f === "__" ? "" : "__"))}
         </div>
       </Card>
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <div className="space-y-4">
-          {r.acta?.trim() && !boss && <Card><CardHeader icon={<ClipboardList />} title="Acta" /><CardBody><pre className="whitespace-pre-wrap font-sans text-[13px] leading-relaxed text-slate-700 dark:text-slate-200">{r.acta}</pre></CardBody></Card>}
-          {!r.closed && (edit ? (
-            <Card>
-              <CardHeader icon={<Send />} title={mine ? "Editar mi aporte" : "Mi opinión"} desc={mine ? undefined : "Lo de los demás se desbloquea cuando la envíes."} />
-              <CardBody>
-                {SECS.map(x => <Field key={x} label={x} hint={x === GEN ? "(lo que querés plantear aunque no esté en la lista)" : undefined}><Textarea rows={x === GEN ? 4 : 2} value={s[x] || ""} onChange={e => setS(o => ({ ...o, [x]: e.target.value }))} placeholder={x === GEN ? "Temas, propuestas o casos que vas a traer a la reunión…" : "Lo que tengas para decir (o dejalo vacío)…"} /></Field>)}
-                <div className="flex gap-2 rounded-xl border border-dashed border-slate-300 p-2 dark:border-slate-700"><Input value={nt} onChange={e => setNt(e.target.value)} placeholder="Proponer un tema nuevo para todos…" className="h-9 flex-1" />
-                  <Button size="sm" variant="outline" icon={<Plus />} disabled={!nt.trim() || SECS.some(x => norm(x) === norm(nt))} onClick={() => { onSave({ ...r, secs: [...r.secs.filter(x => x !== GEN), nt.trim()] }); setNt(""); toast("Tema agregado a la reunión"); }}>Agregar</Button></div>
-                <Revisar text={myTxt} onFix={() => setS(o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, fixSpell(v)])))} />
-                <div className="flex justify-end gap-2">{mine && <Button variant="ghost" onClick={() => { setS(mine.s); setEdit(false); }}>Cancelar</Button>}<Button icon={<Send />} onClick={send}>{mine ? "Guardar cambios" : "Enviar mi opinión"}</Button></div>
-              </CardBody>
-            </Card>) : mine && <Card className="flex flex-wrap items-center gap-3 p-3"><CheckCircle2 className="size-5 text-emerald-500" /><p className="flex-1 text-[13px]">Ya enviaste tu opinión.</p><Button size="sm" variant="outline" onClick={() => setEdit(true)}>Editar mi aporte</Button></Card>)}
-          {!see ? (
-            <Card className="relative overflow-hidden p-6 text-center">
-              <div className="pointer-events-none absolute inset-0 select-none p-6 opacity-40 blur-[6px]" aria-hidden>{SECS.slice(0, 4).map(x => <p key={x} className="mb-3 h-3 rounded bg-slate-300 dark:bg-slate-700" />)}</div>
-              <div className="relative"><Lock className="mx-auto size-7 text-slate-400" /><p className="mt-2 font-semibold">{A.length ? `${A.length} aporte${A.length > 1 ? "s" : ""} oculto${A.length > 1 ? "s" : ""}` : "Todavía nadie opinó"}</p>
-                <p className="mt-1 text-[12.5px] text-slate-500">Enviá tu opinión para ver lo que dijeron los demás.</p></div>
-            </Card>
-          ) : SECS.map(x => { const v = A.filter(a => a.s[x]); if (!v.length && (r.closed || !A.length)) return null; return (
-            <Card key={x}><CardHeader icon={<LockOpen />} title={x} desc={v.length ? `${v.length} aporte${v.length > 1 ? "s" : ""}` : "Sin aportes"} />
-              {v.length > 0 && <ul className="divide-y divide-slate-100 dark:divide-slate-800">{v.map(a => (
-                <li key={a.n} className="flex gap-3 px-5 py-3"><Avatar n={a.n} size={30} /><div className="min-w-0 flex-1"><b className="text-[12.5px]">{a.n}{a.n === me.n && <span className="ml-1.5 rounded bg-brand-500/15 px-1 text-[9.5px] font-bold uppercase text-brand-600 dark:text-brand-300">Vos</span>}</b>
-                  <p className="whitespace-pre-wrap text-[13px] text-slate-700 dark:text-slate-200">{a.s[x]}</p></div></li>))}</ul>}
-            </Card>); })}
-        </div>
-        <div className="space-y-4 lg:sticky lg:top-32">
-          {boss && <Card>
-            <CardHeader icon={<ClipboardList />} title="Acta / resumen" desc="Lo que se resolvió. Al cerrar la reunión, todos ven los aportes." />
-            <CardBody>
-              <Textarea rows={8} value={acta} onChange={e => setActa(e.target.value)} placeholder={"## Tema\n- Lo que se resolvió…"} />
-              <Revisar text={acta} onFix={setActa} />
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button variant="outline" onClick={() => { onSave({ ...r, acta }); toast("Acta guardada"); }}>Guardar acta</Button>
-                <Button variant={r.closed ? "outline" : "primary"} icon={r.closed ? <LockOpen /> : <Lock />} onClick={() => { onSave({ ...r, acta, closed: !r.closed }); toast(r.closed ? "Reunión reabierta" : "Reunión cerrada"); }}>{r.closed ? "Reabrir" : "Cerrar reunión"}</Button>
-              </div>
-            </CardBody>
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+        <div className="space-y-3">
+          {/* acta fijada arriba */}
+          {(r.acta?.trim() || boss) && <Card className="overflow-hidden border-l-4" style={{ borderLeftColor: T.c }}>
+            <div className="flex items-center gap-2 px-4 pt-3"><ClipboardList className="size-4" style={{ color: T.c }} /><b className="flex-1 text-[13px]">Acta / resumen</b>
+              {boss && !actaEd && <Button size="sm" variant="ghost" icon={<Pencil />} onClick={() => { setActa(r.acta || ""); setActaEd(true); }}>{r.acta?.trim() ? "Editar" : "Escribir"}</Button>}</div>
+            {actaEd ? <div className="space-y-2 p-4 pt-2"><textarea value={acta} onChange={e => setActa(e.target.value)} rows={10} placeholder={"## Tema\n- Lo que se resolvió…"} className="w-full rounded-xl border border-slate-200 bg-transparent p-3 font-mono text-[12.5px] outline-none focus:border-brand-500 dark:border-slate-700" />
+              <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setActaEd(false)}>Cancelar</Button><Button size="sm" onClick={() => { onSave({ ...r, acta }); setActaEd(false); toast("Acta guardada"); }}>Guardar acta</Button></div></div>
+              : r.acta?.trim() ? <div className="fb-rich px-4 pb-4 pt-1 text-[13.5px] leading-relaxed" dangerouslySetInnerHTML={{ __html: mdToHtml(r.acta) }} />
+              : <p className="px-4 pb-3 text-[12.5px] text-slate-400">Cuando termine la reunión, escribí acá lo que se resolvió.</p>}
           </Card>}
-          {see && <DiscordOutput title={`${r.t} · ${dmy(r.f)}`} text={out} sticky={false} />}
+          {/* partes */}
+          {!V.length ? <Card><Empty icon={<FileText />} title={P.length ? "Nada en este tema" : "Todavía no hay partes"} desc={r.closed ? undefined : "Escribí o pegá abajo lo que quieras tratar en la reunión."} /></Card>
+            : V.map(p => { const a = findAgent(p.n), c = RANK_COLOR[a?.r || ""] || "#64748b", own = p.n === me.n, isNew = p.k.includes(".e."); return (
+              <Card key={p.id} className="overflow-hidden">
+                <div className="flex">
+                  <span className="w-1 shrink-0" style={{ background: c }} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
+                      <Avatar n={p.n} size={28} /><b className="text-[13px]">{p.n}</b>{a && <span className="text-[11px] font-bold" style={{ color: c }}>{rankES(a.r)}</span>}
+                      <span className="text-[11.5px] text-slate-400">· {fullDT(p.at)}{p.ed ? " · editado" : ""}</span>
+                      {p.tema && <span className="rounded-full px-2 py-0.5 text-[10.5px] font-bold" style={{ background: T.c + "1c", color: T.c }}># {p.tema}</span>}
+                      <span className="flex-1" />
+                      {isNew && (own || boss) && edit !== p.id && !r.closed && <>
+                        {own && <button type="button" title="Editar" onClick={() => setEdit(p.id)} className="grid size-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-brand-600 dark:hover:bg-slate-800"><Pencil className="size-3.5" /></button>}
+                        <button type="button" title="Borrar" onClick={async () => { if (await confirm("¿Borrar esta parte?", { danger: true, ok: "Borrar" })) LS.del(p.k); }} className="grid size-7 place-items-center rounded-lg text-slate-400 hover:bg-red-500/10 hover:text-red-500"><Trash2 className="size-3.5" /></button></>}
+                    </div>
+                    {edit === p.id ? <EditPart p={p} onDone={html => { if (html != null) LS.setJSON(p.k, { id: p.id, n: p.n, at: p.at, tema: p.tema, html: safeHtml(html), ed: Date.now() }); setEdit(""); }} />
+                      : <div className="fb-rich px-4 py-3 text-[13.5px] leading-relaxed" dangerouslySetInnerHTML={{ __html: safeHtml(p.html) }} />}
+                  </div>
+                </div>
+              </Card>); })}
+          {/* agregar */}
+          {!r.closed ? <Card className="overflow-hidden ring-1 ring-brand-500/20">
+            <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
+              <MessageSquarePlus className="size-4 text-brand-500" /><b className="text-[13px]">Agregar a la reunión</b>
+              <span className="text-[11.5px] text-slate-400">· como {me.n}</span>
+            </div>
+            <div className="space-y-2.5 p-4">
+              <div className="flex flex-wrap items-center gap-1.5"><span className="text-[11.5px] font-semibold text-slate-500">Tema:</span>
+                {chip("", "General", 0, tema === "", () => setTema(""))}
+                {r.secs.map(t => chip(t, t, 0, tema === t, () => setTema(tema === t ? "" : t)))}
+                <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-slate-300 py-0.5 pl-2 pr-1 dark:border-slate-600"><Plus className="size-3 text-slate-400" />
+                  <input value={nt} onChange={e => setNt(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTema(); } }} placeholder="Nuevo tema…" className="w-28 bg-transparent text-[12px] outline-none placeholder:text-slate-400" /></span>
+              </div>
+              <RichEditor key={kEd} ref={ed} md placeholder="Escribí o pegá lo que quieras sumar: un tema, una lista de requisitos, un caso… El formato se mantiene." minH="min-h-[9rem]" init={draft()} onSubmit={publish}
+                onChange={h => { const e = !!ed.current?.empty(); setEmpty(e); try { if (e) localStorage.removeItem(DK); else localStorage.setItem(DK, h); } catch { /* */ } }} />
+              <div className="flex flex-wrap items-center gap-2"><p className="min-w-0 flex-1 text-[11.5px] text-slate-400">Se publica a tu nombre y lo ven todos al instante · <kbd className="font-mono">Ctrl + Enter</kbd></p>
+                <Button icon={<Send />} disabled={empty} onClick={publish}>Publicar</Button></div>
+            </div>
+          </Card> : <Card className="flex items-center gap-3 p-3 text-[13px] text-slate-500"><Lock className="size-4" />La reunión está cerrada.{boss && " Reabrila para sumar partes."}</Card>}
         </div>
+        <div className="xl:sticky xl:top-32"><DiscordOutput title={`${r.t} · ${dmy(r.f)}`} text={out} sticky={false} /></div>
       </div>
+    </div>);
+}
+
+function EditPart({ p, onDone }: { p: Part; onDone: (html: string | null) => void }) {
+  const ed = useRef<RichRef>(null);
+  return (
+    <div className="space-y-2 p-3">
+      <RichEditor ref={ed} md init={p.html} placeholder="Texto" minH="min-h-[6rem]" onSubmit={() => onDone(ed.current?.el?.innerHTML || "")} />
+      <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => onDone(null)}>Cancelar</Button><Button size="sm" icon={<CheckCircle2 />} onClick={() => { if (ed.current?.empty()) return; onDone(ed.current?.el?.innerHTML || ""); }}>Guardar</Button></div>
     </div>);
 }

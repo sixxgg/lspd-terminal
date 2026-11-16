@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.7.5";
+export const APP_VERSION = "3.8";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,12 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.8", f: "15/11/2026", t: "Reuniones: documento abierto para todos", items: [
+    "Cada reunión ahora es como un incidente de la tablet donde todos meten mano: se escribe o se pega lo que sea (una lista de requisitos de ascenso, un caso, un tema) y se publica firmado con tu nombre y la hora. Ya no hace falta dar una opinión por cada tema ni hay nada oculto.",
+    "Pegar mantiene el formato: desde Discord, Notion, Docs o un bloc de notas se conservan títulos, listas, negritas, cursivas, tachados y citas. También hay barra de formato y Ctrl + Enter para publicar.",
+    "Cada parte se puede asignar a un tema (o dejar en General), filtrar por tema, y editar o borrar la propia. Los temas nuevos se agregan al vuelo.",
+    "El acta queda fijada arriba y el documento completo se copia en formato Discord o web, ordenado por tema y con el autor de cada parte. Lo que escribís sin publicar queda guardado como borrador.",
+  ] },
   { v: "3.7.5", f: "15/11/2026", t: "Reuniones: temas más claros", items: [
     "Al abrir una reunión, los temas de la plantilla se ven como lista numerada (se pueden reordenar o quitar) y abajo se suman los que hayan quedado afuera, uno por vez. Ya no se escribe un tema por línea.",
   ] },
