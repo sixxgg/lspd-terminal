@@ -3,13 +3,13 @@
    Moverse: arrastrar el fondo, la rueda o dos dedos; zoom con Ctrl + rueda, pellizco o los botones. Enlace temporal en vivo para ver sin cuenta.
    Datos: lspdt.board.<ámbito>.<id> y el índice lspdt.boards.<ámbito> (ámbito: gen o una división). */
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPE } from "react";
-import { AlignCenter, AlignLeft, ArrowUpRight, Bold, Circle, Copy, Diamond, Download, Frame, Hand, ImagePlus, Italic, LayoutTemplate, Link2, Loader2, Maximize, Minus, MousePointer2, PenLine, Plus, Presentation, Redo2, Square, StickyNote, Trash2, Type, Underline, Undo2, X, Pencil, Eraser, Lock, Unlock } from "lucide-react";
+import { AlignCenter, AlignLeft, ArrowUpRight, Bold, Circle, Copy, Diamond, Download, Frame, Hand, ImagePlus, Italic, LayoutTemplate, Link2, Loader2, Maximize, Minus, MousePointer2, PenLine, Plus, Presentation, Redo2, Square, StickyNote, Trash2, Type, Underline, Undo2, X, Pencil, Eraser, Lock, Unlock, Star } from "lucide-react";
 import { Button, Card, Empty, Input, Select } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
 import { LS, ME_ROLES, syncNow, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { readImg } from "@/lib/patrol";
-import { uid } from "@/lib/domain";
+import { lvl, uid } from "@/lib/domain";
 import { isRTD, isUMem } from "@/lib/units";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -28,7 +28,7 @@ const BG = "#2a2d33", DOT = "rgba(255,255,255,.09)", FG = "#e5e7eb";
 const NOTE_C = ["#fde68a", "#fbcfe8", "#bfdbfe", "#bbf7d0", "#fed7aa", "#ddd6fe", "#f1f5f9"];
 const LINE_C = ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#e5e7eb", "#9ca3af"];
 const HEAD: [string, number, boolean][] = [["H1", 40, true], ["H2", 30, true], ["H3", 22, true], ["P", 16, false]];
-const SCOPES: [string, string][] = [["gen", "General"], ["md", "METRO"], ["asd", "A.S.D"], ["k9", "K-9"], ["psb", "PSB"], ["rtd", "RTD"], ["udu", "UDU"]];
+const SCOPES: [string, string][] = [["alto", "Mandos"], ["gen", "General"], ["md", "METRO"], ["asd", "A.S.D"], ["k9", "K-9"], ["psb", "PSB"], ["rtd", "RTD"], ["udu", "UDU"]];
 const idxK = (d: string) => `lspdt.boards.${d}`, bK = (d: string, id: string) => `lspdt.board.${d}.${id}`;
 const box = (i: It) => ({ x: Math.min(i.x, i.x + i.w), y: Math.min(i.y, i.y + i.h), w: Math.abs(i.w), h: Math.abs(i.h) });
 const ctr = (i: It) => { const b = box(i); return { x: b.x + b.w / 2, y: b.y + b.h / 2 }; };
@@ -42,8 +42,10 @@ const leftAl = (i: It) => (i.al ? i.al === "l" : i.k === "frame" || i.k === "tex
 const txtCol = (i: It) => (i.k === "note" ? "#1e293b" : i.k === "frame" || i.k === "text" ? i.c : FG);
 const font = (i: It) => `${i.it ? "italic " : ""}${i.bo || i.k === "frame" ? 700 : 500} ${i.fs || 16}px Inter, system-ui, sans-serif`;
 /* las pizarras de la PSB solo las ven sus miembros; las de cada división las edita su gente */
-const canSee = (sc: string, me: string) => sc !== "psb" || isUMem("psb", me);
-const canEd = (sc: string, me: string) => !!ME_ROLES.admin || sc === "gen" || (sc === "rtd" ? isRTD(me) : sc === "udu" ? isUMem("md", me) : isUMem(sc as "md", me));
+/* «Mandos»: pizarras destacadas, solo Detectives y de Sargento II para arriba (el servidor ni siquiera se las manda al resto) */
+const altoOk = (r?: string) => /^Detective/.test(r || "") || lvl(r) >= 7;
+const canSee = (sc: string, me: string, r?: string) => (sc !== "psb" || isUMem("psb", me)) && (sc !== "alto" || altoOk(r));
+const canEd = (sc: string, me: string, r?: string) => sc === "alto" ? altoOk(r) : !!ME_ROLES.admin || sc === "gen" || (sc === "rtd" ? isRTD(me) : sc === "udu" ? isUMem("md", me) : isUMem(sc as "md", me));
 
 /* ---------- plantillas ---------- */
 const N = (x: number, y: number, tx: string, c = NOTE_C[0], w = 180, h = 140): It => ({ id: uid(), k: "note", x, y, w, h, c, tx, fs: 16 });
@@ -100,15 +102,20 @@ export function PizarraArea() {
   useStoreVersion();
   const me = useMe(), { confirm, toast } = useFeedback();
   const [f, setF] = useState(() => LS.get("lspdt.next.pizF") || "all"), [sel, setSel] = useState(() => LS.get("lspdt.next.piz") || ""), [ren, setRen] = useState(""), [nsc, setNsc] = useState("gen");
-  const SC = SCOPES.filter(([k]) => canSee(k, me.n));
+  const SC = SCOPES.filter(([k]) => canSee(k, me.n, me.r));
+  /* primera vez: crea la pizarra de mando «Infraestructura San Andreas» */
+  useEffect(() => { if (!altoOk(me.r) || LS.get(idxK("alto")) != null) return;
+    const m: Meta = { id: uid(), t: "Infraestructura San Andreas", by: me.n, upd: Date.now() };
+    LS.setJSON(bK("alto", m.id), { items: [F(0, 0, 1200, 700, "Infraestructura San Andreas", LINE_C[2])] }); LS.setJSON(idxK("alto"), [m]); }, [me.n, me.r]);
   const all = SC.flatMap(([sc, l]) => LS.json<Meta[]>(idxK(sc), []).map(m => ({ ...m, sc, scl: l })));
   const cur = all.find(b => `${b.sc}:${b.id}` === sel);
   const pick = (v: string) => { setSel(v); LS.set("lspdt.next.piz", v); };
   const setIdx = (sc: string, fn: (L: Meta[]) => Meta[]) => LS.setJSON(idxK(sc), fn(LS.json<Meta[]>(idxK(sc), [])));
   const create = () => { const m: Meta = { id: uid(), t: "Pizarra nueva", by: me.n, upd: Date.now() }; LS.setJSON(bK(nsc, m.id), { items: [] }); setIdx(nsc, L => [...L, m]); pick(`${nsc}:${m.id}`); };
-  if (cur) return <Board key={sel} k={bK(cur.sc, cur.id)} meta={cur} scope={cur.scl} canEdit={canEd(cur.sc, me.n)} onBack={() => pick("")}
+  if (cur) return <Board key={sel} k={bK(cur.sc, cur.id)} meta={cur} scope={cur.scl} canEdit={canEd(cur.sc, me.n, me.r)} onBack={() => pick("")}
     onMeta={p => setIdx(cur.sc, L => L.map(b => (b.id === cur.id ? { ...b, ...p(b) } : b)))} />;
-  const L = all.filter(b => f === "all" || b.sc === f).sort((a, b) => b.upd - a.upd);
+  const L = all.filter(b => (f === "all" ? b.sc !== "alto" : b.sc === f)).sort((a, b) => b.upd - a.upd);
+  const TOP = f === "all" || f === "alto" ? all.filter(b => b.sc === "alto").sort((a, b) => b.upd - a.upd) : [];
   return (
     <div className="space-y-4">
     <div className="beta-hero flex flex-wrap items-center gap-4 rounded-2xl px-5 py-4">
@@ -116,15 +123,29 @@ export function PizarraArea() {
       <div className="min-w-0 flex-1"><h2 className="flex flex-wrap items-center gap-3 text-2xl font-extrabold tracking-tight text-white">Pizarra <span className="beta-big">(BETA)</span></h2>
         <p className="mt-0.5 text-sm text-amber-100/80">Función en prueba: puede tener errores o cambiar. Si algo falla, avisá por Feedback.</p></div>
     </div>
+    {TOP.length > 0 && <div className="rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/[.08] to-transparent p-4">
+      <div className="mb-3 flex flex-wrap items-center gap-2"><Star className="size-4 fill-amber-400 text-amber-400" /><b className="text-sm">Destacadas · Mandos</b>
+        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-600 ring-1 ring-inset ring-amber-500/30 dark:text-amber-300">Detectives · Sargento II y superiores</span></div>
+      <div className="grid gap-3 sm:grid-cols-2">{TOP.map(b => { const v = `${b.sc}:${b.id}`; return (
+        <div key={v} className="group relative overflow-hidden rounded-xl border-2 border-amber-400/60 p-5 shadow-lg shadow-amber-500/10 transition hover:border-amber-300" style={{ background: BG, backgroundImage: `radial-gradient(circle, ${DOT} 1px, transparent 1px)`, backgroundSize: "16px 16px" }}>
+          {ren === v ? <Input autoFocus defaultValue={b.t} onBlur={e => { const t = e.target.value.trim(); if (t) setIdx(b.sc, X => X.map(x => (x.id === b.id ? { ...x, t } : x))); setRen(""); }} onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
+            : <button onClick={() => pick(v)} className="block w-full text-left">
+              <span className="mb-2 inline-flex items-center gap-1 rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-amber-950"><Lock className="size-3" />Mandos</span>
+              <b className="block truncate text-lg text-slate-50">{b.t}</b><small className="text-xs text-slate-400">{b.by} · {new Date(b.upd).toLocaleDateString()}</small></button>}
+          <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition group-hover:opacity-100">
+            <button aria-label="Renombrar" onClick={() => setRen(v)} className="rounded p-1 text-slate-400 hover:text-amber-300"><Pencil className="size-3.5" /></button>
+            {(b.by === me.n || ME_ROLES.admin) && <button aria-label="Eliminar" onClick={async () => { if (await confirm(`¿Eliminar la pizarra «${b.t}»?`, { danger: true })) { LS.del(bK(b.sc, b.id)); setIdx(b.sc, X => X.filter(x => x.id !== b.id)); toast("Pizarra eliminada"); } }} className="rounded p-1 text-slate-400 hover:text-red-500"><Trash2 className="size-3.5" /></button>}</div>
+        </div>); })}</div>
+    </div>}
     <Card className="overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
         <Presentation className="size-4 text-brand-500" /><b className="text-sm">Pizarras ({all.length})</b>
         <div className="flex flex-wrap gap-1">{[["all", "Todas"], ...SC].map(([k, l]) => <button key={k} onClick={() => { setF(k); LS.set("lspdt.next.pizF", k); }} className={cn("rounded-full border px-2.5 py-0.5 text-xs font-semibold transition", f === k ? "border-brand-500 bg-brand-600 text-white" : "border-slate-200 text-slate-500 dark:border-slate-700")}>{l}</button>)}</div>
-        <div className="ml-auto flex items-center gap-2"><Select value={nsc} onChange={e => setNsc(e.target.value)} className="h-8 w-auto py-0 text-xs" aria-label="Dónde se crea">{SC.filter(([k]) => canEd(k, me.n)).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
+        <div className="ml-auto flex items-center gap-2"><Select value={nsc} onChange={e => setNsc(e.target.value)} className="h-8 w-auto py-0 text-xs" aria-label="Dónde se crea">{SC.filter(([k]) => canEd(k, me.n, me.r)).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
           <Button size="sm" icon={<Plus />} onClick={create}>Nueva pizarra</Button></div>
       </div>
-      {!L.length ? <Empty icon={<Presentation />} title="Todavía no hay pizarras" desc="Creá una y elegí una plantilla para arrancar." />
-        : <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">{L.map(b => { const ed = canEd(b.sc, me.n), v = `${b.sc}:${b.id}`; return (
+      {!L.length ? (f === "alto" ? null : <Empty icon={<Presentation />} title="Todavía no hay pizarras" desc="Creá una y elegí una plantilla para arrancar." />)
+        : <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">{L.map(b => { const ed = canEd(b.sc, me.n, me.r), v = `${b.sc}:${b.id}`; return (
           <div key={v} className="group relative rounded-xl border border-slate-700 p-4 transition hover:border-brand-400" style={{ background: BG, backgroundImage: `radial-gradient(circle, ${DOT} 1px, transparent 1px)`, backgroundSize: "16px 16px" }}>
             {ren === v ? <Input autoFocus defaultValue={b.t} onBlur={e => { const t = e.target.value.trim(); if (t) setIdx(b.sc, X => X.map(x => (x.id === b.id ? { ...x, t } : x))); setRen(""); }} onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
               : <button onClick={() => pick(v)} className="block w-full text-left"><span className="mb-1 inline-block rounded bg-white/10 px-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300">{b.scl}</span>

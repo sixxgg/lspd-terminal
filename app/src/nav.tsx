@@ -2,7 +2,7 @@ import { PROF, profOk } from "@/lib/nick";
 import { divVisible } from "@/lib/divisions";
 import type { LucideIcon } from "lucide-react";
 import {
-  CalendarDays, Home, LayoutDashboard, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
+  CalendarDays, Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
   Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint, UserRound, Presentation, UserMinus, RadioTower, UsersRound, Images } from "lucide-react";
 import { GUEST, LS, ME_ROLES } from "./lib/store";
 import { Helicopter } from "./components/icons";
@@ -47,10 +47,7 @@ const RAW_AREAS: Area[] = [
     { k: "equ", l: "Equipamiento de patrullas", d: "Lo que debe llevar cada vehículo", icon: Package, ready: true, min: 8 },
     { k: "perm", l: "Permisos y cuentas", d: "Excepciones de rango y cuentas de la terminal", icon: KeyRound, ready: true, min: 8 },
   ] },
-  { k: "piz", l: "Pizarra", icon: Presentation, min: 0, beta: true, sec: [
-    /* tablero de Miro del departamento: prioritario, solo Detectives y de Sargento II para arriba */
-    { k: "miro", l: "Tablero Miro", d: "Tablero de Miro del departamento · solo Detectives y Sargento II+", icon: LayoutDashboard, ready: true },
-    { k: "piz", l: "Pizarra", d: "Lienzo compartido para planear operativos, mapas mentales y flujos", icon: Presentation, ready: true }] },
+  { k: "piz", l: "Pizarra", icon: Presentation, min: 0, beta: true, sec: [{ k: "piz", l: "Pizarra", d: "Lienzo compartido para planear operativos, mapas mentales y flujos", icon: Presentation, ready: true }] },
   /* galería: la editan six, la administración y quienes habilite Administración › Galería (las fotos se ven en el Inicio) */
   { k: "gal", l: "Galería", icon: Images, min: 0, sec: [{ k: "gal", l: "Galería", d: "Fotos de Fivemanager para el carrusel del Inicio", icon: Images, ready: true }] },
   { k: "rad", l: "Radio", icon: RadioTower, min: 0, sec: [{ k: "rad", l: "Comunicados por radio", d: "10.03 con sujetos y vehículo de huida, por /rlspd o /rsapd", icon: RadioTower, ready: true }] },
@@ -96,5 +93,5 @@ export const menuAreas = (r?: string) => AREAS.filter(a => !a.hidden && canArea(
 /* secciones bloqueadas para ese rango (se muestran con candado) */
 export const lockedOf = (a: Area, r?: string) => (GUEST.on ? [] : a.sec.filter(s => s.min && lvl(r) < s.min));
 /* secciones que ve cada uno dentro de un área (algunas piden más rango que el área) */
-export const secsOf = (a: Area, r?: string) => GUEST.on ? a.sec.filter(s => guestSec(a.k, s.k)) : a.sec.filter(s => (!s.min || lvl(r) >= s.min) && (a.k !== "div" || divVisible(s.l, PROF.me)) && (s.k !== "miro" || /^Detective/.test(r || "") || lvl(r) >= 7)); /* el rango manda también para los administradores */
+export const secsOf = (a: Area, r?: string) => GUEST.on ? a.sec.filter(s => guestSec(a.k, s.k)) : a.sec.filter(s => (!s.min || lvl(r) >= s.min) && (a.k !== "div" || divVisible(s.l, PROF.me))); /* el rango manda también para los administradores */
 

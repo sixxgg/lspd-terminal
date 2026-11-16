@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "4.0.6";
+export const APP_VERSION = "4.0.7";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,8 +13,10 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
-  { v: "4.0.6", f: "16/11/2026", t: "Tablero Miro", items: [
-    "Pizarra › Tablero Miro: el tablero de Miro del departamento dentro de la terminal, con pantalla completa y botón para abrirlo en Miro. Solo lo ven Detectives y de Sargento II para arriba (el link ni siquiera le llega al resto).",
+  { v: "4.0.7", f: "16/11/2026", t: "Pizarras de Mandos", items: [
+    "Pizarra › Mandos: pizarras propias de la terminal, destacadas arriba de todo con borde dorado. Solo las ven y editan Detectives y de Sargento II para arriba (al resto ni siquiera le llegan).",
+    "Primera pizarra de Mandos: «Infraestructura San Andreas». Se crean más eligiendo «Mandos» al lado de «Nueva pizarra».",
+    "Se quitó el tablero de Miro embebido.",
   ] },
   { v: "4.0.5", f: "16/11/2026", t: "Link de reuniones", items: [
     "Supervisores › Reuniones: botón «Copiar link» en cada reunión. Lo pegás en Discord o donde sea y al abrirlo te lleva directo a esa reunión (si no iniciaste sesión, primero te pide entrar).",
