@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.7.2";
+export const APP_VERSION = "3.7.3";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,10 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.7.3", f: "15/11/2026", t: "Radio sin frecuencia", items: [
+    "Radio: se quitó la frecuencia, porque la radio ya la pone sola. El mensaje queda «/rlspd 10.03 | 211 - Robo - Calle: | Sujetos: …».",
+    "Radio: canal, código y corrección rediseñados con tarjetas más claras.",
+  ] },
   { v: "3.7.2", f: "15/11/2026", t: "Buscador global (Ctrl + K) y guía OIS dentro del informe", items: [
     "Ctrl + K (o ⌘ + K) abre un buscador tipo consola, con el fondo desenfocado: secciones y divisiones, informes, agentes, eventos del calendario, robos y artículos de la ley. Se mueve con ↑ ↓, Enter abre, Tab cambia de categoría y recuerda lo último que abriste. También está el botón «Buscar» arriba.",
     "La guía de /me y /do del OIS con fallecido pasó a Informes › Procedimiento OIS con fallecido, como pestaña «Guía /me y /do». Toma al oficial implicado y sus armas (modelo y número de serie) del procedimiento que estás cargando.",
