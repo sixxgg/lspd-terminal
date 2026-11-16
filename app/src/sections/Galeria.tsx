@@ -68,14 +68,14 @@ export function Galeria() {
 }
 
 /* carrusel: fundido + acercamiento leve, pasa cada 5 s y se pausa con el mouse encima */
-function Slider({ fotos, onOpen, tall = true }: { fotos: Foto[]; onOpen: (i: number) => void; tall?: boolean }) {
+function Slider({ fotos, onOpen }: { fotos: Foto[]; onOpen: (i: number) => void }) {
   const [i, setI] = useState(0), [play, setPlay] = useState(true), [hover, setHover] = useState(false);
   const n = fotos.length, go = (k: number) => setI(((k % n) + n) % n);
   useEffect(() => { if (i >= n) setI(0); }, [n, i]);
   useEffect(() => { if (!play || hover || n < 2) return; const t = setTimeout(() => go(i + 1), 5000); return () => clearTimeout(t); }, [i, play, hover, n]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 shadow-xl dark:border-slate-800" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
-      <div className={cn("relative w-full", tall ? "aspect-[21/9] max-h-[68vh]" : "aspect-[21/8] max-h-[46vh]")}>
+      <div className="relative aspect-[21/9] max-h-[68vh] w-full">
         {fotos.map((f, k) => (
           <button key={f.id} type="button" onClick={() => onOpen(k)} aria-label="Ver en grande" className={cn("absolute inset-0 transition-opacity duration-1000", k === i ? "opacity-100" : "pointer-events-none opacity-0")}>
             <img src={f.url} alt="" decoding="async" loading={Math.abs(k - i) <= 1 ? "eager" : "lazy"} className={cn("size-full object-cover transition-transform duration-[6000ms] ease-out", k === i ? "scale-[1.06]" : "scale-100")} />
@@ -91,13 +91,6 @@ function Slider({ fotos, onOpen, tall = true }: { fotos: Foto[]; onOpen: (i: num
       </div>
 
     </div>);
-}
-
-/* carrusel del Inicio: las fotos activas de la galería (si no hay, no se muestra nada) */
-export function HomeGallery() {
-  const [L] = useJSON<Foto[]>(KEY, []), S = L.filter(f => f.on), [box, setBox] = useState(-1);
-  if (!S.length) return null;
-  return <>{<Slider fotos={S} onOpen={setBox} tall={false} />}{box >= 0 && S[box] && <Lightbox list={S.map(f => f.url)} i={box} cap={S[box].cap} onClose={() => setBox(-1)} onNav={setBox} />}</>;
 }
 
 /* elegir fotos de la cuenta de Fivemanager (la lista la trae el servidor con la clave guardada) */
