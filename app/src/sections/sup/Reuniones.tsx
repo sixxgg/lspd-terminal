@@ -23,6 +23,7 @@ const TPL: Record<string, { l: string; c: string; d: string; secs: string[] }> =
   po3: { l: "Reunión PO III y III+", c: "#10b981", d: "Oficiales de referencia: patrulla, apoyo a la supervisión y formación", secs: ["Desempeño de los patrulleros", "Apoyo a la supervisión", "Formación e instrucciones", "Propuestas", "Dudas"] },
   libre: { l: "Libre", c: "#64748b", d: "Temas a elección", secs: ["Temas"] },
 };
+const GEN = "Otros temas que traigo";
 const dmy = (iso: string) => isoToDMY(iso) || iso;
 
 /* acta de la reunión de sargentos del 15/11/2026 (la primera, para tenerla a mano) */
@@ -109,14 +110,15 @@ function Detalle({ r, onBack, onSave, onDel }: { r: Reu; onBack: () => void; onS
   useStoreVersion();
   const me = useMe(), { toast, confirm } = useFeedback(), T = TPL[r.tpl] || TPL.libre, A = apsOf(r.id), mine = A.find(a => a.n === me.n);
   const [edit, setEdit] = useState(!mine && !r.closed), [s, setS] = useState<Record<string, string>>(mine?.s || {}), [acta, setActa] = useState(r.acta || "");
+  const SECS: string[] = r.secs.includes(GEN) ? r.secs : [...r.secs, GEN], [nt, setNt] = useState("");
   const boss = r.by === me.n || me.l >= 7 || me.admin, see = !!mine || !!r.closed;
-  const myTxt = r.secs.filter(x => s[x]?.trim()).map(x => `**${x}:** ${s[x].trim()}`).join("\n");
+  const myTxt = SECS.filter(x => s[x]?.trim()).map(x => `**${x}:** ${s[x].trim()}`).join("\n");
   const send = () => { const c = Object.fromEntries(Object.entries(s).map(([k, v]) => [k, v.trim()]).filter(([, v]) => v));
     if (!Object.keys(c).length) { toast("Escribí al menos un tema", "err"); return; }
     LS.setJSON(apKey(r.id, me.n), { n: me.n, at: Date.now(), s: c }); setEdit(false); toast(mine ? "Aporte actualizado" : "Opinión enviada · ya podés ver la de los demás"); };
   const out = [`# 📋 ${r.t} · ${dmy(r.f)}`, `-# ${T.l} · abierta por ${r.by}${A.length ? ` · aportes de ${A.map(a => a.n).join(", ")}` : ""}`, "",
     ...(r.acta?.trim() ? [r.acta.trim(), ""] : []),
-    ...(A.length ? ["## 🗣️ Aportes", ...r.secs.flatMap(x => { const v = A.filter(a => a.s[x]); return v.length ? [`### ${x}`, ...v.map(a => `- **${a.n}:** ${a.s[x]}`), ""] : []; })] : []),
+    ...(A.length ? ["## 🗣️ Aportes", ...SECS.flatMap(x => { const v = A.filter(a => a.s[x]); return v.length ? [`### ${x}`, ...v.map(a => `- **${a.n}:** ${a.s[x]}`), ""] : []; })] : []),
   ].join("\n").trim();
   return (
     <div className="space-y-4">
@@ -138,18 +140,20 @@ function Detalle({ r, onBack, onSave, onDel }: { r: Reu; onBack: () => void; onS
             <Card>
               <CardHeader icon={<Send />} title={mine ? "Editar mi aporte" : "Mi opinión"} desc={mine ? undefined : "Lo de los demás se desbloquea cuando la envíes."} />
               <CardBody>
-                {r.secs.map(x => <Field key={x} label={x}><Textarea rows={2} value={s[x] || ""} onChange={e => setS(o => ({ ...o, [x]: e.target.value }))} placeholder="Lo que tengas para decir (o dejalo vacío)…" /></Field>)}
+                {SECS.map(x => <Field key={x} label={x} hint={x === GEN ? "(lo que querés plantear aunque no esté en la lista)" : undefined}><Textarea rows={x === GEN ? 4 : 2} value={s[x] || ""} onChange={e => setS(o => ({ ...o, [x]: e.target.value }))} placeholder={x === GEN ? "Temas, propuestas o casos que vas a traer a la reunión…" : "Lo que tengas para decir (o dejalo vacío)…"} /></Field>)}
+                <div className="flex gap-2 rounded-xl border border-dashed border-slate-300 p-2 dark:border-slate-700"><Input value={nt} onChange={e => setNt(e.target.value)} placeholder="Proponer un tema nuevo para todos…" className="h-9 flex-1" />
+                  <Button size="sm" variant="outline" icon={<Plus />} disabled={!nt.trim() || SECS.some(x => norm(x) === norm(nt))} onClick={() => { onSave({ ...r, secs: [...r.secs.filter(x => x !== GEN), nt.trim()] }); setNt(""); toast("Tema agregado a la reunión"); }}>Agregar</Button></div>
                 <Revisar text={myTxt} onFix={() => setS(o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, fixSpell(v)])))} />
                 <div className="flex justify-end gap-2">{mine && <Button variant="ghost" onClick={() => { setS(mine.s); setEdit(false); }}>Cancelar</Button>}<Button icon={<Send />} onClick={send}>{mine ? "Guardar cambios" : "Enviar mi opinión"}</Button></div>
               </CardBody>
             </Card>) : mine && <Card className="flex flex-wrap items-center gap-3 p-3"><CheckCircle2 className="size-5 text-emerald-500" /><p className="flex-1 text-[13px]">Ya enviaste tu opinión.</p><Button size="sm" variant="outline" onClick={() => setEdit(true)}>Editar mi aporte</Button></Card>)}
           {!see ? (
             <Card className="relative overflow-hidden p-6 text-center">
-              <div className="pointer-events-none absolute inset-0 select-none p-6 opacity-40 blur-[6px]" aria-hidden>{r.secs.slice(0, 4).map(x => <p key={x} className="mb-3 h-3 rounded bg-slate-300 dark:bg-slate-700" />)}</div>
+              <div className="pointer-events-none absolute inset-0 select-none p-6 opacity-40 blur-[6px]" aria-hidden>{SECS.slice(0, 4).map(x => <p key={x} className="mb-3 h-3 rounded bg-slate-300 dark:bg-slate-700" />)}</div>
               <div className="relative"><Lock className="mx-auto size-7 text-slate-400" /><p className="mt-2 font-semibold">{A.length ? `${A.length} aporte${A.length > 1 ? "s" : ""} oculto${A.length > 1 ? "s" : ""}` : "Todavía nadie opinó"}</p>
                 <p className="mt-1 text-[12.5px] text-slate-500">Enviá tu opinión para ver lo que dijeron los demás.</p></div>
             </Card>
-          ) : r.secs.map(x => { const v = A.filter(a => a.s[x]); if (!v.length && (r.closed || !A.length)) return null; return (
+          ) : SECS.map(x => { const v = A.filter(a => a.s[x]); if (!v.length && (r.closed || !A.length)) return null; return (
             <Card key={x}><CardHeader icon={<LockOpen />} title={x} desc={v.length ? `${v.length} aporte${v.length > 1 ? "s" : ""}` : "Sin aportes"} />
               {v.length > 0 && <ul className="divide-y divide-slate-100 dark:divide-slate-800">{v.map(a => (
                 <li key={a.n} className="flex gap-3 px-5 py-3"><Avatar n={a.n} size={30} /><div className="min-w-0 flex-1"><b className="text-[12.5px]">{a.n}{a.n === me.n && <span className="ml-1.5 rounded bg-brand-500/15 px-1 text-[9.5px] font-bold uppercase text-brand-600 dark:text-brand-300">Vos</span>}</b>

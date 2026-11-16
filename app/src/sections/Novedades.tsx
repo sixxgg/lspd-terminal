@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.7";
+export const APP_VERSION = "3.7.1";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,13 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.7.1", f: "15/11/2026", t: "Borradores automáticos, OIS con fallecido y Radio mejorada", items: [
+    "Borradores: lo que escribís en Informes, Feedback, Radio, Supervisores y Capitanía se guarda solo en este navegador. Si recargás, cerrás la pestaña o cambiás de sección sin querer, al volver se completa de nuevo (con opción de descartar). Al guardar o enviar, el borrador se borra.",
+    "Supervisores › OIS con fallecido: guía de /me y /do por agente (en masculino o femenino) para la escena, su estado físico, la ropa y el equipo, cada arma (pistola, carabina, SMG, escopeta, cartuchos de goma, táser, porra, linterna, spray), la custodia, la cámara y la notificación. Nivel sencillo o extenso; cada línea se copia con un toque.",
+    "Radio: la frecuencia ya no viene puesta; se pueden guardar las frecuencias (★) y aparecen las usadas para elegirlas con un toque.",
+    "Radio: nuevo vehículo de huida, con buscador de modelos, muestras de color y matrícula con forma de patente de San Andreas.",
+    "Reuniones: cada uno tiene «Otros temas que traigo» para lo que quiera plantear y puede proponer temas nuevos para todos.",
+  ] },
   { v: "3.7", f: "15/11/2026", t: "Radio, reuniones colaborativas y revisión de ortografía", items: [
     "Nueva pestaña «Radio»: comunicado 10.03 por /rlspd (interna) o /rsapd (todos los departamentos) con frecuencia, código (211, 487, 207), robo, calle, sujetos y vehículo de huida.",
     "Sujetos con sexo, piel, máscara, chaqueta, camiseta, pantalones, calzado y otros rasgos, todo autocompletable. Se pueden sumar y duplicar sujetos.",

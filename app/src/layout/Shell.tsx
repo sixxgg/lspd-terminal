@@ -1,3 +1,4 @@
+import { DraftZone } from "@/components/drafts";
 import { profOk } from "@/lib/nick";
 import { cipher, onlineIcons, useTabFx } from "@/lib/tabfx";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
@@ -157,7 +158,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
       </header>
       <main className="mx-auto w-full max-w-[1760px] flex-1 px-4 py-6 sm:px-6 lg:py-8">
         {pageHead}
-        <div key={area.k + sec.k} className="animate-fade-in">{children}</div>
+        <div key={area.k + sec.k} className="animate-fade-in"><DraftZone id={`${me.n}|${area.k}/${sec.k}`}>{children}</DraftZone></div>
       </main>
     </div>
   );
@@ -236,7 +237,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
         </header>
         <main className="mx-auto w-full max-w-[1760px] flex-1 px-4 py-6 sm:px-6 lg:py-8">
           {pageHead}
-          <div key={area.k + sec.k} className="animate-fade-in">{children}</div>
+          <div key={area.k + sec.k} className="animate-fade-in"><DraftZone id={`${me.n}|${area.k}/${sec.k}`}>{children}</DraftZone></div>
         </main>
       </div>
     </div>

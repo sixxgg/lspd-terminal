@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 
 type ToastT = { id: number; msg: string; kind: "ok" | "err" };
 type ConfirmT = { msg: string; ok?: string; danger?: boolean; resolve: (v: boolean) => void };
+import { draftSaved } from "./drafts";
 const Ctx = createContext<{ toast: (m: string, k?: "ok" | "err") => void; confirm: (m: string, o?: { ok?: string; danger?: boolean }) => Promise<boolean> }>(null!);
 export const useFeedback = () => useContext(Ctx);
 
@@ -13,7 +14,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   const [conf, setConf] = useState<ConfirmT | null>(null);
   const n = useRef(0);
   const toast = useCallback((msg: string, kind: "ok" | "err" = "ok") => {
-    const id = ++n.current; setToasts(t => [...t, { id, msg, kind }]);
+    const id = ++n.current; setToasts(t => [...t, { id, msg, kind }]); if (kind === "ok") draftSaved(msg);
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3600);
   }, []);
   const confirm = useCallback((msg: string, o?: { ok?: string; danger?: boolean }) => new Promise<boolean>(resolve => setConf({ msg, ...o, resolve })), []);

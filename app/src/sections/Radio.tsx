@@ -2,13 +2,13 @@
    10.03 (robo en curso): canal (/rlspd interna o /rsapd para todos los departamentos), frecuencia, código, robo, calle,
    sujetos (sexo, piel, máscara, chaqueta, camiseta, pantalones, calzado y otros) y vehículo de huida.
    Las sugerencias salen de listas base + todo lo que ya se cargó en comunicados anteriores (lspdt.radio, compartido). */
-import { useMemo, useState } from "react";
-import { Car, Copy, History, Plus, Radio as RadioIcon, RotateCcw, Save, Trash2, UserRound, Users } from "lucide-react";
-import { Button, Card, CardBody, CardHeader, Field, Input, Segmented } from "@/components/ui";
+import { useEffect, useMemo, useState } from "react";
+import { Car, Copy, Star, History, Plus, Radio as RadioIcon, RotateCcw, Save, Trash2, UserRound, Users } from "lucide-react";
+import { Button, Card, CardBody, CardHeader, Field, Segmented } from "@/components/ui";
 import { Split, Col } from "@/components/layout";
 import { CopyLine } from "@/components/output";
 import { Predict } from "@/components/predict";
-import { VehPick } from "@/components/vehpick";
+import { EscapeVeh, type Veh } from "./radioVeh";
 import { useFeedback } from "@/components/feedback";
 import { fullDT, LUGARES, norm, uid } from "@/lib/domain";
 import { useJSON } from "@/lib/store";
@@ -19,7 +19,6 @@ import type { RobosPub } from "./six/robosLegal";
 
 type Sx = "m" | "f" | "x";
 type Suj = { sx: Sx; piel: string; masc: string; chq: string; cam: string; pan: string; cal: string; otr: string };
-type Veh = { cat: string; mk: string; md: string; mo: string };
 type Com = { id: string; t: number; by: string; canal: "rlspd" | "rsapd"; cor: boolean; frec: string; cod: string; robo: string; calle: string; suj: Suj[]; pie: boolean; veh: Veh; col: string; matT: string; mat: string; txt: string };
 
 const CODES = [["211", "Robo a mano armada"], ["487", "Robo mayor"], ["207", "Secuestro / rehenes"]] as const;
@@ -33,9 +32,7 @@ const CAM = ["camiseta negra", "camiseta blanca", "camiseta gris", "camiseta roj
 const PAN = ["vaqueros azules", "vaqueros azules claros", "vaqueros negros", "pantalón de chándal negro", "pantalón de chándal gris", "pantalón cargo verde", "pantalón cargo beige", "pantalón de vestir negro", "pantalón corto", "falda negra"];
 const CAL = ["zapatillas blancas", "zapatillas negras", "zapatillas deportivas rojas", "zapatillas con calcetín blanco", "botas negras", "botas militares", "botas marrones", "zapatos de vestir negros", "chanclas"];
 const OTR = ["tatuajes en los brazos", "tatuajes en el cuello", "tatuajes en la cara", "guantes negros", "guantes amarillos", "mochila negra", "gorra negra", "gafas de sol", "cadena dorada", "armado con un rifle", "armado con una pistola", "herido"];
-const COL = ["negro", "blanco", "gris", "plateado", "rojo", "azul", "azul oscuro", "azul claro", "verde", "verde oscuro", "amarillo", "naranja", "morado", "marrón", "beige", "dorado", "rosa", "negro mate", "blanco perla"];
 const EMPTY_S = (): Suj => ({ sx: "m", piel: "", masc: "", chq: "", cam: "", pan: "", cal: "", otr: "" });
-const MAT = [["ok", "Con matrícula"], ["sin", "Sin matrícula"], ["tap", "Tapada"], ["nv", "No se vio"]] as const;
 const SUJ_F: [keyof Suj, string, string[], string][] = [["masc", "Máscara / rostro", MASC, "pasamontañas negro…"], ["chq", "Chaqueta", CHQ, "chaqueta de cuero marrón…"], ["cam", "Camiseta", CAM, "camiseta blanca…"],
   ["pan", "Pantalones", PAN, "vaqueros azules…"], ["cal", "Calzado", CAL, "zapatillas blancas…"], ["otr", "Otros rasgos", OTR, "tatuajes, guantes, armas…"]];
 
@@ -58,7 +55,7 @@ function build(c: Omit<Com, "id" | "t" | "by" | "txt">) {
 
 export function Radio() {
   const me = useMe(), { toast, confirm } = useFeedback(), [H, setH] = useJSON<Com[]>("lspdt.radio", []), [P] = useJSON<RobosPub | null>("lspdt.robos", null);
-  const [canal, setCanal] = useState<"rlspd" | "rsapd">("rlspd"), [cor, setCor] = useState(false), [frec, setFrec] = useState("TAC-01"), [cod, setCod] = useState("211");
+  const [canal, setCanal] = useState<"rlspd" | "rsapd">("rlspd"), [cor, setCor] = useState(false), [frec, setFrec] = useState(""), [cod, setCod] = useState("211");
   const [robo, setRobo] = useState(""), [calle, setCalle] = useState(""), [suj, setSuj] = useState<Suj[]>([EMPTY_S()]);
   const [pie, setPie] = useState(false), [veh, setVeh] = useState<Veh>({ cat: "", mk: "", md: "", mo: "" }), [col, setCol] = useState(""), [matT, setMatT] = useState("ok"), [mat, setMat] = useState("");
   /* sugerencias: lista base + lo que ya se usó en otros comunicados (lo más usado primero) */
@@ -66,13 +63,21 @@ export function Radio() {
     const add = (k: string, v?: string) => { const x = (v || "").trim(); if (!x || x.length > 60) return; (m[k] ||= new Map()).set(x, (m[k].get(x) || 0) + 1); };
     H.forEach(c => { add("frec", c.frec); add("robo", c.robo); add("calle", c.calle); add("col", c.col); c.suj.forEach(s => (["piel", "masc", "chq", "cam", "pan", "cal", "otr"] as const).forEach(k => add(k, s[k]))); });
     return (k: string, base: string[]) => { const seen = new Set(base.map(norm)); return [...[...(m[k] || new Map()).entries()].sort((a, b) => b[1] - a[1]).map(x => x[0]).filter(x => !seen.has(norm(x))), ...base]; }; }, [H]);
+  /* frecuencias guardadas por cada uno (en este navegador) */
+  const [FS, setFS] = useJSON<string[]>("lspdt.next.radioFrec", []);
+  const recentF = [...new Set([...FS, ...H.map(c => c.frec.trim()).filter(Boolean)])].slice(0, 8);
+  const recentV = [...new Set(H.map(c => (c.veh.mo || c.veh.md).trim()).filter(Boolean))];
   const robos = useMemo(() => [...new Set((P?.items || catalogo()).map(i => i.n))], [P]);
   const data = { canal, cor, frec, cod, robo, calle, suj, pie, veh, col, matT, mat };
+  /* borrador completo (incluye vehículo, colores y sujetos): sobrevive a recargas y cambios de pestaña */
+  const DK = "lspdt.next.radioDraft." + me.n;
+  useEffect(() => { try { const d = JSON.parse(localStorage.getItem(DK) || "null") as (typeof data & { at: number }) | null; if (d && Date.now() - d.at < 3 * 864e5) load({ ...d, id: "", t: 0, by: "", txt: "" }, d.cor, true); } catch { /* */ } }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { try { localStorage.setItem(DK, JSON.stringify({ ...data, at: Date.now() })); } catch { /* */ } }, [JSON.stringify(data)]); // eslint-disable-line react-hooks/exhaustive-deps
   const txt = build(data);
   const errs = [!frec.trim() && "frecuencia", !robo.trim() && "robo", !calle.trim() && "calle", !pie && !(veh.mo || veh.md).trim() && "vehículo de huida", !pie && matT === "ok" && !mat.trim() && "matrícula"].filter(Boolean) as string[];
   const setS = (i: number, p: Partial<Suj>) => setSuj(L => L.map((s, j) => (j === i ? { ...s, ...p } : s)));
-  const load = (c: Com, asCor: boolean) => { setCanal(c.canal); setCor(asCor); setFrec(c.frec); setCod(c.cod); setRobo(c.robo); setCalle(c.calle); setSuj(c.suj.map(s => ({ ...EMPTY_S(), ...s })));
-    setPie(c.pie); setVeh(c.veh); setCol(c.col); setMatT(c.matT); setMat(c.mat); toast(asCor ? "Cargado como corrección" : "Comunicado cargado"); scrollTo({ top: 0, behavior: "smooth" }); };
+  const load = (c: Com, asCor: boolean, quiet?: boolean) => { setCanal(c.canal); setCor(asCor); setFrec(c.frec); setCod(c.cod); setRobo(c.robo); setCalle(c.calle); setSuj(c.suj.map(s => ({ ...EMPTY_S(), ...s })));
+    setPie(c.pie); setVeh(c.veh); setCol(c.col); setMatT(c.matT); setMat(c.mat); if (quiet) return; toast(asCor ? "Cargado como corrección" : "Comunicado cargado"); scrollTo({ top: 0, behavior: "smooth" }); };
   const reset = () => { setCor(false); setRobo(""); setCalle(""); setSuj([EMPTY_S()]); setPie(false); setVeh({ cat: "", mk: "", md: "", mo: "" }); setCol(""); setMatT("ok"); setMat(""); };
   const mine = H.filter(c => c.by === me.n);
   return (
@@ -87,8 +92,13 @@ export function Radio() {
               <Field label="Tipo"><Segmented size="sm" value={cor ? "c" : "n"} onChange={v => setCor(v === "c")} options={[{ value: "n", label: "Nuevo" }, { value: "c", label: "Corrección" }]} /></Field>
             </div>
             <p className="-mt-1 text-[11.5px] text-slate-500">{canal === "rsapd" ? "Se enteran LSPD, LSSD, SAHP y FIB." : "Solo la escucha la LSPD."}</p>
-            <div className="grid gap-3 sm:grid-cols-[9rem_1fr]">
-              <Field label="Frecuencia"><Predict float value={frec} onChange={setFrec} list={learn("frec", FREC)} placeholder="TAC-01" upper /></Field>
+            <div className="grid gap-3 sm:grid-cols-[13rem_1fr]">
+              <Field label="Frecuencia" hint="(la de donde se habla)">
+                <div className="flex gap-1"><Predict float className="flex-1" value={frec} onChange={setFrec} list={learn("frec", [...FS, ...FREC])} placeholder="TAC-01, 1.5…" upper />
+                  <button type="button" title={FS.includes(frec.trim()) ? "Quitar de guardadas" : "Guardar frecuencia"} disabled={!frec.trim()} onClick={() => { const f = frec.trim(); setFS(FS.includes(f) ? FS.filter(x => x !== f) : [f, ...FS].slice(0, 12)); }}
+                    className={cn("grid size-10 shrink-0 place-items-center rounded-xl border transition disabled:opacity-40", FS.includes(frec.trim()) ? "border-amber-400 bg-amber-400/15 text-amber-500" : "border-slate-200 text-slate-400 hover:text-amber-500 dark:border-slate-700")}><Star className="size-4" fill={FS.includes(frec.trim()) ? "currentColor" : "none"} /></button></div>
+                {recentF.length > 0 && <div className="flex flex-wrap gap-1">{recentF.map(f => <button key={f} type="button" onClick={() => setFrec(f)} className={cn("rounded-full border px-2 py-0.5 font-mono text-[11px] transition", frec === f ? "border-brand-500 text-brand-600" : "border-slate-200 text-slate-500 hover:border-brand-400 dark:border-slate-700")}>{FS.includes(f) && "★ "}{f}</button>)}</div>}
+              </Field>
               <Field label="Código"><div className="flex flex-wrap gap-1.5">{CODES.map(([k, l]) => (
                 <button key={k} type="button" onClick={() => setCod(k)} className={cn("rounded-xl border px-2.5 py-1.5 text-left text-[12px] transition", cod === k ? "border-brand-500 bg-brand-500/10 text-brand-700 dark:text-brand-300" : "border-slate-200 text-slate-500 hover:border-slate-300 dark:border-slate-700")}>
                   <b className="font-mono">{k}</b> <span className="opacity-80">{l}</span></button>))}</div></Field>
@@ -122,16 +132,7 @@ export function Radio() {
         </Card>
         <Card>
           <CardHeader icon={<Car />} title="Vehículo de huida" action={<Segmented size="sm" value={pie ? "p" : "v"} onChange={v => setPie(v === "p")} options={[{ value: "v", label: "En vehículo" }, { value: "p", label: "A pie" }]} />} />
-          {!pie && <CardBody>
-            <Field label="Modelo" hint="(de la base de vehículos)"><VehPick v={veh} onChange={setVeh} /></Field>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Color"><Predict float value={col} onChange={setCol} list={learn("col", COL)} placeholder="azul…" /></Field>
-              <Field label="Matrícula">
-                <Segmented size="sm" value={matT} onChange={setMatT} options={MAT.map(([v, l]) => ({ value: v, label: l }))} />
-                {matT === "ok" && <Input value={mat} onChange={e => setMat(e.target.value.toUpperCase().replace(/\s+/g, ""))} placeholder="JJ7265EZ" maxLength={10} className="mt-1.5 font-mono uppercase tracking-wider" />}
-              </Field>
-            </div>
-          </CardBody>}
+          {!pie && <CardBody><EscapeVeh veh={veh} setVeh={setVeh} col={col} setCol={setCol} matT={matT} setMatT={setMatT} mat={mat} setMat={setMat} recent={recentV} /></CardBody>}
         </Card>
       </Col>
       <Col className="lg:sticky lg:top-32 lg:self-start">

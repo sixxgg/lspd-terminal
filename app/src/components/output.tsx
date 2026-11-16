@@ -59,7 +59,7 @@ export function DiscordOutput({ title, text, footer, errors, need, pen, ctx, tag
   const [ro, setRo] = useState(false);
   const rev = useMemo(() => revOf(val, need ?? errors ?? [], pen), [val, need, errors, pen]);
   return (
-    <Card className={cn("flex flex-col overflow-hidden", sticky && "lg:sticky lg:top-32")}>
+    <Card data-nodraft className={cn("flex flex-col overflow-hidden", sticky && "lg:sticky lg:top-32")}>
       <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
         <div className="grid size-8 place-items-center rounded-lg bg-[#5865F2]/10 text-[#5865F2] dark:bg-[#5865F2]/20 dark:text-[#a5b0ff]"><MessageSquareText className="size-4" /></div>
         <div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{tag}</p><h3 className="truncate text-sm font-semibold">{title}</h3></div>
@@ -101,7 +101,7 @@ export function CopyLine({ label, text, errors, tag }: { label: string; text: st
   const [val, setVal] = useState(text); useEffect(() => setVal(text), [text]);
   const copy = useCopy(), [ro, setRo] = useState(false), rev = useMemo(() => revOf(val, errors), [val, errors]);
   return (
-    <Card className="overflow-hidden">
+    <Card data-nodraft className="overflow-hidden">
       <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
         {tag && <span className="rounded-md bg-slate-900 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-100 dark:bg-slate-800">{tag}</span>}
         <span className="flex-1 text-sm font-semibold">{label}</span>

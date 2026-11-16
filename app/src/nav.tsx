@@ -34,6 +34,7 @@ const RAW_AREAS: Area[] = [
     { k: "ent", l: "Entrevistas", d: "Preguntas y seguimiento de los agentes", icon: MessagesSquare, ready: true },
     { k: "vot", l: "Votaciones", d: "Propuestas de ascenso y descenso con debate", icon: Vote, ready: true },
     { k: "fbk", l: "Feedback (incidentes)", sl: "Feedback", d: "Feedback y acciones disciplinarias sobre la actuación de un agente", icon: MessageSquareWarning, ready: true },
+    { k: "ois", l: "Procedimiento OIS con fallecido", sl: "OIS con fallecido", d: "Guía de /me y /do para revisar a los agentes, su ropa, el lugar y cada arma (sencillo o extenso)", icon: Crosshair, ready: true },
     { k: "reu", l: "Reuniones", d: "Briefing, reunión de sargentos y de PO III: cada uno opina y se ve lo de los demás al enviar", icon: UsersRound, ready: true },
     { k: "rob", l: "Robos", d: "Catálogo oficial de robos y su articulado", icon: Gavel, ready: true },
     { k: "parm", l: "Pérdida de armamento", sl: "Pérdida de arma", d: "Informe de incidente por pérdida de arma de servicio", icon: ShieldAlert, ready: true },
