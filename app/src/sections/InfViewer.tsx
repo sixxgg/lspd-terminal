@@ -8,7 +8,7 @@ import { Archive, Car, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRig
 import { Button, Empty } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
 import { CopyMenu, useCopy } from "@/components/output";
-import { LS, useJSON } from "@/lib/store";
+import { GUEST, LS, useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { goTo } from "@/lib/profiles";
 import { findAgent, norm, rankES, fullDT } from "@/lib/domain";
@@ -156,7 +156,7 @@ export function InfViewer({ open, setOpen, onEdit, onBase }: { open: string | nu
               </div>
               <div className="flex flex-wrap gap-1.5">
                 <CopyMenu text={r.texto || ""} />
-                {!parm && <Button size="sm" variant="outline" icon={<FilePlus2 />} onClick={() => onBase(r)} title="Empezar un informe nuevo con las unidades, vehículos policiales, lugares y tipos de este">Usar como base</Button>}
+                {!parm && !GUEST.on && <Button size="sm" variant="outline" icon={<FilePlus2 />} onClick={() => onBase(r)} title="Empezar un informe nuevo con las unidades, vehículos policiales, lugares y tipos de este">Usar como base</Button>}
                 {can && <Button size="sm" icon={<Pencil />} onClick={() => (parm ? goTo("sup", "parm") : onEdit(r))} title={parm ? "Se edita desde Supervisores › Pérdida de arma" : undefined}>Editar</Button>}
               </div>
             </div>

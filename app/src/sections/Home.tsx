@@ -4,16 +4,16 @@
    - Debajo, dos columnas limpias: próximos eventos (con su fecha como un calendario de mesa) y la última versión, sin textos cortados.
    - Para ir a cualquier sección: el buscador (Ctrl + K). */
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Search, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Eye, Search, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui";
 import { Avatar } from "@/components/agents";
 import { RibbonRack } from "@/components/ribbon";
-import { Lightbox } from "@/components/modal";
 import { LEVEL, RANK_COLOR, divAb, emailOf, insigniaUrl, rankES } from "@/lib/domain";
 import { decorOf, type Award, type Decor } from "@/lib/decor";
 import { profFull } from "@/lib/profiles";
 import { calAll, calMine, fmtWhen, hasTime, isToday } from "@/lib/calendar";
-import { LS, useJSON, useStoreVersion } from "@/lib/store";
+import { GUEST, LS, useJSON, useStoreVersion } from "@/lib/store";
+import { AREAS, secsOf } from "@/nav";
 import { latest } from "./Novedades";
 import { cn } from "@/lib/cn";
 import { fotoStyle, GAL_KEY, type Foto } from "@/lib/gal";
@@ -38,9 +38,10 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
       {/* portada */}
       <Hero fotos={fotos}>
         <p className="text-[11px] font-semibold uppercase tracking-[.22em] text-white/75">{fecha}</p>
-        <h1 className="mt-1 font-display text-3xl font-bold leading-tight text-white drop-shadow-lg sm:text-5xl">{sal}, {me.n.split(" ")[0]}</h1>
+        <h1 className="mt-1 font-display text-3xl font-bold leading-tight text-white drop-shadow-lg sm:text-5xl">{sal}, {GUEST.on ? GUEST.title : me.n.split(" ")[0]}</h1>
       </Hero>
 
+      {GUEST.on ? <GuestCard go={go} /> : <>
       {/* identidad: se monta sobre la portada */}
       <div className="rise relative z-10 -mt-20 px-3 sm:-mt-24 sm:px-8" style={{ "--d": "80ms" } as React.CSSProperties}>
         <Card className="overflow-hidden border-white/10 shadow-2xl shadow-black/20 backdrop-blur-xl dark:bg-slate-900/80">
@@ -72,7 +73,7 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
           {ribbons.length > 0 && <button onClick={() => go("me", "perfil")} className="flex w-full items-center gap-3 border-t border-slate-100 px-5 py-2.5 text-left transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Condecoraciones</span><RibbonRack list={ribbons.slice(0, 16)} per={8} size="sm" /></button>}
         </Card>
-      </div>
+      </div></>}
 
       {/* buscador */}
       <button type="button" onClick={() => dispatchEvent(new Event("lspdt:cmdk"))} style={{ "--d": "160ms" } as React.CSSProperties} className="rise group mx-auto flex w-full max-w-3xl items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition hover:border-brand-400 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/60">
@@ -110,9 +111,29 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
   );
 }
 
+/* invitado: en lugar de la tarjeta de identidad, qué puede ver y hasta cuándo */
+function GuestCard({ go }: { go: (a: string, s: string) => void }) {
+  const S = AREAS.flatMap(a => secsOf(a, "").filter(s => !s.hide && s.k !== "home").map(s => ({ a: a.k, s })));
+  return (
+    <div className="rise relative z-10 -mt-20 px-3 sm:-mt-24 sm:px-8" style={{ "--d": "80ms" } as React.CSSProperties}>
+      <Card className="overflow-hidden border-white/10 shadow-2xl shadow-black/20 backdrop-blur-xl dark:bg-slate-900/80">
+        <div className="h-1 w-full bg-gradient-to-r from-amber-400 to-transparent" />
+        <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-center">
+          <span className="grid size-16 shrink-0 place-items-center rounded-2xl bg-amber-500/12 text-amber-500 ring-1 ring-inset ring-amber-500/30"><Eye className="size-8" /></span>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-display text-2xl font-bold leading-tight">Estás como invitado</h2>
+            <p className="mt-1 text-[13.5px] text-slate-500 dark:text-slate-400">Podés mirar las secciones que te abrieron, sin cambiar nada.{GUEST.exp ? ` El link vence el ${new Date(GUEST.exp).toLocaleString("es-AR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}.` : ""}</p>
+          </div>
+          {S.length > 0 && <div className="flex flex-wrap gap-2 lg:max-w-[28rem] lg:justify-end">{S.map(({ a, s }) => { const I = s.icon; return (
+            <button key={a + s.k} onClick={() => go(a, s.k)} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-[12.5px] font-semibold transition hover:border-brand-400 hover:text-brand-600 dark:border-slate-700 dark:hover:text-brand-300"><I className="size-4" />{s.sl || s.l}</button>); })}</div>}
+        </div>
+      </Card>
+    </div>);
+}
+
 /* portada: fotos de la Galería en fundido con acercamiento lento; sin fotos, un degradé del color del tema */
 function Hero({ fotos, children }: { fotos: Foto[]; children: React.ReactNode }) {
-  const [i, setI] = useState(0), [hover, setHover] = useState(false), [box, setBox] = useState(-1), n = fotos.length;
+  const [i, setI] = useState(0), [hover, setHover] = useState(false), n = fotos.length;
   const go = (k: number) => setI(((k % n) + n) % n);
   useEffect(() => { if (i >= n) setI(0); }, [n, i]);
   useEffect(() => { if (hover || n < 2) return; const t = setTimeout(() => go(i + 1), 6000); return () => clearTimeout(t); }, [i, hover, n]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -120,9 +141,9 @@ function Hero({ fotos, children }: { fotos: Foto[]; children: React.ReactNode })
     <div className="hero-mask group relative -mx-4 -mt-6 overflow-hidden sm:-mx-6 lg:-mt-8" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <div className="relative h-[38vh] min-h-[260px] max-h-[440px] w-full">
         {n ? fotos.map((f, k) => (
-          <button key={f.id} type="button" onClick={() => setBox(k)} aria-label="Ver la foto en grande" className={cn("absolute inset-0 transition-opacity duration-[1400ms]", k === i ? "opacity-100" : "pointer-events-none opacity-0")}>
-            <img src={f.url} alt="" decoding="async" loading={k === i || k === (i + 1) % n ? "eager" : "lazy"} className="size-full object-cover transition-transform duration-[7000ms] ease-out" style={fotoStyle(f, k === i ? 1.08 : 1)} />
-          </button>))
+          <div key={f.id} className={cn("absolute inset-0 select-none transition-opacity duration-[1400ms]", k === i ? "opacity-100" : "pointer-events-none opacity-0")}>
+            <img src={f.url} alt="" decoding="async" loading={k === i || k === (i + 1) % n ? "eager" : "lazy"} className="size-full object-cover transition-transform duration-[7000ms] ease-out" style={fotoStyle(f, k === i ? 1.08 : 1)} draggable={false} />
+          </div>))
           : <div className="absolute inset-0" style={{ background: "radial-gradient(120% 90% at 20% 10%, rgb(var(--b-500) / .55), transparent 60%), linear-gradient(135deg, rgb(var(--b-800)), #05070c)" }} />}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 px-[9%] pb-24 sm:pb-28">{children}
@@ -133,6 +154,5 @@ function Hero({ fotos, children }: { fotos: Foto[]; children: React.ReactNode })
           <button type="button" aria-label="Foto siguiente" onClick={() => go(i + 1)} className="absolute right-[4.5%] top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/30 text-white opacity-0 backdrop-blur transition hover:bg-black/60 group-hover:opacity-100"><ChevronRight className="size-5" /></button>
         </>}
       </div>
-      {box >= 0 && fotos[box] && <Lightbox list={fotos.map(f => f.url)} i={box} cap={fotos[box].cap} onClose={() => setBox(-1)} onNav={setBox} />}
     </div>);
 }

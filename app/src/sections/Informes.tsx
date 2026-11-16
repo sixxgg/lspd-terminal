@@ -6,7 +6,7 @@ import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { Col, Split } from "@/components/layout";
 import { LUGARES, getRoster, norm, rankES, uid , myKey } from "@/lib/domain";
-import { LS, useJSON, useStoreVersion } from "@/lib/store";
+import { GUEST, LS, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { legalFavKey } from "./Legal";
 import { EV_T, INF_EST, INF_FZ, ROLES, fixUnid, isIC, INF_SECS, INF_TIPOS, UNITS, VEH_EST, VEH_REL, VEH_T, dcParts, getPenal, infErrs, infNew, infText, penalOf, penalSearch, artCmp, type Art, type Inf, type Veh } from "@/lib/penal";
@@ -37,6 +37,8 @@ export function Informes() {
   const [sub, setSub] = useState(() => { const j = JUMP.infSub; JUMP.infSub = undefined; return j || (jump ? "inf" : LS.get("lspdt.next.infsub") || "inf"); }), go = (v: string) => { setSub(v); LS.set("lspdt.next.infsub", v); };
   useJump("inf", id => { setSub("inf"); setTab("list"); setOpen(id); });
   useJump("infSub", v => setSub(v));
+  /* invitado: solo el historial, para leer */
+  if (GUEST.on) return <InfViewer open={open} setOpen={setOpen} onEdit={() => {}} onBase={() => {}} />;
   return (
     <div className="space-y-5">
       <DivNav value={sub} onChange={go} options={[{ value: "inf", label: "Informe policial", icon: <FileText />, txt: "Informe policial" }, { value: "ois", label: "Procedimiento OIS con fallecido", icon: <ShieldAlert />, txt: "Procedimiento OIS con fallecido" }]} />

@@ -2,7 +2,7 @@
    Pestañas: Inicio y, de la A a la Z, Administración · Comunicados · Equipo de ilícitos · Gestión de staff · Notificaciones. Los datos van en lspdt.six.* (el servidor no se los muestra a nadie más). */
 import "./six.css";
 import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
-import { AtSign, Bell, Check, KeyRound, ChevronRight, Copy, FileText, Home, Lock, Megaphone, Plus, Power, RefreshCw, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X, ScrollText, Search, Banknote } from "lucide-react";
+import { AtSign, Bell, Check, KeyRound, Link2, ChevronRight, Copy, FileText, Home, Lock, Megaphone, Plus, Power, RefreshCw, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X, ScrollText, Search, Banknote } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
 import { api, authApi } from "@/lib/api";
 import { discordHtml } from "@/lib/discord";
@@ -13,6 +13,7 @@ import { FIRMAS, ILIC_VARS, consultaInteres, firmaDe, ilicText, mentions, type I
 import { RobosTab } from "./RobosTab";
 import { NotifTab, fbList, whoOf, FB_SEEN } from "./Notif";
 import { LS, reloadAll, useJSON } from "@/lib/store";
+import { GUEST_OPTS } from "@/lib/guest";
 import { FB_ST, fbSt, fbX } from "@/components/fbnotif";
 import { Boot, NS, K, cfg0, cfgKey, Rain, THEMES, colorOf, hex, vars, type SixCfg, type Who } from "./fx";
 
@@ -169,9 +170,53 @@ function HomeTab({ go, unread, staff }: { go: (t: Tab) => void; unread: number; 
   );
 }
 
+/* ---------- invitados: link para ver la terminal sin iniciar sesión, solo lectura y con las secciones elegidas ---------- */
+type GLnk = { t: string; exp: number; views: number; title: string; last: number; secs?: string[] };
+const GDUR: [number, string][] = [[24, "1 día"], [72, "3 días"], [168, "7 días"], [720, "30 días"]];
+function Invitados() {
+  const { toast, confirm } = useFeedback(), [L, setL] = useState<GLnk[] | null>(null), [n, setN] = useState(""), [h, setH] = useState(168), [busy, setBusy] = useState(false), [last, setLast] = useState("");
+  const [sel, setSel] = useState<string[]>(["ini/home", "cal/cal", "cod/cod", "leg/ley"]);
+  const url = (t: string) => `${location.origin}/next/?inv=${t}`;
+  const load = () => void api("/api/share", { list: "lspdt.guest" }).then(r => setL(r.__s === 200 ? r.list : []));
+  useEffect(load, []);
+  const make = async () => {
+    setBusy(true); const r = await api("/api/share", { k: "lspdt.guest", h, title: n.trim() || "Invitado", secs: sel }); setBusy(false);
+    if (r.__s !== 200) { toast(r.msg || "No se pudo crear el link", "err"); return; }
+    const u = url(r.t); setLast(u); void navigator.clipboard?.writeText(u).catch(() => {}); toast("Link copiado"); setN(""); load();
+  };
+  const del = async (x: GLnk) => { if (!(await confirm(`¿Revocar el link de ${x.title}? Deja de funcionar al instante.`, { danger: true, ok: "Revocar" }))) return; await api("/api/share", { del: x.t }); load(); };
+  const left = (e: number) => { const d = e - Date.now(); return d > 864e5 ? `${Math.round(d / 864e5)} d` : `${Math.max(1, Math.round(d / 36e5))} h`; };
+  const lab = (k: string) => GUEST_OPTS.find(o => o[0] === k)?.[1] || k;
+  return (
+    <Panel t="Invitar a la terminal" icon={<Link2 />} d="Link para ver la terminal sin iniciar sesión. Solo ve las secciones que marques y no puede cambiar nada." className="lg:col-span-2">
+      <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
+        <div className="space-y-4">
+          <Lbl t="Para quién" h="aparece en el saludo y en los logs"><NIn value={n} onChange={e => setN(e.target.value)} maxLength={60} placeholder="Ej: Bernal, staff, aspirantes…" /></Lbl>
+          <div className="space-y-1.5"><span className="font-sans text-xs font-semibold text-slate-300">Qué puede ver</span>
+            <div className="grid gap-2 sm:grid-cols-2">{GUEST_OPTS.map(([k, l, d]) => { const fixed = k === "ini/home"; return (
+              <Toggle key={k} on={fixed || sel.includes(k)} t={l} d={d} set={v => { if (!fixed) setSel(S => (v ? [...S, k] : S.filter(x => x !== k))); }} />); })}</div></div>
+          <Lbl t="Vence en"><Seg v={h} set={setH} opts={GDUR} /></Lbl>
+          <NBtn className="w-full py-2.5" icon={<Link2 />} disabled={busy} onClick={() => void make()}>{busy ? "CREANDO…" : "CREAR Y COPIAR LINK"}</NBtn>
+          {last && <p className="break-all rounded-lg border border-six/20 bg-black/40 px-3 py-2 font-mono text-[11.5px] text-six">{last}</p>}
+        </div>
+        <div className="space-y-1.5"><span className="font-sans text-xs font-semibold text-slate-300">Links activos</span>
+          {!L ? <p className="font-sans text-sm text-slate-500">Cargando…</p> : !L.length ? <p className="rounded-xl border border-dashed border-six/15 p-4 text-center font-sans text-sm text-slate-500">No hay links activos.</p> :
+          <div className="divide-y divide-six/10 rounded-xl border border-six/15">{L.map(x => (
+            <div key={x.t} className="flex items-start gap-2 px-3 py-2.5 font-sans">
+              <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-slate-100">{x.title}</p>
+                <p className="text-[11.5px] text-slate-500">Vence en {left(x.exp)} · {x.views} {x.views === 1 ? "vista" : "vistas"}{x.last ? ` · última ${new Date(x.last).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}` : ""}</p>
+                {x.secs && <div className="mt-1.5 flex flex-wrap gap-1">{x.secs.map(k => <span key={k} className="rounded-md border border-six/25 bg-six/10 px-1.5 py-0.5 text-[10.5px] font-semibold text-six">{lab(k)}</span>)}</div>}</div>
+              <button onClick={() => { void navigator.clipboard?.writeText(url(x.t)).catch(() => {}); toast("Link copiado"); }} aria-label="Copiar link" className="rounded-lg p-1.5 text-slate-400 hover:bg-white/5 hover:text-six"><Copy className="size-4" /></button>
+              <button onClick={() => void del(x)} aria-label="Revocar" className="rounded-lg p-1.5 text-slate-400 hover:bg-red-500/10 hover:text-red-500"><Trash2 className="size-4" /></button></div>))}</div>}
+        </div>
+      </div>
+    </Panel>);
+}
+
 function AdmTab({ c, set, replay }: { c: SixCfg; set: (p: Partial<SixCfg>) => void; replay: () => void }) {
   return (
     <div className="grid items-start gap-5 lg:grid-cols-2">
+      {NS.id === "six" && <Invitados />}
       <Panel t="Tema" icon={<Settings2 />} d={`Color de toda la interfaz de ${NAME()}. No toca nada de la MDT.`} className="space-y-4">
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">{THEMES.map(([k, l, col]) => (
           <button key={k} onClick={() => set({ tema: k })} style={vars(col)} className={cn("group grid place-items-center gap-2 rounded-xl border p-3 font-sans text-xs font-semibold transition", c.tema === k ? "border-six bg-six/10 text-six" : "border-six/15 text-slate-400 hover:border-six/40")}>

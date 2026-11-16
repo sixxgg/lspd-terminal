@@ -16,7 +16,7 @@ import { Division, PerdidaArmamento, VIEWS, lz } from "./routes";
 import { cn } from "./lib/cn";
 const Six = lz(() => import("./sections/six/Six"), "Six");
 const PublicBoard = lz(() => import("./sections/Pizarra"), "PublicBoard");
-const QS = new URLSearchParams(location.search), SHARE = QS.get("pizarra"), VER = QS.get("ver"), ROB = QS.get("robos");
+const QS = new URLSearchParams(location.search), SHARE = QS.get("pizarra"), VER = QS.get("ver"), ROB = QS.get("robos"), INV = QS.get("inv");
 const RobosShare = lz(() => import("./sections/six/RobosShare"), "RobosShare");
 const PublicSection = lz(() => import("./sections/div/DivTools"), "PublicSection");
 import { AREAS, canArea, secsOf } from "./nav";
@@ -30,7 +30,7 @@ import { prevGet, prevStop } from "./lib/preview";
 import { Eye } from "lucide-react";
 import { goodTier, stampLogros } from "./components/logros";
 import { confetti } from "./lib/confetti";
-import { ACC, LS, ME_ROLES, PREV, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
+import { ACC, GUEST, LS, ME_ROLES, PREV, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
 import { emailOf, findAgent, getRoster, rankES } from "./lib/domain";
 import { useFeedback } from "./components/feedback";
 import { APP_VERSION } from "./sections/Novedades";
@@ -44,7 +44,40 @@ export default function App() {
   if (VER && /^[a-f0-9]{32}$/.test(VER)) return <Suspense fallback={null}><PublicSection tok={VER} /></Suspense>;
   /* sección Robos de six compartida por link: catálogo y artículos, solo lectura */
   if (ROB && /^[a-f0-9]{32}$/.test(ROB)) return <Suspense fallback={null}><RobosShare tok={ROB} /></Suspense>;
+  /* invitación de six: la terminal sin iniciar sesión, solo lectura y solo las secciones que eligió */
+  if (INV && /^[a-f0-9]{32}$/.test(INV)) return <GuestMain tok={INV} />;
   return <Main />;
+}
+/* invitado: carga los datos del link y muestra la terminal con el menú recortado; nada se guarda */
+function GuestMain({ tok }: { tok: string }) {
+  const [st, setSt] = useState<"load" | "ok" | "bad">("load"), [msg, setMsg] = useState("");
+  const [nav, setNav] = useState({ a: "ini", s: "home" });
+  const { toast } = useFeedback();
+  useStoreVersion();
+  useEffect(() => { storeHooks(toast, () => {}); }, [toast]);
+  useEffect(() => {
+    const pull = (first: boolean) => api(`/api/share?t=${tok}${first ? "" : "&since=1"}`).then(r => {
+      if (r.__s !== 200 || !r.guest) { if (first) { setMsg(r.msg || "No se pudo abrir el link"); setSt("bad"); } return; }
+      Object.assign(GUEST, { on: true, secs: r.secs || [], title: r.title || "Invitado", exp: r.exp || 0, q: Date.now() + 2500 });
+      loadStore({ store: r.store, kt: r.kt, t: r.t, defRoster: r.defRoster, me: { n: "Invitado", r: "", admin: false, owner: false } }, true);
+      if (first) { const u = r.store?.["lspdt.ui"]; if (u) try { setDeptUi(JSON.parse(u)); } catch { /* */ } setSt("ok"); } });
+    void pull(true);
+    /* se refresca solo cada minuto (lo nuevo que carguen los agentes) */
+    const i = setInterval(() => { if (!document.hidden) void pull(false); }, 60e3); return () => clearInterval(i);
+  }, [tok]);
+  useEffect(() => { const f = (e: Event) => { setNav((e as CustomEvent<{ a: string; s: string }>).detail); scrollTopApp(); }; window.addEventListener("lspd:go", f); return () => window.removeEventListener("lspd:go", f); }, []);
+  const login = () => { location.href = location.pathname; };
+  if (st === "load") return <Device><div className="grid min-h-[var(--app-h,100dvh)] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div></Device>;
+  if (st === "bad") return <Device><div className="grid min-h-[var(--app-h,100dvh)] place-items-center p-6"><div className="max-w-sm rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-xl dark:border-slate-800 dark:bg-slate-900">
+    <Eye className="mx-auto size-8 text-amber-500" /><h1 className="mt-3 font-display text-xl font-bold">Link de invitado</h1><p className="mt-1 text-sm text-slate-500">{msg}</p>
+    <button onClick={login} className="mt-5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 dark:bg-brand-500">Ir a iniciar sesión</button></div></div></Device>;
+  const user = { n: "Invitado", r: "" };
+  let area = AREAS.find(a => a.k === nav.a) || AREAS[0];
+  if (!canArea(area, "")) area = AREAS[0];
+  const SS = secsOf(area, ""), sec = SS.find(s => s.k === nav.s) || SS[0];
+  const go = (a: string, s: string) => { if (a === "six" || a === "anita" || a === "me") return; GUEST.q = Date.now() + 2000; setNav({ a, s }); scrollTopApp(); };
+  const view = sec.k === "home" ? <Home me={user} go={go} /> : VIEWS[`${area.k}/${sec.k}`]?.() ?? null;
+  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={login}><div key={`${area.k}/${sec.k}`} className="animate-fade-in"><Suspense fallback={<div className="grid min-h-[40vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{view}</Suspense></div></Shell><UpdateBar /></MeCtx.Provider></Device>;
 }
 /* barra de «Ver como»: recuerda que es una vista previa y permite salir */
 function PrevBar({ r }: { r: string }) {

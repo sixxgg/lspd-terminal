@@ -4,12 +4,12 @@ import { brandSave } from "@/lib/brand";
 import { profOk } from "@/lib/nick";
 import { cipher, onlineIcons, useTabFx } from "@/lib/tabfx";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, UserRound, KeyRound, BellRing, CalendarClock, MoreHorizontal, Search } from "lucide-react";
+import { Eye, LogIn, Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, UserRound, KeyRound, BellRing, CalendarClock, MoreHorizontal, Search } from "lucide-react";
 import { AREAS, canArea, lockedOf, menuAreas, secsOf, type Area, type Sec } from "@/nav";
 import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
 import { rankES } from "@/lib/domain";
-import { LS, ME_ROLES, getNet, useStoreVersion } from "@/lib/store";
+import { GUEST, LS, ME_ROLES, getNet, useStoreVersion } from "@/lib/store";
 import { AccountModal } from "@/components/account";
 import { AppearanceModal } from "@/components/appearance";
 import { usePref } from "@/lib/appearance";
@@ -127,6 +127,10 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
     </div>);
   const modals = <><CommandK go={go} me={me} /><AccountModal me={me} open={acc} onClose={() => setAcc(false)} /><AppearanceModal open={ap} onClose={() => setAp(false)} /></>;
   const areas = menuAreas(me.r);
+  /* invitado: en lugar de la cuenta, el aviso de solo lectura y el botón para iniciar sesión */
+  const guestBox = <div className="flex items-center gap-1.5">
+    <span title={`Link de invitado${GUEST.exp ? ` · vence el ${new Date(GUEST.exp).toLocaleString("es-AR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}`} className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/12 px-2.5 py-1 text-[11.5px] font-bold text-amber-700 ring-1 ring-inset ring-amber-500/30 dark:text-amber-300"><Eye className="size-3.5" /><span className="hidden sm:inline">Invitado · solo lectura</span><span className="sm:hidden">Invitado</span></span>
+    <button onClick={onLogout} className={cn("inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-brand-500 dark:bg-brand-500", focusRing)}><LogIn className="size-3.5" />Iniciar sesión</button></div>;
   const goArea = (a: Area) => { const l = LS.get("lspdt.sec." + a.k); const S = secsOf(a, me.r).filter(s => !s.hide); go(a.k, S.some(s => s.k === l) ? l! : S[0].k); };
 
   /* menú arriba, por áreas (como la versión clásica) */
@@ -142,12 +146,12 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
           </button><VersionChip go={go} /></div>
           <NavDock areas={areas} cur={area.k} onGo={goArea} me={me.n} />
           <div className="flex shrink-0 items-center gap-1">
-            {sync}<NotifBell me={me} go={go} />{tools}
-            <UserMenu onAcc={() => setAcc(true)} go={go} up={false}>
+            {sync}{!GUEST.on && <NotifBell me={me} go={go} />}{tools}
+            {GUEST.on ? guestBox : <><UserMenu onAcc={() => setAcc(true)} go={go} up={false}>
               <Avatar n={me.n} size={32} />
               <span className="hidden text-left leading-tight min-[1850px]:block"><span className="block max-w-[10rem] truncate text-xs font-semibold">{me.n}</span><span className="block text-[11px] text-slate-500 dark:text-slate-400">{rankES(me.r)}</span></span>
             </UserMenu>
-            <button onClick={onLogout} title="Cerrar sesión" aria-label="Cerrar sesión" className={cn("rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400", focusRing)}><LogOut className="size-4" /></button>
+            <button onClick={onLogout} title="Cerrar sesión" aria-label="Cerrar sesión" className={cn("rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400", focusRing)}><LogOut className="size-4" /></button></>}
           </div>
         </div>
         {secsOf(area, me.r).filter(s => !s.hide).length + lockedOf(area, me.r).length > 1 && (
@@ -171,7 +175,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
 
   const nav = (
     <nav className="scrollbar-thin flex-1 space-y-5 overflow-y-auto px-3 py-4" aria-label="Secciones">
-      {AREAS.filter(a => !a.hidden && (!a.admin || canArea(a, me.r))).map(a => {
+      {AREAS.filter(a => !a.hidden && (GUEST.on ? canArea(a, me.r) : !a.admin || canArea(a, me.r))).map(a => {
         const ok = canArea(a, me.r);
         return (
           <div key={a.k}>
@@ -219,11 +223,11 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
         {nav}
         <div className="border-t border-slate-200 p-3 dark:border-slate-800">
           <div className="flex items-center gap-1 rounded-xl">
-            <UserMenu onAcc={() => setAcc(true)} go={go} up wide>
+            {GUEST.on ? guestBox : <><UserMenu onAcc={() => setAcc(true)} go={go} up wide>
               <Avatar n={me.n} size={36} />
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{me.n}</p><p className="truncate text-xs text-slate-500 dark:text-slate-400">{rankES(me.r)}{me.p ? ` · #${me.p}` : ""}</p></div>
             </UserMenu>
-            <button onClick={onLogout} title="Cerrar sesión" aria-label="Cerrar sesión" className={cn("rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400", focusRing)}><LogOut className="size-4" /></button>
+            <button onClick={onLogout} title="Cerrar sesión" aria-label="Cerrar sesión" className={cn("rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400", focusRing)}><LogOut className="size-4" /></button></>}
           </div>
         </div>
       </aside>
@@ -239,7 +243,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
             <ChevronRight className="hidden size-4 text-slate-300 sm:inline dark:text-slate-600" />
             <span className="truncate font-semibold">{sec.l}</span>
           </div>
-          {sync}<NotifBell me={me} go={go} />{tools}
+          {sync}{!GUEST.on && <NotifBell me={me} go={go} />}{tools}
         </header>
         <main className="mx-auto w-full max-w-[1760px] flex-1 px-4 py-6 sm:px-6 lg:py-8">
           {pageHead}

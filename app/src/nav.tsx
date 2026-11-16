@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   CalendarDays, Home, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
   Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint, UserRound, Presentation, UserMinus, RadioTower, UsersRound, Images } from "lucide-react";
-import { LS, ME_ROLES } from "./lib/store";
+import { GUEST, LS, ME_ROLES } from "./lib/store";
 import { Helicopter } from "./components/icons";
 import { lvl } from "./lib/domain";
 
@@ -85,11 +85,13 @@ export const AREAS: Area[] = RAW_AREAS
 /* Legal: solo six y a quien six le da acceso desde Administración */
 const legalOk = () => !!ME_ROLES.six || LS.json<string[]>("lspdt.legacc", []).includes(PROF.me);
 const galOk = () => !!ME_ROLES.six || !!ME_ROLES.admin || LS.json<string[]>("lspdt.galEditors", []).includes(PROF.me);
-export const canArea = (a: Area, r?: string) => (a.k === "gal" ? galOk() : a.k === "me" ? profOk() : a.k === "leg" ? legalOk() : a.admin ? !!ME_ROLES.admin : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : lvl(r) >= a.min);
+/* invitado: solo las secciones que abrió six (Novedades va siempre con el Inicio) */
+const guestSec = (a: string, s: string) => GUEST.secs.includes(`${a}/${s}`) || (a === "ini" && s === "nov");
+export const canArea = (a: Area, r?: string) => (GUEST.on ? a.sec.some(s => guestSec(a.k, s.k)) : a.k === "gal" ? galOk() : a.k === "me" ? profOk() : a.k === "leg" ? legalOk() : a.admin ? !!ME_ROLES.admin : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : lvl(r) >= a.min);
 /* áreas del menú (sin las ocultas) */
 export const menuAreas = (r?: string) => AREAS.filter(a => !a.hidden && canArea(a, r));
 /* secciones bloqueadas para ese rango (se muestran con candado) */
-export const lockedOf = (a: Area, r?: string) => a.sec.filter(s => s.min && lvl(r) < s.min);
+export const lockedOf = (a: Area, r?: string) => (GUEST.on ? [] : a.sec.filter(s => s.min && lvl(r) < s.min));
 /* secciones que ve cada uno dentro de un área (algunas piden más rango que el área) */
-export const secsOf = (a: Area, r?: string) => a.sec.filter(s => (!s.min || lvl(r) >= s.min) && (a.k !== "div" || divVisible(s.l, PROF.me))); /* el rango manda también para los administradores */
+export const secsOf = (a: Area, r?: string) => GUEST.on ? a.sec.filter(s => guestSec(a.k, s.k)) : a.sec.filter(s => (!s.min || lvl(r) >= s.min) && (a.k !== "div" || divVisible(s.l, PROF.me))); /* el rango manda también para los administradores */
 

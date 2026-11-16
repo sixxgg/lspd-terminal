@@ -33,6 +33,7 @@ export const LS = {
   set(k: string, v: string) {
     if (isLocal(k)) { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } bump(); return; }
     if (!ONLINE || CACHE[k] === v) return;
+    if (GUEST.on) { guestNo(); return; }
     if (PREV.on) { onToast("Vista previa: los cambios no se guardan", "err"); return; }
     if (PREV.must) return; /* contraseña restablecida: nada se guarda hasta cambiarla */
     CACHE[k] = v; bump(); Sync.push(k);
@@ -40,6 +41,7 @@ export const LS = {
   del(k: string) {
     if (isLocal(k)) { try { localStorage.removeItem(k); } catch { /* */ } bump(); return; }
     if (!ONLINE || !has(CACHE, k)) return;
+    if (GUEST.on) { guestNo(); return; }
     if (PREV.on) { onToast("Vista previa: los cambios no se guardan", "err"); return; }
     if (PREV.must) return; /* contraseña restablecida: nada se guarda hasta cambiarla */
     delete CACHE[k]; bump(); Sync.push(k);
@@ -53,6 +55,10 @@ export const LS = {
 };
 
 let onToast: (msg: string, kind?: "ok" | "err") => void = () => {};
+/* invitado (link de six): todo es de solo lectura; el aviso sale como mucho cada 4 s */
+export const GUEST: { on: boolean; secs: string[]; title: string; exp: number; q: number } = { on: false, secs: [], title: "", exp: 0, q: 0 }; /* q: hasta cuándo no avisar (al abrir una sección, lo que se guarda solo) */
+let guestT = 0;
+const guestNo = () => { if (Date.now() > GUEST.q && Date.now() - guestT > 4000) { guestT = Date.now(); onToast("Modo invitado: solo podés mirar", "err"); } };
 let onLost: () => void = () => {};
 export const storeHooks = (t: typeof onToast, lost: typeof onLost) => { onToast = t; onLost = lost; };
 
@@ -130,14 +136,14 @@ export let DEF_ROSTER: Agent[] = [];
 export type Agent = { n: string; p?: string; r: string; e?: string; s?: string; i?: string; d?: string; a?: string; c?: string };
 
 export const ACC_LAST: Record<string, number> = {};
-export function loadStore(d: { store: Dict; kt?: Record<string, number>; t?: number; defRoster?: Agent[]; me?: Me; acc?: Record<string, number> }) {
+export function loadStore(d: { store: Dict; kt?: Record<string, number>; t?: number; defRoster?: Agent[]; me?: Me; acc?: Record<string, number> }, guest?: boolean) {
   Object.assign(ACC_LAST, d.acc || {});
   for (const k of Object.keys(CACHE)) delete CACHE[k];
   for (const k of Object.keys(BASE)) delete BASE[k];
   Object.assign(CACHE, d.store); Object.assign(BASE, d.store); Object.assign(KT, d.kt || {});
   SYNC_T = d.t || 0; DEF_ROSTER = d.defRoster || DEF_ROSTER; ONLINE = true;
   Object.assign(ME_ROLES, { admin: !!d.me?.admin, owner: !!d.me?.owner, six: !!d.me?.six, anita: !!d.me?.anita }); noRoles();
-  bump(); schedule();
+  bump(); if (guest) return; schedule();
   document.addEventListener("visibilitychange", () => { if (!document.hidden) void poll(); });
   addEventListener("online", () => { void poll(); void Sync.run(); });
 }
