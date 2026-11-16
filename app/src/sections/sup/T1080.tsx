@@ -22,6 +22,7 @@ export const ESCENARIOS = [
   { k: "otro", l: "Otro…", t: "", h: "Escribí el lugar al que se lo cita." },
 ];
 
+const AWC = "Evelyn Molina";
 export function T1080({ psbOnly }: { psbOnly?: boolean }) {
   const [tab, setTab] = useState<"new" | "his">("new"), [L] = useJSON<Cit1080[]>(keyOf(psbOnly), []);
   const pend = L.filter(x => !x.j).length;
@@ -37,10 +38,12 @@ function Nueva({ psbOnly, onSaved }: { psbOnly?: boolean; onSaved: () => void })
   useStoreVersion();
   const { toast } = useFeedback(), [L, setL] = useJSON<Cit1080[]>(keyOf(psbOnly), []);
   const me = useMe(), psb = isPSB(me.n) || me.admin;
+  /* un Sargento II no cita a Sargentos I, salvo la Assistant Watch Commander */
+  const myL = me.r === "Sergeant II" && me.n !== AWC ? lvl("Sergeant I") : me.l;
   const [ags, setAgs] = useState<string[]>([]), [art, setArt] = useState<Record<string, string>>({}), [cit, setCit] = useState<string[]>([me.n]), [tags, setTags] = useState<string[]>([]);
   const [esc, setEsc] = useState(psbOnly ? "conf" : "wc"), [otro, setOtro] = useState("");
   const s = ESCENARIOS.find(x => x.k === esc)!, A = ags.map(n => findAgent(n)).filter(Boolean) as NonNullable<ReturnType<typeof findAgent>>[], many = A.length > 1;
-  const canCite = (x: { n: string; r: string }) => x.n !== me.n && !ags.includes(x.n) && (psbOnly || lvl(x.r) < me.l || !!excOf()[me.n]?.t1080); /* la PSB cita a cualquier rango */
+  const canCite = (x: { n: string; r: string }) => x.n !== me.n && !ags.includes(x.n) && (psbOnly || lvl(x.r) < myL || !!excOf()[me.n]?.t1080); /* la PSB cita a cualquier rango */
   const lugar = esc === "otro" ? otro.trim() || "[lugar]" : s.t;
   const quien = A.length ? joinY(A.map(a => `${art[a.n] || "el"} ${rkTxt(a.r)} ${a.n}`)) : "el [Rango] [Nombre del agente]";
   const txt = `/rlspd Para ${quien}: ${many ? "acudan" : "acuda"} ${lugar} con la vestimenta Clase A al finalizar sus actividades. Por favor, ${many ? "confirmen" : "confirme"} lectura.`;
@@ -54,7 +57,7 @@ function Nueva({ psbOnly, onSaved }: { psbOnly?: boolean; onSaved: () => void })
             {!!ags.length && <AgChips list={ags} art={art} onArt={n => setArt(o => ({ ...o, [n]: o[n] === "la" ? "el" : "la" }))} onRemove={n => setAgs(ags.filter(x => x !== n))} />}
             <AgentPicker value={ags} multiple onChange={n => { if (ags.includes(n)) return; setAgs([...ags, n]); setArt(o => ({ ...o, [n]: genderOf(n) === "f" ? "la" : "el" })); }} filter={canCite} empty={psbOnly ? "No hay más agentes para citar" : "No hay agentes que puedas citar con tu rango"} />
           </Field>
-          <Note>{psbOnly ? "Podés citar a varios a la vez y a cualquier rango (la PSB no tiene límite de rango); tocá «el/la» para cambiar el artículo." : "Podés citar a varios a la vez. Solo a agentes de rango inferior al tuyo; tocá «el/la» para cambiar el artículo."}</Note>
+          <Note>{psbOnly ? "Podés citar a varios a la vez y a cualquier rango (la PSB no tiene límite de rango); tocá «el/la» para cambiar el artículo." : "Podés citar a varios a la vez. Solo a agentes de rango inferior al tuyo (los Sargentos I solo los cita la Assistant Watch Commander); tocá «el/la» para cambiar el artículo."}</Note>
           <Field label="Citan" hint={psbOnly ? "(miembros de la PSB que hacen el 10-80)" : "(supervisión que hace el 10-80)"}>
             <AgChips list={cit} lock={me.n} onRemove={n => setCit(cit.filter(x => x !== n))} />
             <AgentPicker value={cit} multiple onChange={n => !cit.includes(n) && setCit([...cit, n])} filter={a => (psbOnly ? isPSB(a.n) : lvl(a.r) >= 6) && !cit.includes(a.n)} empty={psbOnly ? "No hay más miembros de la PSB" : "No hay más supervisores"} />

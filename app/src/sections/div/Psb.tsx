@@ -5,7 +5,7 @@ import { AgentCombo, AgentPicker } from "@/components/agents";
 import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { Col, Split } from "@/components/layout";
-import { RK_EN, apellido, emailOf, excOf, findAgent, genderOf, getRoster, joinY, lvl, norm, rankES, rkFem, uid , myKey } from "@/lib/domain";
+import { RK_EN, apellido, emailOf, findAgent, genderOf, getRoster, joinY, lvl, norm, rankES, rkFem, uid , myKey } from "@/lib/domain";
 import { LS, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { UNITS, isPSB, uMap, uTop } from "@/lib/units";
@@ -158,7 +158,7 @@ function Notif({ go }: { go: Go }) {
   const [cargo, setCargo] = useState(() => LS.get(myKey("psbCargo", me.n)) || psbRank(me.n) || "Junior Investigator");
   const a = p.ag ? findAgent(p.ag) : null, caso = casoTxt(p), de = emailOf(me.n), para = p.para || (a ? emailOf(a.n) : "");
   const sel = p.fl.map(i => F.find(f => f.id === i)).filter(Boolean) as Falta[];
-  const canPsb = (x: { n: string; r: string }) => x.n !== me.n && (lvl(x.r) < me.l || !!excOf()[me.n]?.psb);
+  const canPsb = (x: { n: string; r: string }) => x.n !== me.n && lvl(x.r) > 0; /* la PSB notifica a cualquier rango */
   const text = useMemo(() => {
     const f = a && genderOf(a.n) === "f", o = a ? (f ? "a" : "o") : "o/a", hecho = p.hecho.trim();
     const faltasTxt = !sel.length ? "[faltas]" : sel.length === 1 ? `la presunta falta ${sel[0].g} «${sel[0].n}»` : "las presuntas faltas " + joinY(sel.map(x => `«${x.n}» (${x.g})`));
@@ -178,7 +178,7 @@ function Notif({ go }: { go: Go }) {
           <CardBody>
             <Field label="N° de caso"><CaseInput /></Field>
             <Field label="Agente investigado">
-              <AgentPicker value={p.ag} onChange={n => up(x => { x.ag = n; x.para = ""; })} filter={canPsb} empty="No hay agentes que puedas notificar con tu rango" />
+              <AgentPicker value={p.ag} onChange={n => up(x => { x.ag = n; x.para = ""; })} filter={canPsb} empty="No hay más agentes" />
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="De"><Input value={de} readOnly className="font-mono text-xs text-slate-500" /></Field>
