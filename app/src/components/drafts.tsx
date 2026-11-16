@@ -37,7 +37,7 @@ const setVal = (el: F, v: string) => {
 export const draftSaved = (msg: string) => { if (/guardad|registrad|enviad|publicad|cread|abiert|actualizad|cargad[oa] en/i.test(msg) && !/copiad|borrador/i.test(msg)) dispatchEvent(new Event("lspdt:saved")); };
 
 /* secciones donde se redacta (no tablas que guardan solas, como rosters o la pizarra) */
-const ON = /\|(inf\/|fb\/|rad\/|ini\/ts|sup\/(?!rob|hue)|cap\/(exa|ent))/;
+const ON = /\|(inf\/|fb\/|rad\/|adm\/ts|sup\/(?!rob|hue)|cap\/(exa|ent))/;
 export function DraftZone({ id, children }: { id: string; children: ReactNode }) {
   if (!ON.test(id)) return <>{children}</>;
   return <Zone id={id}>{children}</Zone>;

@@ -42,7 +42,7 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
       </Hero>
 
       {/* identidad: se monta sobre la portada */}
-      <div className="relative z-10 -mt-20 px-3 sm:-mt-24 sm:px-8">
+      <div className="rise relative z-10 -mt-20 px-3 sm:-mt-24 sm:px-8" style={{ "--d": "80ms" } as React.CSSProperties}>
         <Card className="overflow-hidden border-white/10 shadow-2xl shadow-black/20 backdrop-blur-xl dark:bg-slate-900/80">
           <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${col}, transparent)` }} />
           <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-center">
@@ -75,11 +75,11 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
       </div>
 
       {/* buscador */}
-      <button type="button" onClick={() => dispatchEvent(new Event("lspdt:cmdk"))} className="group mx-auto flex w-full max-w-3xl items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition hover:border-brand-400 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/60">
+      <button type="button" onClick={() => dispatchEvent(new Event("lspdt:cmdk"))} style={{ "--d": "160ms" } as React.CSSProperties} className="rise group mx-auto flex w-full max-w-3xl items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition hover:border-brand-400 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/60">
         <Search className="size-5 text-slate-400 group-hover:text-brand-500" /><span className="flex-1 text-[14px] text-slate-500">Buscá informes, agentes, secciones, divisiones o leyes…</span>
         <kbd className="rounded-md border border-slate-200 px-1.5 py-0.5 font-mono text-[11px] text-slate-500 dark:border-slate-700">Ctrl K</kbd></button>
 
-      <div className="grid items-start gap-5 lg:grid-cols-2">
+      <div className="rise grid items-start gap-5 lg:grid-cols-2" style={{ "--d": "240ms" } as React.CSSProperties}>
         {/* próximos eventos */}
         <Card className="overflow-hidden">
           <div className="flex items-center gap-2 px-5 pb-2 pt-4"><CalendarDays className="size-[18px] text-brand-500" /><h3 className="flex-1 font-display text-lg font-bold">Próximos eventos</h3>
@@ -117,20 +117,20 @@ function Hero({ fotos, children }: { fotos: Foto[]; children: React.ReactNode })
   useEffect(() => { if (i >= n) setI(0); }, [n, i]);
   useEffect(() => { if (hover || n < 2) return; const t = setTimeout(() => go(i + 1), 6000); return () => clearTimeout(t); }, [i, hover, n]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div className="group relative -mx-4 -mt-6 overflow-hidden sm:-mx-6 lg:-mt-8 lg:rounded-b-3xl" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
-      <div className="relative h-[46vh] min-h-[300px] max-h-[560px] w-full bg-slate-950">
+    <div className="hero-mask group relative -mx-4 -mt-6 overflow-hidden sm:-mx-6 lg:-mt-8" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+      <div className="relative h-[38vh] min-h-[260px] max-h-[440px] w-full">
         {n ? fotos.map((f, k) => (
           <button key={f.id} type="button" onClick={() => setBox(k)} aria-label="Ver la foto en grande" className={cn("absolute inset-0 transition-opacity duration-[1400ms]", k === i ? "opacity-100" : "pointer-events-none opacity-0")}>
             <img src={f.url} alt="" decoding="async" loading={k === i || k === (i + 1) % n ? "eager" : "lazy"} className="size-full object-cover transition-transform duration-[7000ms] ease-out" style={fotoStyle(f, k === i ? 1.08 : 1)} />
           </button>))
           : <div className="absolute inset-0" style={{ background: "radial-gradient(120% 90% at 20% 10%, rgb(var(--b-500) / .55), transparent 60%), linear-gradient(135deg, rgb(var(--b-800)), #05070c)" }} />}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 px-6 pb-28 sm:px-12 sm:pb-32">{children}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 px-[9%] pb-24 sm:pb-28">{children}
           {fotos[i]?.cap && <p className="mt-2 max-w-2xl text-[14px] text-white/80 drop-shadow">{fotos[i].cap}</p>}</div>
         {n > 1 && <>
-          <span className="absolute right-5 top-5 rounded-full bg-black/40 px-2.5 py-1 font-mono text-[11px] text-white/85 backdrop-blur">{i + 1} / {n}</span>
-          <button type="button" aria-label="Foto anterior" onClick={() => go(i - 1)} className="absolute left-4 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/30 text-white opacity-0 backdrop-blur transition hover:bg-black/60 group-hover:opacity-100"><ChevronLeft className="size-5" /></button>
-          <button type="button" aria-label="Foto siguiente" onClick={() => go(i + 1)} className="absolute right-4 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/30 text-white opacity-0 backdrop-blur transition hover:bg-black/60 group-hover:opacity-100"><ChevronRight className="size-5" /></button>
+          <span className="absolute right-[10%] top-5 rounded-full bg-black/40 px-2.5 py-1 font-mono text-[11px] text-white/85 backdrop-blur">{i + 1} / {n}</span>
+          <button type="button" aria-label="Foto anterior" onClick={() => go(i - 1)} className="absolute left-[4.5%] top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/30 text-white opacity-0 backdrop-blur transition hover:bg-black/60 group-hover:opacity-100"><ChevronLeft className="size-5" /></button>
+          <button type="button" aria-label="Foto siguiente" onClick={() => go(i + 1)} className="absolute right-[4.5%] top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/30 text-white opacity-0 backdrop-blur transition hover:bg-black/60 group-hover:opacity-100"><ChevronRight className="size-5" /></button>
         </>}
       </div>
       {box >= 0 && fotos[box] && <Lightbox list={fotos.map(f => f.url)} i={box} cap={fotos[box].cap} onClose={() => setBox(-1)} onNav={setBox} />}

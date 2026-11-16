@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.9.3";
+export const APP_VERSION = "3.9.4";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,10 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.9.4", f: "16/11/2026", t: "Inicio sin subpestañas", items: [
+    "Inicio quedó solo, sin la barra de subpestañas: más espacio para las fotos. Las Novedades se abren desde la versión que está debajo del logo y «Hora para Discord» pasó a Administración.",
+    "La portada es un poco más baja y sus costados y el borde de abajo se funden con el fondo. Las tarjetas entran con una animación suave.",
+  ] },
   { v: "3.9.3", f: "16/11/2026", t: "Encuadre de las fotos", items: [
     "Galería › «Encuadre»: cada foto se ajusta arrastrándola y con zoom, en una vista previa con las medidas de la portada del Inicio (dónde va el saludo, el contador y la tarjeta del perfil). Se ve igual en el Inicio y en el carrusel.",
   ] },

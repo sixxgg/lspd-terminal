@@ -8,14 +8,14 @@ import { LS, ME_ROLES } from "./lib/store";
 import { Helicopter } from "./components/icons";
 import { lvl } from "./lib/domain";
 
-export type Sec = { k: string; l: string; sl?: string; d: string; icon: LucideIcon; ready?: boolean; min?: number };
+export type Sec = { k: string; l: string; sl?: string; d: string; icon: LucideIcon; ready?: boolean; min?: number; hide?: boolean }; /* hide: no aparece en la barra de secciones (se entra por otro lado) */
 export type Area = { k: string; l: string; icon?: LucideIcon; min: number; req?: string; admin?: boolean; hidden?: boolean; beta?: boolean; sec: Sec[] };
 
 /* áreas y secciones de la terminal */
 const RAW_AREAS: Area[] = [
   { k: "ini", l: "Inicio", icon: Home, min: 0, sec: [{ k: "home", l: "Inicio", d: "Resumen del departamento", icon: Home, ready: true },
-    { k: "ts", l: "Hora para Discord", d: "Marcas de tiempo para comunicados: cada uno las ve en su propia hora", icon: Clock, ready: true },
-    { k: "nov", l: "Novedades", d: "Registro de cambios por versión y la primera versión de la terminal", icon: ScrollText, ready: true }] },
+    /* se entra desde la versión que está debajo del logo */
+    { k: "nov", l: "Novedades", d: "Registro de cambios por versión y la primera versión de la terminal", icon: ScrollText, ready: true, hide: true }] },
   { k: "age", l: "Agentes", icon: Users, min: 6, req: "Sargento I", sec: [{ k: "prof", l: "Agentes", d: "Planilla del departamento por rango: Jefatura, Capitanía, Supervisores, Detectives y Patrulleros", icon: Users, ready: true }] },
   { k: "cal", l: "Calendario", icon: CalendarDays, min: 0, sec: [{ k: "cal", l: "Calendario", d: "Prácticas, instrucciones y eventos de las divisiones", icon: CalendarDays, ready: true }] },
   { k: "inf", l: "Informes", icon: FileText, min: 0, sec: [{ k: "inf", l: "Informes policiales", d: "Redactar, registrar y buscar informes", icon: FileText, ready: true }] },
@@ -70,6 +70,7 @@ const RAW_AREAS: Area[] = [
     { k: "acc", l: "Accesos y administradores", d: "Solicitudes de acceso, administradores y accesos a RTD/PSB", icon: UserCheck, ready: true },
     { k: "brand", l: "Marca e imágenes", d: "Logos, fondos, fotos por defecto, textos y emblemas", icon: Palette, ready: true },
     { k: "gal", l: "Galería", d: "Quién puede editar la galería y la clave de Fivemanager", icon: Images, ready: true },
+    { k: "ts", l: "Hora para Discord", d: "Marcas de tiempo para comunicados: cada uno las ve en su propia hora", icon: Clock, ready: true },
     { k: "logs", l: "Logs", d: "Agentes que salieron del roster: quién, cuándo y quién lo quitó", icon: UserMinus, ready: true },
     { k: "data", l: "Roster y respaldo", d: "Cargar el roster en CSV y exportar o importar los datos", icon: Database, ready: true },
   ] },

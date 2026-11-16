@@ -135,16 +135,16 @@ function Encuadre({ f, onClose, onSave }: { f: Foto; onClose: () => void; onSave
     <Modal open onClose={onClose} size="xl" icon={<Crop />} title="Encuadre de la foto" desc="Arrastrá la foto para moverla y usá el zoom. La vista previa tiene las medidas de la portada del Inicio."
       footer={<><Button variant="ghost" icon={<RotateCcw />} className="mr-auto" onClick={() => { setX(50); setY(50); setZ(1); }}>Centrar</Button><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon={<Check />} onClick={() => onSave({ fx: x, fy: y, z })}>Guardar encuadre</Button></>}>
       <div className="space-y-4">
-        <div className={cn("relative aspect-[18/5] w-full touch-none select-none overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-black/10", drag ? "cursor-grabbing" : "cursor-grab")}
+        <div className={cn("hero-mask relative aspect-[9/2] w-full touch-none select-none overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-black/10", drag ? "cursor-grabbing" : "cursor-grab")}
           onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); setDrag({ px: e.clientX, py: e.clientY, x, y }); }} onPointerMove={move} onPointerUp={() => setDrag(null)} onPointerCancel={() => setDrag(null)}
           onWheel={e => setZ(v => Math.round(Math.max(1, Math.min(2.5, v - e.deltaY * 0.001)) * 100) / 100)}>
           <img src={f.url} alt="" draggable={false} className="pointer-events-none size-full object-cover" style={fotoStyle(prev)} />
           {/* lo mismo que se superpone en el Inicio */}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
-          <div className="pointer-events-none absolute bottom-[27%] left-[4%]"><p className="text-[9px] font-semibold uppercase tracking-[.22em] text-white/70">Lunes, 16 de noviembre</p>
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          <div className="pointer-events-none absolute bottom-[30%] left-[9%]"><p className="text-[9px] font-semibold uppercase tracking-[.22em] text-white/70">Lunes, 16 de noviembre</p>
             <p className="font-display text-[clamp(14px,2.6vw,30px)] font-bold leading-tight text-white drop-shadow">Buenas noches, Ryan</p></div>
-          <span className="pointer-events-none absolute right-[2%] top-[6%] rounded-full bg-black/40 px-2 py-0.5 font-mono text-[10px] text-white/85">1 / 6</span>
-          <div className="pointer-events-none absolute inset-x-[4%] bottom-0 h-[21%] rounded-t-xl border border-b-0 border-dashed border-white/50 bg-white/10 backdrop-blur-[1px]">
+          <span className="pointer-events-none absolute right-[10%] top-[6%] rounded-full bg-black/40 px-2 py-0.5 font-mono text-[10px] text-white/85">1 / 6</span>
+          <div className="pointer-events-none absolute inset-x-[4%] bottom-0 h-[26%] rounded-t-xl border border-b-0 border-dashed border-white/50 bg-white/10 backdrop-blur-[1px]">
             <span className="absolute left-3 top-1 text-[10px] font-semibold text-white/80">Tarjeta del perfil</span></div>
           <span className="pointer-events-none absolute left-1/2 top-1/2 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/35 text-white/90 opacity-80"><Move className="size-4" /></span>
         </div>
