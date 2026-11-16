@@ -68,6 +68,9 @@ export default wrap(async (req, res) => {
   /* contraseña restablecida: hasta que la cambie no puede guardar nada */
   try { if (JSON.parse((await q("select v from meta where k='mustpw'")).rows[0]?.v || "[]").includes(u.n)) return send(res, 403, { error: "perm", msg: "Primero cambiá tu contraseña" }); } catch { /* */ }
   let why = canWrite(u, k);
+  /* galería: six, administración y quienes estén habilitados en Administración › Galería */
+  if (!why && k === "lspdt.galeria" && !isSix(u) && !u.admin) { let E = []; try { E = JSON.parse((await q("select v from kv where k='lspdt.galEditors'")).rows[0]?.v || "[]"); } catch { /* */ }
+    if (!E.includes(u.n)) why = "Solo six y quienes estén habilitados pueden editar la galería"; }
   /* OIS remitido a la FID: cualquiera que pueda cargar OIS abre (o actualiza) el caso en la PSB, sin tocar el resto de los expedientes */
   if (b.oisFid && typeof b.oisFid === "object") {
     if (canWrite(u, "lspdt.ois")) return send(res, 403, { msg: "No podés cargar procedimientos OIS" });

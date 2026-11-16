@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.9";
+export const APP_VERSION = "3.9.1";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,11 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.9.1", f: "16/11/2026", t: "Galería en el Inicio y conectada a Fivemanager", items: [
+    "El Inicio quedó más simple: la ficha del agente, un carrusel con las fotos de la Galería, el escalafón, los próximos eventos y las novedades. Para ir a cualquier sección está el buscador (Ctrl + K).",
+    "Galería: se eligen las fotos directo de la cuenta de Fivemanager (sin copiar links). El carrusel ya no muestra miniaturas ni barra de tiempo; queda el contador.",
+    "Administración › Galería: quién más puede editar la galería y la clave de Fivemanager (se guarda solo en el servidor).",
+  ] },
   { v: "3.9", f: "16/11/2026", t: "Encabezan y presentes, nuevo ingreso y terminal más liviana", items: [
     "Reuniones: «Encabezan» (la Capitanía, obligatoria, y la Assistant Watch Commander Evelyn Molina, más quien se sume) y «Presentes» (sargentos y citados), como tags con foto y cargo. También salen en el documento para copiar.",
     "Al iniciar sesión, la terminal arranca con la misma pantalla de operativo que las actualizaciones, ahora como «Inicio de servicio» (Esc, Enter o un toque para entrar ya).",

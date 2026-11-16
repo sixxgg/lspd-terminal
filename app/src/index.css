@@ -403,6 +403,3 @@ html:not([data-head="none"]) header nav .nav-dk-l { font-family: var(--fh, inher
 .fb-rich h3 { font-size: 1.02rem; font-weight: 700; margin: .5rem 0 .2rem; }
 .fb-rich blockquote { border-left: 3px solid rgb(var(--b-500) / .5); padding-left: .65rem; color: rgb(100 116 139); margin: .15rem 0; }
 .fb-rich li { margin: .1rem 0; }
-/* galería: barra de progreso del carrusel (5 s) */
-.gal-bar { animation: gal-bar 5s linear forwards; }
-@keyframes gal-bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }

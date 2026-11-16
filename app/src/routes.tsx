@@ -4,6 +4,7 @@ export const lz = <T extends Record<string, unknown>>(f: () => Promise<T>, n: ke
 const Perfil = lz(() => import("./sections/Perfil"), "Perfil");
 export const PerdidaArmamento = lz(() => import("./sections/PerdidaArmamento"), "PerdidaArmamento");
 const Ascensos = lz(() => import("./sections/sup/Ascensos"), "Ascensos");
+const AdmGaleria = lz(() => import("./sections/adm/Galeria"), "AdmGaleria");
 const Galeria = lz(() => import("./sections/Galeria"), "Galeria");
 const Radio = lz(() => import("./sections/Radio"), "Radio");
 const Reuniones = lz(() => import("./sections/sup/Reuniones"), "Reuniones");
@@ -40,5 +41,5 @@ const Equipamiento = lz(() => import("./sections/cap/Equipamiento"), "Equipamien
 
 export const VIEWS: Record<string, () => ReactNode> = {
   "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "rad/rad": () => <Radio />, "gal/gal": () => <Galeria />, "sup/reu": () => <Reuniones />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/cond": () => <Condecoraciones />, "cap/exa": () => <Sargentos tab="exa" />, "cap/ent": () => <Sargentos tab="ent" />, "cap/list": () => <Sargentos tab="list" />, "piz/piz": () => <Pizarra />, "cod/cod": () => <Codigos />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "sup/fbk": () => <Feedback />, "cap/vot": () => <Votaciones />, "sup/pat": () => <PatrullasHub />, "sup/rob": () => <RobosSup />, "sup/prof": () => <Agentes />, "age/prof": () => <Agentes />, "ini/nov": () => <Novedades />, "ini/ts": () => <Timestamps />, "inf/inf": () => <Informes />, "leg/ley": () => <Legal />, "fb/env": () => <FeedbackApp />, "sup/hue": () => <Huellas />, "cap/equ": () => <Equipamiento />, "cap/perm": () => <Permisos />, "jef/ros": () => <EstadoRoster />, "jef/his": () => <HistorialVotaciones />,
-  "cal/cal": () => <Calendario />, "me/perfil": () => <Perfil />, "adm/acc": () => <AdmAccesos />, "adm/brand": () => <AdmMarca />, "adm/data": () => <AdmDatos />, "adm/logs": () => <AdmLogs />,
+  "cal/cal": () => <Calendario />, "me/perfil": () => <Perfil />, "adm/acc": () => <AdmAccesos />, "adm/brand": () => <AdmMarca />, "adm/data": () => <AdmDatos />, "adm/logs": () => <AdmLogs />, "adm/gal": () => <AdmGaleria />,
 };

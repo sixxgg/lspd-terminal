@@ -1,20 +1,20 @@
-/* Inicio, con aire de foro (índice de Invision / postbit de vBulletin):
+/* Inicio, simple:
    - Ficha del agente: portada, avatar, rango con barras, cintas (condecoraciones), divisiones y datos.
-   - Escalafón: la carrera completa con el rango propio marcado y el que sigue.
-   - Índice: cada área es una categoría y cada sección una fila (ícono, nombre, descripción y dato a la derecha).
-   - Columna lateral: próximos eventos, la última versión y números del departamento. */
+   - Carrusel con las fotos de la Galería (si hay) y el escalafón.
+   - Para ir a cualquier lado: el buscador (Ctrl + K).
+   - Columna lateral: próximos eventos y la última versión. */
 import { useMemo } from "react";
-import { ArrowRight, CalendarDays, ChevronRight, FileText, ScrollText, ShieldCheck, Sparkles, UserCheck, Users, Vote } from "lucide-react";
+import { ArrowRight, CalendarDays, ScrollText, Search, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { Card } from "@/components/ui";
 import { Avatar } from "@/components/agents";
 import { RibbonRack } from "@/components/ribbon";
-import { AREAS, canArea, secsOf } from "@/nav";
-import { LEVEL, RANK_COLOR, divAb, emailOf, getRoster, insigniaUrl, lvl, rankES } from "@/lib/domain";
+import { LEVEL, RANK_COLOR, divAb, emailOf, insigniaUrl, lvl, rankES } from "@/lib/domain";
 import { decorOf, type Award, type Decor } from "@/lib/decor";
 import { profFull } from "@/lib/profiles";
 import { calAll, calMine, fmtWhen, isToday } from "@/lib/calendar";
 import { LS, useStoreVersion } from "@/lib/store";
-import { APP_VERSION, latest } from "./Novedades";
+import { latest } from "./Novedades";
+import { HomeGallery } from "./Galeria";
 import { cn } from "@/lib/cn";
 
 /* escalafón de menor a mayor; los detectives van en su propia rama */
@@ -29,9 +29,7 @@ const Widget = ({ icon: I, title, action, children }: { icon: typeof Users; titl
 export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go: (a: string, s: string) => void }) {
   useStoreVersion();
   const h = new Date().getHours(), sal = h < 6 ? "Buenas noches" : h < 13 ? "Buen día" : h < 20 ? "Buenas tardes" : "Buenas noches";
-  const roster = getRoster(), act = roster.filter(a => a.e === "Activo").length;
-  const votes = LS.json<{ estado?: string }[]>("lspdt.votes", []).filter(v => v.estado === "abierta").length;
-  const infs = LS.json<unknown[]>("lspdt.informes", []).length;
+  
   const prof = profFull(me.n), up = LS.json<{ since?: number }>(`lspdt.uprof.${emailOf(me.n).split("@")[0]}`, {});
   const ribbons = ((prof.cond || []) as unknown as Award[]).map(a => decorOf(a.k)).filter(Boolean) as Decor[];
   const col = RANK_COLOR[me.r] || "rgb(var(--b-500))", L = lvl(me.r), ins = insigniaUrl(me.r);
@@ -39,10 +37,6 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
   const track = LADDER.filter(r => (isDet(me.r) ? isDet(r) || LEVEL[r] < 4.5 : !isDet(r))), at = track.indexOf(me.r), next = at >= 0 ? track[at + 1] : undefined;
   const evs = useMemo(() => calAll().filter(e => e.at >= Date.now() - 36e5 && calMine(e, me.n)).sort((a, b) => a.at - b.at).slice(0, 4), [me.n]); // eslint-disable-line react-hooks/exhaustive-deps
   const rel = latest();
-  const count: Record<string, string> = { "inf/inf": infs ? `${infs} ${infs === 1 ? "informe" : "informes"}` : "", "sup/vot": votes ? `${votes} ${votes === 1 ? "abierta" : "abiertas"}` : "", "ini/nov": `v${APP_VERSION}` };
-  const cats = AREAS.filter(a => !a.hidden && canArea(a, me.r) && secsOf(a, me.r).some(s => s.k !== "home"));
-  const stat = (I: typeof Users, n: number, l: string) => (
-    <div key={l} className="flex items-center gap-3 px-4 py-2.5"><I className="size-4 shrink-0 text-slate-400" /><span className="flex-1 text-[13px] text-slate-600 dark:text-slate-300">{l}</span><b className="text-[15px] tabular-nums">{n}</b></div>);
   return (
     <div className="space-y-5">
       {/* ficha del agente */}
@@ -74,6 +68,7 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-5">
+          <HomeGallery />
           {/* escalafón */}
           {at >= 0 && <Card className="px-4 py-3">
             <div className="mb-2.5 flex flex-wrap items-center gap-2"><ShieldCheck className="size-4 text-brand-600 dark:text-brand-300" /><h3 className="text-[13px] font-bold uppercase tracking-[.1em]">Escalafón</h3>
@@ -88,19 +83,10 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
               </li>); })}</ol>
           </Card>}
 
-          {/* índice: cada área es una categoría */}
-          {cats.map(a => { const S = secsOf(a, me.r).filter(s => s.k !== "home"); return (
-            <Card key={a.k} className="overflow-hidden">
-              <div className="flex items-center gap-2.5 border-b border-slate-200 bg-gradient-to-r from-brand-600 to-brand-500 px-4 py-2 text-white dark:border-slate-800 dark:from-brand-600/90 dark:to-brand-500/60">
-                {a.icon && <a.icon className="size-4" />}<h3 className="flex-1 text-[14px] font-bold uppercase tracking-[.1em]">{a.l}</h3><span className="text-[11px] font-semibold opacity-80">{S.length} {S.length === 1 ? "sección" : "secciones"}</span></div>
-              <ul className="divide-y divide-slate-100 dark:divide-slate-800">{S.map(s => { const k = `${a.k}/${s.k}`; return (
-                <li key={s.k}><button onClick={() => go(a.k, s.k)} className="group flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-brand-500/[.05] focus-visible:bg-brand-500/[.08] focus-visible:outline-none">
-                  <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl transition", s.ready ? "bg-brand-500/10 text-brand-600 group-hover:bg-brand-600 group-hover:text-white dark:text-brand-300" : "bg-slate-100 text-slate-400 dark:bg-slate-800")}><s.icon className="size-[18px]" /></span>
-                  <span className="min-w-0 flex-1"><b className="block truncate text-[13.5px] font-semibold group-hover:text-brand-700 dark:group-hover:text-brand-300">{s.l}</b><span className="block truncate text-[12px] text-slate-500">{s.d}</span></span>
-                  {count[k] && <span className="hidden shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 sm:inline dark:bg-slate-800 dark:text-slate-300">{count[k]}</span>}
-                  <ChevronRight className="size-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-brand-500 dark:text-slate-600" />
-                </button></li>); })}</ul>
-            </Card>); })}
+          {/* ir a cualquier lado: el buscador */}
+          <button type="button" onClick={() => dispatchEvent(new Event("lspdt:cmdk"))} className="group flex w-full items-center gap-3 rounded-2xl border border-dashed border-slate-300 px-4 py-3.5 text-left transition hover:border-brand-400 hover:bg-brand-500/[.04] dark:border-slate-700">
+            <Search className="size-5 text-slate-400 group-hover:text-brand-500" /><span className="flex-1 text-[13.5px] text-slate-500">¿Buscás algo? Informes, agentes, secciones, divisiones, leyes…</span>
+            <kbd className="rounded-md border border-slate-200 px-1.5 py-0.5 font-mono text-[11px] text-slate-500 dark:border-slate-700">Ctrl K</kbd></button>
         </div>
 
         {/* columna lateral */}
@@ -115,9 +101,6 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
           <Widget icon={Sparkles} title={`Novedades · v${rel.v}`} action={<button onClick={() => go("ini", "nov")} className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:underline dark:text-brand-300">Ver todo<ArrowRight className="size-3" /></button>}>
             <div className="px-4 py-3"><p className="text-[13px] font-semibold leading-snug">{rel.t}</p><p className="text-[11px] text-slate-500">{rel.f}</p>
               <ul className="mt-2 space-y-1.5">{rel.items.slice(0, 3).map(x => <li key={x} className="flex gap-2 text-[12px] leading-snug text-slate-600 dark:text-slate-300"><ScrollText className="mt-0.5 size-3 shrink-0 text-brand-500" /><span className="line-clamp-2">{x}</span></li>)}</ul></div>
-          </Widget>
-          <Widget icon={Users} title="El departamento">
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">{stat(Users, roster.length, "Agentes en el roster")}{stat(UserCheck, act, "Agentes activos")}{stat(Vote, votes, votes === 1 ? "Votación abierta" : "Votaciones abiertas")}{stat(FileText, infs, "Informes registrados")}</div>
           </Widget>
         </aside>
       </div>

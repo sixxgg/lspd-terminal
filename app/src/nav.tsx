@@ -48,8 +48,8 @@ const RAW_AREAS: Area[] = [
     { k: "perm", l: "Permisos y cuentas", d: "Excepciones de rango y cuentas de la terminal", icon: KeyRound, ready: true, min: 8 },
   ] },
   { k: "piz", l: "Pizarra", icon: Presentation, min: 0, beta: true, sec: [{ k: "piz", l: "Pizarra", d: "Lienzo compartido para planear operativos, mapas mentales y flujos", icon: Presentation, ready: true }] },
-  /* oculta para todos menos six (por ahora): sus fotos de Fivemanager */
-  { k: "gal", l: "Galería", icon: Images, min: 0, sec: [{ k: "gal", l: "Galería", d: "Fotos de Fivemanager en un carrusel (privado)", icon: Images, ready: true }] },
+  /* galería: la editan six, la administración y quienes habilite Administración › Galería (las fotos se ven en el Inicio) */
+  { k: "gal", l: "Galería", icon: Images, min: 0, sec: [{ k: "gal", l: "Galería", d: "Fotos de Fivemanager para el carrusel del Inicio", icon: Images, ready: true }] },
   { k: "rad", l: "Radio", icon: RadioTower, min: 0, sec: [{ k: "rad", l: "Comunicados por radio", d: "10.03 con sujetos y vehículo de huida, por /rlspd o /rsapd", icon: RadioTower, ready: true }] },
   { k: "cod", l: "Códigos", icon: Radio, min: 0, sec: [{ k: "cod", l: "Códigos radiales", d: "Códigos de radio, 10-X, terminología, derechos y alfabeto NATO", icon: Radio, ready: true }] },
   { k: "jef", l: "Jefatura", icon: Star, min: 10, req: "Comandante", sec: [
@@ -69,6 +69,7 @@ const RAW_AREAS: Area[] = [
   { k: "adm", l: "Administración", icon: Settings, min: 0, admin: true, sec: [
     { k: "acc", l: "Accesos y administradores", d: "Solicitudes de acceso, administradores y accesos a RTD/PSB", icon: UserCheck, ready: true },
     { k: "brand", l: "Marca e imágenes", d: "Logos, fondos, fotos por defecto, textos y emblemas", icon: Palette, ready: true },
+    { k: "gal", l: "Galería", d: "Quién puede editar la galería y la clave de Fivemanager", icon: Images, ready: true },
     { k: "logs", l: "Logs", d: "Agentes que salieron del roster: quién, cuándo y quién lo quitó", icon: UserMinus, ready: true },
     { k: "data", l: "Roster y respaldo", d: "Cargar el roster en CSV y exportar o importar los datos", icon: Database, ready: true },
   ] },
@@ -82,7 +83,8 @@ export const AREAS: Area[] = RAW_AREAS
 
 /* Legal: solo six y a quien six le da acceso desde Administración */
 const legalOk = () => !!ME_ROLES.six || LS.json<string[]>("lspdt.legacc", []).includes(PROF.me);
-export const canArea = (a: Area, r?: string) => (a.k === "gal" ? !!ME_ROLES.six : a.k === "me" ? profOk() : a.k === "leg" ? legalOk() : a.admin ? !!ME_ROLES.admin : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : lvl(r) >= a.min);
+const galOk = () => !!ME_ROLES.six || !!ME_ROLES.admin || LS.json<string[]>("lspdt.galEditors", []).includes(PROF.me);
+export const canArea = (a: Area, r?: string) => (a.k === "gal" ? galOk() : a.k === "me" ? profOk() : a.k === "leg" ? legalOk() : a.admin ? !!ME_ROLES.admin : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : lvl(r) >= a.min);
 /* áreas del menú (sin las ocultas) */
 export const menuAreas = (r?: string) => AREAS.filter(a => !a.hidden && canArea(a, r));
 /* secciones bloqueadas para ese rango (se muestran con candado) */
