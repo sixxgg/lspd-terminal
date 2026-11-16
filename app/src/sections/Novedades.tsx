@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.7.4";
+export const APP_VERSION = "3.7.5";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,9 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.7.5", f: "15/11/2026", t: "Reuniones: temas más claros", items: [
+    "Al abrir una reunión, los temas de la plantilla se ven como lista numerada (se pueden reordenar o quitar) y abajo se suman los que hayan quedado afuera, uno por vez. Ya no se escribe un tema por línea.",
+  ] },
   { v: "3.7.4", f: "15/11/2026", t: "Buscador más preciso y logo en la actualización", items: [
     "Ctrl + K: si ya estás en la sección, igual te lleva a la pestaña que elegiste (por ejemplo, de «Procedimiento OIS» a «Guía /me y /do»), y lo mismo con informes, agentes y leyes.",
     "La pantalla de actualización y el ícono de la pestaña usan el logo de la terminal en vez del de por defecto, incluso antes de que carguen los datos.",

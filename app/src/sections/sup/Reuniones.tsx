@@ -3,7 +3,7 @@
    Lo de los demás queda oculto hasta que envías tu opinión (así nadie se condiciona). Quien la abre puede escribir el acta y cerrarla.
    Índice en lspdt.reuniones; el aporte de cada uno en su propia clave (lspdt.reu.<id>.<agente>) para que nadie pise a nadie. */
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, ClipboardList, EyeOff, Lock, LockOpen, Plus, Send, Trash2, Users } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, X, ClipboardList, EyeOff, Lock, LockOpen, Plus, Send, Trash2, Users } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Textarea } from "@/components/ui";
 import { Avatar } from "@/components/agents";
 import { DiscordOutput } from "@/components/output";
@@ -82,8 +82,8 @@ export function Reuniones() {
 const Badge = ({ c, I, t }: { c: string; I: typeof Lock; t: string }) => <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold" style={{ background: c + "1c", color: c }}><I className="size-3" />{t}</span>;
 
 function Nueva({ onCreate }: { onCreate: (r: Reu) => void }) {
-  const me = useMe(), { toast } = useFeedback(), [tpl, setTpl] = useState("sgt"), [t, setT] = useState(TPL.sgt.l), [fd, setFd] = useState(isoToDMY(hoyISO())), [secs, setSecs] = useState(TPL.sgt.secs.join("\n"));
-  const pick = (k: string) => { if (!t.trim() || Object.values(TPL).some(x => x.l === t)) setT(TPL[k].l); setTpl(k); setSecs(TPL[k].secs.join("\n")); };
+  const me = useMe(), { toast } = useFeedback(), [tpl, setTpl] = useState("sgt"), [t, setT] = useState(TPL.sgt.l), [fd, setFd] = useState(isoToDMY(hoyISO())), [secs, setSecs] = useState<string[]>(TPL.sgt.secs);
+  const pick = (k: string) => { if (!t.trim() || Object.values(TPL).some(x => x.l === t)) setT(TPL[k].l); setTpl(k); setSecs(TPL[k].secs); };
   return (
     <Card>
       <CardHeader icon={<Plus />} title="Nueva reunión" desc="Elegí la plantilla; los temas se pueden ajustar." />
@@ -96,14 +96,39 @@ function Nueva({ onCreate }: { onCreate: (r: Reu) => void }) {
           <Field label="Título"><Input value={t} onChange={e => setT(e.target.value)} /></Field>
           <Field label="Fecha"><Input value={fd} onChange={e => setFd(maskDMY(e.target.value))} placeholder="dd/mm/aaaa" inputMode="numeric" /></Field>
         </div>
-        <Field label="Temas" hint="(uno por línea)"><Textarea rows={5} value={secs} onChange={e => setSecs(e.target.value)} /></Field>
+        <Field label={`Temas · ${secs.length}`} hint="(los de la plantilla; sumá los que falten)"><Temas list={secs} base={TPL[tpl].secs} onChange={setSecs} /></Field>
         <div className="flex justify-end"><Button icon={<CheckCircle2 />} onClick={() => {
-          const f = dmyToISO(fd.trim()), S = secs.split("\n").map(x => x.trim()).filter(Boolean);
+          const f = dmyToISO(fd.trim()), S = secs;
           if (!t.trim() || !f || !S.length) { toast("Falta el título, una fecha válida o los temas", "err"); return; }
           onCreate({ id: uid(), tpl, t: t.trim(), f, by: me.n, at: Date.now(), secs: S }); toast("Reunión abierta: cargá tu opinión");
         }}>Abrir reunión</Button></div>
       </CardBody>
     </Card>);
+}
+
+/* lista de temas: los de la plantilla numerados, se reordenan o quitan, y abajo se suman los que hayan quedado afuera */
+function Temas({ list, base, onChange }: { list: string[]; base: string[]; onChange: (l: string[]) => void }) {
+  const [x, setX] = useState(""), add = () => { const t = x.trim().replace(/\s+/g, " "); if (!t) return; if (list.some(y => norm(y) === norm(t))) { setX(""); return; } onChange([...list, t.charAt(0).toUpperCase() + t.slice(1)]); setX(""); };
+  const mv = (i: number, d: number) => { const L = list.slice(), j = i + d; if (j < 0 || j >= L.length) return; [L[i], L[j]] = [L[j], L[i]]; onChange(L); };
+  const changed = list.join("|") !== base.join("|");
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
+      <ol className="divide-y divide-slate-100 dark:divide-slate-800">{list.map((t, i) => { const nuevo = !base.includes(t); return (
+        <li key={t} className="group flex items-center gap-2.5 px-3 py-2">
+          <span className="grid size-6 shrink-0 place-items-center rounded-md bg-slate-100 font-mono text-[11px] font-bold text-slate-500 dark:bg-slate-800">{i + 1}</span>
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{t}</span>
+          {nuevo && <span className="rounded-full bg-emerald-500/12 px-1.5 py-px text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Agregado</span>}
+          <span className="flex items-center opacity-60 transition group-hover:opacity-100">
+            <button type="button" aria-label="Subir" disabled={!i} onClick={() => mv(i, -1)} className="rounded p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-200"><ChevronUp className="size-4" /></button>
+            <button type="button" aria-label="Bajar" disabled={i === list.length - 1} onClick={() => mv(i, 1)} className="rounded p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-200"><ChevronDown className="size-4" /></button>
+            <button type="button" aria-label={`Quitar «${t}»`} disabled={list.length < 2} onClick={() => onChange(list.filter(y => y !== t))} className="rounded p-1 text-slate-400 hover:text-red-500 disabled:opacity-30"><X className="size-4" /></button></span>
+        </li>); })}</ol>
+      <div className="flex items-center gap-2 border-t border-dashed border-slate-200 bg-slate-50/60 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/40">
+        <Plus className="size-4 shrink-0 text-slate-400" />
+        <input value={x} onChange={e => setX(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); add(); } }} placeholder="Agregar un tema que haya quedado afuera…" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-slate-400" />
+        {x.trim() ? <Button size="sm" onClick={add}>Agregar</Button> : changed && <button type="button" onClick={() => onChange(base)} className="text-[11.5px] font-semibold text-slate-400 hover:text-brand-600">Volver a la plantilla</button>}
+      </div>
+    </div>);
 }
 
 function Detalle({ r, onBack, onSave, onDel }: { r: Reu; onBack: () => void; onSave: (r: Reu) => void; onDel: () => void }) {
