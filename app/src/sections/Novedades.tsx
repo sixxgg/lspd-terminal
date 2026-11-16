@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "4.0.1";
+export const APP_VERSION = "4.0.2";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,10 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "4.0.2", f: "16/11/2026", t: "Menú más limpio", items: [
+    "Menú de arriba solo con íconos: la sección en la que estás muestra su nombre y el resto lo dice al pasar el mouse.",
+    "Fuera del encabezado el botón «Buscar» (Ctrl + K sigue abriendo el buscador), el «Sincronizado» (solo aparece si se está guardando o no hay conexión) y el nombre y rango al lado de tu foto.",
+  ] },
   { v: "4.0.1", f: "16/11/2026", t: "Invitados y portada", items: [
     "Links de invitado (desde el panel de six › Administración): quien lo abre entra a la terminal sin iniciar sesión, solo con las secciones que six marcó (Inicio, Calendario, Informes, Agentes, Legal, Códigos o Radio) y en solo lectura: nada se guarda.",
     "El invitado ve un aviso «Invitado · solo lectura» con el botón para iniciar sesión, una tarjeta con lo que puede mirar y hasta cuándo vence el link; en Informes solo el historial.",

@@ -4,7 +4,7 @@ import { brandSave } from "@/lib/brand";
 import { profOk } from "@/lib/nick";
 import { cipher, onlineIcons, useTabFx } from "@/lib/tabfx";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { Eye, LogIn, Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, UserRound, KeyRound, BellRing, CalendarClock, MoreHorizontal, Search } from "lucide-react";
+import { Eye, LogIn, Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, UserRound, KeyRound, BellRing, CalendarClock, MoreHorizontal } from "lucide-react";
 import { AREAS, canArea, lockedOf, menuAreas, secsOf, type Area, type Sec } from "@/nav";
 import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
@@ -60,16 +60,16 @@ function NavDock({ areas, cur, onGo, me }: { areas: Area[]; cur: string; onGo: (
   if (ai >= n && n > 0) vis = [...areas.slice(0, n - 1), areas[ai]];
   const rest = areas.filter(a => !vis.includes(a));
   const item = (a: Area, measure = false) => { const on = a.k === cur, AI = a.icon, tone = a.k === "adm" ? "red" : a.k === "fb" ? "pink" : "brand"; return (
-    <button key={a.k} tabIndex={measure ? -1 : undefined} onClick={measure ? undefined : () => onGo(a)} aria-current={on ? "page" : undefined} data-tone={tone} className={cn("nav-dk", on && "on", focusRing)}>
+    <button key={a.k} tabIndex={measure ? -1 : undefined} onClick={measure ? undefined : () => onGo(a)} aria-label={a.l} aria-current={on ? "page" : undefined} data-tone={tone} className={cn("nav-dk", on && "on", focusRing)}>
       <span className="nav-dk-i">{AI && <AI />}{a.k === "cal" && !measure && <span className="absolute -right-2 -top-1.5"><CalBadge n={me} /></span>}</span>
-      <span className="nav-dk-l">{a.l}{a.beta && <i className="nav-dk-b">BETA</i>}</span></button>); };
+      <span className="nav-dk-l">{a.l}{a.beta && <i className="nav-dk-b">BETA</i>}</span>{!measure && <span className="nav-dk-t">{a.l}</span>}</button>); };
   return (
     <div ref={box} className="relative flex min-w-0 flex-1 justify-center">
       <div ref={meas} aria-hidden className="pointer-events-none invisible absolute left-0 top-0 flex gap-0.5">{areas.map(a => item(a, true))}</div>
       <nav aria-label="Áreas" className="flex items-stretch gap-0.5">
         {vis.map(a => item(a))}
         {rest.length > 0 && <div ref={mb} className="relative">
-          <button onClick={() => setMore(!more)} aria-expanded={more} className={cn("nav-dk", more && "on", focusRing)}><span className="nav-dk-i"><MoreHorizontal /></span><span className="nav-dk-l">Más</span></button>
+          <button onClick={() => setMore(!more)} aria-label="Más áreas" aria-expanded={more} className={cn("nav-dk", focusRing, more && "bg-slate-100 dark:bg-slate-800/60")}><span className="nav-dk-i"><MoreHorizontal /></span><span className="nav-dk-t">Más</span></button>
           {more && <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900">
             {rest.map(a => { const AI = a.icon; return <button key={a.k} onClick={() => { setMore(false); onGo(a); }} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-semibold transition hover:bg-slate-100 dark:hover:bg-slate-800 [&>svg]:size-4 [&>svg]:text-slate-400">
               {AI && <AI />}{a.l}{a.beta && <span className="beta-tag">BETA</span>}{a.k === "cal" && <span className="ml-auto"><CalBadge n={me} /></span>}</button>; })}</div>}
@@ -114,9 +114,6 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
       <i className="sync-bar" />
     </span>);
   const tools = <>
-    <button onClick={() => dispatchEvent(new Event("lspdt:cmdk"))} title="Buscar en toda la terminal (Ctrl + K)" aria-label="Buscar"
-      className={cn("hidden items-center gap-2 rounded-lg border border-slate-200 py-1.5 pl-2 pr-1.5 text-[12px] text-slate-500 transition hover:border-brand-400 hover:text-slate-900 md:inline-flex dark:border-slate-700 dark:text-slate-400 dark:hover:text-white", focusRing)}>
-      <Search className="size-4" /><span className="hidden xl:inline">Buscar</span><kbd className="rounded border border-slate-200 px-1 font-mono text-[10px] dark:border-slate-700">Ctrl K</kbd></button>
     <button onClick={() => setAp(true)} className={cn("rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white", focusRing)}
       aria-label="Apariencia: temas y efectos" title="Temas, colores y efectos"><Palette className="size-[18px]" /></button></>;
   /* el encabezado solo aparece en áreas con varias secciones (en las de una sola ya lo dice el menú) */
@@ -146,10 +143,9 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
           </button><VersionChip go={go} /></div>
           <NavDock areas={areas} cur={area.k} onGo={goArea} me={me.n} />
           <div className="flex shrink-0 items-center gap-1">
-            {sync}{!GUEST.on && <NotifBell me={me} go={go} />}{tools}
+            {net !== "ok" && sync}{!GUEST.on && <NotifBell me={me} go={go} />}{tools}
             {GUEST.on ? guestBox : <><UserMenu onAcc={() => setAcc(true)} go={go} up={false}>
               <Avatar n={me.n} size={32} />
-              <span className="hidden text-left leading-tight min-[1850px]:block"><span className="block max-w-[10rem] truncate text-xs font-semibold">{me.n}</span><span className="block text-[11px] text-slate-500 dark:text-slate-400">{rankES(me.r)}</span></span>
             </UserMenu>
             <button onClick={onLogout} title="Cerrar sesión" aria-label="Cerrar sesión" className={cn("rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400", focusRing)}><LogOut className="size-4" /></button></>}
           </div>
@@ -243,7 +239,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
             <ChevronRight className="hidden size-4 text-slate-300 sm:inline dark:text-slate-600" />
             <span className="truncate font-semibold">{sec.l}</span>
           </div>
-          {sync}{!GUEST.on && <NotifBell me={me} go={go} />}{tools}
+          {net !== "ok" && sync}{!GUEST.on && <NotifBell me={me} go={go} />}{tools}
         </header>
         <main className="mx-auto w-full max-w-[1760px] flex-1 px-4 py-6 sm:px-6 lg:py-8">
           {pageHead}
