@@ -1,8 +1,9 @@
 import { DraftZone } from "@/components/drafts";
+import { CommandK } from "@/components/cmdk";
 import { profOk } from "@/lib/nick";
 import { cipher, onlineIcons, useTabFx } from "@/lib/tabfx";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, UserRound, KeyRound, BellRing, CalendarClock, MoreHorizontal } from "lucide-react";
+import { Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, UserRound, KeyRound, BellRing, CalendarClock, MoreHorizontal, Search } from "lucide-react";
 import { AREAS, canArea, lockedOf, menuAreas, secsOf, type Area, type Sec } from "@/nav";
 import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
@@ -111,6 +112,9 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
       <i className="sync-bar" />
     </span>);
   const tools = <>
+    <button onClick={() => dispatchEvent(new Event("lspdt:cmdk"))} title="Buscar en toda la terminal (Ctrl + K)" aria-label="Buscar"
+      className={cn("hidden items-center gap-2 rounded-lg border border-slate-200 py-1.5 pl-2 pr-1.5 text-[12px] text-slate-500 transition hover:border-brand-400 hover:text-slate-900 md:inline-flex dark:border-slate-700 dark:text-slate-400 dark:hover:text-white", focusRing)}>
+      <Search className="size-4" /><span className="hidden xl:inline">Buscar</span><kbd className="rounded border border-slate-200 px-1 font-mono text-[10px] dark:border-slate-700">Ctrl K</kbd></button>
     <button onClick={() => setAp(true)} className={cn("rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white", focusRing)}
       aria-label="Apariencia: temas y efectos" title="Temas, colores y efectos"><Palette className="size-[18px]" /></button></>;
   /* el encabezado solo aparece en áreas con varias secciones (en las de una sola ya lo dice el menú) */
@@ -119,7 +123,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
       <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-brand-600 text-white shadow-lg shadow-brand-600/25 dark:bg-brand-500">{<sec.icon className="size-5" />}</div>
       <div className="min-w-0"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand-600 dark:text-brand-300">{area.l}</p><h1 className="text-2xl font-bold tracking-tight">{sec.l}</h1><p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{sec.d}</p></div>
     </div>);
-  const modals = <><AccountModal me={me} open={acc} onClose={() => setAcc(false)} /><AppearanceModal open={ap} onClose={() => setAp(false)} /></>;
+  const modals = <><CommandK go={go} me={me} /><AccountModal me={me} open={acc} onClose={() => setAcc(false)} /><AppearanceModal open={ap} onClose={() => setAp(false)} /></>;
   const areas = menuAreas(me.r);
   const goArea = (a: Area) => { const l = LS.get("lspdt.sec." + a.k); const S = secsOf(a, me.r); go(a.k, S.some(s => s.k === l) ? l! : S[0].k); };
 

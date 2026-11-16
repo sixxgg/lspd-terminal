@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
 import { useOutside } from "@/lib/outside";
 import { VehPick } from "@/components/vehpick";
 import { DivNav } from "./div/DivTools";
+import { JUMP } from "@/lib/jump";
 import { OisPanel } from "./Ois";
 import { InfViewer, type InfX } from "./InfViewer";
 
@@ -31,8 +32,9 @@ export function PenMeta({ x }: { x: Art }) {
 export function Informes() {
   useStoreVersion();
   const [INFS] = useJSON<Inf[]>("lspdt.informes", []);
-  const [tab, setTab] = useState<"new" | "list">("new"), [edit, setEdit] = useState<Inf | null>(null), [open, setOpen] = useState<string | null>(null), [base, setBase] = useState<{ r: Inf; k: string } | null>(null);
-  const [sub, setSub] = useState(() => LS.get("lspdt.next.infsub") || "inf"), go = (v: string) => { setSub(v); LS.set("lspdt.next.infsub", v); };
+  const [jump] = useState(() => { const j = JUMP.inf; JUMP.inf = undefined; return j; });
+  const [tab, setTab] = useState<"new" | "list">(jump ? "list" : "new"), [edit, setEdit] = useState<Inf | null>(null), [open, setOpen] = useState<string | null>(jump || null), [base, setBase] = useState<{ r: Inf; k: string } | null>(null);
+  const [sub, setSub] = useState(() => { const j = JUMP.infSub; JUMP.infSub = undefined; return j || (jump ? "inf" : LS.get("lspdt.next.infsub") || "inf"); }), go = (v: string) => { setSub(v); LS.set("lspdt.next.infsub", v); };
   return (
     <div className="space-y-5">
       <DivNav value={sub} onChange={go} options={[{ value: "inf", label: "Informe policial", icon: <FileText />, txt: "Informe policial" }, { value: "ois", label: "Procedimiento OIS con fallecido", icon: <ShieldAlert />, txt: "Procedimiento OIS con fallecido" }]} />

@@ -1,4 +1,5 @@
 /* Legal: leyes del servidor por capítulo, con buscador, gravedad y favoritos por agente */
+import { JUMP } from "@/lib/jump";
 import { useMemo, useState, type ReactNode } from "react";
 import { Award, BookOpen, ChevronDown, ChevronLeft, ChevronRight, Info, Copy, Gavel, Search, Star, X } from "lucide-react";
 import { Card, Empty, Input, Segmented, Select } from "@/components/ui";
@@ -34,7 +35,7 @@ export function Legal() {
   const [fav, setFav] = useJSON<string[]>(legalFavKey(me.n), []);
   const favs = useMemo(() => new Set(fav), [fav]);
   const [kind, setKind] = useState<Kind>("adm"), [cap, setCap] = useState<Record<Kind, string>>({ adm: "", cp: "" });
-  const [grav, setGrav] = useState<Grav>("all"), [q, setQ] = useState(""), [shown, setShown] = useState(PAGE);
+  const [grav, setGrav] = useState<Grav>("all"), [q, setQ] = useState(() => { const j = JUMP.ley || ""; JUMP.ley = undefined; return j; }), [shown, setShown] = useState(PAGE);
 
   const byKind = (k: Kind) => P.filter(x => (x.k || "cp") === k);
   const chapters = useMemo(() => {

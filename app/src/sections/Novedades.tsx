@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "3.7.1";
+export const APP_VERSION = "3.7.2";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,10 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "3.7.2", f: "15/11/2026", t: "Buscador global (Ctrl + K) y guía OIS dentro del informe", items: [
+    "Ctrl + K (o ⌘ + K) abre un buscador tipo consola, con el fondo desenfocado: secciones y divisiones, informes, agentes, eventos del calendario, robos y artículos de la ley. Se mueve con ↑ ↓, Enter abre, Tab cambia de categoría y recuerda lo último que abriste. También está el botón «Buscar» arriba.",
+    "La guía de /me y /do del OIS con fallecido pasó a Informes › Procedimiento OIS con fallecido, como pestaña «Guía /me y /do». Toma al oficial implicado y sus armas (modelo y número de serie) del procedimiento que estás cargando.",
+  ] },
   { v: "3.7.1", f: "15/11/2026", t: "Borradores automáticos, OIS con fallecido y Radio mejorada", items: [
     "Borradores: lo que escribís en Informes, Feedback, Radio, Supervisores y Capitanía se guarda solo en este navegador. Si recargás, cerrás la pestaña o cambiás de sección sin querer, al volver se completa de nuevo (con opción de descartar). Al guardar o enviar, el borrador se borra.",
     "Supervisores › OIS con fallecido: guía de /me y /do por agente (en masculino o femenino) para la escena, su estado físico, la ropa y el equipo, cada arma (pistola, carabina, SMG, escopeta, cartuchos de goma, táser, porra, linterna, spray), la custodia, la cámara y la notificación. Nivel sencillo o extenso; cada línea se copia con un toque.",

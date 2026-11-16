@@ -12,6 +12,8 @@ import { dmy, escHtml, findAgent, hoyISO, rankES, uid, fullDT } from "@/lib/doma
 import { syncNow, useJSON } from "@/lib/store";
 import { api } from "@/lib/api";
 import { useMe } from "@/lib/me";
+import { OisGuia, guiaInit } from "./OisGuia";
+import { JUMP } from "@/lib/jump";
 import { cn } from "@/lib/cn";
 
 const PSS = ["¿Has disparado? ¿Cuántas veces y en qué dirección?", "¿Hay alguien más herido? ¿Dónde?", "¿Hay sospechosos huidos? Descripción, dirección y armamento.",
@@ -77,7 +79,7 @@ const base = (x: Ois) => [!x.of && "Oficial implicado", !x.sgt && "Sargento a ca
 export function OisPanel() {
   const me = useMe(), { toast, confirm } = useFeedback();
   const [L, setL] = useJSON<Ois[]>("lspdt.ois", []);
-  const [tab, setTab] = useState<"new" | "list">("new"), [x, setX] = useState<Ois>(() => blank(me.n, L)), [open, setOpen] = useState(""), [miss, setMiss] = useState(false), [rev, setRev] = useState<Ois | null>(null), [web, setWeb] = useState<Ois | null>(null), [orig, setOrig] = useState<Ois | null>(null), [vers, setVers] = useState<Ois | null>(null), [gone, setGone] = useState(false);
+  const [tab, setTab] = useState<"new" | "list" | "guia">(() => { const j = JUMP.oisTab; JUMP.oisTab = undefined; return j || "new"; }), [x, setX] = useState<Ois>(() => blank(me.n, L)), [open, setOpen] = useState(""), [miss, setMiss] = useState(false), [rev, setRev] = useState<Ois | null>(null), [web, setWeb] = useState<Ois | null>(null), [orig, setOrig] = useState<Ois | null>(null), [vers, setVers] = useState<Ois | null>(null), [gone, setGone] = useState(false);
   /* abrir un expediente en el formulario: se guarda cómo estaba para, al guardar, aplicar solo lo que se cambió */
   const edit = (r: Ois) => { setX(r); setOrig(r); setTab("new"); };
   const up = (p: Partial<Ois>) => setX({ ...x, ...p }), ok = steps(x), done = ok.filter(Boolean).length;
@@ -111,10 +113,11 @@ export function OisPanel() {
   const H = L.slice().sort((a, b) => b.t - a.t);
   return (
     <div className="space-y-5">
-      <Segmented value={tab} onChange={setTab} options={[{ value: "new", label: x.id ? "Editando" : "Nuevo procedimiento", icon: <FilePlus2 /> }, { value: "list", label: `Registrados (${L.length})`, icon: <FileText /> }]} />
+      <Segmented value={tab} onChange={setTab} options={[{ value: "new", label: x.id ? "Editando" : "Nuevo procedimiento", icon: <FilePlus2 /> }, { value: "list", label: `Registrados (${L.length})`, icon: <FileText /> }, { value: "guia", label: "Guía /me y /do", icon: <Crosshair /> }]} />
+      {tab === "guia" && <OisGuia key={x.of + guns.map(g => g.mod + g.ser).join()} init={guiaInit(x.of, guns)} />}
       {tab === "list" && (me.l >= 8 || me.admin) && <div className="-mt-2 flex justify-end"><Button size="sm" variant="ghost" icon={<History />} onClick={() => setGone(true)}>Recuperar borrados</Button></div>}
       {gone && <Gone L={L} onClose={() => setGone(false)} onRestore={r => { setL([...L, { ...r, hist: [...(r.hist || []), { t: Date.now(), by: me.n, a: "Recuperó el expediente borrado" }] }]); toast(`${r.no} recuperado`); }} />}
-      {tab === "list" ? (!H.length ? <Card><Empty icon={<ClipboardCheck />} title="Sin procedimientos registrados" /></Card> : <Card className="divide-y divide-slate-100 dark:divide-slate-800">
+      {tab === "guia" ? null : tab === "list" ? (!H.length ? <Card><Empty icon={<ClipboardCheck />} title="Sin procedimientos registrados" /></Card> : <Card className="divide-y divide-slate-100 dark:divide-slate-800">
         {H.map(r => { const o = open === r.id, k = steps(r).filter(Boolean).length; return (
           <div key={r.id}>
             <button onClick={() => setOpen(o ? "" : r.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/40">

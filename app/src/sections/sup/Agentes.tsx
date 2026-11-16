@@ -1,3 +1,4 @@
+import { JUMP } from "@/lib/jump";
 import { profOk } from "@/lib/nick";
 import { useEffect, useMemo, useRef, useState, type PointerEvent as PE } from "react";
 import { Users, LayoutGrid, Rows3, UserPlus, BadgeCheck, Trophy, Shield, Clock, TrendingUp, IdCard, Activity,
@@ -82,7 +83,7 @@ export function Agentes() {
   useStoreVersion();
   const me = useMe(), { toast, confirm } = useFeedback();
   const R = getRoster(), P = allProfiles(), nVac = R.filter(x => x.e === "Vacaciones").length;
-  const [q, setQ] = useState(""), [g, setG] = useState(""), [d, setD] = useState("");
+  const [q, setQ] = useState(() => { const j = JUMP.ag || ""; JUMP.ag = undefined; return j; }), [g, setG] = useState(""), [d, setD] = useState("");
   const [view, setView] = useState<"grid" | "list">(() => (LS.get("lspdt.agView") === "list" ? "list" : "grid"));
   const [cur, setCur] = useState<string | null>(null), [reg, setReg] = useState<string | null | false>(false);
   const s = norm(q.trim());
