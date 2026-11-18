@@ -10,7 +10,7 @@ import { DET, lvl } from "@/lib/domain";
 import { rosterDivs } from "@/lib/units";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "5.0.2";
+export const APP_VERSION = "5.0.3";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -49,6 +49,7 @@ const LOG: Rel[] = [
       "Los logros se ven igual desde cualquier departamento; el legajo policial (divisiones, condecoraciones y carrera) queda en el departamento de cada uno.",
     ]],
     ["Para todos", [
+      "[div:Professional Standards Bureau] PSB: el número de caso suma un sufijo opcional. CF-26-001600 es el acusado; CF-26-001600-1, -2… son los testigos o los demás acusados del mismo hecho.",
       "Notificaciones nuevas: bajan dentro de la tablet como tarjetas del sistema, cada una con su app (Perfil, Calendario, PSB, Logros…), la hora y su ícono.",
       "Pantallas más compactas: avisos de «vacío» más chicos y sin textos repetidos en Reuniones y Logs.",
       "Los banners de las divisiones toman el color del logo nuevo apenas se cambia (también con logos de Fivemanager).",
@@ -111,7 +112,7 @@ const LOG: Rel[] = [
       "El examen de la METRO, los avisos de feedback y la pizarra en vivo consultan menos seguido y traen solo lo justo.",
       "Actualizada por dentro: React 19, Vite 8 y los íconos nuevos de Lucide.",
     ]],
-  ], sub: [["4.1", "Consulta, comunicados y buscadores"], ["4.2", "LSSD, ingreso con placa y manual"], ["4.2.1", "Insignias, escudo y códigos del LSSD"], ["4.2.2", "Divisiones y roster completo del LSSD"], ["4.3", "Mismas secciones en los tres departamentos"], ["5.0.0", "Robos, logros y notificaciones desde arriba"], ["5.0.1", "Perfiles en los tres departamentos e imágenes por departamento"], ["5.0.2", "Notificaciones nuevas y Sitio web en el panel de six"]] },
+  ], sub: [["4.1", "Consulta, comunicados y buscadores"], ["4.2", "LSSD, ingreso con placa y manual"], ["4.2.1", "Insignias, escudo y códigos del LSSD"], ["4.2.2", "Divisiones y roster completo del LSSD"], ["4.3", "Mismas secciones en los tres departamentos"], ["5.0.0", "Robos, logros y notificaciones desde arriba"], ["5.0.1", "Perfiles en los tres departamentos e imágenes por departamento"], ["5.0.2", "Notificaciones nuevas y Sitio web en el panel de six"], ["5.0.3", "Números de caso de la PSB con testigos"]] },
   { v: "4.0", from: "3.1", f: "13/11/2026 – 18/11/2026", t: "Inicio nuevo, Radio, Reuniones y Galería", d: "Inicio con portada, buscador Ctrl + K, borradores automáticos, Radio, Reuniones colaborativas y Galería.", items: [], g: [
     ["Inicio", [
       "Inicio nuevo y sin subpestañas: arriba de todo, a todo el ancho, las fotos de la Galería con fundido y un acercamiento lento; los costados y el borde inferior se funden con el fondo y el saludo va escrito sobre la foto.",

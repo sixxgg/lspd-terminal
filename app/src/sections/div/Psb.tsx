@@ -53,7 +53,7 @@ const PSB_CONS = [NTCD, "Amonestación escrita", "Formación obligatoria", "Susp
 const JUS_ROLE = "1565491805166895224";
 
 /* estado compartido entre las pestañas (como en la versión clásica, vive mientras la terminal esté abierta) */
-type PXT = { cA: string; cB: string; ag: string; para: string; dv: string; hecho: string; fl: string[]; firma: boolean; _dv?: boolean;
+type PXT = { cA: string; cB: string; cC?: string; ag: string; para: string; dv: string; hecho: string; fl: string[]; firma: boolean; _dv?: boolean;
   ele: { cf?: string; para: string; hechos: string; const: string; concl: string; grav: string; enc: string; niv: string; det: string; efe: string; arch: boolean; pend: string };
   jus: { s: { t: string; p: string }[]; falta: string; fq: string; cons: string[]; consx: string; mode?: string; sum?: boolean }; res: { modo: string; extra: string; bloque?: boolean };
   vot: { intro: string; res: string; cons: string; concl: string; ops: { t: string; d: string }[]; nota: string; conf: boolean } };
@@ -68,7 +68,8 @@ const usePX = (): [PXT, (fn: (x: PXT) => void) => void] => {
   const px = useSyncExternalStore(f => { subs.add(f); return () => { subs.delete(f); }; }, () => PX);
   return [px, fn => { const x = structuredClone(PX); fn(x); PX = x; subs.forEach(f => f()); }];
 };
-const casoTxt = (p: PXT) => `CF-${p.cA || "XX"}-${p.cB || "XXXXXX"}`;
+/* número de caso: CF-26-001600 es el acusado; CF-26-001600-1, -2… son los testigos o los demás acusados del mismo hecho */
+const casoTxt = (p: PXT) => `CF-${p.cA || "XX"}-${p.cB || "XXXXXX"}${p.cC ? "-" + p.cC : ""}`;
 const psbDeOf = (n: string) => { const a = findAgent(n); return a ? `${RK_EN[a.r] || rankES(a.r)} ${a.n}${a.p ? " #" + a.p : ""}` : n; };
 
 type Go = (t: string) => void;
@@ -146,7 +147,10 @@ function CaseInput() {
       <span className="text-sm text-slate-400">CF-</span>
       <Input value={p.cA} maxLength={2} onChange={e => { const v = cl(e.target.value).slice(0, 2); up(x => { x.cA = v; }); if (v.length === 2) (e.target.nextElementSibling?.nextElementSibling as HTMLInputElement)?.focus(); }} placeholder="26" className="w-14 text-center font-mono" />
       <span className="text-sm text-slate-400">-</span>
-      <Input value={p.cB} maxLength={6} onChange={e => up(x => { x.cB = cl(e.target.value).slice(0, 6); })} placeholder="001474" className="w-28 text-center font-mono" />
+      <Input value={p.cB} maxLength={6} onChange={e => { const v = cl(e.target.value).slice(0, 6); up(x => { x.cB = v; }); if (v.length === 6) (e.target.nextElementSibling?.nextElementSibling as HTMLInputElement)?.focus(); }} placeholder="001600" className="w-28 text-center font-mono" />
+      <span className="text-sm text-slate-400">-</span>
+      <Input value={p.cC || ""} maxLength={2} onChange={e => up(x => { x.cC = e.target.value.replace(/\D/g, "").replace(/^0+/, "").slice(0, 2); })} placeholder="—" title="Vacío: el acusado. 1, 2…: testigos o más acusados del mismo hecho" className="w-12 text-center font-mono" />
+      <span className="ml-1 font-sans text-xs text-slate-400">{p.cC ? `${p.cC}.º testigo o ${+p.cC + 1}.º acusado` : "Acusado"}</span>
     </div>
   );
 }
