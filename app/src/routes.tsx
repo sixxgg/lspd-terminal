@@ -9,6 +9,7 @@ const Galeria = lz(() => import("./sections/Galeria"), "Galeria");
 const Consulta = lz(() => import("./sections/Consulta"), "Consulta");
 const LssdRoster = lz(() => import("./sections/Lssd"), "LssdRoster");
 const LssdSoon = lz(() => import("./sections/Lssd"), "LssdSoon");
+const LssdDivision = lz(() => import("./sections/Lssd"), "LssdDivision");
 const Radio = lz(() => import("./sections/Radio"), "Radio");
 const Reuniones = lz(() => import("./sections/sup/Reuniones"), "Reuniones");
 const T1080 = lz(() => import("./sections/sup/T1080"), "T1080");
@@ -43,7 +44,7 @@ const Equipamiento = lz(() => import("./sections/cap/Equipamiento"), "Equipamien
 
 
 export const VIEWS: Record<string, () => ReactNode> = {
-  "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "rad/rad": () => <Radio />, "gal/gal": () => <Galeria />, "con/con": () => <Consulta />, "lag/ros": () => <LssdRoster />, "lleg/leg": () => <LssdSoon k="leg" t="Legal" />, "lsup/sup": () => <LssdSoon k="sup" t="Supervisores" />,
+  "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "rad/rad": () => <Radio />, "gal/gal": () => <Galeria />, "con/con": () => <Consulta />, "lag/ros": () => <LssdRoster />, ...Object.fromEntries(["seb", "ab", "k9", "cnu", "dd", "tb", "sib", "hsiu"].map(k => [`ldiv/${k}`, () => <LssdDivision k={k} />])), "lleg/leg": () => <LssdSoon k="leg" t="Legal" />, "lsup/sup": () => <LssdSoon k="sup" t="Supervisores" />,
   "lcap/cap": () => <LssdSoon k="cap" t="Capitanía" />, "ljef/jef": () => <LssdSoon k="jef" t="Jefatura" />, "ldet/det": () => <LssdSoon k="det" t="Detectives" />, "sup/reu": () => <Reuniones />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/cond": () => <Condecoraciones />, "cap/exa": () => <Sargentos tab="exa" />, "cap/ent": () => <Sargentos tab="ent" />, "cap/list": () => <Sargentos tab="list" />, "piz/piz": () => <Pizarra />, "cod/cod": () => <Codigos />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "sup/fbk": () => <Feedback />, "cap/vot": () => <Votaciones />, "sup/pat": () => <PatrullasHub />, "sup/rob": () => <RobosSup />, "sup/prof": () => <Agentes />, "age/prof": () => <Agentes />, "ini/nov": () => <Novedades />, "adm/ts": () => <Timestamps />, "inf/inf": () => <Informes />, "leg/ley": () => <Legal />, "fb/env": () => <FeedbackApp />, "sup/hue": () => <Huellas />, "cap/equ": () => <Equipamiento />, "cap/perm": () => <Permisos />, "jef/ros": () => <EstadoRoster />, "jef/his": () => <HistorialVotaciones />,
   "cal/cal": () => <Calendario />, "me/perfil": () => <Perfil />, "adm/acc": () => <AdmAccesos />, "adm/brand": () => <AdmMarca />, "adm/data": () => <AdmDatos />, "adm/logs": () => <AdmLogs />, "adm/gal": () => <AdmGaleria />,
 };

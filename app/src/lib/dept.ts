@@ -8,14 +8,13 @@ export const DEPTS: Record<DeptId, { short: string; name: string; logo: string; 
   lssd: { short: "LSSD", name: "Los Santos Sheriff's Department", logo: "/next/lssd.svg" },
   sahp: { short: "SAHP", name: "San Andreas Highway Patrol", logo: "/next/sahp.svg", soon: true },
 };
-/* rangos del Sheriff (número de insignia de la planilla) */
+/* rangos del Sheriff, en inglés como en la planilla (número de insignia de la planilla) */
 const LSSD_LVL: Record<string, number> = { "Sheriff": 14, "Undersheriff": 13, "Assistant Sheriff": 12, "Division Chief": 11, "Area Commander": 10, "Captain": 9, "Lieutenant": 8, "Sergeant": 7,
-  "Deputy Sheriff Master FTO": 6, "Deputy Sheriff Bonus II": 5, "Deputy Sheriff Bonus I": 4, "Deputy Sheriff": 3, "Deputy Sheriff Trainee": 2 };
-export const LSSD_ES: Record<string, string> = { "Sheriff": "Sheriff", "Undersheriff": "Undersheriff", "Assistant Sheriff": "Sheriff Adjunto", "Division Chief": "Jefe de División", "Area Commander": "Comandante de Área",
-  "Captain": "Capitán", "Lieutenant": "Teniente", "Sergeant": "Sargento", "Deputy Sheriff Master FTO": "Ayudante Master FTO", "Deputy Sheriff Bonus II": "Ayudante Bonus II", "Deputy Sheriff Bonus I": "Ayudante Bonus I",
-  "Deputy Sheriff": "Ayudante del Sheriff", "Deputy Sheriff Trainee": "Ayudante en prácticas" };
+  "Deputy Sheriff Master FTO": 6, "Deputy Sheriff Bonus II": 5, "Deputy Sheriff Bonus I": 4, "Deputy Sheriff": 3, "Deputy Sheriff Trainee": 2, "K-9": 1 };
 export const lssdLvl = (r?: string) => LSSD_LVL[r || ""] || 0;
-export type LssdAg = { n: string; r: string; p: string; e?: string; i?: string; u?: string };
+/* en los perros del K-9: h = usuario del handler, hn = su nombre */
+export type LssdAg = { n: string; r: string; p: string; e?: string; i?: string; u?: string; h?: string; hn?: string };
+export const isK9 = (a: LssdAg) => a.r === "K-9";
 
 /* departamento activo: el de la cuenta (LSSD) o el que eligió six (se recuerda en este navegador) */
 export const DEPT: { id: DeptId; forced: boolean } = { id: "lspd", forced: false };

@@ -79,8 +79,6 @@ function NavDock({ areas, cur, onGo, me }: { areas: Area[]; cur: string; onGo: (
     </div>);
 }
 /* nombre corto de la división para que la barra entre en una línea */
-const divShort = (l: string) => ({ "Administration Services Bureau": "Administration Services", "Air Support Division": "Air Support", "Detective Bureau": "Detective Bureau",
-  "High Speed Interception Unit": "HSIU", "K-9 Division": "K-9", "Metropolitan Division": "Metropolitan", "Professional Standards Bureau": "PSB", "Recruitment and Training Division": "RTD" } as Record<string, string>)[l] || l;
 
 /* selector de departamento (solo six): tarjetas con escudo; SAHP todavía no */
 function DeptMenu({ onClose, home }: { onClose: () => void; home: () => void }) {
@@ -105,7 +103,7 @@ function DeptMenu({ onClose, home }: { onClose: () => void; home: () => void }) 
 export function Shell({ me, area, sec, go, onLogout, children }: {
   me: { n: string; r: string; p?: string }; area: Area; sec: Sec; go: (a: string, s: string) => void; onLogout: () => void; children: ReactNode;
 }) {
-  const [ap, setAp] = useState(false);
+  const [ap, setAp] = useState(false), divBar = area.k === "div" || area.k === "ldiv"; /* divisiones: nombres completos, en dos renglones si no entran */
   /* acceso oculto: 3 clics seguidos en el escudo (o Ctrl+Alt+6 / Ctrl+Alt+A): abre el panel de six o el de Anita, solo para su dueño */
   const taps = useRef<number[]>([]);
   /* six: un toque en el escudo abre el selector de departamento (LSPD / LSSD / SAHP); tres seguidos, su panel */
@@ -176,12 +174,12 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
         </div>
         {secsOf(area, me.r).filter(s => !s.hide).length + lockedOf(area, me.r).length > 1 && (
           <div className="border-t border-slate-200/70 dark:border-slate-800/70">
-            <nav aria-label="Secciones" className="scrollbar-none mx-auto flex max-w-[1760px] gap-0.5 overflow-x-auto px-3 py-2 sm:px-5 [&>*:first-child]:ml-auto [&>*:last-child]:mr-auto">
+            <nav aria-label="Secciones" className={cn("scrollbar-none mx-auto flex max-w-[1760px] gap-0.5 px-3 py-2 sm:px-5", divBar ? "flex-wrap justify-center gap-y-1 max-sm:flex-nowrap max-sm:justify-start max-sm:overflow-x-auto" : "overflow-x-auto [&>*:first-child]:ml-auto [&>*:last-child]:mr-auto")}>
               {secsOf(area, me.r).filter(s => !s.hide).map(s => { const on = s.k === sec.k, I = s.icon; return (
                 <button key={s.k} onClick={() => go(area.k, s.k)} title={s.d} aria-current={on ? "page" : undefined}
-                  className={cn("inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-[12.5px] font-semibold uppercase tracking-wide transition min-[1800px]:px-3.5 min-[1800px]:text-[13px]", focusRing,
+                  className={cn("inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-[12.5px] font-semibold transition min-[1800px]:px-3.5 min-[1800px]:text-[13px]", divBar ? "text-[13px] tracking-[0.01em]" : "uppercase tracking-wide", focusRing,
                     on ? "bg-brand-500/15 text-brand-700 ring-1 ring-inset ring-brand-500/40 dark:text-brand-200" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-white")}>
-                  <I className="size-4 shrink-0" />{area.k === "div" ? <><span className="hidden min-[2300px]:inline">{s.l}</span><span className="min-[2300px]:hidden">{divShort(s.l)}</span></> : s.sl || s.l}</button>); })}
+                  <I className="size-4 shrink-0" />{s.sl || s.l}</button>); })}
               {lockedOf(area, me.r).map(s => <span key={s.k} title="Bloqueada para tu rango" className="inline-flex shrink-0 cursor-not-allowed items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-[12.5px] font-semibold uppercase tracking-wide text-red-500/70 dark:text-red-400/70 min-[1800px]:px-3.5 min-[1800px]:text-[13px]"><Lock className="size-3.5 shrink-0" />{s.sl || s.l}</span>)}
             </nav>
           </div>)}

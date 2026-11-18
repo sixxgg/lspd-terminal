@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "4.2.1";
+export const APP_VERSION = "4.2.2";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,12 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "4.2.2", f: "18/11/2026", t: "LSSD: divisiones y roster completo", items: [
+    "LSSD › Divisiones: Special Enforcement Bureau, Aero Bureau, Canine Service Detail, Crisis Negotiation Unit y Detective Division (Special Operations Division); Training Bureau, Sheriff Information Bureau y High Speed Interception Unit (Office of Sheriff Support Operations). Cada una con su descripción, mandos, subunidades y link al Notion de Eleven.",
+    "El roster del Sheriff suma a los Deputy Sheriff Trainees y a los perros del K-9 con su handler.",
+    "Los rangos del LSSD se leen en inglés, como en la planilla. Insignias: Sheriff 5 estrellas, Undersheriff 4, Assistant Sheriff 3, Division Chief 2 y Area Commander 1.",
+    "Divisiones del LSPD: la barra muestra los nombres completos (Professional Standards Bureau, Recruitment and Training Division…) y pasa a dos renglones si no entran.",
+  ] },
   { v: "4.2.1", f: "18/11/2026", t: "LSSD: insignias, escudo y códigos", items: [
     "LSSD: cada rango tiene su insignia (estrellas para el Executive Staff, hoja de roble, barras de Capitán y Teniente, galones de Sargento y Ayudantes) en el roster, el inicio y el registro.",
     "El escudo del LSSD (y el de la SAHP) se cambia desde Administración › Marca.",

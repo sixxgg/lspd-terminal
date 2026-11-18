@@ -51,7 +51,7 @@ export default wrap(async (req, res) => {
     acc.sort(byId);
     /* las cuentas del LSSD se publican por placa (el usuario OOC no sale de acá) */
     const LS = await lssdRoster(), lssdNames = acc.filter(r => isLssdAcc(r.k)).map(r => lssdOfAcc(LS, r.k)).filter(Boolean).map(a => "#" + a.p);
-    const out = { me: me ? (me.acc ? me.n : me.n) : null, names: acc.filter(r => !isLssdAcc(r.k)).map(r => r.k), lssdNames, lssd: LS.map(a => ({ n: a.n, r: a.r, p: a.p })), brand };
+    const out = { me: me ? (me.acc ? me.n : me.n) : null, names: acc.filter(r => !isLssdAcc(r.k)).map(r => r.k), lssdNames, lssd: LS.filter(a => a.r !== "K-9" && a.u).map(a => ({ n: a.n, r: a.r, p: a.p })), brand };
     if (me && query(req).full) out.data = await fullData(me); // ahorra una vuelta al iniciar
     else out.roster = slim(parseRosterRaw(raw).list);
     return send(res, 200, out);

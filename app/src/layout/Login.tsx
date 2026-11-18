@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { DEPTS, deptLogo, LSSD_ES, setDept } from "@/lib/dept";
+import { DEPTS, deptLogo, setDept } from "@/lib/dept";
 import { LssdIns } from "@/components/lssdIns";
 import { Eye, EyeOff, LogIn, UserPlus, Clock, AlertCircle, ShieldCheck, LifeBuoy, CheckCircle2 } from "lucide-react";
 import { RecCodes } from "@/components/account";
@@ -26,7 +26,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
   const [dep, setDep0] = useState<"lspd" | "lssd">(() => { try { return localStorage.getItem("lspdt.next.loginDept") === "lssd" ? "lssd" : "lspd"; } catch { return "lspd"; } });
   const setDep = (d: "lspd" | "lssd") => { setDep0(d); setName(""); setMsg(null); setU(""); setDept(d, true); try { localStorage.setItem("lspdt.next.loginDept", d); } catch { /* */ } };
   useEffect(() => { setDept(dep, true); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const lssd = dep === "lssd", R = (lssd ? pub.lssd : pub.roster) || [], rkES = (r: string) => (lssd ? LSSD_ES[r] || r : rankES(r));
+  const lssd = dep === "lssd", R = (lssd ? pub.lssd : pub.roster) || [], rkES = (r: string) => (lssd ? r : rankES(r));
   const reg = useMemo(() => new Set(lssd ? pub.lssdNames || [] : pub.names), [pub.names, pub.lssdNames, lssd]), isReg = (a: { n: string; p?: string }) => reg.has(lssd ? "#" + a.p : a.n);
   const sug = useMemo(() => { const s = norm(name.trim()).replace(/^#/, ""); if (s.length < 2) return []; return R.filter(a => norm(a.n).includes(s) || String(a.p) === s).slice(0, 6); }, [name, R]);
   /* elegido: el nombre exacto (si no se repite) o el número de placa */

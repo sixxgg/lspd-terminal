@@ -31,7 +31,7 @@ import { Eye } from "lucide-react";
 import { goodTier, stampLogros } from "./components/logros";
 import { confetti } from "./lib/confetti";
 import { JUMP, jumpNow } from "./lib/jump";
-import { DEPT, LSSD_ES, lssdRoster, onDept, savedDept, setDept } from "./lib/dept";
+import { DEPT, lssdRoster, onDept, savedDept, setDept } from "./lib/dept";
 import { ACC, GUEST, LS, ME_ROLES, PREV, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
 import { emailOf, findAgent, getRoster, rankES } from "./lib/domain";
 import { useFeedback } from "./components/feedback";
@@ -167,7 +167,7 @@ function Main() {
   else if (area.k === "div") view = <Division d={sec.l} />;
   else if (VIEWS[`${area.k}/${sec.k}`]) view = VIEWS[`${area.k}/${sec.k}`]();
   else view = null;
-  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className={cn("animate-fade-in", area.k === "sup" && "sup-c")}><Suspense fallback={<div className="grid min-h-[40vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{view}</Suspense></div></Shell><UpdateBar />{!fx && !lssdAcc && <CalAlert me={user.n} />}{!fx && !PREV.on && !lssdAcc && <ExamWatch me={user.n} />}{PREV.on && <PrevBar r={user.r} />}</MeCtx.Provider>{fx === "full" && <LoginOps name={me.n} rank={lssdAcc ? LSSD_ES[user.r] || user.r : rankES(user.r)} agents={lssdAcc ? lssdRoster().length : getRoster().length} divs={lssdAcc ? 0 : rosterDivs(me.n).length} onDone={() => setFx("")} />}{fx === "short" && <BootScreen name={me.n} rank={lssdAcc ? LSSD_ES[user.r] || user.r : rankES(user.r)} badge={user.p} agents={lssdAcc ? lssdRoster().length : getRoster().length} no={lssdAcc ? undefined : ACC.names.indexOf(me.n) + 1 || undefined} divs={lssdAcc ? [] : rosterDivs(me.n)} short={fx === "short"} onDone={() => setFx("")} />}{breach && <ErrorScreen onDone={endBreach} />}{me.must && !PREV.on && <ForcePwPortal n={me.n} onDone={() => { PREV.must = false; setMe({ ...me, must: false }); toast("Contraseña actualizada. ¡Listo!"); }} onLogout={logout} />}</Device>;
+  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className={cn("animate-fade-in", area.k === "sup" && "sup-c")}><Suspense fallback={<div className="grid min-h-[40vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{view}</Suspense></div></Shell><UpdateBar />{!fx && !lssdAcc && <CalAlert me={user.n} />}{!fx && !PREV.on && !lssdAcc && <ExamWatch me={user.n} />}{PREV.on && <PrevBar r={user.r} />}</MeCtx.Provider>{fx === "full" && <LoginOps name={me.n} rank={lssdAcc ? user.r : rankES(user.r)} agents={lssdAcc ? lssdRoster().length : getRoster().length} divs={lssdAcc ? 0 : rosterDivs(me.n).length} onDone={() => setFx("")} />}{fx === "short" && <BootScreen name={me.n} rank={lssdAcc ? user.r : rankES(user.r)} badge={user.p} agents={lssdAcc ? lssdRoster().length : getRoster().length} no={lssdAcc ? undefined : ACC.names.indexOf(me.n) + 1 || undefined} divs={lssdAcc ? [] : rosterDivs(me.n)} short={fx === "short"} onDone={() => setFx("")} />}{breach && <ErrorScreen onDone={endBreach} />}{me.must && !PREV.on && <ForcePwPortal n={me.n} onDone={() => { PREV.must = false; setMe({ ...me, must: false }); toast("Contraseña actualizada. ¡Listo!"); }} onLogout={logout} />}</Device>;
 }
 
 /* el cambio obligatorio de contraseña va dentro de la pantalla de la tablet (o arriba de todo sin marco) */

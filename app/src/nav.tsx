@@ -88,10 +88,20 @@ const LSPD_AREAS: Area[] = RAW_AREAS
 const LSSD_AREAS: Area[] = [
   { k: "ini", l: "Inicio", icon: Home, min: 0, sec: [{ k: "home", l: "Inicio", d: "Los Santos Sheriff's Department", icon: Home, ready: true }] },
   { k: "lag", l: "Agentes", icon: Users, min: 0, sec: [{ k: "ros", l: "Roster", d: "Personal del departamento por rango", icon: Users, ready: true }] },
+  { k: "ldiv", l: "Divisiones", icon: Landmark, min: 0, sec: [
+    { k: "seb", l: "Special Enforcement Bureau", d: "SEB · Special Operations Division", icon: Crosshair, ready: true },
+    { k: "ab", l: "Aero Bureau", d: "AB · Special Operations Division", icon: Helicopter, ready: true },
+    { k: "k9", l: "Canine Service Detail", d: "K-9 · Special Operations Division", icon: Dog, ready: true },
+    { k: "cnu", l: "Crisis Negotiation Unit", d: "CNU · Special Operations Division", icon: MessageCircle, ready: true },
+    { k: "dd", l: "Detective Division", d: "DD · Special Operations Division", icon: Search, ready: true },
+    { k: "tb", l: "Training Bureau", d: "TB · Office of Sheriff Support Operations", icon: GraduationCap, ready: true },
+    { k: "sib", l: "Sheriff Information Bureau", d: "SIB · Office of Sheriff Support Operations", icon: RadioTower, ready: true },
+    { k: "hsiu", l: "High Speed Interception Unit", d: "HSIU · Office of Sheriff Support Operations", icon: Gauge, ready: true },
+  ] },
   { k: "lleg", l: "Legal", icon: Scale, min: 0, sec: [{ k: "leg", l: "Legal", d: "Código penal y normativa", icon: Scale, ready: true }] },
-  { k: "lsup", l: "Supervisores", icon: ClipboardList, min: 7, req: "Sargento", sec: [{ k: "sup", l: "Supervisores", d: "Herramientas de supervisión", icon: ClipboardList, ready: true }] },
-  { k: "lcap", l: "Capitanía", icon: Briefcase, min: 8, req: "Teniente", sec: [{ k: "cap", l: "Capitanía", d: "Herramientas de Capitanía", icon: Briefcase, ready: true }] },
-  { k: "ljef", l: "Jefatura", icon: Star, min: 10, req: "Comandante de Área", sec: [{ k: "jef", l: "Jefatura", d: "Herramientas de Jefatura", icon: Star, ready: true }] },
+  { k: "lsup", l: "Supervisores", icon: ClipboardList, min: 7, req: "Sergeant", sec: [{ k: "sup", l: "Supervisores", d: "Herramientas de supervisión", icon: ClipboardList, ready: true }] },
+  { k: "lcap", l: "Capitanía", icon: Briefcase, min: 8, req: "Lieutenant", sec: [{ k: "cap", l: "Capitanía", d: "Herramientas de Capitanía", icon: Briefcase, ready: true }] },
+  { k: "ljef", l: "Jefatura", icon: Star, min: 10, req: "Area Commander", sec: [{ k: "jef", l: "Jefatura", d: "Herramientas de Jefatura", icon: Star, ready: true }] },
   { k: "ldet", l: "Detectives", icon: Search, min: 0, sec: [{ k: "det", l: "Detectives", d: "Unidad de investigación", icon: Search, ready: true }] },
 ];
 /* el menú cambia de departamento sin recargar: AREAS es la lista del departamento activo */
