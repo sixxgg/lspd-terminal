@@ -91,6 +91,8 @@ const BRAND: [string, string, string, number, boolean, "sq" | "bg", string][] = 
   ["lspdt.logo", "Logo general", "El de los lugares que no tienen un casillero propio.", 512, true, "sq", "Logos"],
   ["lspdt.logo.login", "Logo del inicio de sesión", "El escudo grande del recuadro de ingreso.", 512, true, "sq", "Logos"],
   ["lspdt.logo.header", "Logo del encabezado", "Arriba a la izquierda, al lado del título.", 512, true, "sq", "Logos"],
+  ["lspdt.logo.lssd", "Escudo del LSSD", "El del Sheriff: ingreso, encabezado y menú de departamentos cuando se está en el LSSD.", 512, true, "sq", "Logos"],
+  ["lspdt.logo.sahp", "Escudo de la SAHP", "Para cuando se habilite la Highway Patrol (ya se ve en el selector de departamento).", 512, true, "sq", "Logos"],
   ["lspdt.logo.upd", "Logo de la pantalla de actualización", "El que se ve arriba a la izquierda mientras se instala una versión nueva.", 512, true, "sq", "Logos"],
   ["lspdt.fav", "Ícono de la pestaña (favicon)", "Si está vacío se usa el logo general.", 256, true, "sq", "Logos"],
   ["lspdt.bg.tablet", "Fondo detrás de la tablet", "Recomendado 1920×1080, por ejemplo una captura del juego.", 1920, false, "bg", "Fondos"],

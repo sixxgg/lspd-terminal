@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "4.2";
+export const APP_VERSION = "4.2.1";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,12 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "4.2.1", f: "18/11/2026", t: "LSSD: insignias, escudo y códigos", items: [
+    "LSSD: cada rango tiene su insignia (estrellas para el Executive Staff, hoja de roble, barras de Capitán y Teniente, galones de Sargento y Ayudantes) en el roster, el inicio y el registro.",
+    "El escudo del LSSD (y el de la SAHP) se cambia desde Administración › Marca.",
+    "Los códigos de invitación son por departamento: LSPD-, LSSD- o SAHP-. Cada uno solo sirve para registrarse en el suyo.",
+    "Si una persona tiene dos personajes en el Sheriff, cada uno tiene su cuenta: se entra con la placa o el nombre del personaje.",
+  ] },
   { v: "4.2", f: "18/11/2026", t: "LSSD, ingreso con placa y manual", items: [
     "Ingreso y registro con el número de placa: sirve si tu nombre es doble, se repite o es difícil de escribir. También se puede seguir entrando con el correo o el nombre.",
     "La pantalla de ingreso tiene selector de departamento: LSPD, LSSD (Los Santos Sheriff's Department) y SAHP (próximamente). El LSSD entra con su usuario OOC, nombre o placa.",

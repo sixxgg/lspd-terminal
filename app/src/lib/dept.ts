@@ -30,3 +30,5 @@ export function setDept(d: DeptId, forced = false) {
 export const savedDept = (): DeptId => { try { const d = localStorage.getItem("lspdt.next.dept"); return d === "lssd" ? "lssd" : "lspd"; } catch { return "lspd"; } };
 /* roster del LSSD: el cargado por six (lspdt.lssd.roster) o el que mandó el servidor al iniciar */
 export const lssdRoster = (): LssdAg[] => LS.json<LssdAg[]>("lspdt.lssd.roster", []);
+/* escudo de cada departamento: el que se cargó en Administración › Marca o el de fábrica */
+export const deptLogo = (d: DeptId, brand?: Record<string, string>) => (d === "lspd" ? "" : brand?.[`lspdt.logo.${d}`] || LS.get(`lspdt.logo.${d}`)) || DEPTS[d].logo;

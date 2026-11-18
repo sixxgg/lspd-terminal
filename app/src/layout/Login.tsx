@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { DEPTS, LSSD_ES, setDept } from "@/lib/dept";
+import { DEPTS, deptLogo, LSSD_ES, setDept } from "@/lib/dept";
+import { LssdIns } from "@/components/lssdIns";
 import { Eye, EyeOff, LogIn, UserPlus, Clock, AlertCircle, ShieldCheck, LifeBuoy, CheckCircle2 } from "lucide-react";
 import { RecCodes } from "@/components/account";
 import { Button, Checkbox, Field, Input, Segmented } from "@/components/ui";
@@ -31,7 +32,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
   /* elegido: el nombre exacto (si no se repite) o el número de placa */
   const [pick, setPick] = useState<{ n: string; r: string; p?: string } | null>(null);
   const picked = pick && pick.n === name ? pick : (() => { const s = norm(name.trim()).replace(/^#/, ""); if (!s) return null; const byP = /^\d+$/.test(s) ? R.filter(a => String(a.p) === s) : [], byN = R.filter(a => norm(a.n) === s); return byP.length === 1 ? byP[0] : byN.length === 1 ? byN[0] : null; })();
-  const logo = lssd ? DEPTS.lssd.logo : pub.brand?.["lspdt.logo.login"] || pub.brand?.["lspdt.logo"] || "/next/logo.svg";
+  const logo = lssd ? deptLogo("lssd", pub.brand) : pub.brand?.["lspdt.logo.login"] || pub.brand?.["lspdt.logo"] || "/next/logo.svg";
 
   async function login(e: FormEvent) {
     e.preventDefault(); setMsg(null);
@@ -82,7 +83,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
             {(["lspd", "lssd", "sahp"] as const).map(d => { const D = DEPTS[d], on = dep === d; return (
               <button key={d} type="button" role="radio" aria-checked={on} disabled={D.soon} onClick={() => d !== "sahp" && setDep(d)} title={D.soon ? `${D.name} · próximamente` : D.name}
                 className={cn("flex items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-[12px] font-bold transition", on ? "bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200", D.soon && "cursor-not-allowed opacity-40")}>
-                <img src={D.logo} alt="" className="size-5 object-contain" />{D.short}</button>); })}
+                <img src={d === "lspd" ? pub.brand?.["lspdt.logo.login"] || pub.brand?.["lspdt.logo"] || D.logo : deptLogo(d, pub.brand)} alt="" className="size-5 object-contain" />{D.short}</button>); })}
           </div>}
           {codes ? <div className="mt-6 space-y-4"><RecCodes codes={codes.rec} /><Button size="lg" className="w-full" onClick={codes.then}>Ya los guardé, continuar</Button></div> : <>
           <div className="mt-6 flex justify-center">
@@ -136,12 +137,12 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
                   )}
                 </div>
               </Field>
-              {picked && <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400"><ShieldCheck className="size-4 text-brand-500" /><b className="text-slate-700 dark:text-slate-200">{picked.n}</b> · {rkES(picked.r)}{picked.p ? ` · Placa #${picked.p}` : ""}{!lssd && ` · ${emailOf(picked.n)}`}</div>}
+              {picked && <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">{lssd ? <LssdIns r={picked.r} className="size-7" /> : <ShieldCheck className="size-4 text-brand-500" />}<b className="text-slate-700 dark:text-slate-200">{picked.n}</b> · {rkES(picked.r)}{picked.p ? ` · Placa #${picked.p}` : ""}{!lssd && ` · ${emailOf(picked.n)}`}</div>}
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Contraseña"><Input type="password" autoComplete="new-password" value={pw} onChange={e => setPw(e.target.value)} /></Field>
                 <Field label="Repetir"><Input type="password" autoComplete="new-password" value={pw2} onChange={e => setPw2(e.target.value)} /></Field>
               </div>
-              <Field label="Código de invitación" hint="(te lo da la administración)"><Input value={code} onChange={e => setCode(e.target.value)} placeholder="LSPD-XXXXX-XXXXX" className="font-mono uppercase" autoComplete="off" /></Field>
+              <Field label="Código de invitación" hint="(te lo da la administración)"><Input value={code} onChange={e => setCode(e.target.value)} placeholder={`${lssd ? "LSSD" : "LSPD"}-XXXXX-XXXXX`} className="font-mono uppercase" autoComplete="off" /></Field>
               <MsgBox m={msg} />
               <Button type="submit" size="lg" loading={busy} className="w-full">Crear cuenta</Button>
             </form>

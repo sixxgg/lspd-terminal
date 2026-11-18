@@ -3,7 +3,7 @@ import { audit } from "../lib/audit.js";
 import { send, body, wrap, roster, findIn, lvl, CAP, norm, emailOf, hashPw, checkPw, needsRehash, randomPw, safeEq, clientIp, loginBlocked, loginFail, loginOk, sessionToken, tokenHash, newSession, endSession, current, PUBLIC_KEYS, query, canEnter, invalidate, isSix, SIX_OWNER, ID_PIN, OWNERS, dbAdmins, parseList, parseRoster as parseRosterRaw } from "../lib/core.js";
 import { fullData } from "../lib/store.js";
 import { randomBytes } from "node:crypto";
-import { LSSD_KEY, isLssdAcc, lssdAcc, lssdFind, lssdList, lssdUser } from "../lib/lssd.js";
+import { LSSD_KEY, isLssdAcc, lssdAcc, lssdFind, lssdList, lssdOfAcc, lssdUser } from "../lib/lssd.js";
 const lssdRoster = async () => lssdList((await q("select v from kv where k=$1", [LSSD_KEY])).rows[0]?.v);
 const digits = s => (/^#?(\d{1,5})$/.exec(String(s || "").trim()) || [])[1] || "";
 
@@ -11,7 +11,9 @@ const slim = list => list.map(a => ({ n: a.n, r: a.r, p: a.p }));
 /* invitaciones: códigos aleatorios de un solo uso (vencen a las 72 h); solo las generan los dueños desde su panel (six o Anita) */
 const INV_TTL = 72 * 3600e3, INV_MAX = 20;
 const canInvite = u => isSix(u) || !!u.anita;
-const invCode = () => { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", b = randomBytes(10); let c = ""; for (let i = 0; i < 10; i++) c += A[b[i] % A.length]; return `LSPD-${c.slice(0, 5)}-${c.slice(5)}`; };
+/* el prefijo dice para qué departamento sirve: LSPD-, LSSD- o SAHP- */
+const DEPT_INV = { lspd: "LSPD", lssd: "LSSD", sahp: "SAHP" };
+const invCode = (d = "lspd") => { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", b = randomBytes(10); let c = ""; for (let i = 0; i < 10; i++) c += A[b[i] % A.length]; return `${DEPT_INV[d] || "LSPD"}-${c.slice(0, 5)}-${c.slice(5)}`; };
 const invList = async () => (await metaObjs("invites")).filter(x => x && x.exp > Date.now() && !x.u);
 /* códigos de recuperación: 8 por cuenta, de un solo uso; se guardan con hash */
 const recCode = () => randomBytes(6).toString("hex").toUpperCase().replace(/(.{4})(.{4})(.{4})/, "$1-$2-$3");
@@ -48,7 +50,7 @@ export default wrap(async (req, res) => {
     /* orden de registro = ID de la cuenta en los perfiles (six, el fundador, siempre es el #1) */
     acc.sort(byId);
     /* las cuentas del LSSD se publican por placa (el usuario OOC no sale de acá) */
-    const LS = await lssdRoster(), lssdNames = acc.filter(r => isLssdAcc(r.k)).map(r => LS.find(a => lssdAcc(a.u) === r.k)).filter(Boolean).map(a => "#" + a.p);
+    const LS = await lssdRoster(), lssdNames = acc.filter(r => isLssdAcc(r.k)).map(r => lssdOfAcc(LS, r.k)).filter(Boolean).map(a => "#" + a.p);
     const out = { me: me ? (me.acc ? me.n : me.n) : null, names: acc.filter(r => !isLssdAcc(r.k)).map(r => r.k), lssdNames, lssd: LS.map(a => ({ n: a.n, r: a.r, p: a.p })), brand };
     if (me && query(req).full) out.data = await fullData(me); // ahorra una vuelta al iniciar
     else out.roster = slim(parseRosterRaw(raw).list);
@@ -65,7 +67,9 @@ export default wrap(async (req, res) => {
     const rows = (await q("select name,email,hash from accounts")).rows, dept = b.dept === "lssd" ? "lssd" : "lspd";
     let acc = null, lag = null;
     if (dept === "lssd") { /* LSSD: usuario OOC, placa o nombre (si no se repite) */
-      lag = lssdFind(await lssdRoster(), u); if (lag) acc = rows.find(x => x.name === lssdAcc(lag.u)) || null;
+      lag = lssdFind(await lssdRoster(), u);
+      if (lag && lag.amb) return send(res, 400, { msg: `Con ese usuario hay ${lag.amb.length} personajes (${lag.amb.map(a => a.n).join(" y ")}). Entrá con la placa o el nombre del que quieras usar.` });
+      if (lag) { const L0 = await lssdRoster(); acc = rows.find(x => x.name === lssdAcc(lag)) || rows.find(x => isLssdAcc(x.name) && lssdOfAcc(L0, x.name) === lag) || null; }
     } else {
       acc = rows.find(x => !isLssdAcc(x.name) && (norm(x.email) === u || norm(x.name) === u || norm(x.email.split("@")[0]) === u)) || null;
       /* también con el número de placa (para nombres dobles o difíciles de escribir) */
@@ -93,13 +97,15 @@ export default wrap(async (req, res) => {
 
   if (a === "register" && b.dept === "lssd") {
     const lag = lssdFind(await lssdRoster(), b.n);
+    if (lag && lag.amb) return send(res, 400, { msg: "Ese usuario tiene varios personajes: elegilo por nombre o placa." });
     if (!lag) return send(res, 400, { msg: "Elegí tu personaje del roster del LSSD (por nombre o placa)." });
     if (tooShort(b.pw)) return send(res, 400, { msg: "La contraseña tiene que tener al menos 8 caracteres." });
     const ip = clientIp(req), wait = await loginBlocked("inv", ip);
     if (wait) return send(res, 429, { msg: `Demasiados intentos. Probá de nuevo en ${wait} min.` });
     const all = await metaObjs("invites"), ic = String(b.code || "").trim().toUpperCase(), inv = all.find(x => x && !x.u && x.exp > Date.now() && safeEq(x.c, ic));
     if (!inv) { await loginFail("", ip); return send(res, 403, { msg: "El código de invitación no es válido o ya se usó. Pedíselo a la administración de la terminal." }); }
-    const now = Date.now(), an = lssdAcc(lag.u), email = norm(lag.u).replace(/[^a-z0-9]/g, "") + "@lssd.sanandreas.eu";
+    if ((inv.d || "lspd") !== "lssd") return send(res, 403, { msg: "Ese código es de otro departamento. Pedí uno del LSSD (empieza con «LSSD-»)." });
+    const now = Date.now(), an = lssdAcc(lag), email = norm(lag.u).replace(/[^a-z0-9]/g, "") + "@lssd.sanandreas.eu";
     const r = await q("insert into accounts(name,email,hash,created,last) values($1,$2,$3,$4,$4) on conflict do nothing returning name", [an, email, hashPw(b.pw), now]);
     if (!r.rows[0]) return send(res, 409, { msg: "Ese agente ya tiene cuenta. Iniciá sesión." });
     inv.u = an; inv.ut = now; await setMeta("invites", all.filter(x => x && (x.exp > now || x.u)).slice(-300));
@@ -115,6 +121,7 @@ export default wrap(async (req, res) => {
     if (wait) return send(res, 429, { msg: `Demasiados intentos. Probá de nuevo en ${wait} min.` });
     const all = await metaObjs("invites"), ic = String(b.code || "").trim().toUpperCase(), inv = all.find(x => x && !x.u && x.exp > Date.now() && safeEq(x.c, ic));
     if (!inv) { await loginFail("", ip); return send(res, 403, { msg: "El código de invitación no es válido o ya se usó. Pedíselo a la administración de la terminal." }); }
+    if ((inv.d || "lspd") !== "lspd") return send(res, 403, { msg: "Ese código es de otro departamento. Pedí uno del LSPD (empieza con «LSPD-»)." });
     const now = Date.now();
     const r = await q("insert into accounts(name,email,hash,created,last) values($1,$2,$3,$4,$4) on conflict do nothing returning name", [ag.n, emailOf(ag.n), hashPw(b.pw), now]);
     if (!r.rows[0]) return send(res, 409, { msg: "Ese agente ya tiene cuenta. Iniciá sesión." });
@@ -136,7 +143,7 @@ export default wrap(async (req, res) => {
     if (wait) return send(res, 429, { msg: `Demasiados intentos fallidos. Probá de nuevo en ${wait} min.` });
     if (tooShort(b.pw)) return send(res, 400, { msg: "La nueva contraseña tiene que tener al menos 8 caracteres." });
     const AR = (await q("select name,email from accounts")).rows, lg = b.dept === "lssd" ? lssdFind(await lssdRoster(), u) : null;
-    const acc = lg ? AR.find(x => x.name === lssdAcc(lg.u)) : AR.find(x => norm(x.email) === u || norm(x.name) === u || norm(x.email.split("@")[0]) === u);
+    const acc = lg && !lg.amb ? AR.find(x => x.name === lssdAcc(lg)) : AR.find(x => norm(x.email) === u || norm(x.name) === u || norm(x.email.split("@")[0]) === u);
     const L = acc ? await metaList("rec:" + acc.name) : [], h = tokenHash(normRec(b.code)), i = L.indexOf(h);
     if (!acc || i < 0) { await loginFail(u, ip); await new Promise(r => setTimeout(r, 600)); return send(res, 403, { msg: "La cuenta o el código de recuperación no son correctos." }); }
     L.splice(i, 1); await setMeta("rec:" + acc.name, L);
@@ -164,7 +171,7 @@ export default wrap(async (req, res) => {
   if (a === "invite") {
     const all = await metaObjs("invites"), mine = (await invList()).filter(x => x.by === me.n);
     if (mine.length >= INV_MAX) return send(res, 429, { msg: `Ya tenés ${INV_MAX} invitaciones activas. Revocá alguna o esperá a que se usen.` });
-    const x = { c: invCode(), by: me.n, t: Date.now(), exp: Date.now() + INV_TTL };
+    const d = DEPT_INV[b.d] ? b.d : "lspd", x = { c: invCode(d), d, by: me.n, t: Date.now(), exp: Date.now() + INV_TTL };
     await setMeta("invites", [...all.filter(i => i && (i.exp > Date.now() || i.u)), x].slice(-300)); return send(res, 200, x);
   }
   if (a === "uninvite") {

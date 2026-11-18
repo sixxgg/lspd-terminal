@@ -257,21 +257,22 @@ function AdmTab({ c, set, replay }: { c: SixCfg; set: (p: Partial<SixCfg>) => vo
   );
 }
 
-type Inv = { c: string; t: number; exp: number; u?: string; ut?: number };
+type Inv = { c: string; t: number; exp: number; u?: string; ut?: number; d?: string };
 function Invites() {
-  const { toast } = useFeedback(), [L, setL] = useState<Inv[]>([]), [U, setU] = useState<Inv[]>([]), [busy, setBusy] = useState(false);
+  const { toast } = useFeedback(), [L, setL] = useState<Inv[]>([]), [U, setU] = useState<Inv[]>([]), [busy, setBusy] = useState(false), [d, setD] = useState<"lspd" | "lssd" | "sahp">("lspd");
   const load = () => void authApi({ a: "invites" }).then(r => { if (r.__s === 200) { setL(r.list); setU(r.used || []); } });
   useEffect(load, []);
   const cp = (c: string) => { void navigator.clipboard?.writeText(c).catch(() => {}); toast(`Copiado: ${c}`); };
   const f = (t: number) => new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   return <div className="space-y-2">
-    <NBtn icon={<Plus />} disabled={busy} onClick={async () => { setBusy(true); const r = await authApi({ a: "invite" }); setBusy(false); if (r.__s !== 200) { toast(r.msg || "No se pudo generar", "err"); return; } cp(r.c); load(); }}>GENERAR INVITACIÓN</NBtn>
+    <Seg v={d} set={setD} opts={[["lspd", "LSPD"], ["lssd", "LSSD"], ["sahp", "SAHP"]] as const} />
+    <NBtn className="w-full" icon={<Plus />} disabled={busy} onClick={async () => { setBusy(true); const r = await authApi({ a: "invite", d }); setBusy(false); if (r.__s !== 200) { toast(r.msg || "No se pudo generar", "err"); return; } cp(r.c); load(); }}>GENERAR INVITACIÓN</NBtn>
     {L.map(x => <div key={x.c} className="flex items-center gap-2 rounded-lg border border-six/20 bg-black/40 px-3 py-2 text-xs">
       <b className="font-mono text-sm text-six">{x.c}</b><span className="font-sans text-slate-500">vence {f(x.exp)}</span>
       <button title="Copiar" onClick={() => cp(x.c)} className="ml-auto text-slate-500 hover:text-six"><Copy className="size-3.5" /></button>
       <button title="Revocar" onClick={async () => { const r = await authApi({ a: "uninvite", c: x.c }); if (r.__s !== 200) { toast(r.msg || "No se pudo revocar", "err"); return; } load(); }} className="text-slate-600 hover:text-[#ff2b4a]"><Trash2 className="size-3.5" /></button></div>)}
     {U.length > 0 && <div className="pt-1"><p className="mb-1 text-[10px] font-bold tracking-[0.2em] text-slate-500">USADAS</p>
-      {U.slice().reverse().map(x => <p key={x.c} className="font-sans text-xs text-slate-500"><span className="font-mono">{x.c}</span> → <b className="text-slate-300">{x.u}</b>{x.ut ? ` · ${f(x.ut)}` : ""}</p>)}</div>}
+      {U.slice().reverse().map(x => <p key={x.c} className="font-sans text-xs text-slate-500"><span className="font-mono">{x.c}</span> → <b className="text-slate-300">{x.u?.startsWith("lssd:") ? `${x.u.slice(5).split("/")[0]} (LSSD)` : x.u}</b>{x.ut ? ` · ${f(x.ut)}` : ""}</p>)}</div>}
   </div>;
 }
 /* six: restablecer contraseñas de las cuentas registradas */

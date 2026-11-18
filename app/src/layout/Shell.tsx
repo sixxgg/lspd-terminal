@@ -10,7 +10,7 @@ import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
 import { rankES } from "@/lib/domain";
 import { GUEST, LS, ME_ROLES, getNet, useStoreVersion } from "@/lib/store";
-import { DEPT, DEPTS, setDept, type DeptId } from "@/lib/dept";
+import { DEPT, DEPTS, deptLogo, setDept, type DeptId } from "@/lib/dept";
 import { AccountModal } from "@/components/account";
 import { AppearanceModal } from "@/components/appearance";
 import { usePref } from "@/lib/appearance";
@@ -94,7 +94,7 @@ function DeptMenu({ onClose, home }: { onClose: () => void; home: () => void }) 
       {(Object.keys(DEPTS) as DeptId[]).map(d => { const D = DEPTS[d], on = DEPT.id === d; return (
         <button key={d} disabled={D.soon} onClick={() => { if (!on) setDept(d); onClose(); }}
           className={cn("flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition", on ? "bg-brand-500/10 ring-1 ring-inset ring-brand-500/30" : "hover:bg-slate-100 dark:hover:bg-slate-800", D.soon && "cursor-not-allowed opacity-50")}>
-          <img src={D.logo} alt="" className="size-9 object-contain" onError={e => { e.currentTarget.style.visibility = "hidden"; }} />
+          <img src={d === "lspd" ? LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || D.logo : deptLogo(d)} alt="" className="size-9 object-contain" onError={e => { e.currentTarget.style.visibility = "hidden"; }} />
           <span className="min-w-0 flex-1"><b className="block text-sm">{D.short}</b><span className="block truncate text-[12px] text-slate-500">{D.name}</span></span>
           {on ? <Check className="size-4 text-brand-500" /> : D.soon ? <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-[10px] font-bold text-slate-500">Pronto</span> : null}</button>); })}
       <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
@@ -128,7 +128,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
   useEffect(() => { LS.set("lspdt.sec." + area.k, sec.k); }, [area.k, sec.k]);
   useEffect(brandSave, [LS.get("lspdt.logo"), LS.get("lspdt.logo.upd"), LS.get("lspdt.fav")]); // eslint-disable-line react-hooks/exhaustive-deps
   const { nav: mode } = usePref();
-  const logo = <img decoding="async" src={lssd ? DEPTS.lssd.logo : LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className="h-9 w-9 object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />;
+  const logo = <img decoding="async" src={lssd ? deptLogo("lssd") : LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className="h-9 w-9 object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />;
   /* estado de sincronización: barra que recorre el indicador cada pocos segundos (guardando: barra continua; sin conexión: rojo) */
   const sync = (
     <span role="status" title={net === "off" ? "Sin conexión: los cambios se guardan al volver" : net === "saving" ? "Guardando cambios…" : "Todo sincronizado con el servidor"}
