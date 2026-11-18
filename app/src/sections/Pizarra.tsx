@@ -61,6 +61,24 @@ const TPL: [string, string, () => It[]][] = [
     d = S("rect", -260, 560, 200, 100, "Sí", LINE_C[1]), e = S("rect", 260, 560, 200, 100, "No", LINE_C[3]); return [a, b, c, d, e, C(a, b), C(b, c), C(c, d), C(c, e)]; }],
 ];
 
+/* ---------- Mandos › «Infraestructura San Andreas» (pasada del tablero de Miro): mapa, sellos y leyenda ---------- */
+const INFRA_T = "Infraestructura San Andreas";
+const infraItems = (): It[] => {
+  const src = (f: string) => `${import.meta.env.BASE_URL}infra/${f}.webp`;
+  const IM = (f: string, x: number, y: number, w: number, h: number): It => ({ id: uid(), k: "img", x, y, w, h, c: "#fff", src: src(f), lk: true });
+  const LB = (tx: string, x: number, y: number, c: string): It => ({ id: uid(), k: "rect", x, y, w: 470, h: 60, c, tx, fs: 22, bo: true, sw: 3 });
+  const L: [string, string, string][] = [["sub", "SUBESTACIONES ELÉCTRICAS", "#fa8072"], ["eol", "PARQUE EÓLICO", "#5bc0eb"], ["cen", "CENTRAL ELÉCTRICA", "#94a3b8"], ["hid", "CENTRAL HIDROELÉCTRICA", "#03a9f4"]];
+  const R: [string, string, string][] = [["agua", "PLANTA POTABILIZADORA DE AGUA", "#cbd5e1"], ["pet", "ÁREAS PETROLÍFERAS", "#86efac"], ["hvt", "HVT [HIGH VALUE TARGETS]", "#dc2626"], ["hot", "ZONAS CALIENTES", "#ef4444"]];
+  return [
+    { id: uid(), k: "text", x: -80, y: 0, w: 1010, h: 56, c: "#facc15", tx: "INFRAESTRUCTURA DEL ESTADO DE SAN ANDREAS", fs: 30, bo: true, al: "c" },
+    IM("sello", -160, -8, 72, 72), IM("sello", 938, -8, 72, 72),
+    { ...IM("mapa", 150, 80, 550, 782), c: "#facc15" },
+    ...L.flatMap(([f, t, c], i) => [IM(f, -170, 910 + i * 100, 84, 84), LB(t, -70, 922 + i * 100, c)]),
+    ...R.flatMap(([f, t, c], i) => [f === "hvt" ? { id: uid(), k: "ellipse" as K, x: 936, y: 910 + i * 100, w: 84, h: 84, c, sw: 4 } : f === "hot" ? { id: uid(), k: "rect" as K, x: 936, y: 910 + i * 100, w: 84, h: 84, c, sw: 4 } : IM(f, 936, 910 + i * 100, 84, 84),
+      LB(t, 450, 922 + i * 100, c)]),
+  ];
+};
+
 /* ---------- exportar a PNG ---------- */
 function wrapTxt(ctx: CanvasRenderingContext2D, t: string, w: number) {
   const out: string[] = []; for (const para of t.split("\n")) { let ln = ""; for (const word of para.split(" ")) { const tr = ln ? ln + " " + word : word; if (ctx.measureText(tr).width > w && ln) { out.push(ln); ln = word; } else ln = tr; } out.push(ln); } return out;
@@ -104,9 +122,13 @@ export function PizarraArea() {
   const [f, setF] = useState(() => LS.get("lspdt.next.pizF") || "all"), [sel, setSel] = useState(() => LS.get("lspdt.next.piz") || ""), [ren, setRen] = useState(""), [nsc, setNsc] = useState("gen");
   const SC = SCOPES.filter(([k]) => canSee(k, me.n, me.r));
   /* primera vez: crea la pizarra de mando «Infraestructura San Andreas» */
-  useEffect(() => { if (!altoOk(me.r) || LS.get(idxK("alto")) != null) return;
-    const m: Meta = { id: uid(), t: "Infraestructura San Andreas", by: me.n, upd: Date.now() };
-    LS.setJSON(bK("alto", m.id), { items: [F(0, 0, 1200, 700, "Infraestructura San Andreas", LINE_C[2])] }); LS.setJSON(idxK("alto"), [m]); }, [me.n, me.r]);
+  /* si quedó con el marco vacío de la primera versión, se completa con el contenido del tablero de Miro */
+  useEffect(() => { if (!altoOk(me.r)) return;
+    const idx = LS.json<Meta[] | null>(idxK("alto"), null);
+    if (idx == null) { const m: Meta = { id: uid(), t: INFRA_T, by: me.n, upd: Date.now() }; LS.setJSON(bK("alto", m.id), { items: infraItems() }); LS.setJSON(idxK("alto"), [m]); return; }
+    const m = idx.find(b => b.t === INFRA_T); if (!m) return;
+    const its = LS.json<{ items?: It[] }>(bK("alto", m.id), {}).items || [];
+    if (its.length <= 1 && its.every(i => i.k === "frame")) { LS.setJSON(bK("alto", m.id), { items: infraItems() }); LS.setJSON(idxK("alto"), idx.map(b => (b.id === m.id ? { ...b, upd: Date.now() } : b))); } }, [me.n, me.r]);
   const all = SC.flatMap(([sc, l]) => LS.json<Meta[]>(idxK(sc), []).map(m => ({ ...m, sc, scl: l })));
   const cur = all.find(b => `${b.sc}:${b.id}` === sel);
   const pick = (v: string) => { setSel(v); LS.set("lspdt.next.piz", v); };

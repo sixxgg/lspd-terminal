@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "4.0.7";
+export const APP_VERSION = "4.0.8";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,11 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "4.0.8", f: "18/11/2026", t: "Fichas K-9 e Infraestructura", items: [
+    "K-9 › Fichas: registro «Oficial y canino» que queda guardado y se edita cuando haga falta. El guía se busca en el roster (placa y rango se completan solos), rango divisional según los cargos de la K-9, certificación automática desde K-9-2026-05, fotos del oficial y del canino (tocar o soltar la imagen) y salud, vacunas, temperamento y observaciones.",
+    "«Ver ficha» muestra el documento oficial de la división y lo descarga como imagen PNG.",
+    "Pizarra › Mandos › «Infraestructura San Andreas»: pasada del tablero de Miro con el mapa, los sellos y la leyenda (subestaciones, parque eólico, centrales, potabilizadora, áreas petrolíferas, HVT y zonas calientes). Se puede editar como cualquier pizarra.",
+  ] },
   { v: "4.0.7", f: "16/11/2026", t: "Pizarras de Mandos", items: [
     "Pizarra › Mandos: pizarras propias de la terminal, destacadas arriba de todo con borde dorado. Solo las ven y editan Detectives y de Sargento II para arriba (al resto ni siquiera le llegan).",
     "Primera pizarra de Mandos: «Infraestructura San Andreas». Se crean más eligiendo «Mandos» al lado de «Nueva pizarra».",
