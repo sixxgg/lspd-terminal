@@ -90,7 +90,9 @@ const deptFromBrand = (b: Boot) => { const u = b.brand?.["lspdt.ui"]; if (u) try
 function Main() {
   const [boot, setBoot] = useState<Boot | null>(null);
   const [me, setMe] = useState<Me | null>(null);
-  const [nav, setNav] = useState(() => { try { const n = JSON.parse(localStorage.getItem("lspdt.next.nav") || "") as { a: string; s: string }; return n.a === "six" || n.a === "anita" ? { a: "ini", s: "home" } : n; } catch { return { a: "ini", s: "home" }; } });
+  /* al recargar vuelve a donde estabas; el panel de six/Anita solo se recuerda en esta pestaña (al abrir la terminal de cero arranca en el inicio) */
+  const [nav, setNav] = useState(() => { try { const p = sessionStorage.getItem("lspdt.panel"); if (p === "six" || p === "anita") return { a: p, s: "re" };
+    const n = JSON.parse(localStorage.getItem("lspdt.next.nav") || "") as { a: string; s: string }; return n.a === "six" || n.a === "anita" ? { a: "ini", s: "home" } : n; } catch { return { a: "ini", s: "home" }; } });
   const { toast } = useFeedback();
   const sv = useStoreVersion();
 
@@ -121,7 +123,7 @@ function Main() {
     void api("/api/auth?full=1").then(r => { const b = r as unknown as Boot; ACC.names = b.names || []; deptFromBrand(b); setBoot(b); if (b.me && b.data) enter(b.data); });
   }, [enter]);
   useEffect(() => { const f = (e: Event) => { setNav((e as CustomEvent<{ a: string; s: string }>).detail); scrollTopApp(); }; window.addEventListener("lspd:go", f); return () => window.removeEventListener("lspd:go", f); }, []);
-  useEffect(() => { if (nav.a !== "six" && nav.a !== "anita") try { localStorage.setItem("lspdt.next.nav", JSON.stringify(nav)); } catch { /* */ } }, [nav]); /* six nunca queda como página de inicio */
+  useEffect(() => { try { if (nav.a !== "six" && nav.a !== "anita") { localStorage.setItem("lspdt.next.nav", JSON.stringify(nav)); sessionStorage.removeItem("lspdt.panel"); } else sessionStorage.setItem("lspdt.panel", nav.a); } catch { /* */ } }, [nav]); /* six nunca queda como página de inicio */
 
   useEffect(() => { if (!me) return; const t = setTimeout(() => { void import("./sections/Informes"); void import("./sections/Legal"); }, 2500); return () => clearTimeout(t); }, [me]);
   /* perfil: fecha de ingreso (una vez) y última visita (cada 30 min); a six se le pasa lo que tenía en su perfil viejo */
@@ -141,8 +143,8 @@ function Main() {
   if (!me) return <Device brand={boot.brand}><UpdateBar /><Login pub={boot} onDone={r => enter((r as { data: Parameters<typeof loadStore>[0] }).data, true)} /></Device>;
 
   const ag = findAgent(me.n), user = { n: me.n, r: ag?.r || me.r, p: ag?.p };
-  if (nav.a === "anita" && ME_ROLES.anita && !me.must) return <MeCtx.Provider value={user}><Suspense fallback={<div className="min-h-[100dvh] bg-black" />}><Six who="anita" onExit={() => { setNav({ a: "ini", s: "home" }); scrollTopApp(); }} /></Suspense></MeCtx.Provider>;
-  if (nav.a === "six" && ME_ROLES.six && !me.must) return <MeCtx.Provider value={user}><Suspense fallback={<div className="min-h-[100dvh] bg-black" />}><Six start={nav.s === "not" ? "not" : "ini"} onExit={() => { setNav({ a: "ini", s: "home" }); scrollTopApp(); }} /></Suspense></MeCtx.Provider>;
+  if (nav.a === "anita" && ME_ROLES.anita && !me.must) return <MeCtx.Provider value={user}><Suspense fallback={<div className="min-h-[100dvh] bg-black" />}><Six who="anita" resume={nav.s === "re"} onExit={() => { setNav({ a: "ini", s: "home" }); scrollTopApp(); }} /></Suspense></MeCtx.Provider>;
+  if (nav.a === "six" && ME_ROLES.six && !me.must) return <MeCtx.Provider value={user}><Suspense fallback={<div className="min-h-[100dvh] bg-black" />}><Six start={nav.s === "not" ? "not" : "ini"} resume={nav.s === "re"} onExit={() => { setNav({ a: "ini", s: "home" }); scrollTopApp(); }} /></Suspense></MeCtx.Provider>;
   let area = AREAS.find(a => a.k === nav.a) || AREAS[0];
   if (!canArea(area, user.r)) area = AREAS[0];
   const SS = secsOf(area, user.r), sec = SS.find(s => s.k === nav.s) || SS[0];

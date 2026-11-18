@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { FloatBox } from "./float";
 import { Search, Users, Check, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { fotoOf, getRoster, imgOpt, initials, insigniaUrl, lvl, norm, rankES, RANK_COLOR, profOf } from "@/lib/domain";
@@ -45,7 +46,8 @@ export function AgentCombo({ value, onChange, names, filter, placeholder = "Busc
     const hit = pool.filter(a => norm(`${a.n} ${a.p || ""} ${rankES(a.r)} ${sub ? sub(a.n) : ""}`).includes(s));
     return hit.sort((a, b) => +!norm(a.n).startsWith(s) - +!norm(b.n).startsWith(s) || a.n.localeCompare(b.n, "es")); }, [q, pool, sub]);
   useEffect(() => { setHi(0); }, [q]);
-  useEffect(() => { const h = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) { setOpen(false); setEdit(false); } }; document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h); }, []);
+  useEffect(() => { const h = (e: MouseEvent) => { const t = e.target as Node; if (box.current && !box.current.contains(t) && !listRef.current?.contains(t)) { setOpen(false); setEdit(false); } }; document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h); }, []);
+
   useEffect(() => { listRef.current?.querySelector<HTMLElement>(`[data-i="${hi}"]`)?.scrollIntoView({ block: "nearest" }); }, [hi]);
   const pick = (n: string) => { onChange(n); setQ(""); setOpen(false); setEdit(false); inp.current?.blur(); };
   const cur = value ? byN.get(value) : undefined, showChip = !!value && !edit;
@@ -72,7 +74,7 @@ export function AgentCombo({ value, onChange, names, filter, placeholder = "Busc
         </div>
       )}
       {open && !showChip && (
-        <div ref={listRef} role="listbox" className="scrollbar-thin absolute inset-x-0 top-full z-40 mt-1 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+        <FloatBox ref={listRef} anchor={box} role="listbox" className="p-1">
           {!list.length && <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-400"><Users className="size-4" />{empty}</div>}
           {list.slice(0, 80).map((a, i) => { const on = a.n === value || chosen.includes(a.n); return (
             <button key={a.n} type="button" role="option" aria-selected={i === hi} data-i={i} onMouseEnter={() => setHi(i)} onMouseDown={e => e.preventDefault()} onClick={() => pick(a.n)}
@@ -82,7 +84,7 @@ export function AgentCombo({ value, onChange, names, filter, placeholder = "Busc
               <span className="w-12 text-right font-mono text-xs text-slate-400">{a.p ? "#" + a.p : ""}</span>{on && <Check className="size-4 text-brand-500" />}
             </button>); })}
           {list.length > 80 && <p className="px-2.5 py-1.5 text-[11px] text-slate-400">Seguí escribiendo para acotar ({list.length} coinciden)</p>}
-        </div>
+        </FloatBox>
       )}
     </div>
   );

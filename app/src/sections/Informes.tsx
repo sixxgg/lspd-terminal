@@ -11,6 +11,7 @@ import { useMe } from "@/lib/me";
 import { legalFavKey } from "./Legal";
 import { EV_T, INF_EST, INF_FZ, ROLES, fixUnid, isIC, INF_SECS, INF_TIPOS, UNITS, VEH_EST, VEH_REL, VEH_T, dcParts, getPenal, infErrs, infNew, infText, penalOf, penalSearch, artCmp, type Art, type Inf, type Veh } from "@/lib/penal";
 import { cn } from "@/lib/cn";
+import { FloatBox } from "@/components/float";
 import { useOutside } from "@/lib/outside";
 import { VehPick } from "@/components/vehpick";
 import { DivNav } from "./div/DivTools";
@@ -302,13 +303,13 @@ function ChargeSearch({ P, onPick }: { P: Art[]; onPick: (a: string) => void }) 
       <Input className="pl-9" value={q} onFocus={() => setOpen(true)} onChange={e => { setQ(e.target.value); setOpen(true); setI(0); }} placeholder="Buscar delito por artículo, nombre o palabra (ej: robo, 143, evasión)…"
         onKeyDown={e => { if (e.key === "Escape") setOpen(false); else if (e.key === "ArrowDown") { e.preventDefault(); setI(Math.min(i + 1, L.length - 1)); } else if (e.key === "ArrowUp") { e.preventDefault(); setI(Math.max(0, i - 1)); } else if (e.key === "Enter" && L[i]) { e.preventDefault(); onPick(L[i].a); setQ(""); } }} />
       {open && (
-        <div className="scrollbar-thin absolute inset-x-0 top-full z-30 mt-1 max-h-80 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
+        <FloatBox anchor={ref} maxH={320}>
           {L.length ? L.map((x, j) => (
             <button key={x.a} onMouseDown={e => { e.preventDefault(); onPick(x.a); setQ(""); }} onMouseEnter={() => setI(j)} className={cn("flex w-full gap-3 px-3 py-2 text-left", j === i ? "bg-brand-50 dark:bg-brand-500/10" : "")}>
               <b className="w-14 shrink-0 font-mono text-xs leading-5">{x.a}</b>
               <span className="min-w-0"><span className="text-sm">{x.t}<PenMeta x={x} /></span>{x.d && <small className="block truncate text-xs text-slate-500">{x.d}</small>}</span>
             </button>)) : <p className="p-3 text-xs text-slate-400">Sin resultados. Revisá el número o buscá en Legal → Leyes.</p>}
-        </div>
+        </FloatBox>
       )}
     </div>
   );

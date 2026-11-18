@@ -61,7 +61,8 @@ export function NotifTab() {
               {!OPEN(x.st) && <button onClick={() => setExp({ ...exp, [x.id]: false })} title="Achicar" className="rounded-lg p-1.5 text-slate-500 hover:text-six"><ChevronDown className="size-4 rotate-180" /></button>}
               <button onClick={() => del(x)} title="Eliminar" className="rounded-lg p-1.5 text-slate-600 hover:text-[#ff2b4a]"><Trash2 className="size-4" /></button></div>
           </header>
-          <div className="fb-rich font-sans text-sm leading-relaxed text-slate-200" dangerouslySetInnerHTML={{ __html: html }} />
+          {/* textos largos o con fotos: se scrollean dentro del recuadro (las fotos no pasan del alto de la caja) */}
+          <div className="fb-rich scrollbar-thin max-h-[26rem] overflow-y-auto overscroll-contain rounded-lg pr-2 font-sans text-sm leading-relaxed text-slate-200 [overflow-wrap:anywhere] [&_img]:my-2 [&_img]:max-h-80 [&_img]:max-w-full [&_img]:rounded-lg [&_img]:object-contain" dangerouslySetInnerHTML={{ __html: html }} />
           <div className="mt-3 flex gap-2">
             <input value={nota[x.id] ?? x.nota ?? ""} onChange={e => setNota({ ...nota, [x.id]: e.target.value })} maxLength={300} placeholder="Respuesta para quien lo mandó (opcional)…"
               className="min-w-0 flex-1 rounded-lg border border-six/15 bg-black/40 px-3 py-1.5 font-sans text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-six" />

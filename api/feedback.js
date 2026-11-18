@@ -44,7 +44,11 @@ async function notify(t, site) {
   } catch { return "no se pudo contactar a Discord"; }
 }
 /* dirección pública de la terminal (para el botón del aviso) */
-const siteOf = req => process.env.SITE_URL || `https://${String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim()}`;
+/* dirección pública: el dominio desde el que se usa la terminal; si llega por *.vercel.app (o falta), el dominio oficial */
+const SITE = "https://sixgg.online";
+const siteOf = req => { const h = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim();
+  if (h && !/vercel\.app$|^localhost|^127\./.test(h)) return `https://${h}`;
+  const e = process.env.SITE_URL || ""; return e && !/vercel\.app/.test(e) ? e.replace(/\/$/, "") : SITE; };
 /* índice de feedback por usuario (meta «fbu:nombre» = ids), así «Mis feedback» no recorre todos */
 const IX = n => "fbu:" + n;
 async function myIds(n) {

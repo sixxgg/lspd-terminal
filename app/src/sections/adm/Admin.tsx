@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Scale, UserCheck, Crown, ShieldPlus, ImagePlus, Type, Save, Check, X, Upload, Download, FileSpreadsheet, RotateCcw, Shield, Database, Eye } from "lucide-react";
+import { BookOpenCheck, Scale, UserCheck, Crown, ShieldPlus, ImagePlus, Type, Save, Check, X, Upload, Download, FileSpreadsheet, RotateCcw, Shield, Database, Eye } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Select } from "@/components/ui";
 import { prevStart } from "@/lib/preview";
 import { AgentCombo, Avatar } from "@/components/agents";
@@ -18,17 +18,17 @@ import { cn } from "@/lib/cn";
 const Row = ({ n, children }: { n: string; children?: React.ReactNode }) => { const a = findAgent(n); return (
   <div className="flex flex-wrap items-center gap-3 px-4 py-2.5"><Avatar n={n} size={30} /><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{n}</p><p className="text-xs text-slate-500">{a ? rankES(a.r) + (a.p ? " · #" + a.p : "") : "Fuera del roster"}</p></div>{children}</div>); };
 
-/* ---------- acceso a Legal: solo lo da el dueño ---------- */
-function LegalAcc() {
-  const { toast, confirm } = useFeedback(), [L, setL] = useJSON<string[]>("lspdt.legacc", []), [sel, setSel] = useState("");
+/* ---------- accesos que solo da el dueño: Legal y Consulta (en prueba) ---------- */
+function OwnerAcc({ k, t, icon, area }: { k: string; t: string; icon: React.ReactNode; area: string }) {
+  const { toast, confirm } = useFeedback(), [L, setL] = useJSON<string[]>(k, []), [sel, setSel] = useState("");
   return (
-    <Card className="xl:col-span-2">
-      <CardHeader icon={<Scale />} title="Acceso a Legal" desc={`Solo vos podés darlo. ${L.length} con acceso además de vos.`} />
+    <Card>
+      <CardHeader icon={icon} title={t} desc={`Solo vos podés darlo. ${L.length} con acceso además de vos.`} />
       <div className="divide-y divide-slate-100 dark:divide-slate-800">{L.length ? L.map(n => <Row key={n} n={n}>
-        <button aria-label={`Quitar a ${n}`} onClick={async () => { if (await confirm(`¿Quitarle el acceso a Legal a ${n}?`, { danger: true })) { setL(L.filter(x => x !== n)); toast(`${n} ya no ve Legal`); } }} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-500/10 hover:text-red-600"><X className="size-4" /></button></Row>)
+        <button aria-label={`Quitar a ${n}`} onClick={async () => { if (await confirm(`¿Quitarle el acceso a ${area} a ${n}?`, { danger: true })) { setL(L.filter(x => x !== n)); toast(`${n} ya no ve ${area}`); } }} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10"><X className="size-4" /></button></Row>)
         : <p className="px-4 py-3 text-sm text-slate-400">Nadie más tiene acceso.</p>}</div>
       <CardBody><div className="flex gap-2"><AgentCombo className="flex-1" value={sel} onChange={setSel} filter={a => !L.includes(a.n)} />
-        <Button onClick={() => { if (!sel) { toast("Elegí un agente", "err"); return; } setL([...L, sel]); toast(`${sel} ahora ve Legal`); setSel(""); }}>Dar acceso</Button></div></CardBody>
+        <Button onClick={() => { if (!sel) { toast("Elegí un agente", "err"); return; } setL([...L, sel]); toast(`${sel} ahora ve ${area}`); setSel(""); }}>Dar acceso</Button></div></CardBody>
     </Card>);
 }
 
@@ -58,7 +58,8 @@ export function AdmAccesos() {
           <Button icon={<Eye />} onClick={() => prevStart(pv)}>Ver como {rankES(pv)} sin divisiones</Button>
         </div></CardBody>
       </Card>
-      {ME_ROLES.six && <LegalAcc />}
+      {ME_ROLES.six && <OwnerAcc k="lspdt.legacc" t="Acceso a Legal" icon={<Scale />} area="Legal" />}
+      {ME_ROLES.six && <OwnerAcc k="lspdt.consultaAcc" t="Acceso a Consulta (en prueba)" icon={<BookOpenCheck />} area="Consulta" />}
       <Card>
         <CardHeader icon={<UserCheck />} title="Solicitudes de acceso" desc="Agentes por debajo de Sargento I que crearon su cuenta y esperan aprobación." />
         {!req ? <CardBody><p className="text-sm text-slate-400">Cargando…</p></CardBody> : <>

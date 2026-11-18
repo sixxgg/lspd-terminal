@@ -2,7 +2,7 @@
    código, spoilers, menciones (<@id>, <@&rol>), marcas de tiempo <t:...> y emojis propios del servidor. */
 import { escHtml, getRoster } from "./domain";
 const esc = escHtml;
-export type DcCtx = { users?: Record<string, string>; roles?: Record<string, string> };
+export type DcCtx = { users?: Record<string, string>; roles?: Record<string, string>; chans?: Record<string, string> };
 
 export const TS_FMT: [string, string][] = [["t", "Hora corta"], ["T", "Hora con segundos"], ["d", "Fecha corta"], ["D", "Fecha larga"], ["f", "Fecha y hora"], ["F", "Día, fecha y hora"], ["R", "Relativo"]];
 /* marca de tiempo de Discord: <t:unix:formato>, se ve en la hora de cada lector */
@@ -25,7 +25,7 @@ function inline(s: string, c: DcCtx) {
     .replace(/&lt;t:(\d+)(?::([tTdDfFR]))?&gt;/g, (_m, u, f) => `<span class="rounded bg-white/10 px-1">${esc(ts(+u, f || "f"))}</span>`)
     .replace(/&lt;@&amp;(\d+)&gt;/g, (_m, id) => `<span class="${MEN}">@${esc(c.roles?.[id] || "rol")}</span>`)
     .replace(/&lt;@!?(\d+)&gt;/g, (_m, id) => `<span class="${MEN}">@${esc(c.users?.[id] || userName(id) || "usuario")}</span>`)
-    .replace(/&lt;#(\d+)&gt;/g, `<span class="${MEN}">#canal</span>`)
+    .replace(/&lt;#(\d+)&gt;/g, (_m, id) => `<span class="${MEN}">#${esc(c.chans?.[id] || "canal")}</span>`)
     .replace(/&lt;(a?):(\w+):(\d+)&gt;/g, (_m, a, n, id) => `<img class="inline-block h-[1.375em] w-auto align-[-0.3em]" src="https://cdn.discordapp.com/emojis/${id}.${a ? "gif" : "webp"}?size=48" alt=":${n}:" title=":${n}:">`)
     .replace(/\*\*\*(.+?)\*\*\*/g, "<b><i>$1</i></b>").replace(/\*\*(.+?)\*\*/g, "<b class=\"font-semibold text-white\">$1</b>")
     .replace(/__(.+?)__/g, "<u>$1</u>").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<i>$2</i>").replace(/(^|\W)_([^_\n]+)_(?=\W|$)/g, "$1<i>$2</i>")

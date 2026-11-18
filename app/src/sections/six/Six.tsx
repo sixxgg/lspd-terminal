@@ -2,7 +2,7 @@
    Pestañas: Inicio y, de la A a la Z, Administración · Comunicados · Equipo de ilícitos · Gestión de staff · Notificaciones. Los datos van en lspdt.six.* (el servidor no se los muestra a nadie más). */
 import "./six.css";
 import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
-import { AtSign, Bell, Check, KeyRound, Link2, ChevronRight, Copy, FileText, Home, Lock, Megaphone, Plus, Power, RefreshCw, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X, ScrollText, Search, Banknote } from "lucide-react";
+import { AtSign, Bell, Check, KeyRound, Link2, ChevronRight, Copy, Home, Lock, Megaphone, Plus, Power, RefreshCw, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X, ScrollText, Search, Banknote, Pin, Upload } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
 import { api, authApi } from "@/lib/api";
 import { discordHtml } from "@/lib/discord";
@@ -10,6 +10,7 @@ import { uid } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 import { TAB_ICONS, cipher, glyphs, tabIcon, useTabFx } from "@/lib/tabfx";
 import { FIRMAS, ILIC_VARS, consultaInteres, firmaDe, ilicText, mentions, type IlicForm } from "./ilicito";
+import { DC_CHANS, DC_ROLES, PLANTILLAS, STAFF_ROLE, STATS0, comTitle, splitComs, statsText, type StatsF } from "./comms";
 import { RobosTab } from "./RobosTab";
 import { NotifTab, fbList, whoOf, FB_SEEN } from "./Notif";
 import { LS, reloadAll, useJSON } from "@/lib/store";
@@ -18,12 +19,12 @@ import { FB_ST, fbSt, fbX } from "@/components/fbnotif";
 import { Boot, NS, K, cfg0, cfgKey, Rain, THEMES, colorOf, hex, vars, type SixCfg, type Who } from "./fx";
 
 type Staff = { id: string; n: string; rol: string; dc: string; notas: string };
-type Com = { id: string; t: string; body: string; ts: number };
+type Com = { id: string; t: string; body: string; ts: number; pin?: boolean };
 type Sent = { id: string; ts: number; banda: string; res: IlicForm["res"]; txt: string };
 const ROLES = ["Owner", "Administración", "Moderación", "Soporte", "Ilícitos", "Desarrollo", "Otro"];
 const TABS = [["ini", "INICIO", Home], ["rob", "ROBOS", Banknote], ["adm", "ADMINISTRACIÓN", Settings2], ["com", "COMUNICADOS", Megaphone], ["ilic", "EQUIPO DE ILÍCITOS", Skull], ["staff", "GESTIÓN DE STAFF", Users], ["not", "NOTIFICACIONES", Bell], ["logs", "LOGS", ScrollText]] as const;
 type Tab = (typeof TABS)[number][0];
-const LOCKED = (): Tab[] => (NS.id === "six" ? ["com", "staff"] : []); // en six: próximamente
+const LOCKED = (): Tab[] => (NS.id === "six" ? ["staff"] : []); // en six: próximamente
 const NAME = () => (NS.id === "six" ? "six" : "anita");
 const isId = (s: string) => /^\d{17,20}$/.test(s.trim());
 
@@ -57,7 +58,7 @@ function Seg<T extends string | number>({ v, set, opts }: { v: T; set: (v: T) =>
 }
 
 /* vista previa estilo Discord con copiar */
-function Preview({ title, text, users }: { title: string; text: string; users: Record<string, string> }) {
+function Preview({ title, text, users, roles, chans }: { title: string; text: string; users: Record<string, string>; roles?: Record<string, string>; chans?: Record<string, string> }) {
   const { toast } = useFeedback(), [ok, setOk] = useState(false);
   const copy = () => { void navigator.clipboard?.writeText(text); setOk(true); toast("Copiado"); setTimeout(() => setOk(false), 1400); };
   return (
@@ -65,7 +66,7 @@ function Preview({ title, text, users }: { title: string; text: string; users: R
       <div className="mb-3 flex items-center gap-2"><span className="six-dot" /><span className="text-[11px] font-bold tracking-[0.2em] text-six">{title}</span>
         <NBtn className="ml-auto" icon={ok ? <Check /> : <Copy />} onClick={copy} disabled={!text.trim()}>{ok ? "COPIADO" : "COPIAR"}</NBtn></div>
       <div className="max-h-[70vh] overflow-y-auto rounded-xl border border-six/10 bg-[#313338] p-4 font-sans text-[15px] leading-relaxed text-[#dbdee1]"
-        dangerouslySetInnerHTML={{ __html: discordHtml(text, { users }, "six", "/next/logo.svg") }} />
+        dangerouslySetInnerHTML={{ __html: discordHtml(text, { users, roles, chans }, "six", "/next/logo.svg") }} />
     </Panel>);
 }
 
@@ -77,10 +78,13 @@ function Ticker({ f }: { f: () => string }) {
   return <>{v}</>;
 }
 
-export function Six({ onExit, start = "ini", who = "six" }: { onExit: () => void; start?: "ini" | "not"; who?: Who }) {
+export function Six({ onExit, start = "ini", who = "six", resume }: { onExit: () => void; start?: "ini" | "not"; who?: Who; resume?: boolean }) {
   NS.id = who; /* todo lo que sigue usa el espacio de este panel */
   const C0 = cfg0(who), [cfg, setCfg] = useJSON<SixCfg>(cfgKey(who), C0), c = { ...C0, ...cfg }, tabs = TABS.filter(t => who === "six" || !["not", "logs", "rob"].includes(t[0]));
-  const [tab, setTab] = useState<Tab>(start), [out, setOut] = useState(false), [booted, setBooted] = useState(c.intro === "no"), [replay, setReplay] = useState(0);
+  /* al recargar (resume) vuelve a la misma pestaña y sin repetir la intro */
+  const [tab, setTab0] = useState<Tab>(() => { let t: string | null = null; try { t = resume ? sessionStorage.getItem("lspdt.panelTab") : null; } catch { /* */ } return t && TABS.some(x => x[0] === t) ? (t as Tab) : start; });
+  const setTab = (t: Tab) => { setTab0(t); try { sessionStorage.setItem("lspdt.panelTab", t); } catch { /* */ } };
+  const [out, setOut] = useState(false), [booted, setBooted] = useState(c.intro === "no" || !!resume), [replay, setReplay] = useState(0);
   const [staff, setStaff] = useJSON<Staff[]>(K("staff"), []);
   const unread = who !== "six" ? 0 : fbList().filter(x => x.t > Number(LS.get(FB_SEEN) || 0)).length;
   const users = useMemo(() => Object.fromEntries(staff.filter(s => isId(s.dc)).map(s => [s.dc.trim(), s.n])), [staff]);
@@ -145,7 +149,7 @@ function HomeTab({ go, unread, staff }: { go: (t: Tab) => void; unread: number; 
     ...(six ? [["not", "Notificaciones", Bell, unread ? `${unread} sin leer` : "Todo leído", `${abiertos} abiertos · ${fb.length} en total`] as [Tab, string, typeof Bell, string, string]] : []),
     ["ilic", "Equipo de ilícitos", Skull, `${sent.length} respuestas`, sent.length ? `Última: ${sent[sent.length - 1].banda}` : "Sin respuestas todavía"],
     ["staff", "Gestión de staff", Users, `${staff} en el equipo`, six ? "Próximamente" : "Tu equipo"],
-    ["com", "Comunicados", Megaphone, `${com.length} guardados`, six ? "Próximamente" : "Armalos y copialos"],
+    ["com", "Comunicados", Megaphone, `${com.length} guardados`, "Plantillas, estadísticas y vista de Discord"],
     ["adm", "Administración", Settings2, "Tema, efectos e intro", six ? "Avisos de Discord" : "Colores y efectos"],
   ];
   return (
@@ -338,34 +342,131 @@ function StaffTab({ staff, setStaff }: { staff: Staff[]; setStaff: (s: Staff[]) 
   );
 }
 
-/* ---------- comunicados (bloqueado por ahora) ---------- */
+/* ---------- comunicados del staff: biblioteca, editor con vista de Discord, plantillas con el estilo de siempre y estadísticas ---------- */
+const ins0 = (el: HTMLTextAreaElement | null, body: string, a: string, b = "") => { const s = el?.selectionStart ?? body.length, e = el?.selectionEnd ?? s;
+  return { body: body.slice(0, s) + a + body.slice(s, e) + b + body.slice(e), at: s + a.length + (e - s) + b.length }; };
 function ComTab({ staff, users }: { staff: Staff[]; users: Record<string, string> }) {
   const { toast, confirm } = useFeedback(), [list, setList] = useJSON<Com[]>(K("com"), []);
-  const [cur, setCur] = useState<Com>({ id: "", t: "", body: "", ts: 0 }), ta = useRef<HTMLTextAreaElement>(null);
-  const ins = (s: string) => { const el = ta.current, a = el?.selectionStart ?? cur.body.length, b = el?.selectionEnd ?? a; setCur({ ...cur, body: cur.body.slice(0, a) + s + cur.body.slice(b) }); };
-  const save = () => { const x = { ...cur, id: cur.id || uid(), ts: Date.now(), t: cur.t.trim() || cur.body.split("\n")[0].replace(/[#*_<>@!:\d]/g, "").trim().slice(0, 60) || "Comunicado" };
+  const [rolesC, setRoles] = useJSON<Record<string, string>>(K("dcRoles"), {}), [chansC, setChans] = useJSON<Record<string, string>>(K("dcChans"), {});
+  const roles = { ...DC_ROLES, ...rolesC }, chans = { ...DC_CHANS, ...chansC };
+  const empty: Com = { id: "", t: "", body: "", ts: 0 };
+  const [cur, setCur] = useState<Com>(empty), [q, setQ] = useState(""), [modal, setModal] = useState<"" | "imp" | "stats" | "ids">(""), ta = useRef<HTMLTextAreaElement>(null);
+  const saved = list.find(x => x.id === cur.id), dirty = !saved ? !!cur.body.trim() : saved.body !== cur.body || saved.t !== cur.t;
+  const put = (a: string, b = "") => { const r = ins0(ta.current, cur.body, a, b); setCur({ ...cur, body: r.body }); setTimeout(() => { ta.current?.focus(); ta.current?.setSelectionRange(r.at, r.at); }, 0); };
+  const line = (p: string) => { const el = ta.current, s = el?.selectionStart ?? cur.body.length, st = cur.body.lastIndexOf("\n", s - 1) + 1; setCur({ ...cur, body: cur.body.slice(0, st) + p + cur.body.slice(st) }); };
+  const save = () => { const x = { ...cur, id: cur.id || uid(), ts: Date.now(), t: cur.t.trim() || comTitle(cur.body) };
     setList([...list.filter(y => y.id !== x.id), x]); setCur(x); toast("Guardado"); };
+  const open = async (x: Com) => { if (dirty && !(await confirm("Hay cambios sin guardar en el comunicado abierto. ¿Descartarlos?", { ok: "Descartar" }))) return; setCur(x); };
+  const L = [...list].filter(x => !q.trim() || `${x.t} ${x.body}`.toLowerCase().includes(q.trim().toLowerCase())).sort((a, b) => +!!b.pin - +!!a.pin || b.ts - a.ts);
+  const chip = "rounded-full border px-2.5 py-0.5 font-sans text-xs transition";
   return (
-    <div className="grid items-start gap-5 lg:grid-cols-[15rem_minmax(0,1fr)_minmax(0,1fr)]">
-      <Panel className="p-3">
-        <NBtn className="mb-2 w-full" icon={<Plus />} onClick={() => setCur({ id: "", t: "", body: "", ts: 0 })}>NUEVO</NBtn>
-        {[...list].sort((a, b) => b.ts - a.ts).map(x => (
-          <div key={x.id} className={cn("group flex items-center gap-1 rounded-lg px-2 py-1.5 font-sans text-sm", cur.id === x.id ? "bg-six/10 text-six" : "hover:bg-white/5")}>
-            <button className="min-w-0 flex-1 truncate text-left" onClick={() => setCur(x)}><FileText className="mr-1.5 inline size-3.5" />{x.t || "Sin título"}</button>
-            <button aria-label="Borrar" onClick={async () => { if (await confirm(`¿Borrar «${x.t}»?`, { danger: true })) setList(list.filter(y => y.id !== x.id)); }} className="opacity-0 group-hover:opacity-100"><X className="size-3.5 text-slate-500 hover:text-[#ff2b4a]" /></button>
-          </div>))}
+    <div className="grid items-start gap-5 lg:grid-cols-[16rem_minmax(0,1fr)_minmax(0,1fr)]">
+      <Panel className="space-y-2 p-3">
+        <div className="grid grid-cols-2 gap-1.5"><NBtn icon={<Plus />} onClick={() => void open(empty)}>NUEVO</NBtn><NBtn ghost icon={<Upload />} onClick={() => setModal("imp")}>IMPORTAR</NBtn></div>
+        <NIn value={q} onChange={e => setQ(e.target.value)} placeholder={`Buscar en ${list.length} comunicados…`} className="text-xs" />
+        <div className="scrollbar-thin max-h-[60vh] space-y-0.5 overflow-y-auto">
+          {!L.length && <p className="px-2 py-4 text-center font-sans text-xs text-slate-500">{list.length ? "Nada coincide." : "Todavía no hay comunicados. Importalos o creá uno."}</p>}
+          {L.map(x => (
+            <div key={x.id} className={cn("group flex items-center gap-1 rounded-lg px-2 py-1.5 font-sans text-sm", cur.id === x.id ? "bg-six/10 text-six" : "hover:bg-white/5")}>
+              <button className="min-w-0 flex-1 text-left" onClick={() => void open(x)}><span className="block truncate">{x.pin && <Pin className="mr-1 inline size-3 text-six" />}{x.t || "Sin título"}</span>
+                <span className="block text-[10.5px] text-slate-500">{new Date(x.ts).toLocaleDateString("es-AR")}</span></button>
+              <button aria-label="Fijar" title={x.pin ? "Desfijar" : "Fijar arriba"} onClick={() => setList(list.map(y => (y.id === x.id ? { ...y, pin: !y.pin } : y)))} className="opacity-0 group-hover:opacity-100"><Pin className={cn("size-3.5", x.pin ? "text-six" : "text-slate-500 hover:text-six")} /></button>
+              <button aria-label="Duplicar" title="Usar como base" onClick={() => setCur({ ...x, id: "", t: `${x.t} (copia)`, pin: false })} className="opacity-0 group-hover:opacity-100"><Copy className="size-3.5 text-slate-500 hover:text-six" /></button>
+              <button aria-label="Borrar" onClick={async () => { if (await confirm(`¿Borrar «${x.t}»?`, { danger: true })) { setList(list.filter(y => y.id !== x.id)); if (cur.id === x.id) setCur(empty); } }} className="opacity-0 group-hover:opacity-100"><X className="size-3.5 text-slate-500 hover:text-[#ff2b4a]" /></button>
+            </div>))}
+        </div>
       </Panel>
-      <Panel t="Comunicado" icon={<Megaphone />} className="space-y-3">
-        <Lbl t="Título"><NIn value={cur.t} onChange={e => setCur({ ...cur, t: e.target.value })} placeholder="Para encontrarlo después" /></Lbl>
-        <div className="flex flex-wrap gap-1.5">{staff.filter(s => isId(s.dc)).map(s => <button key={s.id} onClick={() => ins(`<@${s.dc}>`)} className="rounded-full border border-six/30 px-2.5 py-0.5 font-sans text-xs text-six/90 hover:bg-six/10">@{s.n}</button>)}
-          <button onClick={() => ins("@everyone")} className="rounded-full border border-six/15 px-2.5 py-0.5 font-sans text-xs text-slate-400 hover:bg-white/5">@everyone</button>
-          <button onClick={() => setCur({ ...cur, t: cur.t || "Consulta de interés · banda", body: consultaInteres() })} className="rounded-full border border-six/40 px-2.5 py-0.5 font-sans text-xs text-six hover:bg-six/10">Plantilla: ¿siguen interesados?</button></div>
-        <NTa ref={ta} rows={16} className="font-mono text-xs" value={cur.body} onChange={e => setCur({ ...cur, body: e.target.value })} placeholder="Formato Discord: **negrita**, # títulos, <@ID> para arrobar…" />
-        <div className="flex justify-end"><NBtn icon={<Save />} onClick={save}>GUARDAR</NBtn></div>
+      <Panel t={cur.id ? "Editar comunicado" : "Comunicado nuevo"} icon={<Megaphone />} className="space-y-3">
+        <Lbl t="Título" h="(para encontrarlo; si lo dejás vacío sale del encabezado)"><NIn value={cur.t} onChange={e => setCur({ ...cur, t: e.target.value })} placeholder={cur.body ? comTitle(cur.body) : "Ej.: Uso del canal /rstaff"} /></Lbl>
+        <div className="space-y-1.5">
+          <p className="font-sans text-[11px] font-semibold text-slate-500">Plantillas con el estilo de siempre</p>
+          <div className="flex flex-wrap gap-1.5">{PLANTILLAS.map(([l, t]) => <button key={l} onClick={async () => { if (cur.body.trim() && !(await confirm("¿Reemplazar el texto por la plantilla?", { ok: "Reemplazar" }))) return; setCur({ ...cur, body: t }); }} className={cn(chip, "border-six/40 text-six hover:bg-six/10")}>{l}</button>)}
+            <button onClick={() => setModal("stats")} className={cn(chip, "border-six/60 bg-six/10 font-semibold text-six hover:bg-six/20")}>📊 Estadísticas del mes</button>
+            <button onClick={() => setCur({ ...cur, t: cur.t || "Consulta de interés · banda", body: consultaInteres() })} className={cn(chip, "border-six/40 text-six hover:bg-six/10")}>¿Siguen interesados?</button></div>
+        </div>
+        <div className="space-y-1.5">
+          <p className="flex items-center gap-2 font-sans text-[11px] font-semibold text-slate-500">Arrobar <button onClick={() => setModal("ids")} className="font-normal text-six/80 hover:text-six">· editar nombres de roles y canales</button></p>
+          <div className="flex flex-wrap gap-1.5">
+            {Object.entries(roles).map(([id, n]) => <button key={id} onClick={() => put(`<@&${id}>`)} className={cn(chip, id === STAFF_ROLE ? "border-six/60 text-six" : "border-six/25 text-six/80", "hover:bg-six/10")}>@{n}</button>)}
+            <button onClick={() => put(`||<@&${STAFF_ROLE}>||`)} className={cn(chip, "border-six/25 text-slate-300 hover:bg-white/5")} title="Como cierran todos los comunicados">||@STAFF|| (oculto)</button>
+            {staff.filter(s => isId(s.dc)).map(s => <button key={s.id} onClick={() => put(`<@${s.dc}>`)} className={cn(chip, "border-white/10 text-slate-300 hover:bg-white/5")}>@{s.n}</button>)}
+            {Object.entries(chans).map(([id, n]) => <button key={id} onClick={() => put(`<#${id}>`)} className={cn(chip, "border-white/10 text-slate-400 hover:bg-white/5")}>#{n}</button>)}
+            <button onClick={() => put("@everyone")} className={cn(chip, "border-white/10 text-slate-400 hover:bg-white/5")}>@everyone</button></div>
+        </div>
+        <div className="flex flex-wrap gap-1 rounded-lg border border-six/10 bg-black/30 p-1 font-sans text-[11px] text-slate-400">
+          {([["B", () => put("**", "**"), "Negrita"], ["I", () => put("*", "*"), "Cursiva"], ["H1", () => line("# "), "Título"], ["H2", () => line("## "), "Subtítulo"], ["❝", () => line("> "), "Cita"], ["•", () => line("- "), "Lista"], ["▒", () => put("||", "||"), "Spoiler (oculto)"],
+            ["⏱", () => put(`<t:${Math.floor(Date.now() / 1000) + 3600}:F>`), "Fecha y hora (dentro de 1 h; cambiá el número)"]] as const).map(([l, f, t]) =>
+            <button key={l} type="button" title={t} onClick={f} className="rounded px-2 py-1 font-bold hover:bg-six/10 hover:text-six">{l}</button>)}
+        </div>
+        <NTa ref={ta} rows={18} className="font-mono text-xs" value={cur.body} onChange={e => setCur({ ...cur, body: e.target.value })} placeholder="Formato Discord: **negrita**, # títulos, > citas, ||spoiler||, <@&rol>…" />
+        <div className="flex items-center justify-between gap-2"><span className="font-sans text-[11px] text-slate-500">{cur.body.length.toLocaleString("es-AR")} caracteres{cur.body.length > 2000 ? " · más de 2000 (con Nitro entra en uno)" : ""}</span>
+          <NBtn icon={<Save />} disabled={!cur.body.trim() || !dirty} onClick={save}>GUARDAR</NBtn></div>
       </Panel>
-      <Preview title="VISTA PREVIA" text={cur.body} users={users} />
+      <Preview title="VISTA PREVIA" text={cur.body} users={users} roles={roles} chans={chans} />
+      {modal === "imp" && <ImportCom have={list} onClose={() => setModal("")} onAdd={L2 => { setList([...list, ...L2]); toast(`${L2.length} comunicado${L2.length === 1 ? "" : "s"} importado${L2.length === 1 ? "" : "s"}`); setModal(""); }} />}
+      {modal === "stats" && <StatsCom onClose={() => setModal("")} onUse={(t, body) => { setCur({ ...empty, t, body }); setModal(""); }} />}
+      {modal === "ids" && <IdsCom roles={roles} chans={chans} onClose={() => setModal("")} onSave={(r, c) => { setRoles(r); setChans(c); setModal(""); toast("Nombres guardados"); }} />}
     </div>
   );
+}
+/* ventana del panel (mismo estilo oscuro) */
+const SixModal = ({ t, onClose, children, wide }: { t: string; onClose: () => void; children: ReactNode; wide?: boolean }) => (
+  <div className="fixed inset-0 z-[90] grid place-items-center bg-black/75 p-4 backdrop-blur-sm" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+    <section className={cn("six-panel relative max-h-[92vh] w-full overflow-y-auto rounded-2xl p-5", wide ? "max-w-4xl" : "max-w-2xl")}>
+      <header className="mb-4 flex items-center gap-3"><h2 className="six-h flex-1 font-sans text-base font-bold">{t}</h2><button aria-label="Cerrar" onClick={onClose} className="rounded-lg p-1.5 text-slate-500 hover:text-six"><X className="size-4" /></button></header>
+      {children}</section></div>);
+function ImportCom({ have, onClose, onAdd }: { have: Com[]; onClose: () => void; onAdd: (L: Com[]) => void }) {
+  const [t, setT] = useState(""), P = useMemo(() => splitComs(t), [t]), [off, setOff] = useState<number[]>([]);
+  const dup = (b: string) => have.some(x => x.body.trim() === b.trim());
+  return (
+    <SixModal t="Importar comunicados" onClose={onClose} wide>
+      <p className="mb-2 font-sans text-xs text-slate-400">Pegá todos los comunicados juntos, como los copiás de Discord. Se separan solos: cada uno empieza con su «# título» después de una línea en blanco doble.</p>
+      <NTa rows={10} className="font-mono text-xs" value={t} onChange={e => { setT(e.target.value); setOff([]); }} placeholder="# 📢 Comunicado…" />
+      {P.length > 0 && <div className="mt-3 space-y-1"><p className="font-sans text-xs font-semibold text-six">{P.length} encontrados</p>
+        <div className="scrollbar-thin max-h-60 space-y-1 overflow-y-auto">{P.map((b, i) => (
+          <label key={i} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 font-sans text-sm hover:bg-white/5">
+            <input type="checkbox" checked={!off.includes(i) && !dup(b)} disabled={dup(b)} onChange={e => setOff(e.target.checked ? off.filter(x => x !== i) : [...off, i])} className="accent-[var(--c)]" />
+            <span className="min-w-0 flex-1 truncate">{comTitle(b)}</span><span className="text-[11px] text-slate-500">{dup(b) ? "ya está" : `${b.length} car.`}</span></label>))}</div></div>}
+      <div className="mt-4 flex justify-end gap-2"><NBtn ghost onClick={onClose}>CANCELAR</NBtn>
+        <NBtn icon={<Upload />} disabled={!P.some((b, i) => !off.includes(i) && !dup(b))} onClick={() => onAdd(P.filter((b, i) => !off.includes(i) && !dup(b)).map((body, i) => ({ id: uid(), t: comTitle(body), body, ts: Date.now() - i * 1000 })))}>IMPORTAR</NBtn></div>
+    </SixModal>);
+}
+function StatsCom({ onClose, onUse }: { onClose: () => void; onUse: (t: string, body: string) => void }) {
+  const mesN = (d: Date) => d.toLocaleDateString("es-AR", { month: "long" }), now = new Date(), last = new Date(now.getFullYear(), now.getMonth() - 1, 1), prev = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  const [f, setF] = useState<StatsF>({ mes: mesN(last), anio: String(last.getFullYear()), prevMes: mesN(prev), S: STATS0, resp: "", cierre: "", abiertos: "", sinAsig: "", sinResp: "" });
+  const set = (p: Partial<StatsF>) => setF({ ...f, ...p }), num = (v: string) => v.replace(/\D/g, "");
+  return (
+    <SixModal t="📊 Estadísticas del mes" onClose={onClose} wide>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-2"><Lbl t="Mes"><NIn value={f.mes} onChange={e => set({ mes: e.target.value })} /></Lbl><Lbl t="Año"><NIn value={f.anio} onChange={e => set({ anio: num(e.target.value) })} /></Lbl><Lbl t="Comparar con"><NIn value={f.prevMes} onChange={e => set({ prevMes: e.target.value })} /></Lbl></div>
+          <div className="space-y-1.5"><div className="grid grid-cols-[1fr_5rem_5rem] gap-2 font-sans text-[11px] font-semibold text-slate-500"><span>Dato</span><span>{f.mes || "Mes"}</span><span>{f.prevMes || "Anterior"}</span></div>
+            {f.S.map((s, i) => <div key={s.k} className="grid grid-cols-[1fr_5rem_5rem] items-center gap-2"><span className="font-sans text-xs text-slate-300">{s.l}</span>
+              <NIn inputMode="numeric" value={s.now} onChange={e => set({ S: f.S.map((x, j) => (j === i ? { ...x, now: num(e.target.value) } : x)) })} className="py-1.5 text-xs" />
+              <NIn inputMode="numeric" value={s.prev} onChange={e => set({ S: f.S.map((x, j) => (j === i ? { ...x, prev: num(e.target.value) } : x)) })} className="py-1.5 text-xs" placeholder="—" /></div>)}</div>
+          <p className="font-sans text-[11px] font-semibold text-slate-500">Punto a mejorar (opcional)</p>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">{([["resp", "1.ª resp. (min)"], ["cierre", "Cierre (h)"], ["abiertos", "Abiertos"], ["sinAsig", "Sin asignar"], ["sinResp", "Sin respuesta"]] as const).map(([k, l]) =>
+            <Lbl key={k} t={l}><NIn inputMode="numeric" value={f[k]} onChange={e => set({ [k]: num(e.target.value) } as Partial<StatsF>)} className="py-1.5 text-xs" /></Lbl>)}</div>
+        </div>
+        <div className="space-y-2"><div className="max-h-[60vh] overflow-y-auto rounded-xl border border-six/10 bg-[#313338] p-4 font-sans text-[14px] leading-relaxed text-[#dbdee1]" dangerouslySetInnerHTML={{ __html: discordHtml(statsText(f), { roles: { ...DC_ROLES } }, "six", "/next/logo.svg") }} />
+          <div className="flex justify-end gap-2"><NBtn ghost onClick={onClose}>CANCELAR</NBtn><NBtn icon={<Check />} onClick={() => onUse(`Estadísticas · ${f.mes} ${f.anio}`, statsText(f))}>USAR EN EL EDITOR</NBtn></div></div>
+      </div>
+    </SixModal>);
+}
+function IdsCom({ roles, chans, onClose, onSave }: { roles: Record<string, string>; chans: Record<string, string>; onClose: () => void; onSave: (r: Record<string, string>, c: Record<string, string>) => void }) {
+  const [R, setR] = useState(Object.entries(roles)), [C, setC] = useState(Object.entries(chans)), [nid, setNid] = useState(""), [nk, setNk] = useState<"r" | "c">("r");
+  const rows = (L: [string, string][], set: (L: [string, string][]) => void, pre: string) => L.map(([id, n], i) => (
+    <div key={id} className="grid grid-cols-[1fr_11rem_auto] items-center gap-2"><NIn value={n} onChange={e => set(L.map((x, j) => (j === i ? [x[0], e.target.value] : x)))} className="py-1.5 text-xs" /><span className="truncate font-mono text-[10.5px] text-slate-500">{pre}{id}</span>
+      <button aria-label="Quitar" onClick={() => set(L.filter((_, j) => j !== i))} className="text-slate-500 hover:text-[#ff2b4a]"><X className="size-3.5" /></button></div>));
+  return (
+    <SixModal t="Roles y canales de Discord" onClose={onClose}>
+      <p className="mb-3 font-sans text-xs text-slate-400">Los nombres los deduje de los comunicados: corregilos si alguno no es así. Solo cambian cómo se ven en la vista previa y en los botones.</p>
+      <p className="mb-1.5 font-sans text-xs font-semibold text-six">Roles</p><div className="space-y-1.5">{rows(R, setR, "@&")}</div>
+      <p className="mb-1.5 mt-4 font-sans text-xs font-semibold text-six">Canales</p><div className="space-y-1.5">{rows(C, setC, "#")}</div>
+      <div className="mt-4 flex gap-2"><NSel v={nk} set={setNk} opts={[["r", "Rol"], ["c", "Canal"]] as const} className="w-28" /><NIn value={nid} onChange={e => setNid(e.target.value.replace(/\D/g, ""))} placeholder="ID de Discord" className="font-mono text-xs" />
+        <NBtn ghost icon={<Plus />} disabled={!isId(nid)} onClick={() => { (nk === "r" ? setR : setC)(L => [...L, [nid, nk === "r" ? "rol" : "canal"]]); setNid(""); }}>SUMAR</NBtn></div>
+      <div className="mt-5 flex justify-end gap-2"><NBtn ghost onClick={onClose}>CANCELAR</NBtn><NBtn icon={<Save />} onClick={() => onSave(Object.fromEntries(R.filter(x => x[1].trim())), Object.fromEntries(C.filter(x => x[1].trim())))}>GUARDAR</NBtn></div>
+    </SixModal>);
 }
 
 /* ---------- equipo de ilícitos: postulaciones y sanciones de banda ---------- */

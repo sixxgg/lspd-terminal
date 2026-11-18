@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "4.0.8";
+export const APP_VERSION = "4.1";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,12 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "4.1", f: "18/11/2026", t: "Consulta, comunicados y buscadores", items: [
+    "Nueva pestaña Consulta (en prueba): preguntás lo que quieras del Manual del Novato y responde con el texto del propio manual, resaltando las palabras y diciendo de qué sección sale. Tiene el manual completo con índice y buscador, y se puede marcar una respuesta como incorrecta para revisarla.",
+    "Consulta la ven six y quienes él habilite en Administración › Accesos y administradores.",
+    "Buscadores de agentes, delitos y sugerencias: la lista ahora se abre por encima de todo (modales, tarjetas y menús) y, si no entra abajo, se abre hacia arriba.",
+    "Al recargar la página quedás donde estabas, también dentro del panel de six (sin repetir la intro).",
+  ] },
   { v: "4.0.8", f: "18/11/2026", t: "Fichas K-9 e Infraestructura", items: [
     "K-9 › Fichas: registro «Oficial y canino» que queda guardado y se edita cuando haga falta. El guía se busca en el roster (placa y rango se completan solos), rango divisional según los cargos de la K-9, certificación automática desde K-9-2026-05, fotos del oficial y del canino (tocar o soltar la imagen) y salud, vacunas, temperamento y observaciones.",
     "«Ver ficha» muestra el documento oficial de la división y lo descarga como imagen PNG.",
