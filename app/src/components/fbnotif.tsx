@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Ban, Clock, Hammer, PackagePlus, Trash2, Wrench, XCircle, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/api";
+import { idleFor } from "@/lib/store";
 import { ago } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 
@@ -28,7 +29,7 @@ const getSeen = () => { try { return Number(localStorage.getItem(SEEN) || 0); } 
 export function useMyFeedback() {
   const [list0, setList] = useState<MyFb[]>([]), [seen, setSeenS] = useState(getSeen);
   const load = useCallback(async () => { const r = await api("/api/feedback"); if (r.__s === 200 && Array.isArray(r.list)) setList(r.list as MyFb[]); }, []);
-  useEffect(() => { void load(); const i = setInterval(() => { if (!document.hidden) void load(); }, 120000); const v = () => { if (!document.hidden) void load(); };
+  useEffect(() => { void load(); const i = setInterval(() => { if (!document.hidden && idleFor() < 600e3) void load(); }, 120000); const v = () => { if (!document.hidden) void load(); };
     window.addEventListener("lspd:fb", load); document.addEventListener("visibilitychange", v);
     return () => { clearInterval(i); window.removeEventListener("lspd:fb", load); document.removeEventListener("visibilitychange", v); }; }, [load]);
   const list = list0.filter(x => fbSt(x.st) !== "elim"); /* lo eliminado no se avisa ni queda en el historial */

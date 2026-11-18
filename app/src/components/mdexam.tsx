@@ -6,13 +6,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Clock, Lock, Maximize, Send, X } from "lucide-react";
 import { EX_OPEN, atMs, exApi, exRefresh, fmtAt, srvNow, useExam } from "@/lib/mdexam";
+import { idleFor } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
 export function ExamWatch({ me }: { me: string }) {
   const S = useExam(), [open, setOpen] = useState(false), [hide, setHide] = useState(""), [, tick] = useState(0);
   useEffect(() => {
     void exRefresh();
-    const f = () => { if (document.visibilityState === "visible") void exRefresh(); };
+    const f = () => { if (document.visibilityState === "visible" && idleFor() < 600e3) void exRefresh(); };
     const i = setInterval(f, 60e3), o = () => setOpen(true), t = setInterval(() => tick(x => x + 1), 15e3);
     window.addEventListener(EX_OPEN, o);
     return () => { clearInterval(i); clearInterval(t); window.removeEventListener(EX_OPEN, o); };

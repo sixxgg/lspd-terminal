@@ -136,7 +136,15 @@ export async function reloadAll(): Promise<boolean> {
 }
 /* sincroniza ya (la pizarra la usa cada 2 s mientras está abierta) */
 export const syncNow = () => { if (!document.hidden) void poll(); };
-function schedule() { clearTimeout(pollT); pollT = window.setTimeout(async () => { if (!document.hidden) await poll(); schedule(); }, 5000); }
+/* actividad: la base (Neon) se apaga sola si nadie consulta unos minutos, y eso ahorra la cuota del mes.
+   Mientras se usa la terminal se sincroniza cada 5 s; sin tocar nada, cada vez menos, y a los 20 min para hasta que vuelvas a moverte. */
+let lastAct = Date.now(), parked = false;
+export const idleFor = () => Date.now() - lastAct;
+const pollEvery = () => { const i = idleFor(); return i < 120e3 ? 5000 : i < 600e3 ? 30e3 : i < 1200e3 ? 120e3 : 0; };
+function schedule() { clearTimeout(pollT); const ms = pollEvery(); if (!ms) { parked = true; return; } parked = false;
+  pollT = window.setTimeout(async () => { if (!document.hidden) await poll(); schedule(); }, ms); }
+const onAct = () => { const was = idleFor() > 120e3; lastAct = Date.now(); if (parked || was) { void poll(); schedule(); } };
+for (const ev of ["pointerdown", "keydown", "wheel", "touchstart", "mousemove"]) addEventListener(ev, onAct, { passive: true, capture: true });
 
 /* cuentas registradas en orden de alta (la posición es el ID público del perfil) */
 export const ACC: { names: string[] } = { names: [] };
