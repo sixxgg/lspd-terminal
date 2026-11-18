@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "4.1";
+export const APP_VERSION = "4.2";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,13 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "4.2", f: "18/11/2026", t: "LSSD, ingreso con placa y manual", items: [
+    "Ingreso y registro con el número de placa: sirve si tu nombre es doble, se repite o es difícil de escribir. También se puede seguir entrando con el correo o el nombre.",
+    "La pantalla de ingreso tiene selector de departamento: LSPD, LSSD (Los Santos Sheriff's Department) y SAHP (próximamente). El LSSD entra con su usuario OOC, nombre o placa.",
+    "Terminal del LSSD (en construcción): inicio, roster del Sheriff por rango y las secciones Legal, Supervisores, Capitanía, Jefatura y Detectives en preparación. Las cuentas del LSSD no ven nada del LSPD.",
+    "Consulta usa el Manual del Novato completo (132 páginas pasadas a texto).",
+    "Divisiones: los nombres ya no se cortan en la barra de secciones (van abreviados; el nombre completo aparece al pasar el mouse).",
+  ] },
   { v: "4.1", f: "18/11/2026", t: "Consulta, comunicados y buscadores", items: [
     "Nueva pestaña Consulta (en prueba): preguntás lo que quieras del Manual del Novato y responde con el texto del propio manual, resaltando las palabras y diciendo de qué sección sale. Tiene el manual completo con índice y buscador, y se puede marcar una respuesta como incorrecta para revisarla.",
     "Consulta la ven six y quienes él habilite en Administración › Accesos y administradores.",

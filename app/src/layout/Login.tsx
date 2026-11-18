@@ -1,4 +1,5 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { DEPTS, LSSD_ES, setDept } from "@/lib/dept";
 import { Eye, EyeOff, LogIn, UserPlus, Clock, AlertCircle, ShieldCheck, LifeBuoy, CheckCircle2 } from "lucide-react";
 import { RecCodes } from "@/components/account";
 import { Button, Checkbox, Field, Input, Segmented } from "@/components/ui";
@@ -7,7 +8,7 @@ import { emailOf, norm, rankES } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 import { cipher, tabIcon, useTabFx } from "@/lib/tabfx";
 
-export type PubInfo = { names: string[]; roster?: { n: string; r: string; p?: string }[]; brand?: Record<string, string> };
+export type PubInfo = { names: string[]; roster?: { n: string; r: string; p?: string }[]; brand?: Record<string, string>; lssd?: { n: string; r: string; p: string }[]; lssdNames?: string[] };
 type Msg = { kind: "err" | "pend" | "ok"; text: string } | null;
 
 /* pantalla de ingreso: la pestaña muestra una calavera y un título cifrado con caracteres aleatorios */
@@ -20,16 +21,23 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
   const [pw, setPw] = useState(""), [pw2, setPw2] = useState(""), [code, setCode] = useState("");
   const [keep, setKeep] = useState(true), [show, setShow] = useState(false), [busy, setBusy] = useState(false);
   const [name, setName] = useState(""), [msg, setMsg] = useState<Msg>(null);
-  const reg = useMemo(() => new Set(pub.names), [pub.names]);
-  const sug = useMemo(() => { const s = norm(name.trim()); if (s.length < 2) return []; return (pub.roster || []).filter(a => norm(a.n).includes(s) || String(a.p) === s).slice(0, 6); }, [name, pub.roster]);
-  const picked = (pub.roster || []).find(a => a.n === name);
-  const logo = pub.brand?.["lspdt.logo.login"] || pub.brand?.["lspdt.logo"] || "/next/logo.svg";
+  /* departamento: LSPD o LSSD (SAHP más adelante); cambia escudo, roster y cómo se identifica cada uno */
+  const [dep, setDep0] = useState<"lspd" | "lssd">(() => { try { return localStorage.getItem("lspdt.next.loginDept") === "lssd" ? "lssd" : "lspd"; } catch { return "lspd"; } });
+  const setDep = (d: "lspd" | "lssd") => { setDep0(d); setName(""); setMsg(null); setU(""); setDept(d, true); try { localStorage.setItem("lspdt.next.loginDept", d); } catch { /* */ } };
+  useEffect(() => { setDept(dep, true); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const lssd = dep === "lssd", R = (lssd ? pub.lssd : pub.roster) || [], rkES = (r: string) => (lssd ? LSSD_ES[r] || r : rankES(r));
+  const reg = useMemo(() => new Set(lssd ? pub.lssdNames || [] : pub.names), [pub.names, pub.lssdNames, lssd]), isReg = (a: { n: string; p?: string }) => reg.has(lssd ? "#" + a.p : a.n);
+  const sug = useMemo(() => { const s = norm(name.trim()).replace(/^#/, ""); if (s.length < 2) return []; return R.filter(a => norm(a.n).includes(s) || String(a.p) === s).slice(0, 6); }, [name, R]);
+  /* elegido: el nombre exacto (si no se repite) o el número de placa */
+  const [pick, setPick] = useState<{ n: string; r: string; p?: string } | null>(null);
+  const picked = pick && pick.n === name ? pick : (() => { const s = norm(name.trim()).replace(/^#/, ""); if (!s) return null; const byP = /^\d+$/.test(s) ? R.filter(a => String(a.p) === s) : [], byN = R.filter(a => norm(a.n) === s); return byP.length === 1 ? byP[0] : byN.length === 1 ? byN[0] : null; })();
+  const logo = lssd ? DEPTS.lssd.logo : pub.brand?.["lspdt.logo.login"] || pub.brand?.["lspdt.logo"] || "/next/logo.svg";
 
   async function login(e: FormEvent) {
     e.preventDefault(); setMsg(null);
     if (!u.trim() || !pw) return setMsg({ kind: "err", text: "Completá el correo y la contraseña." });
     setBusy(true);
-    const r = await authApi({ a: "login", u: u.trim(), pw, keep });
+    const r = await authApi({ a: "login", u: u.trim(), pw, keep, dept: dep });
     setBusy(false);
     if (r.__s !== 200) return setMsg({ kind: r.pending ? "pend" : "err", text: r.msg || "No se pudo iniciar sesión." });
     try { localStorage.setItem("lspdt.next.lastUser", u.trim()); } catch { /* */ }
@@ -37,15 +45,15 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
   }
   async function register(e: FormEvent) {
     e.preventDefault(); setMsg(null);
-    if (!picked) return setMsg({ kind: "err", text: "Escribí el nombre de tu personaje y elegilo de la lista." });
-    if (reg.has(picked.n)) return setMsg({ kind: "err", text: "Ese agente ya tiene cuenta. Iniciá sesión." });
+    if (!picked) return setMsg({ kind: "err", text: "Escribí el nombre o la placa de tu personaje y elegilo de la lista." });
+    if (isReg(picked)) return setMsg({ kind: "err", text: "Ese agente ya tiene cuenta. Iniciá sesión." });
     if (pw.length < 8) return setMsg({ kind: "err", text: "La contraseña tiene que tener al menos 8 caracteres." });
     if (pw !== pw2) return setMsg({ kind: "err", text: "Las contraseñas no coinciden." });
     if (!code.trim()) return setMsg({ kind: "err", text: "Ingresá el código de invitación que te dio la administración." });
     setBusy(true);
-    const r = await authApi({ a: "register", n: picked.n, pw, code, keep: true });
+    const r = await authApi({ a: "register", n: lssd || R.filter(a => a.n === picked.n).length > 1 ? "#" + picked.p : picked.n, pw, code, keep: true, dept: dep });
     setBusy(false);
-    if (r.__s === 202) { setCodes({ rec: r.rec || [], then: () => { setCodes(null); setTab("in"); setU(r.e || emailOf(picked.n)); setPw(""); setPw2(""); setMsg({ kind: "pend", text: r.msg || "" }); } }); return; }
+    if (r.__s === 202) { setCodes({ rec: r.rec || [], then: () => { setCodes(null); setTab("in"); setU(lssd ? String(picked.p) : r.e || emailOf(picked.n)); setPw(""); setPw2(""); setMsg({ kind: "pend", text: r.msg || "" }); } }); return; }
     if (r.__s !== 200) return setMsg({ kind: "err", text: r.msg || "No se pudo crear la cuenta." });
     setCodes({ rec: r.rec || [], then: () => onDone(r as unknown as { data: unknown }) });
   }
@@ -67,9 +75,15 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
         <div className="rounded-3xl border border-slate-200 bg-white/90 p-7 shadow-xl shadow-slate-900/5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-black/40">
           <div className="flex flex-col items-center text-center">
             <img decoding="async" src={logo} alt="" className="h-16 w-auto drop-shadow" />
-            <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.2em] text-brand-600 dark:text-brand-300">Los Santos Police Department</p>
+            <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.2em] text-brand-600 dark:text-brand-300">{lssd ? DEPTS.lssd.name : "Los Santos Police Department"}</p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight">Terminal de Mando</h1>
           </div>
+          {!codes && <div role="radiogroup" aria-label="Departamento" className="mt-5 grid grid-cols-3 gap-1.5 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800/70">
+            {(["lspd", "lssd", "sahp"] as const).map(d => { const D = DEPTS[d], on = dep === d; return (
+              <button key={d} type="button" role="radio" aria-checked={on} disabled={D.soon} onClick={() => d !== "sahp" && setDep(d)} title={D.soon ? `${D.name} · próximamente` : D.name}
+                className={cn("flex items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-[12px] font-bold transition", on ? "bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200", D.soon && "cursor-not-allowed opacity-40")}>
+                <img src={D.logo} alt="" className="size-5 object-contain" />{D.short}</button>); })}
+          </div>}
           {codes ? <div className="mt-6 space-y-4"><RecCodes codes={codes.rec} /><Button size="lg" className="w-full" onClick={codes.then}>Ya los guardé, continuar</Button></div> : <>
           <div className="mt-6 flex justify-center">
             <Segmented value={tab} onChange={v => { setTab(v); setMsg(null); }} options={[{ value: "in", label: "Iniciar sesión", icon: <LogIn /> }, { value: "up", label: "Registrarse", icon: <UserPlus /> }]} />
@@ -78,7 +92,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
           {tab === "rec" ? (
             <form onSubmit={recover} className="mt-6 space-y-4">
               <p className="flex items-start gap-2 text-sm text-slate-500 dark:text-slate-400"><LifeBuoy className="mt-0.5 size-4 shrink-0 text-brand-500" />Usá uno de los códigos de recuperación que guardaste al crear la cuenta (o desde Mi cuenta). Cada código sirve una sola vez.</p>
-              <Field label="Correo o nombre"><Input autoComplete="username" value={u} onChange={e => setU(e.target.value)} placeholder="nombre@sanandreas.eu" /></Field>
+              <Field label={lssd ? "Usuario OOC o placa" : "Correo, nombre o placa"}><Input autoComplete="username" value={u} onChange={e => setU(e.target.value)} placeholder={lssd ? "Tu usuario o tu placa" : "nombre@sanandreas.eu"} /></Field>
               <Field label="Código de recuperación"><Input value={rc} onChange={e => setRc(e.target.value)} placeholder="XXXX-XXXX-XXXX" className="font-mono uppercase" autoComplete="off" /></Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Nueva contraseña"><Input type="password" autoComplete="new-password" value={pw} onChange={e => setPw(e.target.value)} /></Field>
@@ -90,7 +104,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
             </form>
           ) : tab === "in" ? (
             <form onSubmit={login} className="mt-6 space-y-4">
-              <Field label="Correo o nombre"><Input autoComplete="username" value={u} onChange={e => setU(e.target.value)} placeholder="nombre@sanandreas.eu" /></Field>
+              <Field label={lssd ? "Usuario OOC, nombre o placa" : "Correo, nombre o placa"}><Input autoComplete="username" value={u} onChange={e => setU(e.target.value)} placeholder={lssd ? "Tu usuario de Discord o tu placa (ej. 234)" : "nombre@sanandreas.eu o tu placa"} /></Field>
               <Field label="Contraseña">
                 <div className="relative">
                   <Input type={show ? "text" : "password"} autoComplete="current-password" value={pw} onChange={e => setPw(e.target.value)} placeholder="••••••••" className="pr-10" />
@@ -107,22 +121,22 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
             </form>
           ) : (
             <form onSubmit={register} className="mt-6 space-y-4">
-              <Field label="Tu personaje" hint="(tal como figura en el roster)">
+              <Field label="Tu personaje" hint={lssd ? "(nombre o placa del roster del Sheriff)" : "(nombre o placa, como figura en el roster)"}>
                 <div className="relative">
-                  <Input value={name} onChange={e => setName(e.target.value)} placeholder="Nombre, placa o State ID" autoComplete="off" />
+                  <Input value={name} onChange={e => setName(e.target.value)} placeholder="Nombre o número de placa" autoComplete="off" />
                   {sug.length > 0 && !picked && (
                     <div className="absolute inset-x-0 top-full z-10 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
                       {sug.map(a => (
-                        <button type="button" key={a.n} onClick={() => setName(a.n)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none dark:hover:bg-slate-800">
-                          <span className="flex-1 font-medium">{a.n}</span><span className="text-xs text-slate-400">{rankES(a.r)}{a.p ? " · #" + a.p : ""}</span>
-                          {reg.has(a.n) && <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Registrado</span>}
+                        <button type="button" key={a.n + a.p} onClick={() => { setPick(a); setName(a.n); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none dark:hover:bg-slate-800">
+                          <span className="flex-1 font-medium">{a.n}</span><span className="text-xs text-slate-400">{rkES(a.r)}{a.p ? " · #" + a.p : ""}</span>
+                          {isReg(a) && <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Registrado</span>}
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
               </Field>
-              {picked && <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400"><ShieldCheck className="size-4 text-brand-500" />{rankES(picked.r)}{picked.p ? ` · Placa #${picked.p}` : ""} · {emailOf(picked.n)}</div>}
+              {picked && <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400"><ShieldCheck className="size-4 text-brand-500" /><b className="text-slate-700 dark:text-slate-200">{picked.n}</b> · {rkES(picked.r)}{picked.p ? ` · Placa #${picked.p}` : ""}{!lssd && ` · ${emailOf(picked.n)}`}</div>}
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Contraseña"><Input type="password" autoComplete="new-password" value={pw} onChange={e => setPw(e.target.value)} /></Field>
                 <Field label="Repetir"><Input type="password" autoComplete="new-password" value={pw2} onChange={e => setPw2(e.target.value)} /></Field>

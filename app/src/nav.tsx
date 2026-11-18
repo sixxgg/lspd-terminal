@@ -5,6 +5,7 @@ import {
   CalendarDays, Home, BookOpenCheck, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
   Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint, UserRound, Presentation, UserMinus, RadioTower, UsersRound, Images } from "lucide-react";
 import { GUEST, LS, ME_ROLES } from "./lib/store";
+import { DEPT, lssdLvl, onDept } from "./lib/dept";
 import { Helicopter } from "./components/icons";
 import { lvl } from "./lib/domain";
 
@@ -80,9 +81,23 @@ const RAW_AREAS: Area[] = [
 /* orden A-Z: las áreas (con Inicio siempre primero) y las secciones de cada área; los números van antes que las letras */
 const coll = new Intl.Collator("es", { numeric: true, sensitivity: "base" });
 const lab = (x: { l: string; sl?: string }) => x.sl || x.l, byLabel = (a: { l: string; sl?: string }, b: { l: string; sl?: string }) => coll.compare(lab(a), lab(b));
-export const AREAS: Area[] = RAW_AREAS
+const LSPD_AREAS: Area[] = RAW_AREAS
   .map(a => (a.k === "ini" ? a : { ...a, sec: a.sec.slice().sort(byLabel) }))
   .sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
+/* LSSD (Sheriff): todo en construcción salvo el roster; el rango usa la escala del Sheriff (Sargento 7, Teniente 8, Comandante de Área 10) */
+const LSSD_AREAS: Area[] = [
+  { k: "ini", l: "Inicio", icon: Home, min: 0, sec: [{ k: "home", l: "Inicio", d: "Los Santos Sheriff's Department", icon: Home, ready: true }] },
+  { k: "lag", l: "Agentes", icon: Users, min: 0, sec: [{ k: "ros", l: "Roster", d: "Personal del departamento por rango", icon: Users, ready: true }] },
+  { k: "lleg", l: "Legal", icon: Scale, min: 0, sec: [{ k: "leg", l: "Legal", d: "Código penal y normativa", icon: Scale, ready: true }] },
+  { k: "lsup", l: "Supervisores", icon: ClipboardList, min: 7, req: "Sargento", sec: [{ k: "sup", l: "Supervisores", d: "Herramientas de supervisión", icon: ClipboardList, ready: true }] },
+  { k: "lcap", l: "Capitanía", icon: Briefcase, min: 8, req: "Teniente", sec: [{ k: "cap", l: "Capitanía", d: "Herramientas de Capitanía", icon: Briefcase, ready: true }] },
+  { k: "ljef", l: "Jefatura", icon: Star, min: 10, req: "Comandante de Área", sec: [{ k: "jef", l: "Jefatura", d: "Herramientas de Jefatura", icon: Star, ready: true }] },
+  { k: "ldet", l: "Detectives", icon: Search, min: 0, sec: [{ k: "det", l: "Detectives", d: "Unidad de investigación", icon: Search, ready: true }] },
+];
+/* el menú cambia de departamento sin recargar: AREAS es la lista del departamento activo */
+export const AREAS: Area[] = [...LSPD_AREAS];
+onDept(() => { AREAS.splice(0, AREAS.length, ...(DEPT.id === "lssd" ? LSSD_AREAS : LSPD_AREAS)); });
+const isLssd = () => DEPT.id === "lssd";
 
 /* Legal: solo six y a quien six le da acceso desde Administración */
 const legalOk = () => !!ME_ROLES.six || LS.json<string[]>("lspdt.legacc", []).includes(PROF.me);
@@ -90,11 +105,11 @@ const conOk = () => !!ME_ROLES.six || LS.json<string[]>("lspdt.consultaAcc", [])
 const galOk = () => !!ME_ROLES.six || !!ME_ROLES.admin || LS.json<string[]>("lspdt.galEditors", []).includes(PROF.me);
 /* invitado: solo las secciones que abrió six (Novedades va siempre con el Inicio) */
 const guestSec = (a: string, s: string) => GUEST.secs.includes(`${a}/${s}`) || (a === "ini" && s === "nov");
-export const canArea = (a: Area, r?: string) => (GUEST.on ? a.sec.some(s => guestSec(a.k, s.k)) : a.k === "gal" ? galOk() : a.k === "con" ? conOk() : a.k === "me" ? profOk() : a.k === "leg" ? legalOk() : a.admin ? !!ME_ROLES.admin : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : lvl(r) >= a.min);
+export const canArea = (a: Area, r?: string) => isLssd() ? !!ME_ROLES.six || lssdLvl(r) >= a.min : (GUEST.on ? a.sec.some(s => guestSec(a.k, s.k)) : a.k === "gal" ? galOk() : a.k === "con" ? conOk() : a.k === "me" ? profOk() : a.k === "leg" ? legalOk() : a.admin ? !!ME_ROLES.admin : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : lvl(r) >= a.min);
 /* áreas del menú (sin las ocultas) */
 export const menuAreas = (r?: string) => AREAS.filter(a => !a.hidden && canArea(a, r));
 /* secciones bloqueadas para ese rango (se muestran con candado) */
-export const lockedOf = (a: Area, r?: string) => (GUEST.on ? [] : a.sec.filter(s => s.min && lvl(r) < s.min));
+export const lockedOf = (a: Area, r?: string) => (GUEST.on || isLssd() ? [] : a.sec.filter(s => s.min && lvl(r) < s.min));
 /* secciones que ve cada uno dentro de un área (algunas piden más rango que el área) */
-export const secsOf = (a: Area, r?: string) => GUEST.on ? a.sec.filter(s => guestSec(a.k, s.k)) : a.sec.filter(s => (!s.min || lvl(r) >= s.min) && (a.k !== "div" || divVisible(s.l, PROF.me))); /* el rango manda también para los administradores */
+export const secsOf = (a: Area, r?: string) => isLssd() ? a.sec : GUEST.on ? a.sec.filter(s => guestSec(a.k, s.k)) : a.sec.filter(s => (!s.min || lvl(r) >= s.min) && (a.k !== "div" || divVisible(s.l, PROF.me))); /* el rango manda también para los administradores */
 

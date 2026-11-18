@@ -1,3 +1,4 @@
+import { DEPT } from "@/lib/dept";
 import { useEffect, useState, type ReactNode } from "react";
 import { WifiOff, BatteryFull, BatteryCharging, BatteryLow, BatteryMedium, MapPin, ShieldCheck } from "lucide-react";
 import { usePref } from "@/lib/appearance";
@@ -46,7 +47,7 @@ function Uplink() {
   useEffect(() => { let k = 0; const i = setInterval(() => { if (document.hidden) return; k++;
     setV(o => ({ ...o, sig: hx(8), pk: o.pk + 7 + Math.floor(Math.random() * 60), ...(k % 3 === 0 ? { ses: `${hx()}·${hx()}·${hx()}`, ttl: 48 + Math.floor(Math.random() * 80) } : {}),
       ...(k % 6 === 0 ? { ch: pick(CHAN) } : {}), ...(k % 9 === 0 ? { node: pick(NODES), ci: pick(CIPH) } : {}) })); }, 2500); return () => clearInterval(i); }, []);
-  return <span className="uplink hidden xl:inline-flex" aria-hidden><b>LSPD-NET</b>▸ NODO {v.node} ▸ CANAL {v.ch} ▸ {v.ci} ▸ SESIÓN <span className="hx">0x{v.ses}</span> ▸ FIRMA <span className="hx">{v.sig}</span>
+  return <span className="uplink hidden xl:inline-flex" aria-hidden><b>{DEPT.id === "lssd" ? "LSSD" : "LSPD"}-NET</b>▸ NODO {v.node} ▸ CANAL {v.ch} ▸ {v.ci} ▸ SESIÓN <span className="hx">0x{v.ses}</span> ▸ FIRMA <span className="hx">{v.sig}</span>
     <span className="hidden 2xl:inline">▸ PKT {v.pk.toLocaleString("es-AR")} ▸ TTL {v.ttl}</span><span className="cur">▮</span></span>;
 }
 
@@ -64,10 +65,10 @@ export function Device({ children, brand }: { children: ReactNode; brand?: Recor
         <i className="tb-corner tl" /><i className="tb-corner tr" /><i className="tb-corner bl" /><i className="tb-corner br" /><i className="tb-grip l" /><i className="tb-grip r" />
         <div className="tb-bar top" aria-hidden>
           <span className="tb-leds"><i style={{ ["--l" as string]: "#39ff88" }}>PWR</i><i className="net" style={{ ["--l" as string]: net === "off" ? "#ff4d52" : "#38bdf8" }}>NET</i><i className="rec" style={{ ["--l" as string]: "#ff2b4a" }}>REC</i></span>
-          {p.brand !== "off" ? <span className="tb-brand"><svg viewBox="0 0 64 64"><path d={TAB_ICONS.banana[1]} /></svg>BANANITA</span> : <span className="tb-brand">LSPD</span>}
+          {p.brand !== "off" ? <span className="tb-brand"><svg viewBox="0 0 64 64"><path d={TAB_ICONS.banana[1]} /></svg>BANANITA</span> : <span className="tb-brand">{DEPT.id === "lssd" ? "LSSD" : "LSPD"}</span>}
           <span className="flex items-center gap-3">MDT-X7 · RUGGED<span className="tb-cam" /></span>
         </div>
-        <div className="tb-bar bot" aria-hidden><span>LSPD // UNIDAD MÓVIL</span><span>PROPERTY OF LOS SANTOS POLICE DEPARTMENT</span><span>MIL-STD-810H · IP68</span></div>
+        <div className="tb-bar bot" aria-hidden><span>{DEPT.id === "lssd" ? "LSSD" : "LSPD"} // UNIDAD MÓVIL</span><span>PROPERTY OF {DEPT.id === "lssd" ? "LOS SANTOS SHERIFF'S DEPARTMENT" : "LOS SANTOS POLICE DEPARTMENT"}</span><span>MIL-STD-810H · IP68</span></div>
         <i className="tb-glow" aria-hidden />
         <div className="tab-screen bg-slate-50 dark:bg-slate-950">
           <div className="tab-status">

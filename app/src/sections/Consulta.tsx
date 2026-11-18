@@ -1,7 +1,7 @@
 /* Consulta: preguntas sobre el Manual del Novato respondidas con el texto del propio manual.
    En prueba: la ven six y quienes él habilite en Administración › Accesos. El manual lo carga six (pegado o desde un .txt/.md).
    Datos: lspdt.consulta.manual { t, at, by } · lspdt.consultaAcc (accesos) · lspdt.consultaRev (respuestas marcadas para revisar). */
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BookOpen, BookOpenCheck, Copy, Flag, Search, Send, Sparkles, Trash2, Upload } from "lucide-react";
 import { Button, Card, CardHeader, Empty, Input, Segmented, Textarea } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
@@ -22,8 +22,12 @@ function Hl({ t, S }: { t: string; S: Set<string> }) {
 
 export function Consulta() {
   useStoreVersion();
-  const six = !!ME_ROLES.six, [man] = useJSON<Man | null>(MK, null);
-  const [tab, setTab] = useState<"q" | "man" | "rev" | "load">(() => (man?.t ? "q" : six ? "load" : "q"));
+  const six = !!ME_ROLES.six, [man0] = useJSON<Man | null>(MK, null);
+  /* si six no cargó otro, va el manual oficial pasado a texto (OCR del PDF, 132 páginas) */
+  const [def, setDef] = useState<Man | null>(null);
+  useEffect(() => { if (man0?.t || def) return; void fetch(`${import.meta.env.BASE_URL}manual-novato.txt`).then(r => (r.ok ? r.text() : "")).then(t => t && setDef({ t, at: 0, by: "Manual oficial (OCR)" })).catch(() => {}); }, [man0?.t, def]);
+  const man = man0?.t ? man0 : def;
+  const [tab, setTab] = useState<"q" | "man" | "rev" | "load">("q");
   const C = useMemo(() => chunk(man?.t || ""), [man?.t]);
   const [rev] = useJSON<Rev[]>(RK, []);
   return (
@@ -37,7 +41,7 @@ export function Consulta() {
       <Segmented value={tab} onChange={setTab} options={[{ value: "q", label: "Preguntar", icon: <Sparkles className="size-4" /> }, { value: "man", label: "Ver manual", icon: <BookOpen className="size-4" /> },
         ...(six ? [{ value: "rev" as const, label: `A revisar${rev.length ? ` (${rev.length})` : ""}`, icon: <Flag className="size-4" /> }, { value: "load" as const, label: "Cargar manual", icon: <Upload className="size-4" /> }] : [])]} />
       {tab === "load" && six ? <Load man={man} onDone={() => setTab("q")} />
-        : !C.length ? <Card><Empty icon={<BookOpen />} title="Todavía no hay manual cargado" desc={six ? "Cargalo en «Cargar manual»." : "Cuando six lo cargue vas a poder preguntar."} /></Card>
+        : !C.length ? <Card><Empty icon={<BookOpen />} title={man ? "Cargando el manual…" : "Todavía no hay manual cargado"} desc={six ? "Cargalo en «Cargar manual»." : "Cuando six lo cargue vas a poder preguntar."} /></Card>
         : tab === "man" ? <Manual C={C} />
         : tab === "rev" && six ? <Revisar />
         : <Ask C={C} />}
@@ -130,7 +134,7 @@ function Load({ man, onDone }: { man: Man | null; onDone: () => void }) {
   const file = async (f?: File | null) => { if (!f) return; if (/\.pdf$/i.test(f.name)) { toast("Del PDF: abrilo, Ctrl+A, Ctrl+C y pegalo acá", "err"); return; } setT(await f.text()); };
   return (
     <Card>
-      <CardHeader icon={<Upload />} title="Manual del Novato" desc={man ? `Cargado por ${man.by} el ${new Date(man.at).toLocaleDateString("es-AR")} · ${chunk(man.t).length} partes` : "Pegá el texto completo del manual (abrí el PDF, Ctrl+A, Ctrl+C) o subí un .txt/.md."}
+      <CardHeader icon={<Upload />} title="Manual del Novato" desc={man?.at ? `Cargado por ${man.by} el ${new Date(man.at).toLocaleDateString("es-AR")} · ${chunk(man.t).length} partes` : man ? `Ahora se usa el manual oficial pasado a texto (${chunk(man.t).length} partes). Si cargás otro, reemplaza a ese.` : "Pegá el texto completo del manual (abrí el PDF, Ctrl+A, Ctrl+C) o subí un .txt/.md."}
         action={<Button size="sm" variant="outline" icon={<Upload />} onClick={() => inp.current?.click()}>Subir .txt</Button>} />
       <div className="space-y-3 p-5">
         <Textarea rows={16} value={t} onChange={e => setT(e.target.value)} placeholder="Pegá acá el Manual del Novato…" className="font-mono text-[12.5px]" />
