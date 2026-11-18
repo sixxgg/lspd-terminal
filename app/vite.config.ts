@@ -13,7 +13,7 @@ export default defineConfig({
   define: { __BUILD__: JSON.stringify(BUILD) },
   plugins: [react(), { name: "version-json", generateBundle() { this.emitFile({ type: "asset", fileName: "version.json", source: JSON.stringify({ b: BUILD, v: VER, t: Date.now() }) }); } }],
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
-  build: { outDir: process.env.OUT || "../public/next", emptyOutDir: true, target: "es2020", chunkSizeWarningLimit: 800,
-    rollupOptions: { output: { manualChunks: { react: ["react", "react-dom"], icons: ["lucide-react"] } } } },
+  build: { outDir: process.env.OUT || "../public/next", emptyOutDir: true, target: "es2020", chunkSizeWarningLimit: 1000,
+    rollupOptions: { output: { manualChunks: (id: string) => /node_modules\/(react|react-dom|scheduler)\//.test(id) ? "react" : /node_modules\/lucide-react\//.test(id) ? "icons" : undefined } } },
   server: { proxy: { "/api": "http://localhost:3100" } },
 });

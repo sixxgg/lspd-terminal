@@ -4,7 +4,7 @@ import { forwardRef, useLayoutEffect, useState, type ReactNode, type RefObject }
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 
-export const FloatBox = forwardRef<HTMLDivElement, { anchor: RefObject<HTMLElement>; children: ReactNode; className?: string; maxH?: number; role?: string }>(
+export const FloatBox = forwardRef<HTMLDivElement, { anchor: RefObject<HTMLElement | null>; children: ReactNode; className?: string; maxH?: number; role?: string }>(
   function FloatBox({ anchor, children, className, maxH = 288, role }, ref) {
     const [pos, setPos] = useState<{ l: number; w: number; t?: number; b?: number; mh: number } | null>(null);
     useLayoutEffect(() => {

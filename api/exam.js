@@ -13,14 +13,23 @@ import { MDQ } from "../lib/mdexam.js";
 
 const CFG0 = { on: false, dur: 30, at: "", conv: "C1", extra: [], min: 7 };
 const GRACE = 45e3, MAXS = 3;
-const getMeta = async (c, k, d) => { try { const v = (await c.query("select v from meta where k=$1", [k])).rows[0]?.v; return v ? JSON.parse(v) : d; } catch { return d; } };
+/* lo que se lee seguido (configuración, intentos, banco, convocatorias) queda guardado en la función y solo se vuelve a traer
+   si cambió su huella (md5): así cada consulta del examen no baja todo el banco y los intentos de la base */
+const MC = new Map();
+async function cached(c, tbl, k) {
+  const h = (await c.query(`select md5(v) as h from ${tbl} where k=$1`, [k])).rows[0]?.h;
+  if (!h) return null;
+  const m = MC.get(tbl + k); if (m && m.h === h) return m.v;
+  const v = (await c.query(`select v from ${tbl} where k=$1`, [k])).rows[0]?.v ?? null; MC.set(tbl + k, { h, v }); return v;
+}
+const getMeta = async (c, k, d) => { try { const v = await cached(c, "meta", k); return v ? JSON.parse(v) : d; } catch { return d; } };
 const setMeta = (c, k, v) => c.query("insert into meta(k,v) values($1,$2) on conflict(k) do update set v=excluded.v", [k, JSON.stringify(v)]);
 const bankOf = async c => { const b = await getMeta(c, "mdexam.bank", null); return Array.isArray(b) && b.length ? b : MDQ.map((x, i) => ({ id: "q" + i, c: x.c, q: x.q, o: x.o, ok: 0 })); };
 const shuf = n => { const a = [...Array(n).keys()]; for (let i = n - 1; i > 0; i--) { const j = crypto.randomInt(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
 async function enrolled(c, cfg) {
   let post = [];
-  try { const L = JSON.parse((await c.query("select v from kv where k='lspdt.mdx.conv'")).rows[0]?.v || "[]"); post = (L.find(x => x.id === cfg.conv) || {}).post || []; } catch { /* */ }
+  try { const L = JSON.parse((await cached(c, "kv", "lspdt.mdx.conv")) || "[]"); post = (L.find(x => x.id === cfg.conv) || {}).post || []; } catch { /* */ }
   return { auto: post, all: [...new Set([...post, ...(cfg.extra || [])])] };
 }
 /* "Listo" = activado y, si tiene hora, ya llegó */

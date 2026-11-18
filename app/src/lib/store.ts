@@ -108,16 +108,20 @@ const Sync = {
 };
 
 let polling = false, pollT: number | undefined;
+const NEED = new Set<string>();
 async function poll() {
   if (!ONLINE || polling) return; polling = true;
   try {
-    const r = await api(`/api/data?since=${SYNC_T}`);
+    const nd = [...NEED].slice(0, 60); NEED.clear();
+    const r = await api(`/api/data?since=${SYNC_T}${nd.length ? "&need=" + nd.map(encodeURIComponent).join(",") : ""}`);
     if (r.__s === 401) { onLost(); return; }
     if (r.__s !== 200) { setNet("off"); return; }
     if (!Sync.pending()) setNet("ok");
     let ch = false;
-    for (const [k, v, t] of (r.ch || []) as [string, string | null, number][]) {
-      if (t <= (KT[k] || 0)) continue; KT[k] = t;
+    for (const [k, v, t, hint] of (r.ch || []) as [string, string | null, number, number?][]) {
+      if (t <= (KT[k] || 0)) continue;
+      if (hint) { NEED.add(k); continue; } /* cambio del margen que no tengo: lo pido en la próxima consulta */
+      KT[k] = t;
       if (Sync.q.has(k) || Sync.cur === k) continue;
       if (v == null) { if (!has(CACHE, k)) continue; delete CACHE[k]; delete BASE[k]; }
       else { if (CACHE[k] === v) continue; CACHE[k] = v; BASE[k] = v; }
@@ -126,7 +130,7 @@ async function poll() {
     SYNC_T = Math.max(SYNC_T, r.t || 0);
     if (r.me) { Object.assign(ME_ROLES, r.me); noRoles(); }
     if (ch) bump();
-  } finally { polling = false; }
+  } finally { polling = false; if (NEED.size) setTimeout(() => void poll(), 300); }
 }
 /* recarga todo del servidor (lo borrado desaparece aunque se haya perdido el aviso); respeta lo que se está guardando */
 export async function reloadAll(): Promise<boolean> {

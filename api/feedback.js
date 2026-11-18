@@ -65,7 +65,11 @@ export default wrap(async (req, res) => {
   const u = await requireUser(req, res); if (!u) return;
   if (req.method === "GET") { // los feedback propios y su estado (para las notificaciones de cada usuario)
     const ids = (await myIds(u.n)).filter(x => /^[a-z0-9]{1,40}$/.test(x)), list = [];
-    const rows = ids.length ? (await q("select v from kv where k = any($1) and v is not null", [ids.map(x => "lspdt.six.fb." + x)])).rows : [];
+    /* solo los campos del aviso (sin el texto completo ni las imágenes del ticket): esto se consulta cada 2 min por persona */
+    const ks = ids.map(x => "lspdt.six.fb." + x);
+    const rows = !ids.length ? [] : await q(`select json_build_object('id', j->'id', 't', j->'t', 'u', j->'u', 'st', j->'st', 'x', j->'x', 'nota', left(j->>'nota', 300), 'cat', j->'cat', 'area', j->'area', 'by', j->'by',
+        'html', case when j->'x' is null then left(j->>'html', 4000) end)::text as v from (select v::json as j from kv where k = any($1) and v is not null) s`, [ks])
+      .then(r => r.rows).catch(async () => (await q("select v from kv where k = any($1) and v is not null", [ks])).rows);
     for (const r of rows) { let t; try { t = JSON.parse(r.v); } catch { continue; }
       if (t && t.by === u.n && t.st !== "elim") list.push({ id: t.id, t: t.t, u: t.u || t.t, st: t.st, x: t.x || excerpt(t.html || ""), nota: String(t.nota || "").slice(0, 300), cat: t.cat || "", area: t.area || "" }); }
     list.sort((a, b) => b.u - a.u);

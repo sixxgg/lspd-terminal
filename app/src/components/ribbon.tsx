@@ -1,5 +1,5 @@
 /* Cinta de condecoración dibujada con CSS (sin imágenes) */
-import { memo } from "react";
+import { memo, type JSX } from "react";
 import { ribbonBg, type Decor } from "@/lib/decor";
 import { cn } from "@/lib/cn";
 

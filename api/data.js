@@ -25,7 +25,7 @@ async function downloadImg(url) {
   return `data:${type};base64,${buf.toString("base64")}`;
 }
 import { mergeText } from "../lib/merge.js";
-import { fullData, imgUrl, SEL, shapeVal } from "../lib/store.js";
+import { fullData, imgUrl, shapeVal } from "../lib/store.js";
 
 export default wrap(async (req, res) => {
   const u = await requireUser(req, res);
@@ -35,8 +35,11 @@ export default wrap(async (req, res) => {
     const qs = query(req), since = Number(qs.since);
     if (qs.since !== undefined && qs.since !== "" && Number.isFinite(since) && since >= 0) {
       // cambios desde la última consulta (con margen, el cliente descarta lo que ya tiene)
-      const rows = (await q(SEL + " where t > $1 order by t", [since - 50])).rows.filter(r => canRead(r.k, u));
-      const ch = rows.map(r => [r.k, r.img ? imgUrl(r.k, r.t) : shapeVal(r.k, r.v, u), +r.t]);
+      /* margen de 50 por si un guardado más viejo terminó después; pero el valor solo viaja si es nuevo (t > since) o si el navegador
+         lo pide (need: claves del margen que no tenía). Antes cada consulta (cada 5 s, por persona) volvía a traer lo del margen entero. */
+      const need = String(qs.need || "").split(",").filter(Boolean).slice(0, 60);
+      const rows = (await q("select k, t, v like 'data:%' as img, case when v like 'data:%' or (t <= $2 and not (k = any($3))) then null else v end as v, (t <= $2 and not (k = any($3))) as hint from kv where t > $1 or k = any($3) order by t", [since - 50, since, need])).rows.filter(r => canRead(r.k, u));
+      const ch = rows.map(r => r.hint && !r.img ? [r.k, null, +r.t, 1] : [r.k, r.img ? imgUrl(r.k, r.t) : shapeVal(r.k, r.v, u), +r.t]);
       const t = rows.length ? Math.max(since, ...rows.map(r => +r.t)) : since;
       return send(res, 200, { ch, t, me: { admin: u.admin, owner: u.owner, six: isSix(u), anita: !!u.anita } });
     }
@@ -124,7 +127,10 @@ export default wrap(async (req, res) => {
   const out = await tx(async c => {
     // primero el bloqueo y después la lectura: en la misma consulta se leería un valor viejo
     await c.query("select pg_advisory_xact_lock(hashtext($1))", [k]);
-    const cur = (await c.query("select v, t, by, at from kv where k=$1", [k])).rows[0] || { v: null, t: null };
+    /* si lo que el navegador tenía (base) es igual a lo guardado, no hace falta traer el valor de la base: se compara la huella */
+    const cur = (await c.query("select t, by, at, md5(v) as h, v is null as nul from kv where k=$1", [k])).rows[0] || { v: null, t: null };
+    if (cur.t != null) cur.v = cur.nul ? null : typeof b.base === "string" && crypto.createHash("md5").update(b.base).digest("hex") === cur.h ? b.base
+      : (await c.query("select v from kv where k=$1", [k])).rows[0]?.v ?? null;
     const exists = cur.t != null, curV = cur.v;
     let v = mine;
     if (!del && curV != null && !mine.startsWith("data:")) v = mergeText(typeof b.base === "string" ? b.base : null, mine, curV);

@@ -25,6 +25,7 @@ export async function exRefresh(withFull = full) {
 export const exApi = async (b: Record<string, unknown>) => { const r = await api("/api/exam", b); return r; };
 export function useExam(): ExState | null { return useSyncExternalStore(f => { subs.add(f); return () => subs.delete(f); }, () => S); }
 /* hora del servidor (los relojes de las PC no siempre están en hora) */
+export const exState = () => S;
 export const srvNow = () => Date.now() - (S?.skew || 0);
 export const atMs = (at: string) => (at ? +new Date(at) : 0);
 export const fmtAt = (at: string) => (at ? new Date(at).toLocaleString("es-AR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "");

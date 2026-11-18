@@ -190,7 +190,7 @@ export function PublicBoard({ tok }: { tok: string }) {
       if (r.__s !== 200) { setErr(r.msg || "No se pudo abrir la pizarra"); return; }
       const L = (r.live || []) as Live[]; setLive(L);
       if (!r.same) { since.current = r.t; let items: It[] = []; try { items = (JSON.parse(r.v || "{}").items || []) as It[]; } catch { /* */ } setSt({ items, title: r.title, by: r.by, exp: r.exp }); }
-      const busy = L.some(x => (r.now || Date.now()) - x.t < 4000); tm = window.setTimeout(tick, document.hidden ? 4000 : busy ? 40 : 1200); };
+      const busy = L.some(x => (r.now || Date.now()) - x.t < 4000); tm = window.setTimeout(tick, document.hidden ? 8000 : busy ? 150 : 2500); };
     const tick = () => void load().catch(() => { tm = window.setTimeout(tick, 3000); });
     tick(); return () => { on = false; clearTimeout(tm); }; }, [tok]);
   if (err) return <div className="grid min-h-[100dvh] place-items-center p-6 text-center text-slate-300" style={{ background: BG }}><div><Presentation className="mx-auto mb-3 size-10 opacity-60" /><p className="text-lg font-semibold">{err}</p><p className="mt-1 text-sm text-slate-500">Pedile a quien te lo pasó un enlace nuevo.</p></div></div>;
@@ -216,7 +216,7 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
     fitH(); window.addEventListener("resize", fitH); return () => window.removeEventListener("resize", fitH); }, [full]);
   const M = useMemo(() => new Map(items.map(i => [i.id, i])), [items]), itRef = useRef(items); itRef.current = items;
 
-  const persist = useCallback((L: It[]) => { if (!k) return; window.clearTimeout(timer.current); timer.current = window.setTimeout(() => { const s = JSON.stringify(L); if (s === saved.current) return; saved.current = s; LS.setJSON(k, { items: L }); onMeta?.(() => ({ upd: Date.now() })); }, 120); }, [k, onMeta]);
+  const persist = useCallback((L: It[]) => { if (!k) return; window.clearTimeout(timer.current); timer.current = window.setTimeout(() => { const s = JSON.stringify(L); if (s === saved.current) return; saved.current = s; LS.setJSON(k, { items: L }); onMeta?.(() => ({ upd: Date.now() })); }, 700); }, [k, onMeta]);
   /* en vivo: mando mi cursor y lo que estoy moviendo, recibo lo de los demás y, si alguien guardó, traigo la pizarra al instante */
   const me$ = useRef<LiveS>({ x: null, y: null }), dirty = useRef(false), lastAct = useRef(0), kt = useRef(0), [others1, setOthers] = useState<Live[]>([]);
   const others = (others0 || others1).filter(o => o.v); /* el servidor ya descarta a los que se fueron */
@@ -225,7 +225,7 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
       const r = await api("/api/live", { b: k, ...(dirty.current ? { s: me$.current } : {}) }).catch(() => null); dirty.current = false; if (!on) return;
       if (r && r.__s === 200) { setOthers(r.o || []); if (r.kt > kt.current) { if (kt.current) syncNow(); kt.current = r.kt; } }
       const live = busy || (r?.o || []).some((o: Live) => (r?.now || Date.now()) - o.t < 4000);
-      tm = window.setTimeout(tick, document.hidden ? 5000 : live ? 30 : 1200); };
+      tm = window.setTimeout(tick, document.hidden ? 8000 : live ? 120 : 2000); };
     void tick(); const bye = () => { void api("/api/live", { b: k, s: null }); };
     window.addEventListener("pagehide", bye); return () => { on = false; clearTimeout(tm); window.removeEventListener("pagehide", bye); bye(); }; }, [k]);
   const pushLive = (p: Partial<LiveS>) => { me$.current = { ...me$.current, ...p }; dirty.current = true; lastAct.current = Date.now(); };

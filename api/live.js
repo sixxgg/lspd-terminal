@@ -1,4 +1,4 @@
-/* Presencia en vivo de la pizarra: cada uno manda su cursor y lo que está moviendo (cada ~200 ms mientras hay actividad)
+/* Presencia en vivo de la pizarra: cada uno manda su cursor y lo que está moviendo (cada ~120 ms mientras hay actividad, cada 2 s si no)
    y recibe lo de los demás, más la última versión guardada de la pizarra para traerla al instante. */
 import { q } from "../lib/db.js";
 import { send, body, wrap, requireUser, canRead } from "../lib/core.js";
@@ -17,7 +17,7 @@ export default wrap(async (req, res) => {
   if (!canRead(b.b, u)) return send(res, 403, { msg: "Solo los miembros de la división" });
   const now = Date.now();
   if (b.s === null) await q("delete from live where b=$1 and n=$2", [b.b, u.n]);
-  else if (b.s && typeof b.s === "object") { const v = JSON.stringify(b.s); if (v.length < 80000) await q("insert into live(b,n,v,t) values($1,$2,$3,$4) on conflict(b,n) do update set v=excluded.v, t=excluded.t", [b.b, u.n, v, now]); }
+  else if (b.s && typeof b.s === "object") { const v = JSON.stringify(b.s); if (v.length < 30000) await q("insert into live(b,n,v,t) values($1,$2,$3,$4) on conflict(b,n) do update set v=excluded.v, t=excluded.t", [b.b, u.n, v, now]); }
   if (Math.random() < 0.03) await q("delete from live where t < $1", [now - 60000]);
   res.setHeader("Cache-Control", "no-store");
   return send(res, 200, { ...(await liveOf(b.b, u.n)), now });
