@@ -49,12 +49,15 @@ export const subsOf = (d: string) => DIVS.find(x => x[0] === d)?.[1] || [];
 const DVC_DEF: Record<string, [string, string, string]> = { "Recruitment and Training Division": ["#b3262a", "#d8c282", "#0a1446"], "Metropolitan Division": ["#1f6fb0", "#eef3f5", "#0b3f66"],
   "Underwater Dive Unit": ["#b7985d", "#f0ecde", "#0d0d0c"], "Major Crimes Division": ["#d4a937", "#dbd5c0", "#141216"], "High Tech Crime Unit": ["#c9a24a", "#e3cf9f", "#0e0e12"],
   "Gang and Narcotics Division": ["#3f8f3a", "#d4bd7a", "#121412"], "Air Support Division": ["#1b8cb9", "#e2c66a", "#0b0e15"], "K-9 Division": ["#1f8f4a", "#e6c65a", "#0b1a12"], "Professional Standards Bureau": ["#2f5bd3", "#e6c65a", "#0b1f3a"] };
-const DVC: Record<string, [string, string, string]> = (() => { try { return JSON.parse(localStorage.getItem("lspdt.dvc") || "{}"); } catch { return {}; } })();
+const DVC: Record<string, [string, string, string]> = (() => { try { const o: Record<string, [string, string, string]> = JSON.parse(localStorage.getItem("lspdt.dvc") || "{}"); return Object.fromEntries(Object.entries(o).filter(([k]) => k.startsWith("3:"))); } catch { return {}; } })(); /* lo viejo (claves blob: que no se reusaban) se descarta */
 const hexRgb = (h: string) => { const x = h.replace("#", ""); const n = parseInt(x.length === 3 ? x.split("").map(c => c + c).join("") : x, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 const busy = new Set<string>(), subs = new Set<() => void>();
-function loadColors(src: string) {
-  if (!src || DVC["2:" + src] || busy.has(src)) return; busy.add(src);
+function loadColors(src: string, key: string) {
+  if (!src || DVC[key] || busy.has(key)) return; busy.add(key);
+  /* logos de afuera (Fivemanager, links): el navegador no deja leer sus colores, así que se piden por el optimizador de Vercel (mismo origen) */
+  const ext = /^https?:\/\//i.test(src) && new URL(src).origin !== location.origin, prod = location.protocol === "https:" && !/^(localhost|127\.)/.test(location.hostname);
   const img = new Image(); img.crossOrigin = "anonymous";
+  img.onerror = () => { busy.delete(key); };
   img.onload = () => { try {
     const S = 48, c = document.createElement("canvas"); c.width = c.height = S; const x = c.getContext("2d", { willReadFrequently: true })!; x.drawImage(img, 0, 0, S, S);
     const px = x.getImageData(0, 0, S, S).data, B: Record<string, { n: number; r: number; g: number; b: number; s: number }> = {};
@@ -66,16 +69,18 @@ function loadColors(src: string) {
     while (pick.length < 3) pick.push(pick[0] || [124, 156, 255]);
     const hex = pick.map(c => "#" + c.map(v => Math.round(v).toString(16).padStart(2, "0")).join(""));
     const lum = (h: string) => { const [r, g, b] = hexRgb(h); return 0.3 * r + 0.59 * g + 0.11 * b; };
-    const sorted = [...hex].sort((a, b) => lum(a) - lum(b)); DVC["2:" + src] = [hex[0], sorted[2], sorted[0]];
+    const sorted = [...hex].sort((a, b) => lum(a) - lum(b)); DVC[key] = [hex[0], sorted[2], sorted[0]];
     try { localStorage.setItem("lspdt.dvc", JSON.stringify(DVC)); } catch { /* */ }
     subs.forEach(f => f());
   } catch { /* imagen sin CORS */ } };
-  img.src = src;
+  img.src = ext && prod ? `/_vercel/image?url=${encodeURIComponent(src)}&w=64&q=75` : src;
 }
 function divColors(d: string): [string, string, string] {
   const def = !LS.get("lspdt.divlogo." + d) && DEPT.id === "lspd" && DVC_DEF[d]; if (def) return def;
-  const src = divEmblem(d); if (src && DVC["2:" + src]) return DVC["2:" + src];
-  if (src) loadColors(src);
+  /* la clave del color es el logo en sí (no la URL blob:, que cambia en cada carga): un logo nuevo recalcula sus colores */
+  const raw = LS.get("lspdt.divlogo." + d), src = divEmblem(d), key = "3:" + (raw ? raw.length + ":" + raw.slice(-48) : src);
+  if (src && DVC[key]) return DVC[key];
+  if (src) loadColors(src, key);
   const c = divAb(d)[1]; return [c, "#e6c65a", "#0b1220"];
 }
 export function useDivColors(d: string) {

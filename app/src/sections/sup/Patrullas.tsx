@@ -99,7 +99,7 @@ function Patrullas({ onReg }: { onReg?: () => void }) {
         </div>
       </Card>
 
-      {!PAT.rows.length ? <Card className="px-6 py-10 text-center text-sm text-slate-400"><UserPlus className="mx-auto mb-2 size-6 opacity-60" />Todavía no agregaste agentes. Buscalos arriba en «Agregar agente».</Card> : (
+      {!PAT.rows.length ? <Card className="px-6 py-6 text-center text-sm text-slate-400"><UserPlus className="mx-auto mb-2 size-6 opacity-60" />Todavía no agregaste agentes. Buscalos arriba en «Agregar agente».</Card> : (
         <div className="space-y-2">{PAT.rows.map((r, i) => (
           <Card key={r.n} className="flex flex-col gap-3 p-3 md:flex-row md:items-start">
             <div className="flex w-full items-center gap-2.5 md:w-52 md:shrink-0">

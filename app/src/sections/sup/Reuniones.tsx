@@ -80,7 +80,7 @@ export function Reuniones() {
     <div className="space-y-4">
       <Card className="flex flex-wrap items-center gap-3 p-4">
         <span className="grid size-10 place-items-center rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-300"><Users className="size-5" /></span>
-        <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Reuniones colaborativas</p><p className="text-[12.5px] text-slate-500">Un documento abierto para todos: cada uno suma lo suyo (se puede pegar con formato) y queda firmado con su nombre.</p></div>
+        <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{L.length ? `${L.length} ${L.length === 1 ? "reunión" : "reuniones"}` : "Todavía no hay reuniones"}</p><p className="text-[12.5px] text-slate-500">Se puede pegar con formato; cada aporte queda firmado.</p></div>
         <Button icon={<Plus />} onClick={() => setNueva(!nueva)}>Nueva reunión</Button>
       </Card>
       {nueva && <Nueva onCreate={r => { setL([r, ...L]); setNueva(false); setSel(r.id); }} />}

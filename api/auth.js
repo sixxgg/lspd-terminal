@@ -39,6 +39,21 @@ export default wrap(async (req, res) => {
   if (req.method === "GET") {
     // todo lo público en una sola consulta: cuentas, roster e imagen de la terminal
     const me = await current(req);
+    /* lo público (cuentas, rosters, marca) se arma una vez y se reusa mientras no cambie: se comprueba con una consulta mínima.
+       Antes cada apertura de la página volvía a bajar los tres rosters de la base. */
+    const sig = (await q(`select (select coalesce(max(t),0) from kv where k = any($1))::text || ':' || (select count(*)::text || ':' || coalesce(max(created)::text, '') from accounts) as s`, [PUB_SIG_KEYS])).rows[0].s;
+    if (!(PUB && PUB.s === sig && Date.now() - PUB.at < 600000)) PUB = { s: sig, at: Date.now(), out: await publicOut() };
+    const out = { ...PUB.out, me: me ? me.n : null };
+    if (me && query(req).full) { delete out.roster; out.data = await fullData(me); } // ahorra una vuelta al iniciar
+    return send(res, 200, out);
+  }
+  if (req.method !== "POST") return send(res, 405, { error: "method" });
+  return post(req, res);
+});
+let PUB = null;
+const PUB_SIG_KEYS = ["lspdt.roster", "lspdt.lssd.roster", "lspdt.sahp.roster", ...PUBLIC_KEYS];
+async function publicOut() {
+  {
     const rows = (await q(`select 'n' as g, name as k, null as v, created as t from accounts
       union all select 'r', null, v, 0 from kv where k='lspdt.roster'
       union all select 'b', k, case when v like 'data:%' then '#img' else v end, t from kv where k = any($1) and v is not null`, [PUBLIC_KEYS])).rows;
@@ -51,7 +66,7 @@ export default wrap(async (req, res) => {
     /* orden de registro = ID de la cuenta en los perfiles (six, el fundador, siempre es el #1) */
     acc.sort(byId);
     /* las cuentas del LSSD se publican por placa (el usuario OOC no sale de acá) */
-    const out = { me: me ? me.n : null, names: acc.filter(r => !isDeptAcc(r.k)).map(r => r.k), brand };
+    const out = { names: acc.filter(r => !isDeptAcc(r.k)).map(r => r.k), brand };
     /* directorio de perfiles: todas las cuentas de los tres departamentos en orden de registro (el ID del perfil), con su rango.
        Así se puede seguir y ver el perfil de alguien de otro departamento. */
     const RL = parseRosterRaw(raw).list, XL = {}; for (const d of XDEPTS) XL[d] = await xRoster(d);
@@ -61,11 +76,11 @@ export default wrap(async (req, res) => {
     for (const d of XDEPTS) { const L = XL[d];
       out[d + "Names"] = acc.filter(r => r.k.startsWith(d + ":")).map(r => deptOfAcc(L, r.k)).filter(Boolean).map(a => "#" + a.p);
       out[d] = L.filter(a => a.r !== "K-9" && a.u).map(a => ({ n: a.n, r: a.r, p: a.p })); }
-    if (me && query(req).full) out.data = await fullData(me); // ahorra una vuelta al iniciar
-    else out.roster = slim(parseRosterRaw(raw).list);
-    return send(res, 200, out);
+    out.roster = slim(parseRosterRaw(raw).list);
+    return out;
   }
-  if (req.method !== "POST") return send(res, 405, { error: "method" });
+}
+async function post(req, res) {
   const b = await body(req), a = b.a;
 
   if (a === "login") {
@@ -281,4 +296,4 @@ export default wrap(async (req, res) => {
     return send(res, 200, { ok: 1 });
   }
   return send(res, 400, { msg: "Acción desconocida" });
-});
+}

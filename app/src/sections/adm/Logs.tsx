@@ -23,7 +23,7 @@ export function AdmLogs() {
     <div className="space-y-4">
       <Card className="flex flex-wrap items-center gap-3 p-3">
         <span className="grid size-9 place-items-center rounded-xl bg-red-500/10 text-red-600 dark:text-red-400"><UserMinus className="size-5" /></span>
-        <div className="mr-auto min-w-0"><p className="text-sm font-bold">Agentes que salieron del roster</p><p className="text-xs text-slate-500">{L ? `${L.length} ${L.length === 1 ? "baja registrada" : "bajas registradas"} · se guardan 4 meses` : "Cargando…"}</p></div>
+        <div className="mr-auto min-w-0"><p className="text-sm font-bold">{L ? `${L.length} ${L.length === 1 ? "baja registrada" : "bajas registradas"}` : "Cargando…"}</p><p className="text-xs text-slate-500">Se guardan 4 meses.</p></div>
         <SearchInput className="w-full sm:w-64" value={q} onChange={setQ} placeholder="Buscar agente o quién lo quitó…" />
         {F.length > 0 && <CopyMenu text={`## 📋 Bajas del roster\n${txt}`} />}
         <Button size="sm" variant="outline" icon={<RefreshCw />} onClick={() => void load()}>Actualizar</Button>

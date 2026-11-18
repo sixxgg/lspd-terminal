@@ -57,7 +57,7 @@ function Ask({ C }: { C: ReturnType<typeof chunk> }) {
     const n = [...L, { q: s, at: Date.now(), ids: H.map(h => h.c.id) }].slice(-30); setL(n); LS.setJSON(CK, n); setQ(""); setTimeout(() => end.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 60); };
   const flag = (x: QA, sec: string) => { const R = LS.json<Rev[]>(RK, []); LS.setJSON(RK, [...R, { id: Math.random().toString(36).slice(2, 10), q: x.q, sec, by: me.n, at: Date.now() }]); toast("Marcada para revisar"); };
   return (
-    <Card className="flex min-h-[60vh] flex-col overflow-hidden">
+    <Card className="flex min-h-[44vh] flex-col overflow-hidden">
       <div className="scrollbar-thin flex-1 space-y-5 overflow-y-auto p-5">
         {!L.length && <div className="py-6 text-center">
           <BookOpenCheck className="mx-auto size-10 text-brand-500" /><p className="mt-2 font-semibold">¿Qué querés saber del manual?</p>
