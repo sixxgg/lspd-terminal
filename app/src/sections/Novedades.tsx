@@ -1,6 +1,7 @@
 /* Novedades: el registro de cambios en cinco etapas (del .bat a hoy) y la primera versión web (v0.3) en grande, en solo lectura */
-import { useEffect } from "react";
-import { ChevronRight, FileCode2, Globe, History, Maximize2, MonitorSmartphone, Rocket, Sparkles, type LucideIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { FileCode2, Globe, History, Maximize2, MonitorSmartphone, Rocket, Sparkles, X, type LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui";
 import { LS, ME_ROLES } from "@/lib/store";
 import { useMe } from "@/lib/me";
@@ -39,7 +40,7 @@ export function logFor(me: Who): Rel[] {
     .filter(r => r.items.length || r.g.length);
 }
 const LOG: Rel[] = [
-  { v: "5.0", from: "4.1", f: "18/11/2026", t: "Tres departamentos, una sola terminal", d: "El LSSD y la SAHP llegan con su propia terminal, las mismas secciones que el LSPD y sus datos aparte. Los perfiles, Legal, Códigos y la Pizarra son los mismos para los tres.", items: [], g: [
+  { v: "5.0", from: "4.1", f: "18/11/2026", t: "Tres departamentos, una sola terminal", d: "El LSSD y la SAHP con su propia terminal y sus datos. Perfiles, Legal, Códigos y Pizarra, compartidos por los tres.", items: [], g: [
     ["Perfiles en los tres departamentos", [
       "Un solo perfil por persona para el LSPD, el LSSD y la SAHP: lo que cambies (foto, portada, nickname, «acerca de») se ve igual desde los tres.",
       "Seguir a alguien de otro departamento: si sos de la SAHP podés seguir a alguien del LSPD o del LSSD, y al revés. Seguidores, seguidos, comentarios, visitas y sugerencias juntan a los tres.",
@@ -48,6 +49,8 @@ const LOG: Rel[] = [
       "Los logros se ven igual desde cualquier departamento; el legajo policial (divisiones, condecoraciones y carrera) queda en el departamento de cada uno.",
     ]],
     ["Para todos", [
+      "Novedades rediseñadas: una etapa por vez, con los cambios agrupados en tarjetas, y la v0.3 que se abre a pantalla completa dentro de la tablet.",
+      "Divisiones: todas en un solo renglón con el nombre completo, en los tres departamentos (si la pantalla es angosta, la barra se desliza).",
       "Notificaciones: la campanita ahora abre un panel que baja desde arriba de la pantalla, igual en los tres departamentos.",
       "Novedades: cada uno ve solo lo que le toca (su departamento, sus divisiones y, si es supervisor, lo de Supervisores).",
       "Feedback: ya no hay que elegir dónde pasó (se cuenta en el texto).",
@@ -58,7 +61,7 @@ const LOG: Rel[] = [
       "El ingreso y la pantalla de carga usan el escudo y el fondo del departamento elegido. Si un departamento todavía no tiene fondo propio, usa el del LSPD.",
     ]],
 ["[lssd,sahp] Tu departamento", [
-      "Tu terminal tiene las mismas secciones que el LSPD: Inicio, Mi perfil, Agentes (con fotos, insignias y condecoraciones), Calendario, Informes, Feedback, Legal, Pizarra, Galería, Radio y Códigos. Todo con los datos de tu departamento.",
+      "Tu terminal tiene las mismas secciones que el LSPD (Inicio, Agentes, Calendario, Informes, Legal, Pizarra, Radio, Códigos y más), con los datos de tu departamento.",
       "Legal, Códigos y la Pizarra son los mismos para los tres departamentos. Radio usa el canal interno de tu departamento (/rlssd o /rsahp) y /rsapd para todos.",
       "Temas propios con modo oscuro y claro: el LSSD sobre verdes con dorado y la SAHP en caqui, asfalto y azul estatal.",
       "Pantallas de carga y avisos con el nombre y el escudo de tu departamento.",
@@ -88,13 +91,13 @@ const LOG: Rel[] = [
       "[six] El escudo del LSSD (y el de la SAHP) se cambia desde Administración › Marca.",
       "[six] Los códigos de invitación son por departamento: LSPD-, LSSD- o SAHP-. Cada uno solo sirve para registrarse en el suyo.",
       "[lssd] Si una persona tiene dos personajes en el Sheriff, cada uno tiene su cuenta: se entra con la placa o el nombre del personaje.",
-      "[lssd] LSSD › Divisiones: Special Enforcement Bureau, Aero Bureau, Canine Service Detail, Crisis Negotiation Unit y Detective Division (Special Operations Division); Training Bureau, Sheriff Information Bureau y High Speed Interception Unit (Office of Sheriff Support Operations). Cada una con su descripción, mandos y subunidades.",
+      "[lssd] LSSD › Divisiones: SEB, Aero Bureau, Canine Service Detail, CNU y Detective Division, más Training Bureau, Sheriff Information Bureau y HSIU, con descripción, mandos y subunidades.",
       "[lssd] El roster del Sheriff suma a los Deputy Sheriff Trainees y a los perros del K-9 con su handler.",
       "[lssd] Los rangos del LSSD se leen en inglés, como en la planilla. Insignias: Sheriff 5 estrellas, Undersheriff 4, Assistant Sheriff 3, Division Chief 2 y Area Commander 1.",
       "Divisiones del LSPD: la barra muestra los nombres completos (Professional Standards Bureau, Recruitment and Training Division…) y pasa a dos renglones si no entran.",
     ]],
     ["Consulta y buscadores (4.1)", [
-      "[six] Nueva pestaña Consulta (en prueba): preguntás lo que quieras del Manual del Novato y responde con el texto del propio manual, resaltando las palabras y diciendo de qué sección sale. Tiene el manual completo con índice y buscador, y se puede marcar una respuesta como incorrecta para revisarla.",
+      "[six] Consulta (en prueba): preguntás algo del Manual del Novato y responde con el texto del manual, marcando la sección de donde sale. Incluye el manual completo con índice y buscador.",
       "[six] Consulta la ven six y quienes él habilite en Administración › Accesos y administradores.",
       "Buscadores de agentes, delitos y sugerencias: la lista ahora se abre por encima de todo (modales, tarjetas y menús) y, si no entra abajo, se abre hacia arriba.",
       "Al recargar la página quedás donde estabas, también dentro del panel de six (sin repetir la intro).",
@@ -105,7 +108,7 @@ const LOG: Rel[] = [
       "Actualizada por dentro: React 19, Vite 8 y los íconos nuevos de Lucide.",
     ]],
   ], sub: [["4.1", "Consulta, comunicados y buscadores"], ["4.2", "LSSD, ingreso con placa y manual"], ["4.2.1", "Insignias, escudo y códigos del LSSD"], ["4.2.2", "Divisiones y roster completo del LSSD"], ["4.3", "Mismas secciones en los tres departamentos"], ["5.0.0", "Robos, logros y notificaciones desde arriba"], ["5.0.1", "Perfiles en los tres departamentos e imágenes por departamento"]] },
-  { v: "4.0", from: "3.1", f: "13/11/2026 – 18/11/2026", t: "Inicio nuevo, Radio, Reuniones y Galería", d: "La terminal se rediseña por dentro y por fuera: Inicio con portada, buscador Ctrl + K, borradores automáticos, Radio, Reuniones colaborativas y la Galería.", items: [], g: [
+  { v: "4.0", from: "3.1", f: "13/11/2026 – 18/11/2026", t: "Inicio nuevo, Radio, Reuniones y Galería", d: "Inicio con portada, buscador Ctrl + K, borradores automáticos, Radio, Reuniones colaborativas y Galería.", items: [], g: [
     ["Inicio", [
       "Inicio nuevo y sin subpestañas: arriba de todo, a todo el ancho, las fotos de la Galería con fundido y un acercamiento lento; los costados y el borde inferior se funden con el fondo y el saludo va escrito sobre la foto.",
       "Tarjeta de identidad que se monta sobre la portada: foto con la insignia del rango, rango, placa, todas las divisiones, el camino al próximo rango, condecoraciones, divisiones y desde cuándo estás en la terminal.",
@@ -118,7 +121,7 @@ const LOG: Rel[] = [
       "Mostrar u ocultar, ordenar, poner texto y ver en grande cada foto. La editan six, la administración y quienes se habiliten en Administración › Galería.",
     ]],
     ["Buscador, borradores y revisión", [
-      "Ctrl + K abre un buscador tipo consola con el fondo desenfocado: secciones, divisiones, informes, agentes, eventos, robos, artículos de la ley y subpestañas (como la guía OIS). Se mueve con el teclado, recuerda lo último abierto y salta a la pestaña justa aunque ya estés en la sección.",
+      "Ctrl + K abre un buscador tipo consola: secciones, divisiones, informes, agentes, eventos, robos y artículos de la ley, todo con el teclado.",
       "Borradores automáticos: lo que escribís en Informes, Feedback, Radio, Supervisores y Capitanía se guarda solo en el navegador; si recargás o cambiás de sección sin querer, al volver se completa de nuevo (con opción de descartar).",
       "Botón «Revisar» en todos los textos para copiar: rojo si falta algo, amarillo si quedó algo pendiente, verde si está bien. Ahora también marca faltas de ortografía comunes y las corrige con un toque.",
       "«Copiar» con dos opciones en informes, OIS, pérdida de arma, feedback, entrevistas y 10-80: formato Discord o formato web.",
@@ -131,11 +134,11 @@ const LOG: Rel[] = [
     ]],
     ["[sup] Supervisores › 10-80", [
       "Pestañas «Nueva citación» e «Historial de 10-80»: se cita a uno o varios agentes (mensaje de radio en plural), se elige quién cita y se guarda en el historial.",
-      "Justificación formal en formato Discord o web: lugar, motivo con texto predictivo (ascensos, condecoraciones, llamados de atención y más), asistencia por agente, presentes, medidas genéricas para sumar con un toque y «Revisar redacción».",
+      "Justificación formal en formato Discord o web, con lugar, motivo predictivo, asistencia por agente, medidas genéricas y «Revisar redacción».",
       "Etiquetas (Bronca, Ascenso, Felicitación, Disciplinario…) visibles y para filtrar. El historial de la PSB queda aparte y solo lo ven sus miembros.",
     ]],
     ["[sup] Supervisores › Entrevistas, Patrullas y Robos", [
-      "Entrevistas rediseñadas: lista por rango sin textos cortados, ficha compacta con «Guardar» y después copiar, preguntas que cambian según el rango con respuestas automáticas, «Está cómodo» / «No quiere más divisiones» y quién entrevistó (con un selector nuevo).",
+      "Entrevistas rediseñadas: lista por rango, ficha compacta con «Guardar», preguntas según el rango con respuestas automáticas y quién entrevistó.",
       "Preguntas guardadas en la base y editables por Sargento I o superior. Fechas con la marca de tiempo de Discord. SIERRA y Pelotón H en la METRO.",
       "Patrullas: revisión y registro en una sola sección, con contador por elemento (OK, falta N o N de más).",
       "Nueva sección Robos: catálogo oficial y articulado de cada robo. Articulado corregido para no cobrar dos veces un agravante que el artículo ya incluye y robos actualizados (armerías, casas de lujo, vehículo robado y más).",
@@ -165,7 +168,7 @@ const LOG: Rel[] = [
       "Terminal más liviana: el archivo principal bajó a la mitad (el Código Penal se carga solo cuando se busca) y se limpió código duplicado o sin uso.",
     ]],
     ["Después de la 4.0 (4.0.1 – 4.0.8)", [
-      "[six] Links de invitado (desde el panel de six › Administración): quien lo abre entra a la terminal sin iniciar sesión, solo con las secciones que six marcó (Inicio, Calendario, Informes, Agentes, Legal, Códigos o Radio) y en solo lectura: nada se guarda.",
+      "[six] Links de invitado: entran sin cuenta, solo a las secciones que elegís (Inicio, Calendario, Informes, Agentes, Legal, Códigos o Radio) y en solo lectura.",
       "[six] El invitado ve un aviso «Invitado · solo lectura» con el botón para iniciar sesión, una tarjeta con lo que puede mirar y hasta cuándo vence el link; en Informes solo el historial.",
       "[six] Cada link se puede copiar, ver cuántas veces se abrió y revocar al instante. El servidor solo le manda los datos de esas secciones.",
       "Inicio: tocar la foto de la portada ya no la abre en pantalla completa; es solo visual.",
@@ -179,12 +182,12 @@ const LOG: Rel[] = [
       "[mandos] Pizarra › Mandos: pizarras propias de la terminal, destacadas arriba de todo con borde dorado. Solo las ven y editan Detectives y de Sargento II para arriba (al resto ni siquiera le llegan).",
       "[mandos] Primera pizarra de Mandos: «Infraestructura San Andreas». Se crean más eligiendo «Mandos» al lado de «Nueva pizarra».",
       "Se quitó el tablero de Miro embebido.",
-      "[div:K-9 Division] K-9 › Fichas: registro «Oficial y canino» que queda guardado y se edita cuando haga falta. El guía se busca en el roster (placa y rango se completan solos), rango divisional según los cargos de la K-9, certificación automática desde K-9-2026-05, fotos del oficial y del canino (tocar o soltar la imagen) y salud, vacunas, temperamento y observaciones.",
+      "[div:K-9 Division] K-9 › Fichas «Oficial y canino»: guía desde el roster, certificación automática, fotos de los dos, salud, vacunas y temperamento.",
       "[div:K-9 Division] «Ver ficha» muestra el documento oficial de la división y lo descarga como imagen PNG.",
-      "[mandos] Pizarra › Mandos › «Infraestructura San Andreas»: pasada del tablero de Miro con el mapa, los sellos y la leyenda (subestaciones, parque eólico, centrales, potabilizadora, áreas petrolíferas, HVT y zonas calientes). Se puede editar como cualquier pizarra.",
+      "[mandos] Pizarra › Mandos › «Infraestructura San Andreas»: el mapa de Miro con sellos y leyenda (subestaciones, centrales, HVT y zonas calientes), editable.",
     ]],
   ], sub: [["3.0.1", "Versiones y recuperar borrados en OIS"], ["3.0.2", "Robos en el panel de six"], ["3.0.3", "CK en robos y links de solo lectura"], ["3.0.4", "Informes como expediente"], ["3.0.5", "Patrullas en una sección"], ["3.0.6", "Copiar Discord o web"], ["3.4", "Robos oficial en Supervisores"], ["3.4.2", "Entrevistas compactas"], ["3.5", "Inicio estilo foro y bajas del roster"], ["3.5.3", "Entrevistas sin cortes"], ["3.6", "10-80 con historial"], ["3.6.2", "10-80 con varios citados"], ["3.7", "Radio y reuniones"], ["3.7.5", "Temas de reuniones"], ["3.8", "Reuniones como documento"], ["3.8.1", "Reuniones en el calendario"], ["3.9", "Galería privada"], ["3.9.4", "Inicio sin subpestañas"], ["4.0", "Terminal de Mando 4.0"], ["4.0.1", "Links de invitado"], ["4.0.2", "Menú solo con íconos"], ["4.0.4", "PSB a cualquier rango"], ["4.0.5", "Link de reuniones"], ["4.0.7", "Pizarras de Mandos"], ["4.0.8", "Fichas K-9 e Infraestructura"]] },
-  { v: "3.0", from: "2.1", f: "12/11/2026 – 13/11/2026", t: "Divisiones de punta a punta", d: "Cada división pasa a ser un espacio propio, protegido por el servidor: rosters con roles, instrucciones, uniformidad, calendario y administración. Llegan el Calendario, el OIS y el examen en línea de la METRO.", items: [], g: [
+  { v: "3.0", from: "2.1", f: "12/11/2026 – 13/11/2026", t: "Divisiones de punta a punta", d: "Cada división pasa a ser un espacio propio y protegido. Llegan el Calendario, el OIS y el examen en línea de la METRO.", items: [], g: [
     ["Divisiones", [
       "Cada división la ve solo quien está en su roster y lo controla el servidor; la coordinación elige qué pestañas ven los miembros y es la única que edita su roster.",
       "Rosters rediseñados en todas las divisiones y subdivisiones (SWAT, Bomb Squad, CNT, UDU, Detective Bureau, HSIU, RTD, ASB…): roles con color y orden, indicativos y especialidades.",
@@ -195,7 +198,7 @@ const LOG: Rel[] = [
     ["[div:Metropolitan Division] Metropolitan Division", [
       "Armas (coordinación): las armas reglamentarias por tipo, con munición, accesorios por ranura, autorización y «Copiar kit» con comandos, lista de ítems o texto.",
       "Entrevista de instructor por convocatorias (C1…) con postulantes, respuestas en solo lectura y preguntas revisadas.",
-      "Examen escrito en línea: estado Listo / No disponible, pantalla exclusiva con una pregunta por vez, reloj, corrección automática en el servidor y strikes por salir de la pestaña, capturas o herramientas del navegador (3 desaprueban).",
+      "Examen escrito en línea: una pregunta por vez, reloj, corrección en el servidor y strikes por salir de la pestaña o hacer capturas (3 desaprueban).",
       "Gestión de exámenes: activar, duración, hora programada con aviso a los anotados, convocatoria, anotados a mano, nota mínima, resultados con el detalle de cada respuesta, banco de preguntas y pruebas que se pueden borrar.",
     ]],
     ["Informes y procedimientos", [
@@ -222,7 +225,7 @@ const LOG: Rel[] = [
       "Código más liviano: sin duplicados ni partes sin uso y carga por partes.",
     ]]
   ], sub: [["2.1", "Rosters con roles en todas las divisiones"], ["2.1.1", "Datos de divisiones protegidos"], ["2.3", "Rosters unificados"], ["2.3.1", "Rosters solo para su coordinación"], ["2.3.3", "Pantalla de actualización"], ["2.3.4", "Restablecer contraseñas"], ["2.3.5", "Calendario, expediente, condecoraciones y OIS"], ["2.5", "Menú nuevo, idioma y Feedback renovado"], ["2.5.3", "Avisos desde arriba"], ["2.5.4", "Armas de la METRO"], ["2.5.5", "Convocatorias METRO"], ["2.5.6", "OIS con varias armas"], ["2.5.7", "Examen escrito de la METRO"], ["2.5.8", "Examen rediseñado"], ["3.0", "OIS remitido a la FID"]] },
-  { v: "2.0", from: "1.1", f: "07/11/2026 – 11/11/2026", t: "Comunicados, perfiles y Pizarra", d: "Después de la 1.0 la terminal crece rápido: comunicados con asistente, área Sargentos, informes completos, el panel privado de six, notificaciones, los primeros perfiles y la Pizarra en vivo.", items: [], g: [
+  { v: "2.0", from: "1.1", f: "07/11/2026 – 11/11/2026", t: "Comunicados, perfiles y Pizarra", d: "Comunicados con asistente, Sargentos, informes completos, el panel de six, notificaciones, los primeros perfiles y la Pizarra en vivo.", items: [], g: [
     ["Comunicados, condecoraciones y Sargentos", [
       "Comunicados con asistente: tipo, variante de diseño, firma, autor, mención y fechas, con plantillas para el A.S.D y la UDU.",
       "Condecoraciones para los agentes y el área Sargentos: examen, entrevista y lista de elegibles con el formato de la planilla (convocatorias C1/C2, nota /22 y /100).",
@@ -261,7 +264,7 @@ const LOG: Rel[] = [
       "v2.0: pestañas de división en una sola fila, con Administración aparte.",
     ]],
   ], sub: [["1.0.x", "Comunicados, condecoraciones, Sargentos, informes con vehículos y PSB"], ["1.5", "Agentes, Novedades y barra de tablet"], ["1.6", "Feedback, huellas y patrullas ONX"], ["1.7", "Centro de notificaciones"], ["1.8", "Mi perfil (BETA)"], ["1.9", "Pizarra, METRO y flujo de la PSB"], ["1.9.4", "Invitaciones y pizarra en vivo"], ["1.9.7", "Perfiles con ID y logros"], ["1.9.12", "Uniformidad y links temporales"], ["1.9.15", "Divisiones solo para miembros"], ["2.0", "Pestañas de división en una fila"]] },
-  { v: "1.0", from: "0.0", f: "Octubre 2026 – 07/11/2026", t: "Del .bat a la web", hero: true, d: "Todo empezó con un .bat que armaba el contrato de ascenso. Después fue un programa con forma de tablet (.exe), y en octubre se convirtió en esta página: la Terminal de Mando, con base de datos compartida y una versión nueva en React.", items: [], g: [
+  { v: "1.0", from: "0.0", f: "Octubre 2026 – 07/11/2026", t: "Del .bat a la web", hero: true, d: "Empezó como un .bat que armaba el contrato de ascenso, pasó a ser un programa con forma de tablet y en octubre se convirtió en esta página.", items: [], g: [
     ["El .bat y el .exe", [
       "v0.0 · do_contrato.bat: generaba el /me y el /do del contrato de ascenso, firmado por el jefe James Hopper.",
       "Ingreso como Ryan Westbrook o Evelyn Molina, roster del LSPD desde un CSV, fondo estilo LSPD y logo editable.",
@@ -297,59 +300,109 @@ const LOG: Rel[] = [
 
 /* la última versión, para el inicio */
 export const latest = (me: Who) => logFor(me)[0] || LOG[0];
-/* el camino del .bat a la web, en grande */
-const STEPS: [LucideIcon, string, string][] = [[FileCode2, ".bat", "do_contrato: el /me y el /do del ascenso"], [MonitorSmartphone, ".exe", "Programa con forma de tablet"], [Globe, "Web", "Base compartida en Vercel (v0.3)"], [Rocket, "1.0", "La versión nueva pasa a ser la principal"]];
-function Era({ r, cur }: { r: Rel; cur: boolean }) {
-  const groups = [...(r.items.length ? [["", r.items] as [string, string[]]] : []), ...(r.g || [])];
-  return (
-    <section id={"era-" + r.v} className="scroll-mt-24">
-      <Card className={cn("relative overflow-hidden p-0", cur && "ring-1 ring-orange-500/40")}>
-        <div className={cn("relative px-6 pb-5 pt-6 sm:px-8", r.hero ? "bg-[radial-gradient(ellipse_at_top_left,rgb(var(--b-500)/.22),transparent_60%)]" : "bg-[linear-gradient(180deg,rgb(var(--b-500)/.07),transparent)]")}>
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            {cur && <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-0.5 font-bold text-orange-600 dark:text-orange-300"><Sparkles className="size-3" />Actual · v{APP_VERSION}</span>}
-            {r.hero && <span className="inline-flex items-center gap-1 rounded-full bg-brand-500/15 px-2 py-0.5 font-bold text-brand-700 dark:text-brand-300"><History className="size-3" />Los comienzos</span>}
-            <span className="text-slate-400">{r.f}</span>
-          </div>
-          <p className={cn("mt-2 font-mono font-black tracking-tight", r.hero ? "text-5xl sm:text-6xl" : "text-4xl sm:text-5xl", cur && "ver-fire")}>v{r.from}<span className="mx-2 text-slate-300 dark:text-slate-600">→</span>v{r.v}</p>
-          <h2 className={cn("font-display mt-1 font-bold", r.hero ? "text-3xl" : "text-2xl")}>{r.t}</h2>
-          {r.d && <p className="mt-2 max-w-3xl text-[15px] leading-relaxed text-slate-600 dark:text-slate-300">{r.d}</p>}
-          {r.hero && <ol className="mt-5 grid gap-3 sm:grid-cols-4">{STEPS.map(([I, t, d], i) => (
-            <li key={t} className="rise relative rounded-2xl border border-slate-200 bg-white/60 p-4 dark:border-slate-800 dark:bg-slate-900/60" style={{ animationDelay: i * 80 + "ms" }}>
-              <span className="grid size-11 place-items-center rounded-xl bg-brand-600 text-white dark:bg-brand-500 [&>svg]:size-5"><I /></span>
-              <p className="font-display mt-3 text-xl font-bold">{t}</p><p className="text-[13px] text-slate-500">{d}</p>
-              {i < STEPS.length - 1 && <ChevronRight className="absolute -right-3 top-1/2 hidden size-5 -translate-y-1/2 text-slate-300 sm:block dark:text-slate-600" />}</li>))}</ol>}
-        </div>
-        <div className="grid gap-x-8 gap-y-5 border-t border-slate-100 px-6 py-5 sm:px-8 md:grid-cols-2 dark:border-slate-800">
-          {groups.map(([h, L]) => (
-            <div key={h || "_"} className="min-w-0">
-              {h && <p className="text-[11px] font-bold uppercase tracking-[.16em] text-brand-600 dark:text-brand-300">{h}</p>}
-              <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                {L.map(x => <li key={x} className="flex gap-2"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-brand-500" />{x}</li>)}
-              </ul></div>))}
-        </div>
-        {r.hero && <div className="border-t border-slate-100 dark:border-slate-800">
-          <div className="flex flex-wrap items-center gap-2 px-6 py-3 sm:px-8"><History className="size-4 text-slate-400" /><p className="flex-1 text-sm"><b>La primera versión web (v0.3)</b> tal como se publicó, en solo lectura: nada de lo que hagas ahí se guarda.</p>
-            <a href="/legacy/v0.3.html" target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold hover:border-brand-400 dark:border-slate-700"><Maximize2 className="size-3.5" />Pantalla completa</a></div>
-          <iframe title="Terminal v0.3" src="/legacy/v0.3.html" loading="lazy" className="h-[min(78vh,860px)] min-h-[560px] w-full bg-white" sandbox="allow-scripts allow-same-origin allow-forms" />
-        </div>}
-        {r.sub && r.sub.length > 0 && <details className="group border-t border-slate-100 px-6 py-3 sm:px-8 dark:border-slate-800">
-          <summary className="flex cursor-pointer list-none items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-800 dark:hover:text-white"><ChevronRight className="size-3.5 transition group-open:rotate-90" />Las {r.sub.length} versiones de esta etapa</summary>
-          <div className="mt-3 flex flex-wrap gap-1.5 pb-1">{r.sub.map(([v, t]) => <span key={v} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800"><b className="font-mono">v{v}</b><span className="text-slate-500">{t}</span></span>)}</div>
-        </details>}
-      </Card>
-    </section>);
+/* ---------- vista ---------- */
+const STEPS: [LucideIcon, string, string][] = [[FileCode2, ".bat", "El contrato de ascenso"], [MonitorSmartphone, ".exe", "Programa con forma de tablet"], [Globe, "Web", "Base compartida (v0.3)"], [Rocket, "1.0", "La versión nueva, principal"]];
+
+/* la v0.3 abierta como una app más, a pantalla completa dentro de la tablet (Esc o la X la cierran) */
+function V03({ onClose }: { onClose: () => void }) {
+  useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, [onClose]);
+  const host = document.querySelector(".tab-screen") as HTMLElement | null;
+  return createPortal(
+    <div className={cn("z-[80] flex flex-col bg-slate-950 animate-fade-in", host ? "absolute inset-0" : "fixed inset-0")} role="dialog" aria-label="Terminal v0.3">
+      <div className="flex items-center gap-3 border-b border-white/10 bg-slate-900/95 px-4 py-2 text-slate-200 backdrop-blur">
+        <History className="size-4 text-brand-300" /><b className="font-display text-sm tracking-wide">TERMINAL DE MANDO · v0.3</b>
+        <span className="hidden rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-300 sm:inline">Modo recuerdo · solo lectura</span>
+        <button onClick={onClose} className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/20"><X className="size-3.5" />Volver a Novedades</button>
+      </div>
+      <iframe title="Terminal v0.3" src="/legacy/v0.3.html" className="w-full flex-1 bg-white" sandbox="allow-scripts allow-same-origin allow-forms" />
+    </div>, host || document.body);
 }
+
+/* un grupo: los primeros tres puntos y el resto al tocar «ver más» */
+function Group({ h, L, i }: { h: string; L: string[]; i: number }) {
+  const [all, setAll] = useState(false), N = 3, vis = all ? L : L.slice(0, N);
+  return (
+    <div className="rise flex flex-col rounded-2xl border border-slate-200/80 bg-white/60 p-4 dark:border-slate-800 dark:bg-slate-900/50" style={{ ["--d" as string]: i * 50 + "ms" }}>
+      <p className="mb-2.5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.14em] text-brand-600 dark:text-brand-300">{h || "Cambios"}<span className="rounded-md bg-brand-500/10 px-1.5 font-mono tracking-normal">{L.length}</span></p>
+      <ul className="space-y-2 text-[13px] leading-snug text-slate-600 dark:text-slate-300">
+        {vis.map(x => <li key={x} className="flex gap-2"><span className="mt-[7px] size-1 shrink-0 rounded-full bg-brand-500" />{x}</li>)}
+      </ul>
+      {L.length > N && <button onClick={() => setAll(!all)} className="mt-auto pt-3 text-left text-xs font-semibold text-brand-600 hover:underline dark:text-brand-300">{all ? "Ver menos" : `Ver ${L.length - N} más`}</button>}
+    </div>);
+}
+
+function Era({ r, cur }: { r: Rel; cur: boolean }) {
+  const [v03, setV03] = useState(false);
+  const groups = [...(r.items.length ? [["", r.items] as [string, string[]]] : []), ...(r.g || [])], n = groups.reduce((a, [, L]) => a + L.length, 0);
+  return (
+    <div key={r.v} className="animate-fade-in space-y-4">
+      <Card className="relative overflow-hidden p-0">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgb(var(--b-500)/.18),transparent_55%)]" />
+        <div className="relative grid gap-6 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              {cur && <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-0.5 font-bold text-orange-600 dark:text-orange-300"><Sparkles className="size-3" />Actual · v{APP_VERSION}</span>}
+              {r.hero && <span className="inline-flex items-center gap-1 rounded-full bg-brand-500/15 px-2 py-0.5 font-bold text-brand-700 dark:text-brand-300"><History className="size-3" />Los comienzos</span>}
+              <span className="text-slate-400">{r.f}</span>
+            </div>
+            <h2 className="font-display mt-2 text-3xl font-bold sm:text-4xl">{r.t}</h2>
+            {r.d && <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-slate-600 dark:text-slate-300">{r.d}</p>}
+          </div>
+          <div className="flex gap-6 lg:text-right">
+            <div><p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Versiones</p><p className="font-mono text-3xl font-black">{r.sub?.length || 1}</p></div>
+            <div><p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Cambios</p><p className="font-mono text-3xl font-black">{n}</p></div>
+          </div>
+        </div>
+        {r.hero && <div className="relative grid gap-3 px-6 pb-6 sm:grid-cols-4 sm:px-8">{STEPS.map(([I, t, d], i) => (
+          <div key={t} className="rise flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/70 p-3 dark:border-slate-800 dark:bg-slate-900/60" style={{ ["--d" as string]: i * 90 + "ms" }}>
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-600 text-white dark:bg-brand-500 [&>svg]:size-5"><I /></span>
+            <span className="min-w-0"><b className="font-display block text-lg leading-none">{t}</b><small className="text-xs text-slate-500">{d}</small></span></div>))}</div>}
+      </Card>
+
+      {r.hero && <button onClick={() => setV03(true)} className="group relative block w-full overflow-hidden rounded-2xl border border-slate-200 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl dark:border-slate-800">
+        <div className="pointer-events-none relative h-[clamp(320px,52vh,560px)] overflow-hidden bg-slate-900">
+          <iframe title="Vista previa v0.3" src="/legacy/v0.3.html" tabIndex={-1} loading="lazy" className="absolute left-0 top-0 h-[200%] w-[200%] origin-top-left scale-50 border-0 bg-white" sandbox="allow-scripts allow-same-origin" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
+        </div>
+        <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-end gap-4 p-6 text-white">
+          <div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-[.2em] text-white/60">Modo recuerdo</p><p className="font-display text-3xl font-bold sm:text-4xl">La primera versión web · v0.3</p>
+            <p className="text-sm text-white/70">Tal como se publicó en octubre. Se abre dentro de la tablet y no guarda nada.</p></div>
+          <span className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition group-hover:scale-105"><Maximize2 className="size-4" />Abrir la v0.3</span>
+        </div>
+      </button>}
+      {v03 && <V03 onClose={() => setV03(false)} />}
+
+      <div className="grid items-start gap-3 md:grid-cols-2 2xl:grid-cols-3">{groups.map(([h, L], i) => <Group key={r.v + h} h={h} L={L} i={i} />)}</div>
+
+      {r.sub && r.sub.length > 1 && <Card className="p-4">
+        <p className="mb-3 text-[11px] font-bold uppercase tracking-[.14em] text-slate-400">Versiones de esta etapa</p>
+        <ol className="scrollbar-thin flex gap-2 overflow-x-auto pb-1">{r.sub.map(([v, t], i) => (
+          <li key={v} title={t} className="relative flex w-44 shrink-0 flex-col rounded-xl bg-slate-100/80 px-3 py-2 dark:bg-slate-800/60">
+            <b className="font-mono text-sm">v{v}</b><span className="line-clamp-2 text-[11.5px] leading-tight text-slate-500">{t}</span>
+            {i === r.sub!.length - 1 && <span className="absolute right-2 top-2 size-1.5 rounded-full bg-brand-500" />}</li>))}</ol>
+      </Card>}
+    </div>);
+}
+
 export function Novedades() {
-  const me = useMe(), L = logFor({ n: me.n, r: me.r, dept: DEPT.id });
+  const me = useMe(), L = logFor({ n: me.n, r: me.r, dept: DEPT.id }), [sel, setSel] = useState(0), r = L[sel] || L[0];
   useEffect(() => { markSeen(); }, []);
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-xs font-semibold uppercase tracking-wider text-slate-400">Etapas</span>
-        {L.map((r, i) => <a key={r.v} href={"#era-" + r.v} onClick={e => { e.preventDefault(); document.getElementById("era-" + r.v)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
-          className={cn("rounded-full border px-3 py-1 font-mono text-xs font-bold transition hover:border-brand-400", i === 0 ? "border-orange-500/50 text-orange-600 dark:text-orange-300" : "border-slate-200 text-slate-500 dark:border-slate-700")}>v{r.from} → v{r.v}</a>)}
+    <div className="space-y-5">
+      {/* línea de tiempo: una etapa a la vez */}
+      <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
+        <ol className="relative flex min-w-max items-stretch gap-2">
+          {L.map((x, i) => { const on = i === sel; return (
+            <li key={x.v} className="flex-1">
+              <button onClick={() => setSel(i)} aria-current={on ? "step" : undefined}
+                className={cn("group relative w-full min-w-[9.5rem] rounded-2xl border px-4 py-3 text-left transition", on ? "border-brand-500/60 bg-brand-500/10 shadow-sm" : "border-slate-200 hover:border-brand-400/60 hover:bg-slate-100/60 dark:border-slate-800 dark:hover:bg-slate-800/40")}>
+                <span className={cn("block font-mono text-lg font-black leading-none", on ? "text-brand-700 dark:text-brand-200" : "text-slate-700 dark:text-slate-200", i === 0 && "ver-fire")}>v{x.from} → v{x.v}</span>
+                <span className="mt-1 block truncate text-xs text-slate-500">{x.t}</span>
+                {i === 0 && <span className="absolute right-3 top-3 size-2 rounded-full bg-orange-500 shadow-[0_0_8px] shadow-orange-500" />}
+              </button></li>); })}
+        </ol>
       </div>
-      {L.map((r, i) => <Era key={r.v} r={r} cur={i === 0} />)}
+      {r && <Era key={r.v} r={r} cur={sel === 0} />}
     </div>
   );
 }
