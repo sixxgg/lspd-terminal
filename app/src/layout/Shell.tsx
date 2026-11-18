@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 import { uiText } from "@/lib/templates";
 import { rankES } from "@/lib/domain";
 import { GUEST, LS, ME_ROLES, getNet, useStoreVersion } from "@/lib/store";
-import { DEPT, DEPTS, deptLogo, setDept, type DeptId } from "@/lib/dept";
+import { DEPT, DEPTS, logoOf, setDept, type DeptId } from "@/lib/dept";
 import { AccountModal } from "@/components/account";
 import { AppearanceModal } from "@/components/appearance";
 import { usePref } from "@/lib/appearance";
@@ -93,7 +93,7 @@ function DeptMenu({ onClose, home }: { onClose: () => void; home: () => void }) 
       {(Object.keys(DEPTS) as DeptId[]).map(d => { const D = DEPTS[d], on = DEPT.id === d; return (
         <button key={d} onClick={() => { if (!on) setDept(d); onClose(); }}
           className={cn("flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition", on ? "bg-brand-500/10 ring-1 ring-inset ring-brand-500/30" : "hover:bg-slate-100 dark:hover:bg-slate-800")}>
-          <img src={d === "lspd" ? LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || D.logo : deptLogo(d)} alt="" className="size-9 object-contain" onError={e => { e.currentTarget.style.visibility = "hidden"; }} />
+          <img src={logoOf("lspdt.logo.header", d)} alt="" className="size-9 object-contain" onError={e => { e.currentTarget.style.visibility = "hidden"; }} />
           <span className="min-w-0 flex-1"><b className="block text-sm">{D.short}</b><span className="block truncate text-[12px] text-slate-500">{D.name}</span></span>
           {on ? <Check className="size-4 text-brand-500" /> : null}</button>); })}
       <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
@@ -118,7 +118,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
   useStoreVersion();
   const title = uiText("title"), kicker = uiText("kicker").replace(/\bDept\.?$/i, "Department");
   /* pestaña: favicon de la marca con punto ONLINE que parpadea y una sesión cifrada que va rotando */
-  const fav = LS.get("lspdt.fav") || LS.get("lspdt.logo") || "/next/logo.svg", ico = useRef<[string, string] | null>(null), ses = useRef(cipher(2, 4));
+  const fav = LS.get("lspdt.fav") || logoOf(), ico = useRef<[string, string] | null>(null), ses = useRef(cipher(2, 4));
   useEffect(() => { ico.current = null; void onlineIcons(fav).then(x => { ico.current = x; }); }, [fav]);
   useTabFx(k => { if (k % 12 === 0) ses.current = cipher(2, 4); const on = k % 2 === 0;
     return { title: `${on ? "●" : "○"} ONLINE · ${title} · ${ses.current}`, icon: ico.current?.[on ? 0 : 1] }; }, 800, [title]);
@@ -127,7 +127,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
   useEffect(() => { LS.set("lspdt.sec." + area.k, sec.k); }, [area.k, sec.k]);
   useEffect(brandSave, [LS.get("lspdt.logo"), LS.get("lspdt.logo.upd"), LS.get("lspdt.fav")]); // eslint-disable-line react-hooks/exhaustive-deps
   const { nav: mode } = usePref();
-  const logo = <img decoding="async" src={DEPT.id !== "lspd" ? deptLogo(DEPT.id) : LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className="h-9 w-9 object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />;
+  const logo = <img decoding="async" src={logoOf("lspdt.logo.header")} alt="" className="h-9 w-9 object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />;
   /* estado de sincronización: barra que recorre el indicador cada pocos segundos (guardando: barra continua; sin conexión: rojo) */
   const sync = (
     <span role="status" title={net === "off" ? "Sin conexión: los cambios se guardan al volver" : net === "saving" ? "Guardando cambios…" : "Todo sincronizado con el servidor"}
@@ -232,7 +232,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
       <aside className={cn("fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-slate-200 bg-white transition-transform duration-200 dark:border-slate-800 dark:bg-slate-900 lg:sticky lg:top-0 lg:h-[var(--app-h,100dvh)] lg:translate-x-0",
         open ? "translate-x-0 shadow-2xl" : "-translate-x-full")}>
         <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-4 dark:border-slate-800">
-          <img decoding="async" src={LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className="h-9 w-9 object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />
+          <img decoding="async" src={logoOf("lspdt.logo.header")} alt="" className="h-9 w-9 object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">{kicker}</p>
             <p className="truncate text-sm font-bold">{title} <span className="ml-1"><VersionChip go={go} /></span></p>

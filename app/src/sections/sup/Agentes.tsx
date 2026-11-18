@@ -1,5 +1,5 @@
 import { JUMP, useJump } from "@/lib/jump";
-import { DEPT, DEPTS, deptLogo } from "@/lib/dept";
+import { DEPT, DEPTS, logoOf } from "@/lib/dept";
 import { profOk } from "@/lib/nick";
 import { useEffect, useMemo, useRef, useState, type PointerEvent as PE } from "react";
 import { Users, LayoutGrid, Rows3, UserPlus, BadgeCheck, Trophy, Shield, Clock, TrendingUp, IdCard, Activity,
@@ -31,7 +31,7 @@ const phOf = (p: Profile): Ph => p.ph || { x: 50, y: 22, z: 1 };
 const phStyle = (f: Ph) => ({ objectPosition: `${f.x}% ${f.y}%`, transform: `scale(${f.z})`, transformOrigin: `${f.x}% ${f.y}%` });
 /* el roster del LSSD y la SAHP se carga desde la planilla (Administración › Roster y respaldo): acá no se edita */
 const rosEd = () => DEPT.id === "lspd";
-const logoSrc = () => (DEPT.id !== "lspd" ? deptLogo(DEPT.id) : srcOf(LS.get("lspdt.logo") || "") || "/next/logo.svg");
+const logoSrc = () => srcOf(logoOf()) || logoOf();
 export function mainDiv(p: Profile) {
   if (p.main && p.div.includes(p.main)) return p.main;
   const order = DIVS.map(d => d[0]);

@@ -1,8 +1,8 @@
 /* logros del perfil: rarezas, íconos (incluidos los únicos de algunos perfiles) y la medalla hexagonal; los míticos son holográficos */
 import { Heart, Lock, PartyPopper, Star, BadgeCheck, Baby, Bomb, ChevronsUp, Crown, Flame, Scale, Shield, UserCheck, VenetianMask, type LucideIcon } from "lucide-react";
-import { DEPT } from "@/lib/dept";
 import { ACC, LS } from "@/lib/store";
-import { emailOf, getRoster, lvl } from "@/lib/domain";
+import { emailOf, lvl } from "@/lib/domain";
+import { deptOfN, dirOf } from "@/lib/nick";
 import { isPSB } from "@/lib/units";
 import { cn } from "@/lib/cn";
 
@@ -60,19 +60,19 @@ const KoreaI = ({ className, style }: IcoP) => (
   </svg>);
 const WatchI = ({ className, style }: IcoP) => <svg viewBox="0 0 64 64" className={className} style={style}><path fill="currentColor" d="M32 4 52 12v18c0 14-9 25-20 30C21 55 12 44 12 30V12z" /><path fill="#0b0f17" d="M32 9.5 47 16v14c0 11-6.6 19.8-15 24-8.4-4.2-15-13-15-24V16z" />
   <text x="32" y="38" textAnchor="middle" fontSize="15" fontWeight="900" fill="currentColor" fontFamily="sans-serif">WC</text></svg>;
-const inDept = (d: string, n: string) => DEPT.id === d && getRoster().some(a => a.n === n);
+const inDept = (d: string, n: string) => deptOfN(n) === d;
 /* oculto: solo lo ven el dueño del perfil y six; el resto ve «Logro oculto» */
 export const LOGROS: { k: string; t: string; d: string; tier: Tier; I: LucideIcon; ok: (n: string, r: string) => boolean; only?: string; oculto?: boolean }[] = [
-  { k: "reg", t: "Registrado", d: "Tiene cuenta en la terminal.", tier: "comun", I: UserCheck, ok: n => ACC.names.includes(n) },
-  { k: "ofi", t: "Oficial", d: "Forma parte del LSPD.", tier: "comun", I: BadgeCheck, ok: (_n, r) => DEPT.id === "lspd" && lvl(r) >= 1 },
+  { k: "reg", t: "Registrado", d: "Tiene cuenta en la terminal.", tier: "comun", I: UserCheck, ok: n => !!dirOf(n) },
+  { k: "ofi", t: "Oficial", d: "Forma parte del LSPD.", tier: "comun", I: BadgeCheck, ok: (n, r) => deptOfN(n) === "lspd" && lvl(r) >= 1 },
   { k: "lssd", t: "Miembro de la LSSD", d: "Un sheriff salvaje ha aparecido.", tier: "raro", I: Star, ok: n => inDept("lssd", n) },
   { k: "lssdjef", t: "Jefatura LSSD", d: "Nadie llega ahí solo: por su arduo trabajo.", tier: "legend", I: Shield, ok: (n, r) => inDept("lssd", n) && lvl(r) >= 10 },
-  { k: "sgt", t: "Sargento", d: "Llegó a Sargento I.", tier: "raro", I: ChevronsUp, ok: (_n, r) => DEPT.id === "lspd" && lvl(r) >= 6 },
+  { k: "sgt", t: "Sargento", d: "Llegó a Sargento I.", tier: "raro", I: ChevronsUp, ok: (n, r) => deptOfN(n) === "lspd" && lvl(r) >= 6 },
   { k: "psb", t: "Miembro de la PSB", d: "Integra el Professional Standards Bureau.", tier: "epico", I: Scale, ok: n => isPSB(n) },
-  { k: "sgt2", t: "Sargento II", d: "Llegó a Sargento II.", tier: "legend", I: Star, ok: (_n, r) => DEPT.id === "lspd" && lvl(r) >= 7 },
+  { k: "sgt2", t: "Sargento II", d: "Llegó a Sargento II.", tier: "legend", I: Star, ok: (n, r) => deptOfN(n) === "lspd" && lvl(r) >= 7 },
   { k: "fnd", t: "Fundador", d: "Creó la terminal.", tier: "mitico", I: Crown, ok: n => n === FOUNDER },
   { k: "fol1", t: "Te han seguido", d: "Alguien te siguió por primera vez.", tier: "raro", I: PartyPopper, ok: n => folOf(n).length > 0 },
-  { k: "sig1", t: "Has seguido a alguien", d: "Seguiste a otro perfil.", tier: "comun", I: Heart, ok: n => ACC.names.some(x => x !== n && folOf(x).includes(n)) },
+  { k: "sig1", t: "Has seguido a alguien", d: "Seguiste a otro perfil.", tier: "comun", I: Heart, ok: n => ACC.dir.some(x => x.n !== n && folOf(x.n).includes(n)) },
   /* únicos: solo aparecen en el perfil de su dueño */
   { k: "bomba", t: "Mister Bomba", d: "Explotó más de 3 veces.", tier: "legend", I: Bomb, ok: n => n === "Evelyn Molina", only: "Evelyn Molina" },
   { k: "banana", t: "Bananita", d: "Logro exclusivo de Aniita.", tier: "mitico", I: BananaI as unknown as LucideIcon, ok: n => n === "Evelyn Molina", only: "Evelyn Molina" },

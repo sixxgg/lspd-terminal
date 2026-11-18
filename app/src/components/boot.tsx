@@ -3,9 +3,8 @@
    «Saltar», Escape o Enter en todo momento. */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Loader2, ShieldCheck } from "lucide-react";
-import { LS } from "@/lib/store";
 import { Avatar } from "@/components/agents";
-import { DEPT, DEPTS, deptLogo } from "@/lib/dept";
+import { DEPT, DEPTS, logoOf } from "@/lib/dept";
 
 const hex = (n: number) => Array.from({ length: n }, () => "0123456789ABCDEF"[Math.floor(Math.random() * 16)]).join("");
 const GLYPHS = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789";
@@ -41,7 +40,7 @@ export function BootScreen({ name, rank, badge, agents, no, divs = [], short, on
   }, [name, reduce, short]);
   useEffect(() => { const kd = (e: KeyboardEvent) => { if (e.key === "Escape" || e.key === "Enter") finish(); }; window.addEventListener("keydown", kd); return () => window.removeEventListener("keydown", kd); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const pct = Math.round((Math.min(n, steps.length) / steps.length) * 100);
-  const logo = DEPT.id !== "lspd" ? deptLogo(DEPT.id) : LS.get("lspdt.logo.boot") || LS.get("lspdt.logo") || "/next/logo.svg";
+  const logo = logoOf("lspdt.logo.boot");
 
   return (
     <div role="status" aria-live="polite" aria-label="Verificando identidad"

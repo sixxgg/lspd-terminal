@@ -1,6 +1,6 @@
 /* Departamentos de la terminal: LSPD, LSSD (Sheriff) y SAHP (Highway Patrol). Los tres tienen las mismas secciones;
    los datos de cada uno van aparte (store.ts, dk). Las cuentas del LSSD y la SAHP ven solo su departamento; six cambia tocando el escudo. */
-import { LS, setKeyDept } from "./store";
+import { LS, dk, setKeyDept } from "./store";
 import { setSkinDept } from "./appearance";
 
 export type DeptId = "lspd" | "lssd" | "sahp";
@@ -27,4 +27,10 @@ export function setDept(d: DeptId, forced = false) {
 }
 export const savedDept = (): DeptId => { try { const d = localStorage.getItem("lspdt.next.dept"); return d === "lssd" || d === "sahp" ? d : "lspd"; } catch { return "lspd"; } };
 /* escudo de cada departamento: el que se cargó en Administración › Marca o el de fábrica */
-export const deptLogo = (d: DeptId, brand?: Record<string, string>) => (d === "lspd" ? "" : brand?.[`lspdt.logo.${d}`] || LS.get(`lspdt.logo.${d}`)) || DEPTS[d].logo;
+/* imágenes de marca de cada departamento (Administración › Marca): cada uno tiene las suyas (lspdt.<depto>.logo, .bg.tablet…).
+   brand: lo público que llega antes de iniciar sesión. Los logos caen al escudo del departamento; los fondos, al del LSPD si el departamento no cargó uno. */
+type Brand = Record<string, string> | undefined;
+const pick = (k: string, d: DeptId, brand: Brand) => LS.raw(dk(k, d)) || brand?.[dk(k, d)] || "";
+export const logoOf = (sub = "", d: DeptId = DEPT.id, brand?: Brand) => (sub && pick(sub, d, brand)) || pick("lspdt.logo", d, brand)
+  || (d === "lspd" ? "/next/logo.svg" : LS.raw(`lspdt.logo.${d}`) || brand?.[`lspdt.logo.${d}`] || DEPTS[d].logo);
+export const bgOf = (k: string, d: DeptId = DEPT.id, brand?: Brand) => pick(k, d, brand) || pick(k, "lspd", brand);

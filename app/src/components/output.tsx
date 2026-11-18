@@ -5,6 +5,7 @@ import { discordHtml, discordPlain, type DcCtx } from "@/lib/discord";
 import { useFeedback } from "./feedback";
 import { uiText } from "@/lib/templates";
 import { LS } from "@/lib/store";
+import { logoOf } from "@/lib/dept";
 import { cn } from "@/lib/cn";
 import { useOutside } from "@/lib/outside";
 import { fixSpell, RevButton, RevPanel, revOf } from "./revisar";
@@ -78,7 +79,7 @@ export function DiscordOutput({ title, text, footer, errors, need, pen, ctx, tag
       <div className="p-4">
         {mode === "pv" ? (
           <div className="scrollbar-thin max-h-[66vh] overflow-auto rounded-xl bg-[#313338] p-4 text-[15px] leading-[1.375] text-[#dbdee1]"
-            dangerouslySetInnerHTML={{ __html: discordHtml(val, ctx, uiText("bot"), LS.get("lspdt.img.dcav") || LS.get("lspdt.logo") || "/next/logo.svg") }} />
+            dangerouslySetInnerHTML={{ __html: discordHtml(val, ctx, uiText("bot"), LS.get("lspdt.img.dcav") || logoOf()) }} />
         ) : mode === "web" ? (
           <pre className="scrollbar-thin max-h-[66vh] overflow-auto whitespace-pre-wrap break-words rounded-xl bg-slate-950 p-4 font-sans text-[13px] leading-relaxed text-slate-200 ring-1 ring-inset ring-white/5">{shown}</pre>
         ) : (

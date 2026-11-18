@@ -52,7 +52,13 @@ export default wrap(async (req, res) => {
     acc.sort(byId);
     /* las cuentas del LSSD se publican por placa (el usuario OOC no sale de acá) */
     const out = { me: me ? me.n : null, names: acc.filter(r => !isDeptAcc(r.k)).map(r => r.k), brand };
-    for (const d of XDEPTS) { const L = await xRoster(d);
+    /* directorio de perfiles: todas las cuentas de los tres departamentos en orden de registro (el ID del perfil), con su rango.
+       Así se puede seguir y ver el perfil de alguien de otro departamento. */
+    const RL = parseRosterRaw(raw).list, XL = {}; for (const d of XDEPTS) XL[d] = await xRoster(d);
+    out.dir = acc.map(r => { const d = XDEPTS.find(x => r.k.startsWith(x + ":"));
+      if (!d) return { n: r.k, d: "lspd", r: RL.find(a => a.n === r.k)?.r || "" };
+      const a = deptOfAcc(XL[d], r.k); return a ? { n: a.n, d, r: a.r } : null; }).filter(Boolean);
+    for (const d of XDEPTS) { const L = XL[d];
       out[d + "Names"] = acc.filter(r => r.k.startsWith(d + ":")).map(r => deptOfAcc(L, r.k)).filter(Boolean).map(a => "#" + a.p);
       out[d] = L.filter(a => a.r !== "K-9" && a.u).map(a => ({ n: a.n, r: a.r, p: a.p })); }
     if (me && query(req).full) out.data = await fullData(me); // ahorra una vuelta al iniciar

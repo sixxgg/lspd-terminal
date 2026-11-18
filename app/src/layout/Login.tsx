@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { DEL, DEPTS, deptLogo, setDept, type DeptId } from "@/lib/dept";
+import { DEL, DEPTS, logoOf, setDept, type DeptId } from "@/lib/dept";
 import { LssdIns } from "@/components/lssdIns";
 import { Eye, EyeOff, LogIn, UserPlus, Clock, AlertCircle, ShieldCheck, LifeBuoy, CheckCircle2 } from "lucide-react";
 import { RecCodes } from "@/components/account";
@@ -34,7 +34,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
   /* elegido: el nombre exacto (si no se repite) o el número de placa */
   const [pick, setPick] = useState<{ n: string; r: string; p?: string } | null>(null);
   const picked = pick && pick.n === name ? pick : (() => { const s = norm(name.trim()).replace(/^#/, ""); if (!s) return null; const byP = /^\d+$/.test(s) ? R.filter(a => String(a.p) === s) : [], byN = R.filter(a => norm(a.n) === s); return byP.length === 1 ? byP[0] : byN.length === 1 ? byN[0] : null; })();
-  const logo = lssd ? deptLogo(dep, pub.brand) : pub.brand?.["lspdt.logo.login"] || pub.brand?.["lspdt.logo"] || "/next/logo.svg";
+  const logo = logoOf("lspdt.logo.login", dep, pub.brand);
 
   async function login(e: FormEvent) {
     e.preventDefault(); setMsg(null);
@@ -85,7 +85,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
             {(["lspd", "lssd", "sahp"] as const).map(d => { const D = DEPTS[d], on = dep === d; return (
               <button key={d} type="button" role="radio" aria-checked={on} disabled={!xOn(d)} onClick={() => setDep(d)} title={!xOn(d) ? `${D.name} · próximamente` : D.name}
                 className={cn("flex items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-[12px] font-bold transition", on ? "bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200", !xOn(d) && "cursor-not-allowed opacity-40")}>
-                <img src={d === "lspd" ? pub.brand?.["lspdt.logo.login"] || pub.brand?.["lspdt.logo"] || D.logo : deptLogo(d, pub.brand)} alt="" className="size-5 object-contain" />{D.short}</button>); })}
+                <img src={logoOf("lspdt.logo.login", d, pub.brand)} alt="" className="size-5 object-contain" />{D.short}</button>); })}
           </div>}
           {codes ? <div className="mt-6 space-y-4"><RecCodes codes={codes.rec} /><Button size="lg" className="w-full" onClick={codes.then}>Ya los guardé, continuar</Button></div> : <>
           <div className="mt-6 flex justify-center">

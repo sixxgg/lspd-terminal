@@ -1,8 +1,8 @@
-import { DEPT, DEPTS } from "@/lib/dept";
+import { DEPT, DEPTS, bgOf } from "@/lib/dept";
 import { useEffect, useState, type ReactNode } from "react";
 import { WifiOff, BatteryFull, BatteryCharging, BatteryLow, BatteryMedium, MapPin, ShieldCheck } from "lucide-react";
 import { usePref } from "@/lib/appearance";
-import { LS, getNet, useStoreVersion } from "@/lib/store";
+import { getNet, useStoreVersion } from "@/lib/store";
 import { TAB_ICONS } from "@/lib/tabfx";
 import { cn } from "@/lib/cn";
 
@@ -55,7 +55,7 @@ function Uplink() {
 export function Device({ children, brand }: { children: ReactNode; brand?: Record<string, string> }) {
   const p = usePref(); useStoreVersion();
   const net = getNet();
-  const bg = LS.get("lspdt.bg.tablet") || brand?.["lspdt.bg.tablet"] || "";
+  const bg = bgOf("lspdt.bg.tablet", DEPT.id, brand);
   const crt = <div className="crt-host" aria-hidden="true"><div className="crt" /></div>;
   if (!p.frame) return <>{children}{crt}</>;
   return (

@@ -29,7 +29,8 @@ export const getNet = () => net;
 
 /* departamentos: las secciones usan siempre las claves del LSPD (lspdt.*); en el LSSD y la SAHP se leen y escriben en lspdt.<depto>.*.
    Lo compartido (marca, Legal, Pizarra, robos, lo privado de six) es igual para los tres. Lo mismo decide el servidor (lib/core.js, SHARED_KEY). */
-const SHARED = /^lspdt\.(logo|fav|ui|img|bg|ico|lib|six|anita|penal|legacc|boards?|miro|robos|lssd|sahp)(\.|$)/;
+/* las imágenes (logos, fondos, íconos) son de cada departamento; los perfiles, uno solo para los tres */
+const SHARED = /^lspdt\.(ui|lib|six|anita|penal|legacc|boards?|miro|robos|uprof|ucom|uvis|ufolt?|uverif|lssd|sahp)(\.|$)/;
 let KD = "";
 export function setKeyDept(d: string) { const n = d === "lspd" ? "" : d; if (n === KD) return; KD = n; RO.clear(); bump(); }
 /* la clave real en la base para el departamento activo (y la de otro departamento, para las vistas que juntan los tres) */
@@ -154,7 +155,9 @@ const onAct = () => { const was = idleFor() > 120e3; lastAct = Date.now(); if (p
 for (const ev of ["pointerdown", "keydown", "wheel", "touchstart", "mousemove"]) addEventListener(ev, onAct, { passive: true, capture: true });
 
 /* cuentas registradas en orden de alta (la posición es el ID público del perfil) */
-export const ACC: { names: string[] } = { names: [] };
+/* names: cuentas del LSPD; dir: todas las cuentas de los tres departamentos (perfiles), en orden de registro */
+export type DirE = { n: string; d: "lspd" | "lssd" | "sahp"; r: string };
+export const ACC: { names: string[]; dir: DirE[]; xr: DirE[] } = { names: [], dir: [], xr: [] }; /* xr: integrantes del LSSD y la SAHP (sin cuenta todavía) */
 /* vista previa («Ver como»): sin permisos especiales y sin guardar nada en el servidor */
 export const PREV = { on: false, must: false };
 const noRoles = () => { if (PREV.on) Object.assign(ME_ROLES, { admin: false, owner: false, six: false, anita: false }); };

@@ -5,7 +5,7 @@ import { prevStart } from "@/lib/preview";
 import { AgentCombo, Avatar } from "@/components/agents";
 import { ImagePicker, imgSpec } from "@/components/imagepick";
 import { useFeedback } from "@/components/feedback";
-import { DEPT, DEL, DEPTS } from "@/lib/dept";
+import { DEPT, DEL, DEPTS, logoOf, setDept } from "@/lib/dept";
 import { RosterImport } from "@/sections/Lssd";
 import { UI_DEF, uiKey, type UiKey } from "@/lib/templates";
 import { dk } from "@/lib/store";
@@ -97,11 +97,10 @@ export function AdmAccesos() {
 }
 /* ---------- imágenes, textos y emblemas ---------- */
 const BRAND: [string, string, string, number, boolean, "sq" | "bg", string][] = [
-  ["lspdt.logo", "Logo general", "El de los lugares que no tienen un casillero propio.", 512, true, "sq", "Logos"],
+  ["lspdt.logo", "Escudo del departamento", "El logo general: va en todos los lugares que no tienen un casillero propio.", 512, true, "sq", "Logos"],
   ["lspdt.logo.login", "Logo del inicio de sesión", "El escudo grande del recuadro de ingreso.", 512, true, "sq", "Logos"],
   ["lspdt.logo.header", "Logo del encabezado", "Arriba a la izquierda, al lado del título.", 512, true, "sq", "Logos"],
-  ["lspdt.logo.lssd", "Escudo del LSSD", "El del Sheriff: ingreso, encabezado y menú de departamentos cuando se está en el LSSD.", 512, true, "sq", "Logos"],
-  ["lspdt.logo.sahp", "Escudo de la SAHP", "Para cuando se habilite la Highway Patrol (ya se ve en el selector de departamento).", 512, true, "sq", "Logos"],
+  ["lspdt.logo.boot", "Logo de la pantalla de carga", "El que se ve mientras entra a la terminal.", 512, true, "sq", "Logos"],
   ["lspdt.logo.upd", "Logo de la pantalla de actualización", "El que se ve arriba a la izquierda mientras se instala una versión nueva.", 512, true, "sq", "Logos"],
   ["lspdt.fav", "Ícono de la pestaña (favicon)", "Si está vacío se usa el logo general.", 256, true, "sq", "Logos"],
   ["lspdt.bg.tablet", "Fondo detrás de la tablet", "Recomendado 1920×1080, por ejemplo una captura del juego.", 1920, false, "bg", "Fondos"],
@@ -140,7 +139,7 @@ export function AdmMarca() {
   const ui = LS.json<Record<string, string>>("lspdt.ui", {}), setUi = (k: string, v: string, msg?: string) => { LS.setJSON("lspdt.ui", { ...LS.json<Record<string, string>>("lspdt.ui", {}), [k]: v }); if (msg) toast(msg); }, [txt, setTxt] = useState<Record<string, string>>(() => Object.fromEntries(UI_TXT.map(([k]) => [k, ui[uiKey(k)] || ""])));
   const thK = DEPT.id === "lspd" ? "theme" : "theme." + DEPT.id; /* tema por defecto de cada departamento */
   const SUBS = ["lspdt.logo.login", "lspdt.logo.boot", "lspdt.logo.header", "lspdt.logo.hero", "lspdt.logo.wm", "lspdt.fav"];
-  const freeze = () => { const cur = LS.get("lspdt.logo") || "/next/logo.svg"; SUBS.forEach(k => { if (!LS.get(k)) LS.set(k, cur); }); };
+  const freeze = () => { const cur = logoOf(); SUBS.forEach(k => { if (!LS.get(k)) LS.set(k, cur); }); };
   let grp = "";
   return (
     <div className="space-y-5">
@@ -162,18 +161,21 @@ export function AdmMarca() {
         </CardBody>
       </Card>
       <Card>
-        <CardHeader icon={<ImagePlus />} title="Imágenes" desc="Logos, fondos y fotos por defecto. Se guardan en la terminal y las ven todos." />
+        <CardHeader icon={<ImagePlus />} title={`Imágenes · ${DEPTS[DEPT.id].short}`} desc={`Logos, fondos y fotos por defecto ${DEL[DEPT.id]}. Cada departamento tiene las suyas, así que lo que cambies acá no toca a los otros dos.`} />
         <CardBody>
+          {ME_ROLES.six && <div className="flex flex-wrap items-center gap-2"><span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Editando</span>
+            {(["lspd", "lssd", "sahp"] as const).map(d => <button key={d} onClick={() => d !== DEPT.id && setDept(d)} className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition", d === DEPT.id ? "border-brand-500 bg-brand-500/10 text-brand-700 dark:text-brand-300" : "border-slate-200 text-slate-500 hover:border-brand-400 dark:border-slate-700")}>
+              <img src={logoOf("", d)} alt="" className="size-4 object-contain" />{DEPTS[d].short}</button>)}</div>}
           <div className="space-y-1">{BRAND.map(([k, t, h, max, alpha, f, g]) => { const v = LS.get(k), head = g !== grp ? (grp = g) : ""; return (
             <div key={k}>
               {head && <p className="pb-2 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400 first:pt-0">{head}</p>}
               <div className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
                 <div className={cn("grid shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800", f === "bg" ? "h-16 w-28" : "size-16")}>
-                  {v || g === "Logos" ? <img loading="lazy" decoding="async" src={v || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className={cn("size-full", f === "bg" ? "object-cover" : "object-contain p-1.5", !v && "opacity-60")} /> : <span className="text-[10px] text-slate-400">{f === "bg" ? "Sin fondo" : "Por defecto"}</span>}</div>
+                  {v || g === "Logos" ? <img loading="lazy" decoding="async" src={v || logoOf()} alt="" className={cn("size-full", f === "bg" ? "object-cover" : "object-contain p-1.5", !v && "opacity-60")} /> : <span className="text-[10px] text-slate-400">{f === "bg" ? "Sin fondo" : "Por defecto"}</span>}</div>
                 <div className="min-w-[12rem] flex-1"><p className="text-sm font-semibold">{t}</p><p className="text-xs text-slate-500">{h.replace(/\s*Recomendado [^.]*\.?/, "")}</p>
                   <p className="mt-1 flex flex-wrap gap-1.5 text-[11px]">{(() => { const sp = imgSpec(max, alpha, f === "bg"); return [sp.px, sp.fmt, sp.peso].map(x => <span key={x} className="rounded-md bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{x}</span>); })()}</p></div>
                 <Button size="sm" variant="outline" icon={<Upload />} onClick={() => setPick({ k, t, max, alpha, wide: f === "bg" })}>Cambiar</Button>
-                {v && <Button size="sm" variant="ghost" icon={<RotateCcw />} onClick={async () => { if (!(await confirm(`¿Quitar «${t}»?`))) return; if (SUBS.includes(k)) LS.set(k, LS.get("lspdt.logo") || "/next/logo.svg"); else LS.del(k); toast("Restaurado"); }}>{SUBS.includes(k) ? "Copiar el general" : "Quitar"}</Button>}
+                {v && <Button size="sm" variant="ghost" icon={<RotateCcw />} onClick={async () => { if (!(await confirm(`¿Quitar «${t}»?`))) return; if (SUBS.includes(k)) LS.set(k, logoOf()); else LS.del(k); toast("Restaurado"); }}>{SUBS.includes(k) ? "Copiar el general" : "Quitar"}</Button>}
               </div>
             </div>); })}</div>
         </CardBody>
@@ -188,7 +190,7 @@ export function AdmMarca() {
           </div>); })}</div></CardBody>
       </Card>
       {pick && <ImagePicker open title={pick.t} k={pick.k} max={pick.max} alpha={pick.alpha} wide={pick.wide} onClose={() => setPick(null)}
-        onFile={d => { if (pick.k === "lspdt.logo") freeze(); LS.set(pick.k, d); toast("Guardado · lo ven todos"); }} onUrl={() => toast("Imagen guardada en la terminal · lo ven todos")} />}
+        onFile={d => { if (pick.k === "lspdt.logo") freeze(); LS.set(pick.k, d); toast(`Guardado · lo ven todos ${DEL[DEPT.id]}`); }} onUrl={() => toast(`Imagen guardada · lo ven todos ${DEL[DEPT.id]}`)} />}
     </div>
   );
 }

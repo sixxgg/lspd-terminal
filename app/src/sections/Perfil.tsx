@@ -19,10 +19,12 @@ import { decorOf, type Award, type Decor } from "@/lib/decor";
 import { profFull, takePreset } from "@/lib/profiles";
 import { isPSB, rtdMem, uMap, type UnitKey } from "@/lib/units";
 import { mdHtml } from "@/lib/discord";
-import { nickOf, profOk } from "@/lib/nick";
+import { VERIF, accId, deptOfN, dirOf, nickOf, profOk, setVerif, verifOf, type VTier } from "@/lib/nick";
+import { Verif } from "@/components/verif";
+import { DEPT, DEPTS, logoOf, type DeptId } from "@/lib/dept";
 import { cn } from "@/lib/cn";
 
-export type UProf = { bio?: string; since?: number; seen?: number; col?: string; nick?: string };
+export type UProf = { bio?: string; since?: number; seen?: number; col?: string; nick?: string; lg?: Record<string, number> };
 export type UCom = { id: string; by: string; t: number; x: string };
 type UVis = { c: number; l: { n: string; t: number }[] };
 export const slugOf = (n: string) => emailOf(n).split("@")[0];
@@ -96,12 +98,25 @@ const Timeline = ({ ev }: { ev: (Ev & { by?: string })[] }) => (
     <li key={i}><span className="absolute -left-1.5 mt-1.5 size-3 rounded-full border-2 border-white bg-brand-500 dark:border-slate-900" /><p className="text-sm">{a.x}</p><p className="text-xs text-slate-400">{a.t ? ago(a.t) : "sin fecha"}{a.by ? ` · por ${a.by}` : ""}</p></li>))}</ol>);
 const Empty = ({ children }: { children: ReactNode }) => <p className="py-6 text-center text-sm text-slate-400">{children}</p>;
 
+/* departamento de la persona (los perfiles son uno solo para LSPD, LSSD y SAHP) */
+function DeptTag({ d, big }: { d: DeptId; big?: boolean }) {
+  return <span title={DEPTS[d].name} className={cn("inline-flex shrink-0 items-center gap-1 rounded-md bg-slate-100 font-bold tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300", big ? "px-1.5 py-0.5 text-xs" : "px-1 text-[10px]")}>
+    <img src={logoOf("", d)} alt="" className={big ? "size-4 object-contain" : "size-3 object-contain"} />{DEPTS[d].short}</span>;
+}
+/* six da la verificación (azul, dorada o gris) desde el mismo perfil */
+function VerifPick({ n }: { n: string }) {
+  const v = verifOf(n) || "";
+  return <select aria-label="Verificación" title="Verificación del perfil (solo six)" value={v} onChange={e => setVerif(n, e.target.value as VTier | "")}
+    className="rounded-lg border border-slate-200 bg-transparent px-1.5 py-0.5 text-xs text-slate-500 outline-none focus:border-brand-500 dark:border-slate-700">
+    <option value="">Sin verificar</option>{(Object.keys(VERIF) as VTier[]).map(k => <option key={k} value={k}>{VERIF[k].l}</option>)}</select>;
+}
+
 export function Perfil() {
   useStoreVersion(); useTick();
   const me = useMe(), { toast, confirm } = useFeedback();
-  const [who, setWho] = useState(() => { const n = takePreset<{ n: string }>()?.n; return n && profOk(n) ? n : me.n; }), own = who === me.n, ag = findAgent(who), r = ag?.r || "";
+  const [who, setWho] = useState(() => { const n = takePreset<{ n: string }>()?.n; return n && profOk(n) ? n : me.n; }), own = who === me.n, wd = deptOfN(who), same = wd === DEPT.id, ag = same ? findAgent(who) : undefined, r = ag?.r || dirOf(who)?.r || "";
   const P = LS.json<UProf>(K.prof(who), {}), ban = LS.get(K.ban(who)) || "", coms = LS.json<UCom[]>(K.com(who), []), vis = LS.json<UVis>(K.vis(who), { c: 0, l: [] }), fol = LS.json<string[]>(K.fol(who), []);
-  const prof = profFull(who), cond = ((prof.cond || []) as unknown as Award[]).slice().sort((a, b) => (b.f || "").localeCompare(a.f || ""));
+  const prof = same ? profFull(who) : profFull("~"), cond = ((prof.cond || []) as unknown as Award[]).slice().sort((a, b) => (b.f || "").localeCompare(a.f || ""));
   const [tab, setTab] = useState<"act" | "log" | "com" | "pj">("com"), [ed, setEd] = useState(false), [bio, setBio] = useState(P.bio || ""), [txt, setTxt] = useState(""), fBan = useRef<HTMLInputElement>(null), fPic = useRef<HTMLInputElement>(null);
   const [nk, setNk] = useState<string | null>(null), nick = nickOf(who), N = nickOf; /* N: nick de cualquiera */
   useEffect(() => { setBio(P.bio || ""); setEd(false); setNk(null); setTab("com"); }, [who]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -110,10 +125,10 @@ export function Perfil() {
     const v = LS.json<UVis>(K.vis(who), { c: 0, l: [] }); LS.setJSON(K.vis(who), { c: v.c + 1, l: [{ n: me.n, t: Date.now() }, ...v.l.filter(x => x.n !== me.n)].slice(0, 12) }); }, [who, own, me.n]);
   const saveP = (p: Partial<UProf>) => LS.setJSON(K.prof(who), { ...LS.json<UProf>(K.prof(who), {}), ...p });
   const post = () => { const x = txt.trim(); if (!x) return; LS.setJSON(K.com(who), [...LS.json<UCom[]>(K.com(who), []), { id: uid(), by: me.n, t: Date.now(), x: x.slice(0, 1500) }].slice(-200)); setTxt(""); toast(own ? "Publicado" : `Comentario enviado a ${nickOf(who)}`); };
-  const following = fol.includes(me.n), idx = ACC.names.indexOf(who), id = idx >= 0 ? idx + 1 : 0;
+  const following = fol.includes(me.n), id = accId(who);
   /* red social: a quién sigue cada uno y sugerencias para mí (como en Instagram) */
   const [md, setMd] = useState<"" | "fol" | "sig" | "sug">("");
-  const NAMES = ACC.names.filter(n => profOk(n)); /* perfiles en BETA: solo las cuentas habilitadas */
+  const NAMES = ACC.dir.map(x => x.n).filter(n => profOk(n)); /* los tres departamentos juntos (perfiles en BETA: solo las cuentas habilitadas) */
   const folOf = (n: string) => LS.json<string[]>(K.fol(n), []), sigOf = (n: string) => NAMES.filter(x => x !== n && folOf(x).includes(n));
   const sig = sigOf(who), mySig = new Set(sigOf(me.n));
   /* seguir guarda también cuándo (lspdt.ufolt.<slug>) para avisarle al otro */
@@ -121,32 +136,32 @@ export function Perfil() {
     LS.setJSON(K.fol(n), on ? f.filter(x => x !== me.n) : [...f, me.n]);
     if (on) { delete ft[me.n]; LS.setJSON(K.folt(n), ft); } else { LS.setJSON(K.folt(n), { ...ft, [me.n]: Date.now() }); toast(`Ahora seguís a ${nickOf(n)}`); } };
   const sugs = (() => {
-    const myDiv = new Set((profFull(me.n).div || []) as string[]), meFol = folOf(me.n);
+    const myDiv = new Set((profFull(me.n).div || []) as string[]), meFol = folOf(me.n), myD = deptOfN(me.n);
     return NAMES.filter(n => n !== me.n && !mySig.has(n)).map(n => {
-      const dv = ((profFull(n).div || []) as string[]).filter(d => myDiv.has(d)), mut = [...mySig].filter(x => folOf(n).includes(x));
-      const why = meFol.includes(n) ? "Te sigue" : mut.length ? `Lo sigue ${nickOf(mut[0])}${mut.length > 1 ? ` y ${mut.length - 1} más` : ""}` : dv.length ? `También en ${dv[0]}` : "Sugerencia para ti";
-      return { n, why, sc: (meFol.includes(n) ? 6 : 0) + mut.length * 3 + dv.length * 2 + Math.min(3, folOf(n).length / 3) };
+      const sd = deptOfN(n) === myD, dv = sd ? ((profFull(n).div || []) as string[]).filter(d => myDiv.has(d)) : [], mut = [...mySig].filter(x => folOf(n).includes(x));
+      const why = meFol.includes(n) ? "Te sigue" : mut.length ? `Lo sigue ${nickOf(mut[0])}${mut.length > 1 ? ` y ${mut.length - 1} más` : ""}` : dv.length ? `También en ${dv[0]}` : sd ? `También ${DEPTS[myD].short === "SAHP" ? "en la" : "en el"} ${DEPTS[myD].short}` : `${DEPTS[deptOfN(n)].short} · sugerencia para ti`;
+      return { n, why, sc: (meFol.includes(n) ? 6 : 0) + mut.length * 3 + dv.length * 2 + (sd ? 1 : 0) + Math.min(3, folOf(n).length / 3) };
     }).sort((a, b) => b.sc - a.sc || a.n.localeCompare(b.n, "es"));
   })();
   const Person = ({ n, why }: { n: string; why?: string }) => { const on = mySig.has(n); return (
     <div className="flex items-center gap-3">
       <button onClick={() => { setWho(n); setMd(""); }} className="flex min-w-0 flex-1 items-center gap-3 text-left"><PAvatar n={n} size={44} />
-        <span className="min-w-0"><b className="block truncate text-sm">{nickOf(n)}</b><small className="block truncate text-xs text-slate-500">{why || (nickOf(n) !== n ? n : "")}</small></span></button>
+        <span className="min-w-0"><b className="flex items-center gap-1 truncate text-sm">{nickOf(n)}<Verif n={n} size={15} /><DeptTag d={deptOfN(n)} /></b><small className="block truncate text-xs text-slate-500">{why || (nickOf(n) !== n ? n : "")}</small></span></button>
       {n !== me.n && <Button size="sm" variant={on ? "outline" : "primary"} onClick={() => toggleFol(n)}>{on ? "Siguiendo" : "Seguir"}</Button>}
     </div>); };
   /* logros ocultos: los ve el dueño del perfil y six; el resto ve «Logro oculto» */
   const seeHid = who === me.n || !!ME_ROLES.six;
-  const logros = LOGROS.filter(l => !l.only || l.only === who).map(l => ({ ...l, on: l.ok(who, r), ...(l.oculto && !seeHid ? { t: "Logro oculto", d: "Solo lo ve su dueño." } : {}) })), got = logros.filter(l => l.on);
+  const logros = LOGROS.filter(l => !l.only || l.only === who).map(l => ({ ...l, on: l.ok(who, r) || (P.lg ? l.k in P.lg : false), ...(l.oculto && !seeHid ? { t: "Logro oculto", d: "Solo lo ve su dueño." } : {}) })), got = logros.filter(l => l.on);
   const best = got.slice().reverse().slice(0, 3);
   /* actividad general (OOC) y la policial privada */
   const act: (Ev & { by?: string })[] = [...(P.since ? [{ t: P.since, x: "Se registró en la terminal" }] : []),
     ...coms.filter(c => c.by === who).map(c => ({ t: c.t, x: `Escribió en su perfil: «${c.x.slice(0, 80)}${c.x.length > 80 ? "…" : ""}»` }))].sort((a, b) => b.t - a.t).slice(0, 20);
-  const pol = policeAct(who, me);
+  const pol = same ? policeAct(who, me) : [];
   const TABS: ["act" | "log" | "com" | "pj", string, LucideIcon, number | string][] = [["act", "Actividad", Activity, act.length + pol.reduce((s, g) => s + g.ev.length, 0)], ["log", "Logros", Trophy, `${got.length}/${logros.length}`], ["com", "Comentarios", MessageSquare, coms.length], ["pj", "Personaje", IdCard, ""]];
   const people = (L: string[]) => <div className="grid grid-cols-5 gap-2">{L.slice(0, 15).map(n => <button key={n} title={N(n)} onClick={() => setWho(n)} className="justify-self-center"><PAvatar n={n} size={36} /></button>)}</div>;
   const stats: [string, string][] = [["Comentarios", String(coms.length)], ["Ingreso", dmy(P.since)], ["Última visita", P.seen ? ago(P.seen) : "—"]];
   return (
-    <div className="space-y-4">
+    <div key={who} className="animate-fade-in space-y-4">
       {/* portada */}
       <Card className="overflow-hidden p-0">
         <div className="relative h-40 sm:h-48" style={{ background: ban ? undefined : `linear-gradient(135deg, ${P.col || COLS[0]}, ${P.col || COLS[0]}99)` }}>
@@ -172,10 +187,12 @@ export function Perfil() {
               {nk !== null ? <form className="flex items-center gap-1.5" onSubmit={e => { e.preventDefault(); saveP({ nick: nk.trim().slice(0, 24) }); setNk(null); toast("Nickname guardado"); }}>
                 <input autoFocus value={nk} onChange={e => setNk(e.target.value)} maxLength={24} placeholder={who} className="w-48 rounded-lg border border-slate-300 bg-transparent px-2 py-1 text-xl font-bold outline-none focus:border-brand-500 dark:border-slate-700" />
                 <button type="submit" aria-label="Guardar" className="text-emerald-500"><Check className="size-4" /></button><button type="button" aria-label="Cancelar" onClick={() => setNk(null)} className="text-slate-400"><X className="size-4" /></button></form>
-                : <h1 className="truncate text-2xl font-bold">{nick}</h1>}
+                : <h1 className="flex min-w-0 items-center gap-1.5 truncate text-2xl font-bold">{nick}<Verif n={who} size={22} /></h1>}
               {own && nk === null && <button aria-label="Cambiar nickname" title="Cambiar nickname OOC" onClick={() => setNk(P.nick ?? nick)} className="text-slate-400 hover:text-brand-500"><Pencil className="size-3.5" /></button>}
               {id > 0 && <span title="ID de cuenta (orden de registro)" className={cn("rounded-md px-1.5 py-0.5 font-mono text-xs font-bold", id === 1 ? "bg-gradient-to-r from-rose-500 via-amber-400 to-fuchsia-500 text-white" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300")}>#{id}</span>}
+              <DeptTag d={wd} big />
               {best.map(l => <span key={l.k} title={`${l.t} · ${TIER[l.tier].l}`}><Medal tier={l.tier} I={l.I} size={24} /></span>)}
+              {ME_ROLES.six && <VerifPick n={who} />}
             </div>
             {nick !== who && <p className="text-xs text-slate-500">Personaje: <button onClick={() => setTab("pj")} className="font-semibold hover:underline">{who}</button></p>}
             {/* contadores en un solo renglón */}
@@ -222,7 +239,7 @@ export function Perfil() {
               {!coms.length ? <Empty>Sin comentarios todavía.</Empty> : <div className="space-y-3">{coms.slice().reverse().map(c => (
                 <div key={c.id} className="flex gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
                   <button onClick={() => setWho(c.by)}><PAvatar n={c.by} size={36} /></button>
-                  <div className="min-w-0 flex-1"><p className="text-sm"><button onClick={() => setWho(c.by)} className="font-semibold hover:underline">{N(c.by)}</button> <span className="text-xs text-slate-400">· {ago(c.t)}</span></p>
+                  <div className="min-w-0 flex-1"><p className="text-sm"><button onClick={() => setWho(c.by)} className="inline-flex items-center gap-1 font-semibold hover:underline">{N(c.by)}<Verif n={c.by} size={14} /></button> <span className="text-xs text-slate-400">· {ago(c.t)}</span></p>
                     <p className="whitespace-pre-wrap break-words text-sm text-slate-600 dark:text-slate-300">{c.x}</p></div>
                   {(c.by === me.n || own) && <button aria-label="Borrar comentario" onClick={async () => { if (await confirm("¿Borrar este comentario?", { danger: true })) LS.setJSON(K.com(who), LS.json<UCom[]>(K.com(who), []).filter(x => x.id !== c.id)); }} className="self-start text-slate-400 hover:text-red-500"><Trash2 className="size-3.5" /></button>}
                 </div>))}</div>}
@@ -247,13 +264,14 @@ export function Perfil() {
 
             {tab === "pj" && <div className="space-y-5">
               <div className="flex flex-wrap items-center gap-3">{r && <RankBadge r={r} />}{ag?.p && <span className="font-mono text-sm">Placa #{ag.p}</span>}{prof.cs && <span className="font-mono text-sm text-red-500">{prof.cs}</span>}
-                {!ag && <span className="text-sm text-slate-400">No figura en el roster.</span>}</div>
+                {!ag && same && <span className="text-sm text-slate-400">No figura en el roster.</span>}<DeptTag d={wd} big /></div>
+              {!same && <p className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500 dark:border-slate-700">Es {DEPTS[wd].short === "SAHP" ? "de la" : "del"} {DEPTS[wd].name}: su legajo policial (divisiones, condecoraciones y carrera) queda en su departamento. El perfil, los seguidores y los comentarios son los mismos en los tres.</p>}
               {(prof.div || []).length > 0 && <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Divisiones</p>
                 <div className="flex flex-wrap gap-1.5">{(prof.div as string[]).map(d => <span key={d} className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold dark:bg-slate-800">{d}</span>)}</div></div>}
-              <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Condecoraciones</p>
+              {same && <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Condecoraciones</p>
                 {!cond.length ? <p className="text-sm text-slate-400">Sin condecoraciones todavía.</p> : <><div className="mb-2 grid place-items-center rounded-2xl bg-[radial-gradient(ellipse_at_top,#1e2f4d,#0a1222_70%)] px-4 py-5"><RibbonRack list={cond.map(c => decorOf(c.k)).filter((d): d is Decor => !!d)} per={4} size="md" /></div><div className="divide-y divide-slate-100 dark:divide-slate-800">{cond.map(c => { const d = decorOf(c.k); return (
                   <div key={c.id} className="flex gap-4 py-3"><span className="w-24 shrink-0 pt-1">{d && <Ribbon d={d} />}</span>
-                    <div className="min-w-0"><b className="block">{c.t}</b><p className="text-xs text-slate-500">Otorgada {c.f ? fmtDate(new Date(c.f).getTime()).split(",")[0] : ""}{c.by ? `, por ${c.by}` : ""}</p>{c.m && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{c.m}</p>}</div></div>); })}</div></>}</div>
+                    <div className="min-w-0"><b className="block">{c.t}</b><p className="text-xs text-slate-500">Otorgada {c.f ? fmtDate(new Date(c.f).getTime()).split(",")[0] : ""}{c.by ? `, por ${c.by}` : ""}</p>{c.m && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{c.m}</p>}</div></div>); })}</div></>}</div>}
               {(prof.movs || []).length > 0 && <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Carrera</p>
                 <Timeline ev={(prof.movs || []).map(m => ({ t: m.t, x: `${m.tipo}${m.de ? ` · ${m.de}` : ""}${m.a ? ` → ${m.a}` : ""}`, by: m.por?.n })).sort((a, b) => b.t - a.t)} /></div>}
             </div>}
@@ -264,7 +282,7 @@ export function Perfil() {
         <div className="mb-3 flex items-center"><b className="flex-1 text-sm">Sugerencias para ti</b><button onClick={() => setMd("sug")} className="text-xs font-semibold text-brand-600 hover:underline dark:text-brand-300">Ver todo</button></div>
         <div className="scrollbar-thin -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">{sugs.filter(x => x.n !== who).slice(0, 10).map(({ n, why }) => (
           <div key={n} className="flex w-40 shrink-0 flex-col items-center gap-1.5 rounded-xl border border-slate-200 p-3 text-center dark:border-slate-800">
-            <button onClick={() => setWho(n)} className="flex flex-col items-center gap-1.5"><PAvatar n={n} size={64} /><b className="w-full truncate text-sm">{nickOf(n)}</b></button>
+            <button onClick={() => setWho(n)} className="flex flex-col items-center gap-1.5"><PAvatar n={n} size={64} /><b className="flex w-full items-center justify-center gap-1 truncate text-sm">{nickOf(n)}<Verif n={n} size={14} /></b></button>
             <small className="line-clamp-2 min-h-[2rem] text-[11px] leading-tight text-slate-500">{why}</small>
             <Button size="sm" className="w-full justify-center" onClick={() => toggleFol(n)}>Seguir</Button>
           </div>))}</div>

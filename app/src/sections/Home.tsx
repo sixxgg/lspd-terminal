@@ -14,7 +14,7 @@ import { profFull } from "@/lib/profiles";
 import { calAll, calMine, fmtWhen, hasTime, isToday } from "@/lib/calendar";
 import { GUEST, LS, useJSON, useStoreVersion } from "@/lib/store";
 import { AREAS, secsOf } from "@/nav";
-import { latest } from "./Novedades";
+import { APP_VERSION, latest } from "./Novedades";
 import { DEPT } from "@/lib/dept";
 import { cn } from "@/lib/cn";
 import { fotoStyle, GAL_KEY, type Foto } from "@/lib/gal";
@@ -101,7 +101,7 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
         {/* novedades */}
         <Card className="overflow-hidden">
           <div className="flex items-center gap-2 px-5 pb-2 pt-4"><Sparkles className="size-[18px] text-pink-500" /><h3 className="flex-1 font-display text-lg font-bold">Novedades</h3>
-            <span className="rounded-full bg-pink-500/12 px-2 py-0.5 font-mono text-[11px] font-bold text-pink-600 dark:text-pink-300">v{rel.v}</span>
+            <span className="rounded-full bg-pink-500/12 px-2 py-0.5 font-mono text-[11px] font-bold text-pink-600 dark:text-pink-300">v{APP_VERSION}</span>
             <button onClick={() => go("ini", "nov")} className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-600 hover:underline dark:text-brand-300">Todas<ArrowRight className="size-3.5" /></button></div>
           <div className="px-5 pb-5">
             <p className="text-[15px] font-semibold leading-snug">{rel.t}</p><p className="text-[11.5px] text-slate-500">{rel.f}</p>

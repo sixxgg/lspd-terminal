@@ -4,7 +4,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CalendarClock } from "lucide-react";
-import { LS, useStoreVersion } from "@/lib/store";
+import { useStoreVersion } from "@/lib/store";
+import { logoOf } from "@/lib/dept";
 import { calAck, calAll, calMine, calSetAck, fmtWhen, isToday, type CalItem } from "@/lib/calendar";
 import { tipoC } from "@/components/calui";
 
@@ -29,7 +30,7 @@ export function CalAlert({ me }: { me: string }) {
   const read = () => close(() => calSetAck(me, e.id, { r: Date.now(), at: 0 }));
   const note = () => close(() => calSetAck(me, e.id, { a: Date.now(), r: Date.now(), at: 0 }));
   const later = () => close(() => calSetAck(me, e.id, { at: e.at - 30 * 6e4 > Date.now() + 5 * 6e4 ? e.at - 30 * 6e4 : Date.now() + 36e5 }));
-  const logo = LS.get("lspdt.logo") || "/next/logo.svg", tl = e.tipo === "Otro" ? "evento" : e.tipo.toLowerCase(), art = ["práctica", "instrucción", "reunión"].includes(tl) ? "una" : "un", rem = !!calAck(me)[e.id]?.at;
+  const logo = logoOf(), tl = e.tipo === "Otro" ? "evento" : e.tipo.toLowerCase(), art = ["práctica", "instrucción", "reunión"].includes(tl) ? "una" : "un", rem = !!calAck(me)[e.id]?.at;
   const host = document.querySelector<HTMLElement>(".tab-screen"), inside = !!host;
   return createPortal(
     <div className={`pointer-events-none ${inside ? "absolute" : "fixed"} inset-x-0 top-0 z-[94] flex justify-center px-3`} role="alert" aria-live="polite">

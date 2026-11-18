@@ -33,12 +33,12 @@ import { confetti } from "./lib/confetti";
 import { JUMP, jumpNow } from "./lib/jump";
 import { DEPT, onDept, savedDept, setDept } from "./lib/dept";
 import { cacheLoad, cacheOwner } from "./lib/cache";
-import { ACC, GUEST, LS, ME_ROLES, PREV, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
+import { ACC, GUEST, LS, ME_ROLES, PREV, goOffline, loadStore, storeHooks, useStoreVersion, type DirE, type Me } from "./lib/store";
 import { emailOf, findAgent, getRoster, rankES } from "./lib/domain";
 import { useFeedback } from "./components/feedback";
 import { APP_VERSION } from "./sections/Novedades";
 
-type Boot = { me: string | null; names: string[]; brand?: Record<string, string>; roster?: PubInfo["roster"]; data?: Parameters<typeof loadStore>[0] };
+type Boot = { me: string | null; names: string[]; dir?: DirE[]; lssd?: { n: string; r: string; p: string }[]; sahp?: { n: string; r: string; p: string }[]; brand?: Record<string, string>; roster?: PubInfo["roster"]; data?: Parameters<typeof loadStore>[0] };
 
 export default function App() {
   /* enlace temporal de una pizarra: se ve sin iniciar sesión */
@@ -131,7 +131,7 @@ function Main() {
   useEffect(() => {
     /* con copia local de esta cuenta: se pide solo lo que cambió (ahorra la transferencia de la base); sin copia, todo como siempre */
     const hint = cacheOwner();
-    void api("/api/auth" + (hint ? "" : "?full=1")).then(async r => { const b = r as unknown as Boot; ACC.names = b.names || []; deptFromBrand(b);
+    void api("/api/auth" + (hint ? "" : "?full=1")).then(async r => { const b = r as unknown as Boot; ACC.names = b.names || []; ACC.dir = b.dir || []; ACC.xr = (["lssd", "sahp"] as const).flatMap(d => (b[d] || []).map(a => ({ n: a.n, d, r: a.r }))); deptFromBrand(b);
       if (!b.me || b.data) { setBoot(b); if (b.me && b.data) enter(b.data); return; }
       const c = hint.split("|")[0] === b.me ? await cacheLoad() : null, ok = !!c && c.owner === hint;
       const d = await api("/api/data", { a: "sync", have: ok ? c!.kt : {} });
@@ -154,7 +154,7 @@ function Main() {
     if (p.since) save(); else void authApi({ a: "info" }).then(r => save(r.__s === 200 ? r.c : now)); }, [me]);
   if (me) PROF.me = me.n;
   /* logros (perfiles BETA): sella los nuevos; los raros o mejores tiran confeti */
-  useEffect(() => { if (!me || !profOk(me.n) || (!lssdAcc && !ACC.names.length)) return;
+  useEffect(() => { if (!me || !profOk(me.n) || !ACC.dir.length) return;
     stampLogros(me.n, me.r, l => { if (goodTier(l.tier)) { confetti(); toast(`¡Logro desbloqueado: ${l.t}!`); } }); }, [me, sv]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (me && LS.get("lspdt.ui") != null) setDeptUi(LS.json<Record<string, string>>("lspdt.ui", {})); });
   /* al volver de una actualización sigue la misma pantalla de carga (no un segundo cargando distinto) */
