@@ -3,7 +3,7 @@
    Moverse: arrastrar el fondo, la rueda o dos dedos; zoom con Ctrl + rueda, pellizco o los botones. Enlace temporal en vivo para ver sin cuenta.
    Datos: lspdt.board.<ámbito>.<id> y el índice lspdt.boards.<ámbito> (ámbito: gen o una división). */
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPE } from "react";
-import { AlignCenter, AlignLeft, ArrowUpRight, Bold, Circle, Copy, Diamond, Download, Frame, Hand, ImagePlus, Italic, LayoutTemplate, Link2, Loader2, Maximize, Minus, MousePointer2, PenLine, Plus, Presentation, Redo2, Square, StickyNote, Trash2, Type, Underline, Undo2, X, Pencil, Eraser, Lock, Unlock, Star } from "lucide-react";
+import { AlignCenter, AlignLeft, ArrowUpRight, Bold, Circle, Copy, Diamond, Download, Frame, Hand, ImagePlus, Italic, LayoutTemplate, Link2, Loader2, Maximize, Minus, MousePointer2, PenLine, Plus, Presentation, Redo2, Square, StickyNote, Trash2, Type, Underline, Undo2, X, Pencil, Eraser, Lock, Unlock, Star, Flag } from "lucide-react";
 import { Button, Card, Empty, Input, Select } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
 import { LS, ME_ROLES, syncNow, useStoreVersion } from "@/lib/store";
@@ -14,10 +14,16 @@ import { isRTD, isUMem } from "@/lib/units";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
 
-type K = "note" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "conn" | "pen" | "img";
-type It = { id: string; k: K; x: number; y: number; w: number; h: number; c: string; tx?: string; fs?: number; a?: string; b?: string; pts?: number[]; src?: string; sw?: number; lk?: boolean; bo?: boolean; it?: boolean; un?: boolean; al?: "l" | "c" };
+type K = "note" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "conn" | "pen" | "img" | "banner";
+type It = { id: string; k: K; x: number; y: number; w: number; h: number; c: string; tx?: string; fs?: number; a?: string; b?: string; pts?: number[]; src?: string; sw?: number; ds?: Dash; lk?: boolean; bo?: boolean; it?: boolean; un?: boolean; al?: "l" | "c" };
 type Meta = { id: string; t: string; by: string; upd: number; sh?: { t: string; exp: number; by: string }[] };
-type Tool = "sel" | "hand" | "note" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "conn" | "pen" | "erase";
+type Tool = "sel" | "hand" | "note" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "banner" | "conn" | "pen" | "erase";
+/* contorno: continuo, a trazos, de puntos o trazo y punto (como los ejes de un plano) */
+type Dash = "s" | "d" | "o" | "dd";
+const DASH: [Dash, string, string][] = [["s", "Continuo", "0"], ["d", "A trazos", "6 4"], ["o", "De puntos", "0.1 4"], ["dd", "Trazo y punto", "8 3 0.1 3"]];
+const dashOf = (ds: Dash | undefined, w: number) => (ds === "d" ? [w * 3, w * 2] : ds === "o" ? [0.01, w * 2.2] : ds === "dd" ? [w * 4.5, w * 1.8, 0.01, w * 1.8] : []);
+const capOf = (ds?: Dash) => (ds === "o" || ds === "dd" ? "round" : "butt") as "round" | "butt";
+const FILL_A = "1a"; /* relleno suave: la línea manda (como en el mapa de Infraestructura) */
 /* presencia en vivo: cursor (coordenadas del lienzo) y lo que cada uno está moviendo o dibujando */
 type LiveS = { x: number | null; y: number | null; mv?: It[] };
 type Live = { n: string; v: LiveS | null; t: number };
@@ -39,8 +45,8 @@ function edge(i: It, to: { x: number; y: number }) {
 const connPts = (c: It, M: Map<string, It>) => { const A = M.get(c.a!), B = M.get(c.b!); return A && B ? [edge(A, ctr(B)), edge(B, ctr(A))] : null; };
 const isFill = (k: K) => k === "rect" || k === "ellipse" || k === "diamond";
 const leftAl = (i: It) => (i.al ? i.al === "l" : i.k === "frame" || i.k === "text");
-const txtCol = (i: It) => (i.k === "note" ? "#1e293b" : i.k === "frame" || i.k === "text" ? i.c : FG);
-const font = (i: It) => `${i.it ? "italic " : ""}${i.bo || i.k === "frame" ? 700 : 500} ${i.fs || 16}px Inter, system-ui, sans-serif`;
+const txtCol = (i: It) => (i.k === "banner" ? "#fff" : i.k === "note" ? "#1e293b" : i.k === "frame" || i.k === "text" ? i.c : FG);
+const font = (i: It) => `${i.it ? "italic " : ""}${i.bo || i.k === "frame" || i.k === "banner" ? 800 : 500} ${i.fs || 16}px Inter, system-ui, sans-serif`;
 /* las pizarras de la PSB solo las ven sus miembros; las de cada división las edita su gente */
 /* «Mandos»: pizarras destacadas, solo Detectives y de Sargento II para arriba (el servidor ni siquiera se las manda al resto) */
 const altoOk = (r?: string) => /^Detective/.test(r || "") || lvl(r) >= 7;
@@ -101,14 +107,15 @@ async function exportPng(items: It[], name: string) {
     const b = box(i); ctx.save();
     if (i.k === "frame") { ctx.fillStyle = i.c + "14"; ctx.strokeStyle = i.c; ctx.lineWidth = 2; ctx.setLineDash([8, 6]); ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 14); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); text(i); }
     else if (i.k === "note") { ctx.shadowColor = "rgba(0,0,0,.35)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4; ctx.fillStyle = i.c; ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 6); ctx.fill(); ctx.shadowColor = "transparent"; text(i); }
-    else if (isFill(i.k)) { ctx.fillStyle = i.c + "26"; ctx.strokeStyle = i.c; ctx.lineWidth = i.sw || 2.5; ctx.beginPath();
+    else if (i.k === "banner") { ctx.fillStyle = i.c; ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 8); ctx.fill(); text(i); }
+    else if (isFill(i.k)) { const w = i.sw || 3; ctx.fillStyle = i.c + FILL_A; ctx.strokeStyle = i.c; ctx.lineWidth = w; ctx.setLineDash(dashOf(i.ds, w)); ctx.lineCap = capOf(i.ds); ctx.beginPath();
       if (i.k === "rect") ctx.roundRect(b.x, b.y, b.w, b.h, 10); else if (i.k === "ellipse") ctx.ellipse(b.x + b.w / 2, b.y + b.h / 2, b.w / 2, b.h / 2, 0, 0, Math.PI * 2);
       else { ctx.moveTo(b.x + b.w / 2, b.y); ctx.lineTo(b.x + b.w, b.y + b.h / 2); ctx.lineTo(b.x + b.w / 2, b.y + b.h); ctx.lineTo(b.x, b.y + b.h / 2); ctx.closePath(); }
       ctx.fill(); ctx.stroke(); text(i); }
     else if (i.k === "text") text(i);
     else if (i.k === "img") { const im = imgs.get(i.id); if (im) ctx.drawImage(im, b.x, b.y, b.w, b.h); }
-    else if (i.k === "pen") { const p = i.pts!; ctx.strokeStyle = i.c; ctx.lineWidth = i.sw || 3; ctx.lineCap = ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(p[0], p[1]); for (let j = 2; j < p.length; j += 2) ctx.lineTo(p[j], p[j + 1]); ctx.stroke(); }
-    else if (i.k === "conn") { const pp = connPts(i, M); if (pp) { const [a, z] = pp, ang = Math.atan2(z.y - a.y, z.x - a.x); ctx.strokeStyle = ctx.fillStyle = i.c; ctx.lineWidth = i.sw || 2.5; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(z.x, z.y); ctx.stroke();
+    else if (i.k === "pen") { const p = i.pts!; ctx.strokeStyle = i.c; ctx.lineWidth = i.sw || 3; ctx.lineCap = ctx.lineJoin = "round"; ctx.setLineDash(dashOf(i.ds, i.sw || 3)); ctx.beginPath(); ctx.moveTo(p[0], p[1]); for (let j = 2; j < p.length; j += 2) ctx.lineTo(p[j], p[j + 1]); ctx.stroke(); }
+    else if (i.k === "conn") { const pp = connPts(i, M); if (pp) { const [a, z] = pp, ang = Math.atan2(z.y - a.y, z.x - a.x); ctx.strokeStyle = ctx.fillStyle = i.c; ctx.lineWidth = i.sw || 2.5; ctx.setLineDash(dashOf(i.ds, i.sw || 2.5)); ctx.lineCap = capOf(i.ds); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(z.x, z.y); ctx.stroke(); ctx.setLineDash([]);
       ctx.beginPath(); ctx.moveTo(z.x, z.y); ctx.lineTo(z.x - 14 * Math.cos(ang - 0.4), z.y - 14 * Math.sin(ang - 0.4)); ctx.lineTo(z.x - 14 * Math.cos(ang + 0.4), z.y - 14 * Math.sin(ang + 0.4)); ctx.closePath(); ctx.fill(); } }
     ctx.restore();
   }
@@ -140,20 +147,14 @@ export function PizarraArea() {
   const TOP = f === "all" || f === "alto" ? all.filter(b => b.sc === "alto").sort((a, b) => b.upd - a.upd) : [];
   return (
     <div className="space-y-4">
-    <div className="beta-hero flex flex-wrap items-center gap-4 rounded-2xl px-5 py-4">
-      <Presentation className="size-8 shrink-0 text-amber-300" />
-      <div className="min-w-0 flex-1"><h2 className="flex flex-wrap items-center gap-3 text-2xl font-extrabold tracking-tight text-white">Pizarra <span className="beta-big">(BETA)</span></h2>
-        <p className="mt-0.5 text-sm text-amber-100/80">Función en prueba: puede tener errores o cambiar. Si algo falla, avisá por Feedback.</p></div>
-    </div>
-    {TOP.length > 0 && <div className="rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/[.08] to-transparent p-4">
-      <div className="mb-3 flex flex-wrap items-center gap-2"><Star className="size-4 fill-amber-400 text-amber-400" /><b className="text-sm">Destacadas · Mandos</b>
-        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-600 ring-1 ring-inset ring-amber-500/30 dark:text-amber-300">Detectives · Sargento II y superiores</span></div>
-      <div className="grid gap-3 sm:grid-cols-2">{TOP.map(b => { const v = `${b.sc}:${b.id}`; return (
-        <div key={v} className="group relative overflow-hidden rounded-xl border-2 border-amber-400/60 p-5 shadow-lg shadow-amber-500/10 transition hover:border-amber-300" style={{ background: BG, backgroundImage: `radial-gradient(circle, ${DOT} 1px, transparent 1px)`, backgroundSize: "16px 16px" }}>
+    <p className="flex items-center gap-2 text-xs text-slate-500"><span className="beta-tag">BETA</span>En prueba: si algo falla, avisá por Feedback.</p>
+    {TOP.length > 0 && <div>
+      <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-300"><Star className="size-3.5 fill-amber-400 text-amber-400" />Mandos</p>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{TOP.map(b => { const v = `${b.sc}:${b.id}`; return (
+        <div key={v} className="group relative overflow-hidden rounded-xl border border-amber-400/60 px-3.5 py-3 transition hover:border-amber-300" style={{ background: BG, backgroundImage: `radial-gradient(circle, ${DOT} 1px, transparent 1px)`, backgroundSize: "16px 16px" }}>
           {ren === v ? <Input autoFocus defaultValue={b.t} onBlur={e => { const t = e.target.value.trim(); if (t) setIdx(b.sc, X => X.map(x => (x.id === b.id ? { ...x, t } : x))); setRen(""); }} onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
             : <button onClick={() => pick(v)} className="block w-full text-left">
-              <span className="mb-2 inline-flex items-center gap-1 rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-amber-950"><Lock className="size-3" />Mandos</span>
-              <b className="block truncate text-lg text-slate-50">{b.t}</b><small className="text-xs text-slate-400">{b.by} · {new Date(b.upd).toLocaleDateString()}</small></button>}
+              <b className="flex items-center gap-1.5 truncate text-slate-50"><Lock className="size-3.5 shrink-0 text-amber-400" />{b.t}</b><small className="text-xs text-slate-400">{b.by} · {new Date(b.upd).toLocaleDateString()}</small></button>}
           <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition group-hover:opacity-100">
             <button aria-label="Renombrar" onClick={() => setRen(v)} className="rounded p-1 text-slate-400 hover:text-amber-300"><Pencil className="size-3.5" /></button>
             {(b.by === me.n || ME_ROLES.admin) && <button aria-label="Eliminar" onClick={async () => { if (await confirm(`¿Eliminar la pizarra «${b.t}»?`, { danger: true })) { LS.del(bK(b.sc, b.id)); setIdx(b.sc, X => X.filter(x => x.id !== b.id)); toast("Pizarra eliminada"); } }} className="rounded p-1 text-slate-400 hover:text-red-500"><Trash2 className="size-3.5" /></button>}</div>
@@ -167,11 +168,11 @@ export function PizarraArea() {
           <Button size="sm" icon={<Plus />} onClick={create}>Nueva pizarra</Button></div>
       </div>
       {!L.length ? (f === "alto" ? null : <Empty icon={<Presentation />} title="Todavía no hay pizarras" desc="Creá una y elegí una plantilla para arrancar." />)
-        : <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">{L.map(b => { const ed = canEd(b.sc, me.n, me.r), v = `${b.sc}:${b.id}`; return (
-          <div key={v} className="group relative rounded-xl border border-slate-700 p-4 transition hover:border-brand-400" style={{ background: BG, backgroundImage: `radial-gradient(circle, ${DOT} 1px, transparent 1px)`, backgroundSize: "16px 16px" }}>
+        : <div className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{L.map(b => { const ed = canEd(b.sc, me.n, me.r), v = `${b.sc}:${b.id}`; return (
+          <div key={v} className="group relative rounded-xl border border-slate-700 px-3.5 py-3 transition hover:border-brand-400" style={{ background: BG, backgroundImage: `radial-gradient(circle, ${DOT} 1px, transparent 1px)`, backgroundSize: "16px 16px" }}>
             {ren === v ? <Input autoFocus defaultValue={b.t} onBlur={e => { const t = e.target.value.trim(); if (t) setIdx(b.sc, X => X.map(x => (x.id === b.id ? { ...x, t } : x))); setRen(""); }} onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
-              : <button onClick={() => pick(v)} className="block w-full text-left"><span className="mb-1 inline-block rounded bg-white/10 px-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300">{b.scl}</span>
-                <b className="block truncate text-slate-100">{b.t}</b><small className="text-xs text-slate-400">{b.by} · {new Date(b.upd).toLocaleDateString()}</small></button>}
+              : <button onClick={() => pick(v)} className="block w-full text-left">
+                <b className="flex items-center gap-2 truncate text-slate-100"><span className="shrink-0 rounded bg-white/10 px-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300">{b.scl}</span><span className="truncate">{b.t}</span></b><small className="text-xs text-slate-400">{b.by} · {new Date(b.upd).toLocaleDateString()}</small></button>}
             {ed && <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition group-hover:opacity-100">
               <button aria-label="Renombrar" onClick={() => setRen(v)} className="rounded p-1 text-slate-400 hover:text-brand-400"><Pencil className="size-3.5" /></button>
               {(b.by === me.n || ME_ROLES.admin) && <button aria-label="Eliminar" onClick={async () => { if (await confirm(`¿Eliminar la pizarra «${b.t}»?`, { danger: true })) { LS.del(bK(b.sc, b.id)); setIdx(b.sc, X => X.filter(x => x.id !== b.id)); toast("Pizarra eliminada"); } }} className="rounded p-1 text-slate-400 hover:text-red-500"><Trash2 className="size-3.5" /></button>}</div>}
@@ -204,7 +205,7 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
   const ver = useStoreVersion(), { toast, confirm } = useFeedback(), me = useMe();
   const [items, setItems] = useState<It[]>(() => ext || LS.json<{ items: It[] }>(k, { items: [] }).items || []);
   const [view, setView] = useState({ x: 80, y: 80, z: 0.8 }), [tool, setTool] = useState<Tool>("sel"), [selIds, setSel] = useState<string[]>([]), [edit, setEdit] = useState("");
-  const [col, setCol] = useState({ note: NOTE_C[0], line: LINE_C[0], sw: 4 }), [tpl, setTpl] = useState(false), [title, setTitle] = useState(meta.t), [full, setFull] = useState(!!full0), [share, setShare] = useState(false);
+  const [col, setCol] = useState<{ note: string; line: string; sw: number; ds: Dash }>({ note: NOTE_C[0], line: LINE_C[0], sw: 4, ds: "s" }), [tpl, setTpl] = useState(false), [title, setTitle] = useState(meta.t), [full, setFull] = useState(!!full0), [share, setShare] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null), fileRef = useRef<HTMLInputElement>(null), act = useRef<Act | null>(null), ptrs = useRef(new Map<number, { x: number; y: number }>());
   const [marq, setMarq] = useState<null | { x: number; y: number; w: number; h: number }>(null), [ghost, setGhost] = useState<null | { a: string; x: number; y: number }>(null);
   const hist = useRef<{ u: It[][]; r: It[][] }>({ u: [], r: [] }), saved = useRef(JSON.stringify(items)), space = useRef(false), timer = useRef(0);
@@ -259,7 +260,7 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
       else if ((e.ctrlKey || e.metaKey) && ["b", "i", "u"].includes(e.key.toLowerCase()) && selIds.length) { e.preventDefault(); toggle(({ b: "bo", i: "it", u: "un" } as const)[e.key.toLowerCase() as "b"]); }
       else if (e.key === "Escape") { setSel([]); setTool("sel"); }
       else if (e.key === "Enter" && selIds.length === 1) { e.preventDefault(); setEdit(selIds[0]); }
-      else if (!e.ctrlKey && !e.metaKey && !e.altKey) { const t = ({ v: "sel", h: "hand", n: "note", t: "text", r: "rect", o: "ellipse", d: "diamond", f: "frame", c: "conn", p: "pen", e: "erase" } as Record<string, Tool>)[e.key.toLowerCase()]; if (t) setTool(t); } };
+      else if (!e.ctrlKey && !e.metaKey && !e.altKey) { const t = ({ v: "sel", h: "hand", n: "note", t: "text", r: "rect", o: "ellipse", d: "diamond", f: "frame", b: "banner", c: "conn", p: "pen", e: "erase" } as Record<string, Tool>)[e.key.toLowerCase()]; if (t) setTool(t); } };
     const ku = (e: KeyboardEvent) => { if (e.code === "Space") space.current = false; };
     window.addEventListener("keydown", kd); window.addEventListener("keyup", ku); return () => { window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku); };
   });
@@ -284,9 +285,9 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
     if (tool === "erase") { if (it) del([it.id]); return; }
     if (handle && it) { act.current = { m: "resize", ...base, id: it.id, o: items }; return; }
     if (tool === "conn" && it && it.k !== "conn") { act.current = { m: "conn", ...base, id: it.id }; setGhost({ a: it.id, x: p.x, y: p.y }); return; }
-    if (tool === "pen") { const n: It = { id: uid(), k: "pen", x: 0, y: 0, w: 0, h: 0, c: col.line, sw: col.sw, pts: [p.x, p.y] }; act.current = { m: "pen", ...base, id: n.id, o: items }; setItems([...items, n]); return; }
-    if (["note", "text", "rect", "ellipse", "diamond", "frame"].includes(tool)) {
-      const kk = tool as K, n: It = { id: uid(), k: kk, x: p.x, y: p.y, w: 0, h: 0, c: kk === "note" ? col.note : kk === "text" ? FG : col.line, tx: kk === "frame" ? "Marco" : kk === "text" ? "Texto" : "", fs: kk === "frame" ? 18 : 16, ...(isFill(kk) ? { sw: col.sw } : {}) };
+    if (tool === "pen") { const n: It = { id: uid(), k: "pen", x: 0, y: 0, w: 0, h: 0, c: col.line, sw: col.sw, ds: col.ds, pts: [p.x, p.y] }; act.current = { m: "pen", ...base, id: n.id, o: items }; setItems([...items, n]); return; }
+    if (["note", "text", "rect", "ellipse", "diamond", "frame", "banner"].includes(tool)) {
+      const kk = tool as K, n: It = { id: uid(), k: kk, x: p.x, y: p.y, w: 0, h: 0, c: kk === "note" ? col.note : kk === "text" ? FG : col.line, tx: kk === "frame" ? "Marco" : kk === "text" ? "Texto" : kk === "banner" ? "TÍTULO" : "", fs: kk === "frame" ? 18 : kk === "banner" ? 22 : 16, ...(isFill(kk) ? { sw: col.sw, ds: col.ds } : {}) };
       act.current = { m: "draw", ...base, id: n.id, o: items }; setItems([...items, n]); setSel([n.id]); return; }
     if (it) { const ids = e.shiftKey ? (selIds.includes(it.id) ? selIds.filter(x => x !== it.id) : [...selIds, it.id]) : selIds.includes(it.id) ? selIds : [it.id];
       const inside = ids.flatMap(id => { const f = M.get(id); if (!f || f.k !== "frame") return []; const b = box(f); return items.filter(o => o.id !== f.id && o.k !== "conn" && ctr(o).x > b.x && ctr(o).x < b.x + b.w && ctr(o).y > b.y && ctr(o).y < b.y + b.h).map(o => o.id); });
@@ -319,11 +320,11 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
     if (a.m === "move" || a.m === "resize" || a.m === "pen") { const ids = a.id?.split(",") || []; if (a.m === "move") { const dx = p.x - a.wx!, dy = p.y - a.wy!; const L = a.o!.map(i => (ids.includes(i.id) ? { ...i, x: i.x + dx, y: i.y + dy, pts: i.pts?.map((v, j) => v + (j % 2 ? dy : dx)) } : i)); if (dx || dy) commit(L, a.o); else setItems(a.o!); return; }
       const L = itRef.current; if (JSON.stringify(a.o) !== JSON.stringify(L)) { hist.current.u.push(a.o!); hist.current.r = []; persist(L); } return; }
     if (a.m === "draw") { const cur = itRef.current, n = cur.find(i => i.id === a.id); if (!n) return; let f = n; const small = Math.abs(n.w) < 12 && Math.abs(n.h) < 12;
-      if (small) { const d = ({ note: [180, 140], text: [220, 44], rect: [200, 110], ellipse: [200, 110], diamond: [180, 140], frame: [420, 320] } as Record<string, number[]>)[n.k]; f = { ...n, x: n.x - (n.k === "text" ? 0 : d[0] / 2), y: n.y - (n.k === "text" ? 0 : d[1] / 2), w: d[0], h: d[1] }; }
+      if (small) { const d = ({ note: [180, 140], text: [220, 44], rect: [200, 110], ellipse: [200, 110], diamond: [180, 140], frame: [420, 320], banner: [440, 64] } as Record<string, number[]>)[n.k]; f = { ...n, x: n.x - (n.k === "text" ? 0 : d[0] / 2), y: n.y - (n.k === "text" ? 0 : d[1] / 2), w: d[0], h: d[1] }; }
       else f = { ...n, ...box(n) };
       commit(cur.map(i => (i.id === n.id ? f : i)), a.o); setTool("sel"); if (f.k !== "frame") setEdit(f.id); return; }
     if (a.m === "conn") { setGhost(null); const t = [...items].reverse().find(i => { if (i.k === "conn" || i.k === "pen" || i.id === a.id) return false; const b = box(i); return p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h; });
-      if (t) commit([...items, { id: uid(), k: "conn", x: 0, y: 0, w: 0, h: 0, c: col.line, sw: col.sw, a: a.id, b: t.id }]); return; }
+      if (t) commit([...items, { id: uid(), k: "conn", x: 0, y: 0, w: 0, h: 0, c: col.line, sw: col.sw, ds: col.ds, a: a.id, b: t.id }]); return; }
     if (a.m === "marq") { const m = marq; setMarq(null); if (m && (m.w > 4 || m.h > 4)) setSel(items.filter(i => { if (i.k === "conn") return false; const c = i.k === "pen" ? { x: i.pts![0], y: i.pts![1] } : ctr(i); return c.x >= m.x && c.x <= m.x + m.w && c.y >= m.y && c.y <= m.y + m.h; }).map(i => i.id)); }
   };
 
@@ -350,7 +351,7 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
 
   const T: [Tool, string, string, typeof Hand][] = [["sel", "Elegir", "Seleccionar (V) · arrastrá el fondo para moverte, Shift + arrastrar para elegir varios", MousePointer2], ["hand", "Mover", "Mover el lienzo (H o barra espaciadora)", Hand],
     ["note", "Nota", "Nota adhesiva (N)", StickyNote], ["text", "Texto", "Texto (T)", Type], ["rect", "Cuadro", "Rectángulo (R)", Square], ["ellipse", "Círculo", "Círculo (O)", Circle], ["diamond", "Rombo", "Rombo / decisión (D)", Diamond],
-    ["frame", "Marco", "Marco (F)", Frame], ["conn", "Flecha", "Flecha (C): arrastrá de una forma a otra", ArrowUpRight], ["pen", "Lápiz", "Lápiz (P)", PenLine], ["erase", "Goma", "Goma (E): tocá algo para borrarlo", Eraser]];
+    ["frame", "Marco", "Marco (F)", Frame], ["banner", "Banner", "Banner de título (B)", Flag], ["conn", "Flecha", "Flecha (C): arrastrá de una forma a otra", ArrowUpRight], ["pen", "Lápiz", "Lápiz (P)", PenLine], ["erase", "Goma", "Goma (E): tocá algo para borrarlo", Eraser]];
   const tb = "flex w-14 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium leading-none transition [&>svg]:size-4", tbI = "text-slate-300 hover:bg-white/10", sep = <span className="mx-1 h-5 w-px bg-white/15" />;
   const fb = (on: boolean) => cn("grid size-7 place-items-center rounded-md text-xs font-bold transition [&>svg]:size-3.5", on ? "bg-brand-600 text-white" : "text-slate-300 hover:bg-white/10");
   const grid = 24 * view.z, dot = Math.max(0.7, view.z * 1.1);
@@ -374,8 +375,8 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
             <defs><marker id={`ah-${meta.id}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke" /></marker></defs>
             {shown.filter(i => i.k === "conn").map(i => { const pp = connPts(i, MS); if (!pp) return null; return <g key={i.id} className="pointer-events-auto cursor-pointer" onPointerDown={e => down(e, i)}>
               <line x1={pp[0].x} y1={pp[0].y} x2={pp[1].x} y2={pp[1].y} stroke="transparent" strokeWidth={14} />
-              <line x1={pp[0].x} y1={pp[0].y} x2={pp[1].x} y2={pp[1].y} stroke={selIds.includes(i.id) ? "#818cf8" : i.c} strokeWidth={i.sw || 2.5} markerEnd={`url(#ah-${meta.id})`} /></g>; })}
-            {shown.filter(i => i.k === "pen").map(i => <polyline key={i.id} points={i.pts!.join(" ")} fill="none" stroke={i.c} strokeWidth={i.sw || 3} strokeLinecap="round" strokeLinejoin="round" className="pointer-events-auto cursor-move" style={selIds.includes(i.id) ? { filter: "drop-shadow(0 0 3px #818cf8)" } : undefined} onPointerDown={e => down(e, i)} />)}
+              <line x1={pp[0].x} y1={pp[0].y} x2={pp[1].x} y2={pp[1].y} stroke={selIds.includes(i.id) ? "#818cf8" : i.c} strokeWidth={i.sw || 2.5} strokeDasharray={dashOf(i.ds, i.sw || 2.5).join(" ") || undefined} strokeLinecap={capOf(i.ds)} markerEnd={`url(#ah-${meta.id})`} /></g>; })}
+            {shown.filter(i => i.k === "pen").map(i => <polyline key={i.id} points={i.pts!.join(" ")} fill="none" stroke={i.c} strokeWidth={i.sw || 3} strokeDasharray={dashOf(i.ds, i.sw || 3).join(" ") || undefined} strokeLinecap="round" strokeLinejoin="round" className="pointer-events-auto cursor-move" style={selIds.includes(i.id) ? { filter: "drop-shadow(0 0 3px #818cf8)" } : undefined} onPointerDown={e => down(e, i)} />)}
             {ghost && (() => { const A = M.get(ghost.a); if (!A) return null; const s = edge(A, ghost); return <line x1={s.x} y1={s.y} x2={ghost.x} y2={ghost.y} stroke={col.line} strokeWidth={2} strokeDasharray="6 5" markerEnd={`url(#ah-${meta.id})`} />; })()}
           </svg>
           {shown.filter(i => i.k !== "frame" && i.k !== "conn" && i.k !== "pen" && !(i.lk && i.k === "img")).map(i => <ItemV key={i.id} i={i} sel={selIds.includes(i.id)} edit={edit === i.id} canEdit={canEdit} ctl={ctl} />)}
@@ -403,12 +404,15 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
         {share && k && <SharePanel k={k} meta={meta} me={me.n} onMeta={onMeta!} onClose={() => setShare(false)} />}
 
         {/* barra de formato y colores de lo elegido */}
-        {canEdit && (selIds.length > 0 || ["note", "rect", "ellipse", "diamond", "frame", "conn", "pen", "text"].includes(tool)) && <div className="absolute left-[calc(50%+2rem)] top-3 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-[#1f2125]/95 p-1.5 shadow-xl backdrop-blur" onPointerDown={e => e.stopPropagation()}>
+        {canEdit && (selIds.length > 0 || ["note", "rect", "ellipse", "diamond", "frame", "banner", "conn", "pen", "text"].includes(tool)) && <div className="absolute left-[calc(50%+2rem)] top-3 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-[#1f2125]/95 p-1.5 shadow-xl backdrop-blur" onPointerDown={e => e.stopPropagation()}>
           {(selK.length ? selK.every(x => x === "note") : tool === "note") ? NOTE_C.map(c => <button key={c} aria-label={c} onClick={() => { setCol({ ...col, note: c }); if (selIds.length) setProp({ c }); }} className="size-6 rounded-md ring-1 ring-black/20" style={{ background: c, outline: (one?.c || col.note) === c ? "2px solid #818cf8" : undefined }} />)
             : LINE_C.map(c => <button key={c} aria-label={c} onClick={() => { setCol({ ...col, line: c }); if (selIds.length) setProp({ c }); }} className="size-6 rounded-full ring-1 ring-black/20" style={{ background: c, outline: (one?.c || col.line) === c ? "2px solid #818cf8" : undefined }} />)}
           {(["pen", "conn", "rect", "ellipse", "diamond"].includes(tool) || strokeSel.length > 0) && <>{sep}
             {SW.map(w => <button key={w} title={`Grosor ${w}`} aria-label={`Grosor ${w}`} onClick={() => { setCol({ ...col, sw: w }); if (strokeSel.length) commit(items.map(i => (strokeSel.some(x => x.id === i.id) ? { ...i, sw: w } : i))); }}
-              className={fb((strokeSel[0]?.sw || col.sw) === w)}><span className="block w-4 rounded-full bg-current" style={{ height: Math.max(1.5, w / 2) }} /></button>)}</>}
+              className={fb((strokeSel[0]?.sw || col.sw) === w)}><span className="block w-4 rounded-full bg-current" style={{ height: Math.max(1.5, w / 2) }} /></button>)}
+            {sep}
+            {DASH.map(([d, l, a]) => <button key={d} title={`Contorno ${l.toLowerCase()}`} aria-label={l} onClick={() => { setCol({ ...col, ds: d }); if (strokeSel.length) commit(items.map(i => (strokeSel.some(x => x.id === i.id) ? { ...i, ds: d } : i))); }}
+              className={fb((strokeSel[0]?.ds || (strokeSel.length ? "s" : col.ds)) === d)}><svg width="18" height="8" viewBox="0 0 18 8"><line x1="1" y1="4" x2="17" y2="4" stroke="currentColor" strokeWidth="2" strokeDasharray={a} strokeLinecap={d === "o" || d === "dd" ? "round" : "butt"} /></svg></button>)}</>}
           {txSel.length > 0 && <>{sep}
             {HEAD.map(([l, fs, bo]) => <button key={l} title={l === "P" ? "Texto normal" : `Título ${l}`} onClick={() => commit(items.map(i => (selIds.includes(i.id) ? { ...i, fs, bo, h: i.k === "text" ? Math.max(Math.abs(i.h), Math.ceil(fs * 1.3 + 26)) : i.h } : i)))} className={fb(txSel.every(i => (i.fs || 16) === fs))}>{l}</button>)}
             {sep}
@@ -467,16 +471,18 @@ type Ctl = { down: (e: RPE, it?: It, h?: boolean) => void; edit: (i: It) => void
 const ItemV = memo(function ItemV({ i, sel, edit, canEdit, ctl }: { i: It; sel: boolean; edit: boolean; canEdit: boolean; ctl: Ctl }) {
   const onDown = ctl.down, onEdit = () => ctl.edit(i), onText = (t: string) => ctl.text(i, t);
   const b = box(i), left = leftAl(i), top = i.k === "frame" || i.k === "text";
-  const ts: React.CSSProperties = { fontSize: i.fs || 16, lineHeight: 1.3, color: txtCol(i), fontWeight: i.bo || i.k === "frame" ? 700 : 500, fontStyle: i.it ? "italic" : undefined, textDecoration: i.un ? "underline" : undefined, textAlign: left ? "left" : "center" };
+  const ts: React.CSSProperties = { fontSize: i.fs || 16, lineHeight: 1.3, color: txtCol(i), fontWeight: i.k === "banner" ? 800 : i.bo || i.k === "frame" ? 700 : 500, letterSpacing: i.k === "banner" ? ".08em" : undefined, textTransform: i.k === "banner" ? "uppercase" : undefined, fontStyle: i.it ? "italic" : undefined, textDecoration: i.un ? "underline" : undefined, textAlign: left ? "left" : "center" };
   const txt = edit ? <textarea autoFocus defaultValue={i.tx} onPointerDown={e => e.stopPropagation()} onFocus={e => e.target.select()} onBlur={e => onText(e.target.value)}
       onKeyDown={e => { e.stopPropagation(); if (e.key === "Escape" || (e.key === "Enter" && (e.ctrlKey || e.metaKey))) (e.target as HTMLTextAreaElement).blur(); }}
       className="absolute inset-0 resize-none bg-transparent p-3 outline-none" style={ts} />
     : <div className={cn("pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words p-3", !top && "flex flex-col justify-center")} style={ts}>{i.tx}</div>;
   let body: React.ReactNode = null;
   if (i.k === "note") body = <div className="absolute inset-0 rounded-md shadow-[0_6px_16px_rgba(0,0,0,.35)]" style={{ background: i.c }} />;
-  else if (i.k === "rect") body = <div className="absolute inset-0 rounded-[10px] border-solid" style={{ borderWidth: i.sw || 2.5, borderColor: i.c, background: i.c + "26" }} />;
-  else if (i.k === "ellipse") body = <div className="absolute inset-0 rounded-[50%] border-solid" style={{ borderWidth: i.sw || 2.5, borderColor: i.c, background: i.c + "26" }} />;
-  else if (i.k === "diamond") body = <svg className="absolute inset-0 overflow-visible" width={b.w} height={b.h}><polygon points={`${b.w / 2},0 ${b.w},${b.h / 2} ${b.w / 2},${b.h} 0,${b.h / 2}`} fill={i.c + "26"} stroke={i.c} strokeWidth={i.sw || 2.5} /></svg>;
+  else if (isFill(i.k)) { const w = i.sw || 3, h2 = w / 2, st = { fill: i.c + FILL_A, stroke: i.c, strokeWidth: w, strokeDasharray: dashOf(i.ds, w).join(" ") || undefined, strokeLinecap: capOf(i.ds), strokeLinejoin: "round" as const };
+    body = <svg className="absolute inset-0 overflow-visible" width={b.w} height={b.h}>{i.k === "rect" ? <rect x={h2} y={h2} width={Math.max(0, b.w - w)} height={Math.max(0, b.h - w)} rx={10} {...st} />
+      : i.k === "ellipse" ? <ellipse cx={b.w / 2} cy={b.h / 2} rx={Math.max(0, b.w / 2 - h2)} ry={Math.max(0, b.h / 2 - h2)} {...st} />
+      : <polygon points={`${b.w / 2},${h2} ${b.w - h2},${b.h / 2} ${b.w / 2},${b.h - h2} ${h2},${b.h / 2}`} {...st} />}</svg>; }
+  else if (i.k === "banner") body = <div className="absolute inset-0 rounded-lg shadow-[0_6px_18px_rgba(0,0,0,.35)]" style={{ background: `linear-gradient(90deg, ${i.c}, ${i.c}d9)` }} />;
   else if (i.k === "frame") body = <div className="absolute inset-0 rounded-[14px] border-2 border-dashed" style={{ borderColor: i.c, background: i.c + "14" }} />;
   else if (i.k === "img") body = <img src={i.src} alt="" draggable={false} className="absolute inset-0 size-full rounded object-fill" />;
   return (

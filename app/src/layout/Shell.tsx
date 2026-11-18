@@ -9,7 +9,7 @@ import { AREAS, canArea, lockedOf, menuAreas, secsOf, type Area, type Sec } from
 import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
 import { uiText } from "@/lib/templates";
-import { rankES } from "@/lib/domain";
+import { LEVEL, rankES } from "@/lib/domain";
 import { GUEST, LS, ME_ROLES, getNet, useStoreVersion } from "@/lib/store";
 import { DEPT, DEPTS, logoOf, setDept, type DeptId } from "@/lib/dept";
 import { AccountModal } from "@/components/account";
@@ -191,7 +191,10 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
                   className={cn("inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-[12.5px] font-semibold transition min-[1800px]:px-3.5 min-[1800px]:text-[13px]", "uppercase tracking-wide", divBar && FIT[fit], divBar && fit >= 3 && !on && "[&>svg]:hidden", focusRing,
                     on ? "bg-brand-500/15 text-brand-700 ring-1 ring-inset ring-brand-500/40 dark:text-brand-200" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-white")}>
                   <I className="size-4 shrink-0" />{s.sl || s.l}</button>); })}
-              {lockedOf(area, me.r).map(s => <span key={s.k} title="Bloqueada para tu rango" className="inline-flex shrink-0 cursor-not-allowed items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-[12.5px] font-semibold uppercase tracking-wide text-red-500/70 dark:text-red-400/70 min-[1800px]:px-3.5 min-[1800px]:text-[13px]"><Lock className="size-3.5 shrink-0" />{s.sl || s.l}</span>)}
+              {(() => { const L = lockedOf(area, me.r); return L.length > 0 && (
+                /* lo que pide más rango: un solo chip discreto (al pasar el mouse dice cuáles son y desde qué rango) */
+                <span title={L.map(s => `${s.l} · desde ${rankES(Object.keys(LEVEL).find(r => LEVEL[r] === s.min && !/^Detective/.test(r)) || "")}`).join("\n")} className="inline-flex shrink-0 cursor-help items-center gap-1.5 self-center whitespace-nowrap rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-[11.5px] font-medium text-slate-400 dark:border-slate-700 dark:text-slate-500">
+                  <Lock className="size-3 shrink-0" />{L.length === 1 ? (L[0].sl || L[0].l) : `${L.length} más`}</span>); })()}
             </nav>
           </div>)}
       </header>

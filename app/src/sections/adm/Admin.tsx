@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BookOpenCheck, Scale, UserCheck, Crown, ShieldPlus, ImagePlus, Type, Save, Check, X, Upload, Download, FileSpreadsheet, RotateCcw, Shield, Database, Eye } from "lucide-react";
+import { BookOpenCheck, Scale, UserCheck, Crown, ShieldPlus, ImagePlus, Type, Save, Check, X, Upload, Download, FileSpreadsheet, RotateCcw, Shield, Database, Eye, KeyRound } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Select } from "@/components/ui";
 import { prevStart } from "@/lib/preview";
 import { AgentCombo, Avatar } from "@/components/agents";
@@ -11,7 +11,7 @@ import { UI_DEF, uiKey, type UiKey } from "@/lib/templates";
 import { dk } from "@/lib/store";
 import { ALL_DIVS, deptDivNames, hasDivFile, findAgent, fmtDate, getRoster, norm, rankES, RANK_COLOR } from "@/lib/domain";
 import { authApi } from "@/lib/api";
-import { DEF_ROSTER, LS, ME_ROLES, syncIdle, useJSON, useStoreVersion } from "@/lib/store";
+import { ACC, DEF_ROSTER, LS, ME_ROLES, syncIdle, useJSON, useStoreVersion } from "@/lib/store";
 import { parseCSV } from "@/lib/csv";
 import { DivLogo } from "@/sections/sup/Agentes";
 import { CursorGrid, SkinGrid } from "@/components/appearance";
@@ -42,6 +42,26 @@ export function AdmAccesosX() {
   return <div className="space-y-5">{ME_ROLES.six && <OwnerAcc k="lspdt.legacc" t="Acceso a Legal" icon={<Scale />} area="Legal" />}
     <p className="text-sm text-slate-500">Las cuentas {DEL[DEPT.id]} entran con su código de invitación (lo generás en tu panel, eligiendo el departamento). No hay solicitudes ni administradores aparte.</p></div>;
 }
+/* acceso a Supervisores, Capitanía y Jefatura sin tener el rango: se elige la cuenta y listo (el servidor la trata como ese rango en esas áreas) */
+const AREAS_ACC: [string, string, string][] = [["sup", "Supervisores", "Sargento I"], ["cap", "Capitanía", "Teniente"], ["jef", "Jefatura", "Comandante"]];
+function AreaAcc() {
+  const { toast } = useFeedback(), [A, setA] = useJSON<Record<string, string[]>>("lspdt.areaAcc", {}), [sel, setSel] = useState<Record<string, string>>({});
+  const put = (k: string, L: string[]) => setA({ ...A, [k]: L });
+  return (
+    <Card className="xl:col-span-2">
+      <CardHeader icon={<KeyRound />} title="Acceso a áreas" desc="Quién ve cada área aunque no tenga el rango." />
+      <div className="grid gap-px bg-slate-100 md:grid-cols-3 dark:bg-slate-800">{AREAS_ACC.map(([k, t, r]) => { const L = A[k] || []; return (
+        <div key={k} className="flex flex-col gap-3 bg-white p-4 dark:bg-slate-900">
+          <p className="flex items-baseline gap-2"><b className="text-sm">{t}</b><span className="text-xs text-slate-400">como {r}</span><span className="ml-auto font-mono text-xs text-slate-400">{L.length}</span></p>
+          <div className="flex min-h-8 flex-wrap gap-1.5">{L.length ? L.map(n => (
+            <span key={n} className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 py-0.5 pl-1 pr-2 text-xs font-medium dark:bg-slate-800"><Avatar n={n} size={20} />{n}
+              <button aria-label={`Quitar a ${n}`} onClick={() => { put(k, L.filter(x => x !== n)); toast(`${n} ya no ve ${t}`); }} className="text-slate-400 hover:text-red-500"><X className="size-3" /></button></span>))
+            : <span className="text-xs text-slate-400">Solo por rango.</span>}</div>
+          <div className="mt-auto flex gap-1.5"><AgentCombo className="flex-1" value={sel[k] || ""} onChange={v => setSel({ ...sel, [k]: v })} filter={a => ACC.names.includes(a.n) && !L.includes(a.n)} />
+            <Button size="sm" disabled={!sel[k]} onClick={() => { put(k, [...L, sel[k]]); toast(`${sel[k]} ahora ve ${t}`); setSel({ ...sel, [k]: "" }); }}>Dar</Button></div>
+        </div>); })}</div>
+    </Card>);
+}
 export function AdmAccesos() {
   const { toast, confirm } = useFeedback();
   const [req, setReq] = useState<{ pending: { n: string; c: number }[]; approved: string[] } | null>(null);
@@ -67,6 +87,7 @@ export function AdmAccesos() {
           <Button icon={<Eye />} onClick={() => prevStart(pv)}>Ver como {rankES(pv)} sin divisiones</Button>
         </div></CardBody>
       </Card>
+      <AreaAcc />
       {ME_ROLES.six && <OwnerAcc k="lspdt.legacc" t="Acceso a Legal" icon={<Scale />} area="Legal" />}
       {ME_ROLES.six && <OwnerAcc k="lspdt.consultaAcc" t="Acceso a Consulta (en prueba)" icon={<BookOpenCheck />} area="Consulta" />}
       <Card>
