@@ -2,10 +2,11 @@
    - el estado de sus feedback (y la respuesta), - si cambió su rango (ascenso o descenso),
    - para la PSB: expedientes nuevos o resueltos, - versión nueva de la terminal.
    Lo leído se guarda en este navegador. */
+import { createPortal } from "react-dom";
 import { nickOf, profOk } from "@/lib/nick";
 import { LOGROS, TIER, goodTier } from "@/components/logros";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, CalendarClock, CalendarPlus, CheckCheck, Eye, Heart, Trophy, UserPlus, MessageSquare, Shield, Sparkles, TrendingDown, TrendingUp, UsersRound, Vote, type LucideIcon } from "lucide-react";
+import { Bell, CalendarClock, CalendarPlus, CheckCheck, Eye, Heart, Trophy, UserPlus, MessageSquare, Shield, Sparkles, TrendingDown, TrendingUp, UsersRound, Vote, X, type LucideIcon } from "lucide-react";
 import { FB_ST, fbSt, fbX, useMyFeedback, useTick } from "@/components/fbnotif";
 import { LS, useStoreVersion } from "@/lib/store";
 import { uMap } from "@/lib/units";
@@ -36,9 +37,8 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
     lsSet(kRk, me.r); }, [me.r, kRk, kEv]);
   /* votaciones vencidas: las cierra la primera sesión de Sargento para arriba que esté conectada (así el aviso llega aunque nadie abra Supervisores) */
   useEffect(() => { if (lvl(me.r) < 6) return; const x = closeExpired(LS.json<Prop[]>("lspdt.votes", [])); if (x) LS.setJSON("lspdt.votes", x); }, [ver, me.r]);
-  useEffect(() => { if (!open) return; const f = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
-    const k = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", f); document.addEventListener("keydown", k); return () => { document.removeEventListener("mousedown", f); document.removeEventListener("keydown", k); }; }, [open]);
+  useEffect(() => { if (!open) return; const k = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", k); return () => { document.removeEventListener("keydown", k); }; }, [open]);
 
   const psb = !!uMap("psb")[me.n], cases = LS.ro<Case[]>("lspdt.psbCases", []);
   const items = useMemo(() => {
@@ -90,20 +90,25 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
       <button onClick={() => setOpen(!open)} title="Notificaciones" aria-label={`Notificaciones${unread ? ` (${unread} sin leer)` : ""}`} aria-expanded={open}
         className={cn("relative rounded-lg p-2 transition", open ? "bg-pink-500/10 text-pink-500" : "text-slate-400 hover:bg-pink-500/10 hover:text-pink-500")}>
         <Bell className="size-4" />{unread > 0 && <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-pink-500 px-1 text-[10px] font-bold text-white">{unread > 9 ? "9+" : unread}</span>}</button>
-      {open && <div className="absolute right-0 top-full z-50 mt-2 w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800"><b className="text-sm">Notificaciones</b>
+      {/* panel que baja desde arriba de la pantalla (igual en los tres departamentos) */}
+      {createPortal(<div className={cn("fixed inset-0 z-[85] transition", open ? "pointer-events-auto" : "pointer-events-none")} aria-hidden={!open}>
+        <div onClick={() => setOpen(false)} className={cn("absolute inset-0 bg-slate-950/45 backdrop-blur-[2px] transition-opacity duration-300", open ? "opacity-100" : "opacity-0")} />
+        <div role="dialog" aria-label="Notificaciones" className={cn("absolute inset-x-0 top-0 mx-auto w-full max-w-3xl overflow-hidden rounded-b-3xl border border-t-0 border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-[cubic-bezier(.2,.8,.2,1)] dark:border-slate-800 dark:bg-slate-900", open ? "translate-y-0" : "-translate-y-[105%]")}>
+        <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5 dark:border-slate-800"><Bell className="size-4 text-pink-500" /><b className="text-sm">Notificaciones</b>
           {unread > 0 && <span className="rounded-full bg-pink-500/15 px-2 text-[11px] font-bold text-pink-600 dark:text-pink-300">{unread} nuevas</span>}
-          {unread > 0 && <button onClick={readAll} className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline dark:text-brand-300"><CheckCheck className="size-3.5" />Marcar como leídas</button>}</div>
-        <div className="scrollbar-thin max-h-[70vh] overflow-y-auto">
-          {!items.length ? <p className="px-4 py-10 text-center text-sm text-slate-400">No tenés notificaciones.</p>
+          {unread > 0 && <button onClick={readAll} className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline dark:text-brand-300"><CheckCheck className="size-3.5" />Marcar como leídas</button>}
+          <button onClick={() => setOpen(false)} aria-label="Cerrar" className={cn("rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200", !unread && "ml-auto")}><X className="size-4" /></button></div>
+        <div className="scrollbar-thin max-h-[min(70vh,640px)] overflow-y-auto sm:grid sm:grid-cols-2">
+          {!items.length ? <p className="px-4 py-10 text-center text-sm text-slate-400 sm:col-span-2">No tenés notificaciones.</p>
             : items.map(x => (
-              <button key={x.id} onClick={() => { setOpen(false); readAll(); if (x.id.startsWith("reu:")) { JUMP.reu = x.id.slice(4); jumpNow(); } go(...x.go); }} className={cn("flex w-full gap-3 border-b border-slate-100 px-4 py-3 text-left transition last:border-0 hover:bg-slate-50 dark:border-slate-800/70 dark:hover:bg-slate-800/50", x.t > seen && "bg-pink-500/[.04]")}>
+              <button key={x.id} onClick={() => { setOpen(false); readAll(); if (x.id.startsWith("reu:")) { JUMP.reu = x.id.slice(4); jumpNow(); } go(...x.go); }} className={cn("flex w-full gap-3 border-b border-slate-100 px-4 py-3 text-left transition sm:odd:border-r hover:bg-slate-50 dark:border-slate-800/70 dark:hover:bg-slate-800/50", x.t > seen && "bg-pink-500/[.04]")}>
                 <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg" style={{ color: x.c, background: x.c + "1f" }}><x.I className="size-4" /></span>
                 <span className="min-w-0 flex-1"><span className="flex items-center gap-2"><b className="truncate text-[13px]">{x.title}</b>{x.t > seen && <span className="size-1.5 shrink-0 rounded-full bg-pink-500" />}</span>
                   <span className="line-clamp-2 block text-xs text-slate-500 dark:text-slate-400">{x.body}</span><span className="text-[10.5px] text-slate-400">{ago(x.t)}</span></span>
               </button>))}
         </div>
-      </div>}
+        <div className="mx-auto mb-2 mt-1.5 h-1 w-10 rounded-full bg-slate-200 dark:bg-slate-700" />
+      </div></div>, document.body)}
     </div>
   );
 }

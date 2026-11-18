@@ -8,7 +8,7 @@ import { useFeedback } from "@/components/feedback";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import { Catalogo } from "./Robos";
-import { CATS, catalogo, type Cat, type Item } from "./robosData";
+import { CATS, ROBOS_V, catalogo, type Cat, type Item } from "./robosData";
 import { art, leyOf, pena, pubItems, type Ref, type RobosPub } from "./robosLegal";
 
 type View = "cat" | "art" | "xls";
@@ -33,7 +33,7 @@ export function RobosTab({ share }: { share?: boolean }) {
   const all = useMemo(catalogo, []), [inv, setInv] = useState(false);
   /* publica la versión oficial en la base para Supervisores › Robos (solo si cambió algo) */
   useEffect(() => { if (share) return; const items = pubItems(all), cur = LS.json<RobosPub | null>("lspdt.robos", null);
-    if (JSON.stringify(cur?.items) !== JSON.stringify(items)) LS.setJSON("lspdt.robos", { at: Date.now(), by: "six", items }); }, [all, share]);
+    if (JSON.stringify(cur?.items) !== JSON.stringify(items) || cur?.v !== ROBOS_V) LS.setJSON("lspdt.robos", { at: Date.now(), by: "six", items, v: ROBOS_V }); }, [all, share]);
   const [view, setView] = useState<View>(() => { const v = LS.get(VK) as View; return v && !(share && v === "xls") ? v : "cat"; }), [cat, setCat] = useState<Cat | "all">("all");
   const go = (v: View) => { setView(v); LS.set(VK, v); };
   const T: [View, string, typeof BookOpen][] = [["cat", "CATÁLOGO DE ROBOS", BookOpen], ["art", "ARTÍCULOS PARA LOS ROBOS", Gavel], ...(share ? [] : [["xls", "EXPORTAR A EXCEL", FileSpreadsheet] as [View, string, typeof BookOpen]])];

@@ -15,6 +15,7 @@ import { calAll, calMine, fmtWhen, hasTime, isToday } from "@/lib/calendar";
 import { GUEST, LS, useJSON, useStoreVersion } from "@/lib/store";
 import { AREAS, secsOf } from "@/nav";
 import { latest } from "./Novedades";
+import { DEPT } from "@/lib/dept";
 import { cn } from "@/lib/cn";
 import { fotoStyle, GAL_KEY, type Foto } from "@/lib/gal";
 
@@ -32,7 +33,7 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
   const col = RANK_COLOR[me.r] || "rgb(var(--b-500))", ins = insigniaUrl(me.r);
   const track = ladder().filter(r => (isDet(me.r) ? isDet(r) || LEVEL[r] < 4.5 : !isDet(r))), at = track.indexOf(me.r), next = at >= 0 ? track[at + 1] : undefined;
   const evs = useMemo(() => calAll().filter(e => e.at >= Date.now() - 36e5 && calMine(e, me.n)).sort((a, b) => a.at - b.at).slice(0, 5), [me.n]); // eslint-disable-line react-hooks/exhaustive-deps
-  const rel = latest(), [G] = useJSON<Foto[]>(GAL_KEY, []), fotos = G.filter(f => f.on);
+  const rel = latest({ n: me.n, r: me.r, dept: DEPT.id }), [G] = useJSON<Foto[]>(GAL_KEY, []), fotos = G.filter(f => f.on);
   const fecha = new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
   return (
     <div className="space-y-6">
@@ -104,7 +105,7 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
             <button onClick={() => go("ini", "nov")} className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-600 hover:underline dark:text-brand-300">Todas<ArrowRight className="size-3.5" /></button></div>
           <div className="px-5 pb-5">
             <p className="text-[15px] font-semibold leading-snug">{rel.t}</p><p className="text-[11.5px] text-slate-500">{rel.f}</p>
-            <ul className="mt-3 space-y-2.5">{rel.items.map(x => <li key={x} className="flex gap-2.5 text-[13px] leading-relaxed text-slate-600 dark:text-slate-300"><span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-pink-500" /><span>{x}</span></li>)}</ul>
+            <ul className="mt-3 space-y-2.5">{[...rel.items, ...(rel.g || []).flatMap(g => g[1])].slice(0, 4).map(x => <li key={x} className="flex gap-2.5 text-[13px] leading-relaxed text-slate-600 dark:text-slate-300"><span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-pink-500" /><span>{x}</span></li>)}</ul>
           </div>
         </Card>
       </div>

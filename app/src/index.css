@@ -230,6 +230,9 @@ html:is([data-head="rajdhani"], [data-head="teko"]) h1.text-2xl { font-size: 1.7
 .fb-empty::before { content: attr(data-ph); color: rgb(148 163 184); pointer-events: none; position: absolute; }
 
 /* logros míticos: lámina holográfica iridiscente (degradé que se desplaza + brillo que cruza + líneas de arcoíris finas) */
+/* legendario mítico: lámina dorada con brillo */
+.holo-gold { background-size: 220% 220% !important; animation: holo-shift 6s ease-in-out infinite; }
+.holo-gold::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,.9) 46%, rgba(255,255,255,.25) 52%, transparent 62%); background-size: 260% 100%; mix-blend-mode: soft-light; animation: holo-sweep 3s linear infinite; pointer-events: none; }
 .holo { background: linear-gradient(115deg, #ffb3e6 0%, #a5f3ff 16%, #d4ff9e 30%, #fff1a8 44%, #c4b0ff 58%, #8ef5e4 72%, #ffc1d9 86%, #a5f3ff 100%); background-size: 300% 300%; animation: holo-shift 7s ease-in-out infinite; }
 .holo::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(60deg, rgba(255,0,128,.18) 0 2px, rgba(0,255,255,.18) 2px 4px, rgba(255,255,0,.16) 4px 6px, transparent 6px 9px); mix-blend-mode: color-dodge; opacity: .55; pointer-events: none; }
 .holo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,.85) 46%, rgba(255,255,255,.2) 52%, transparent 62%); background-size: 260% 100%; mix-blend-mode: soft-light; animation: holo-sweep 3.4s linear infinite; pointer-events: none; }

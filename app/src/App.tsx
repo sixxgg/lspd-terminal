@@ -136,7 +136,7 @@ function Main() {
   const lssdAcc = !!me?.dept; /* cuenta del LSSD o la SAHP */
   useEffect(() => { if (!me || lssdAcc) return; const t = setTimeout(() => { void import("./sections/Informes"); void import("./sections/Legal"); }, 2500); return () => clearTimeout(t); }, [me]);
   /* perfil: fecha de ingreso (una vez) y última visita (cada 30 min); a six se le pasa lo que tenía en su perfil viejo */
-  useEffect(() => { if (!me || lssdAcc) return; const k = `lspdt.uprof.${emailOf(me.n).split("@")[0]}`, p = LS.json<{ since?: number; seen?: number; bio?: string }>(k, {}), now = Date.now();
+  useEffect(() => { if (!me) return; const k = `lspdt.uprof.${emailOf(me.n).split("@")[0]}`, p = LS.json<{ since?: number; seen?: number; bio?: string }>(k, {}), now = Date.now();
     if (p.since && p.seen && now - p.seen < 30 * 60e3) return;
     const old = ME_ROLES.six && !p.bio ? LS.json<{ bio?: string }>("lspdt.six.profile", {}).bio : undefined, ban = ME_ROLES.six && !LS.get(k + ".ban") ? LS.get("lspdt.six.pban") : null;
     if (ban) LS.set(k + ".ban", ban);
@@ -144,7 +144,7 @@ function Main() {
     if (p.since) save(); else void authApi({ a: "info" }).then(r => save(r.__s === 200 ? r.c : now)); }, [me]);
   if (me) PROF.me = me.n;
   /* logros (perfiles BETA): sella los nuevos; los raros o mejores tiran confeti */
-  useEffect(() => { if (!me || lssdAcc || !profOk(me.n) || !ACC.names.length) return;
+  useEffect(() => { if (!me || !profOk(me.n) || (!lssdAcc && !ACC.names.length)) return;
     stampLogros(me.n, me.r, l => { if (goodTier(l.tier)) { confetti(); toast(`¡Logro desbloqueado: ${l.t}!`); } }); }, [me, sv]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (me && LS.get("lspdt.ui") != null) setDeptUi(LS.json<Record<string, string>>("lspdt.ui", {})); });
   /* al volver de una actualización sigue la misma pantalla de carga (no un segundo cargando distinto) */

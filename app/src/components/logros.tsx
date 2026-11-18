@@ -1,7 +1,8 @@
 /* logros del perfil: rarezas, íconos (incluidos los únicos de algunos perfiles) y la medalla hexagonal; los míticos son holográficos */
-import { Heart, Lock, PartyPopper, Star, BadgeCheck, Bomb, ChevronsUp, Crown, Scale, UserCheck, type LucideIcon } from "lucide-react";
+import { Heart, Lock, PartyPopper, Star, BadgeCheck, Baby, Bomb, ChevronsUp, Crown, Flame, Scale, Shield, UserCheck, VenetianMask, type LucideIcon } from "lucide-react";
+import { DEPT } from "@/lib/dept";
 import { ACC, LS } from "@/lib/store";
-import { emailOf, lvl } from "@/lib/domain";
+import { emailOf, getRoster, lvl } from "@/lib/domain";
 import { isPSB } from "@/lib/units";
 import { cn } from "@/lib/cn";
 
@@ -14,7 +15,12 @@ export const TIER = {
   epico: { l: "Épico", c: "#c084fc", bg: "linear-gradient(145deg,#a855f7,#4c1d95)" },
   legend: { l: "Legendario", c: "#fbbf24", bg: "linear-gradient(145deg,#fde047,#d97706 55%,#78350f)" },
   mitico: { l: "Mítico", c: "#f43f5e", bg: "conic-gradient(from 0deg,#f43f5e,#f59e0b,#22c55e,#06b6d4,#8b5cf6,#f43f5e)" },
+  legmit: { l: "Legendario mítico", c: "#facc15", bg: "conic-gradient(from 0deg,#fde047,#f59e0b,#fff7c2,#d97706,#fde047)" },
+  /* malicioso: el logro «en contra», en rojo */
+  malicioso: { l: "Malicioso", c: "#ef4444", bg: "linear-gradient(145deg,#f87171,#991b1b 55%,#450a0a)" },
 } as const;
+/* holográficos: mítico (arcoíris) y legendario mítico (dorado) */
+export const isHolo = (t: Tier) => t === "mitico" || t === "legmit";
 type Tier = keyof typeof TIER;
 /* íconos propios de los logros únicos */
 type IcoP = { className?: string; style?: React.CSSProperties };
@@ -54,12 +60,16 @@ const KoreaI = ({ className, style }: IcoP) => (
   </svg>);
 const WatchI = ({ className, style }: IcoP) => <svg viewBox="0 0 64 64" className={className} style={style}><path fill="currentColor" d="M32 4 52 12v18c0 14-9 25-20 30C21 55 12 44 12 30V12z" /><path fill="#0b0f17" d="M32 9.5 47 16v14c0 11-6.6 19.8-15 24-8.4-4.2-15-13-15-24V16z" />
   <text x="32" y="38" textAnchor="middle" fontSize="15" fontWeight="900" fill="currentColor" fontFamily="sans-serif">WC</text></svg>;
-export const LOGROS: { k: string; t: string; d: string; tier: Tier; I: LucideIcon; ok: (n: string, r: string) => boolean; only?: string }[] = [
+const inDept = (d: string, n: string) => DEPT.id === d && getRoster().some(a => a.n === n);
+/* oculto: solo lo ven el dueño del perfil y six; el resto ve «Logro oculto» */
+export const LOGROS: { k: string; t: string; d: string; tier: Tier; I: LucideIcon; ok: (n: string, r: string) => boolean; only?: string; oculto?: boolean }[] = [
   { k: "reg", t: "Registrado", d: "Tiene cuenta en la terminal.", tier: "comun", I: UserCheck, ok: n => ACC.names.includes(n) },
-  { k: "ofi", t: "Oficial", d: "Forma parte del LSPD.", tier: "comun", I: BadgeCheck, ok: (_n, r) => lvl(r) >= 1 },
-  { k: "sgt", t: "Sargento", d: "Llegó a Sargento I.", tier: "raro", I: ChevronsUp, ok: (_n, r) => lvl(r) >= 6 },
+  { k: "ofi", t: "Oficial", d: "Forma parte del LSPD.", tier: "comun", I: BadgeCheck, ok: (_n, r) => DEPT.id === "lspd" && lvl(r) >= 1 },
+  { k: "lssd", t: "Miembro de la LSSD", d: "Un sheriff salvaje ha aparecido.", tier: "raro", I: Star, ok: n => inDept("lssd", n) },
+  { k: "lssdjef", t: "Jefatura LSSD", d: "Nadie llega ahí solo: por su arduo trabajo.", tier: "legend", I: Shield, ok: (n, r) => inDept("lssd", n) && lvl(r) >= 10 },
+  { k: "sgt", t: "Sargento", d: "Llegó a Sargento I.", tier: "raro", I: ChevronsUp, ok: (_n, r) => DEPT.id === "lspd" && lvl(r) >= 6 },
   { k: "psb", t: "Miembro de la PSB", d: "Integra el Professional Standards Bureau.", tier: "epico", I: Scale, ok: n => isPSB(n) },
-  { k: "sgt2", t: "Sargento II", d: "Llegó a Sargento II.", tier: "legend", I: Star, ok: (_n, r) => lvl(r) >= 7 },
+  { k: "sgt2", t: "Sargento II", d: "Llegó a Sargento II.", tier: "legend", I: Star, ok: (_n, r) => DEPT.id === "lspd" && lvl(r) >= 7 },
   { k: "fnd", t: "Fundador", d: "Creó la terminal.", tier: "mitico", I: Crown, ok: n => n === FOUNDER },
   { k: "fol1", t: "Te han seguido", d: "Alguien te siguió por primera vez.", tier: "raro", I: PartyPopper, ok: n => folOf(n).length > 0 },
   { k: "sig1", t: "Has seguido a alguien", d: "Seguiste a otro perfil.", tier: "comun", I: Heart, ok: n => ACC.names.some(x => x !== n && folOf(x).includes(n)) },
@@ -70,25 +80,28 @@ export const LOGROS: { k: string; t: string; d: string; tier: Tier; I: LucideIco
   { k: "huevos", t: "Sargento por romper los huevos", d: "Lo ascendieron a Sargento por insistente.", tier: "legend", I: EggsI as unknown as LucideIcon, ok: n => n === "Kai Jeon-Soo", only: "Kai Jeon-Soo" },
   { k: "kr", t: "Coreano", d: "Primera vez que rolea de coreano pasivo.", tier: "mitico", I: KoreaI as unknown as LucideIcon, ok: n => n === "Kai Jeon-Soo", only: "Kai Jeon-Soo" },
   { k: "tr", t: "Turco", d: "Logro exclusivo de TURKO.", tier: "mitico", I: TurkeyI as unknown as LucideIcon, ok: n => n === "Liam Campbell", only: "Liam Campbell" },
+  { k: "wipe", t: "Medio wipe", d: "Roleó de hombre por medio wipe.", tier: "mitico", I: VenetianMask, ok: n => n === "Grant Knox", only: "Grant Knox" },
+  { k: "mjef", t: "Media jefatura", d: "Se garchó a media jefatura él solo.", tier: "legmit", I: Flame, ok: n => n === "Grant Knox", only: "Grant Knox", oculto: true },
+  { k: "padre", t: "Padre", d: "Le quita toda el aura.", tier: "malicioso", I: Baby, ok: n => n === "Grant Knox", only: "Grant Knox" },
 ];
 const HEX = "[clip-path:polygon(50%_0,93%_25%,93%_75%,50%_100%,7%_75%,7%_25%)]";
 export function Medal({ tier, I, on = true, size = 56 }: { tier: Tier; I: LucideIcon; on?: boolean; size?: number }) {
-  const T = TIER[tier], holo = on && tier === "mitico";
+  const T = TIER[tier], holo = on && isHolo(tier), gold = tier === "legmit";
   return (
     <span className={cn("relative grid shrink-0 place-items-center", !on && "opacity-35 grayscale")} style={{ width: size, height: size }}>
       {on && tier !== "comun" && !holo && <span className="absolute inset-0 rounded-full blur-md" style={{ background: T.bg, opacity: 0.55 }} />}
-      {holo && <span className="holo absolute -inset-1 rounded-full opacity-60 blur-md" />}
+      {holo && <span className={cn("absolute -inset-1 rounded-full opacity-60 blur-md", gold ? "" : "holo")} style={gold ? { background: T.bg } : undefined} />}
       {/* mítico: lámina holográfica iridiscente; el resto, metal de su color */}
-      <span className={cn("absolute inset-0 overflow-hidden", HEX, holo && "holo")} style={holo ? undefined : { background: T.bg }} />
+      <span className={cn("absolute inset-0 overflow-hidden", HEX, holo && !gold && "holo", gold && on && "holo-gold")} style={holo && !gold ? undefined : { background: T.bg }} />
       <span className={cn("absolute inset-[3px]", HEX, holo ? "bg-white/25 dark:bg-slate-950/25" : "bg-slate-950/55")} />
-      {on ? <I className="relative drop-shadow" style={{ width: size * 0.46, height: size * 0.46, color: holo ? "#3b0764" : T.c }} /> : <Lock className="relative text-slate-300" style={{ width: size * 0.34, height: size * 0.34 }} />}
+      {on ? <I className="relative drop-shadow" style={{ width: size * 0.46, height: size * 0.46, color: holo ? (gold ? "#78350f" : "#3b0764") : T.c }} /> : <Lock className="relative text-slate-300" style={{ width: size * 0.34, height: size * 0.34 }} />}
     </span>);
 }
 
 
 /* sello de logros: guarda cuándo consiguió cada uno (lspdt.uprof.<slug>.lg en el perfil). La primera vez se sellan sin fecha
    (no avisa lo viejo); después, cada logro nuevo queda con la hora y, si es raro o mejor, tira confeti. */
-const TIER_N: Record<Tier, number> = { comun: 0, raro: 1, epico: 2, legend: 3, mitico: 4 };
+const TIER_N: Record<Tier, number> = { malicioso: 1, comun: 0, raro: 1, epico: 2, legend: 3, mitico: 4, legmit: 5 };
 export const goodTier = (t: Tier) => TIER_N[t] >= 1;
 export function stampLogros(n: string, r: string, onNew: (l: (typeof LOGROS)[number]) => void) {
   const k = `lspdt.uprof.${emailOf(n).split("@")[0]}`, P = LS.json<{ lg?: Record<string, number> }>(k, {}), first = !P.lg, lg = { ...(P.lg || {}) };

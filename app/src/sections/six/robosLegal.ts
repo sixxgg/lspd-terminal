@@ -51,10 +51,10 @@ const MIS: [RegExp, Ref[]][] = [
   [/asalto al cami[oó]n/i, [{ a: "132.126" }]],
   [/furgoneta|garant[ií]a|embargado|sobre ruedas|4x4/i, [{ a: "132.104" }]],
   [/semillas/i, [{ a: "132.143" }]], [/auto shop|santos custom/i, [{ a: "132.138" }]], [/jack & jill/i, [{ a: "132.110" }]],
-  [/roba a ese paleto/i, [{ a: "132.107" }]], [/clucking bell|matadero/i, [{ a: "132.140" }]], [/vanilla/i, [{ a: "132.141" }]],
+  [/roba a ese paleto/i, [{ a: "132.107" }]], [/clucking bell|matadero/i, [{ a: "132.140" }]], [/remolcador/i, [{ a: "132.106", why: "Asalto a una embarcación (antes, Vanilla Unicorn)" }]],
   [/gimnasio/i, [{ a: "132.137" }]], [/walker/i, [{ a: "132.127", why: "Depósito clandestino" }]], [/guante blanco/i, [{ a: "132.142", why: "Interpretado: golpe en Sandy" }]],
   [/frasco|fenta|euforia|materia prohibida|c[oó]digo m|ne[oó]n/i, [{ a: "132.134", why: "La recompensa son ítems para droga" }]],
-  [/smg la cosa/i, [{ a: "132.12", why: "Robo con armas y persecución" }]], [/[uú]ltimo v[ií]nculo/i, [{ a: "132.12", why: "Interpretado: golpe armado" }]],
+  [/smg la cosa|kil[oó]metro 0/i, [{ a: "132.12", why: "Robo con armas y persecución" }]], [/cl[aá]sico y renovado/i, [{ a: "132.104" }]], [/high class/i, [{ a: "132.105", why: "Vehículo de alta gama" }]], [/[uú]ltimo v[ií]nculo/i, [{ a: "132.12", why: "Interpretado: golpe armado" }]],
   [/ajuste de cuentas|deudor|socio inc[oó]modo|sapo|carlson|pintando|justicia comprada|chatarreros/i, [{ a: "119.6", why: "Encargo para matar a alguien (objetivo NPC); si es un jugador con CK, ver CK" }]],
   [/control de masas/i, [{ a: "119.6", why: "Encargo para matar (objetivos NPC)" }, { a: "143.9", why: "Violencia en grupo en la vía pública" }]],
   [/tractor|desaparecer el cami[oó]n|activo quemado|transporte comprometido/i, [{ a: "132.55", why: "Destruir con fuego o explosión" }]],
@@ -140,5 +140,5 @@ export const pena = (x?: Art) => (!x ? "" : [x.m ? `$${x.m.toLocaleString("es-AR
 
 /* versión oficial (Supervisores › Robos): el catálogo con su articulado, guardado en la base (lspdt.robos) por six */
 export type PubItem = Item & { ley: Ley };
-export type RobosPub = { at: number; by: string; items: PubItem[] };
+export type RobosPub = { at: number; by: string; items: PubItem[]; v?: number };
 export const pubItems = (all: Item[]): PubItem[] => all.map(it => ({ ...it, ley: leyOf(it) }));

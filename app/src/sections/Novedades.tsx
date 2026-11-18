@@ -2,81 +2,125 @@
 import { useEffect, useState } from "react";
 import { History, ScrollText, Sparkles } from "lucide-react";
 import { Card, Segmented } from "@/components/ui";
-import { LS } from "@/lib/store";
+import { LS, ME_ROLES } from "@/lib/store";
+import { useMe } from "@/lib/me";
+import { DEPT } from "@/lib/dept";
+import { DET, lvl } from "@/lib/domain";
+import { rosterDivs } from "@/lib/units";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "4.3";
+export const APP_VERSION = "5.0.0";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
 export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
+/* a quién le toca cada novedad: «[tag] texto» en un ítem o en el título de un grupo. Sin tag, la ven todos.
+   lspd / lssd / sahp: ese departamento · sup: Sargento para arriba · mandos: Detectives y Sargento II para arriba · six: solo six ·
+   div:Nombre: los de esa división. Varios separados por coma (alcanza con uno); «a+b» pide los dos. six ve todo. */
+type Who = { n: string; r: string; dept?: string };
+const TAG = /^\[([^\]]+)\]\s*/;
+function seeTag(tag: string, me: Who): boolean {
+  if (ME_ROLES.six) return true;
+  return tag.split(",").some(t => t.trim().split("+").every(x => { x = x.trim();
+    if (x === "six") return false;
+    if (x === "lspd" || x === "lssd" || x === "sahp") return (me.dept || "lspd") === x;
+    if (x === "sup") return lvl(me.r) >= 6;
+    if (x === "mandos") return lvl(me.r) >= 7 || DET.includes(me.r);
+    if (x.startsWith("div:")) return !!ME_ROLES.admin || rosterDivs(me.n).includes(x.slice(4));
+    return true; }));
+}
+const clean = (L: string[], me: Who) => L.filter(x => { const m = TAG.exec(x); return !m || seeTag(m[1], me); }).map(x => x.replace(TAG, ""));
+/* el registro tal como lo ve esta persona (versiones sin nada para ella, fuera) */
+export function logFor(me: Who): Rel[] {
+  return LOG.map(r => ({ ...r, items: clean(r.items, me), g: (r.g || []).filter(([h]) => { const m = TAG.exec(h); return !m || seeTag(m[1], me); }).map(([h, L]) => [h.replace(TAG, ""), clean(L, me)] as [string, string[]]).filter(([, L]) => L.length) }))
+    .filter(r => r.items.length || r.g.length);
+}
 const LOG: Rel[] = [
-  { v: "4.3", f: "18/11/2026", t: "LSPD, LSSD y SAHP: una terminal, tres departamentos", items: [
-    "El LSSD y la SAHP tienen las mismas secciones que el LSPD: Inicio, Agentes (con fotos, insignias y condecoraciones), Calendario, Informes, Feedback, Legal, Pizarra, Galería, Radio, Códigos y Administración. Cada departamento con sus propios datos.",
-    "Legal, Códigos y la Pizarra son los mismos para los tres. Radio usa el canal interno de cada uno: /rlspd, /rlssd o /rsahp (y /rsapd para todos).",
-    "Calendario: six ve los tres departamentos juntos, con la marca de cada uno y un aviso cuando dos eventos de distintos departamentos se superponen.",
-    "Divisiones del LSSD como las del LSPD: Información (todo el texto de Eleven, adentro de la terminal), Roster, Calendario, Documentación, Instrucciones, Uniformidad y Administración, con sus escudos y subdivisiones.",
-    "Temas propios: el LSSD sobre verdes con dorado y la SAHP en caqui, asfalto y azul estatal, con modo oscuro y claro.",
-    "Pantallas de carga, avisos y textos con el nombre de cada departamento; se editan en Administración › Marca, que además muestra qué logos faltan cambiar.",
-    "Votaciones: al abrir una propuesta se elige en cuántas horas vence. Al vencer se cierra sola por mayoría y a todos los Sargentos les llega «Ascenso aceptado: … ya se puede ascender».",
-    "Feedback: ya no hay que elegir dónde pasó (se cuenta en el texto).",
+  { v: "5.0.0", f: "18/11/2026", t: "Terminal de Mando 5.0: tres departamentos", items: [], g: [
+    ["Para todos", [
+      "Notificaciones: la campanita ahora abre un panel que baja desde arriba de la pantalla, igual en los tres departamentos.",
+      "Novedades: cada uno ve solo lo que le toca (su departamento, sus divisiones y, si es supervisor, lo de Supervisores).",
+      "Feedback: ya no hay que elegir dónde pasó (se cuenta en el texto).",
+      "La terminal consulta menos al servidor cuando nadie la está usando: más liviana y sin gastar de más.",
+    ]],
+    ["[lssd,sahp] Tu departamento", [
+      "Tu terminal tiene las mismas secciones que el LSPD: Inicio, Mi perfil, Agentes (con fotos, insignias y condecoraciones), Calendario, Informes, Feedback, Legal, Pizarra, Galería, Radio y Códigos. Todo con los datos de tu departamento.",
+      "Legal, Códigos y la Pizarra son los mismos para los tres departamentos. Radio usa el canal interno de tu departamento (/rlssd o /rsahp) y /rsapd para todos.",
+      "Temas propios con modo oscuro y claro: el LSSD sobre verdes con dorado y la SAHP en caqui, asfalto y azul estatal.",
+      "Pantallas de carga y avisos con el nombre y el escudo de tu departamento.",
+    ]],
+    ["[lssd] Divisiones del LSSD", [
+      "Special Enforcement Bureau, Aero Bureau, Canine Service Detail, Crisis Negotiation Unit, Detective Division, Training Bureau, Sheriff Information Bureau y High Speed Interception Unit, con sus subdivisiones.",
+      "Cada una con Información (todo el texto de Eleven, adentro de la terminal), Roster, Calendario, Documentación, Instrucciones, Uniformidad y Administración, y su escudo.",
+      "Logros nuevos: «Miembro de la LSSD» y «Jefatura LSSD».",
+    ]],
+    ["[lspd+sup] Supervisores", [
+      "Votaciones: al abrir una propuesta se elige en cuántas horas vence. Al vencer se cierra sola por mayoría y a todos los Sargentos les llega «Ascenso aceptado: … ya se puede ascender».",
+      "Robos: el «Asalto al Vanilla Unicorn» ahora es el «Asalto al Remolcador» (mismo robo, otra ubicación) y hay cuatro misiones nuevas: Kilómetro 0 (persecución para crew), Clásico y renovado, High Class y Null Operation.",
+    ]],
+    ["[six] Panel de six", [
+      "Calendario con los tres departamentos juntos, la marca de cada uno y un aviso cuando dos eventos de distintos departamentos se superponen.",
+      "Administración › Marca: textos y tema de cada departamento, y la lista de logos que faltan cambiar. Roster del LSSD y la SAHP desde la planilla o un CSV.",
+      "Perfil (beta) para Grant Knox (CristianGV367) con sus logros, uno oculto («Legendario mítico») y el primer logro «Malicioso» en rojo.",
+      "Si la base de datos se queda sin la cuota del mes, la terminal lo avisa con un mensaje claro en vez de «Error del servidor».",
+    ]],
   ] },
   { v: "4.2.2", f: "18/11/2026", t: "LSSD: divisiones y roster completo", items: [
-    "LSSD › Divisiones: Special Enforcement Bureau, Aero Bureau, Canine Service Detail, Crisis Negotiation Unit y Detective Division (Special Operations Division); Training Bureau, Sheriff Information Bureau y High Speed Interception Unit (Office of Sheriff Support Operations). Cada una con su descripción, mandos, subunidades y link al Notion de Eleven.",
-    "El roster del Sheriff suma a los Deputy Sheriff Trainees y a los perros del K-9 con su handler.",
-    "Los rangos del LSSD se leen en inglés, como en la planilla. Insignias: Sheriff 5 estrellas, Undersheriff 4, Assistant Sheriff 3, Division Chief 2 y Area Commander 1.",
+    "[lssd] LSSD › Divisiones: Special Enforcement Bureau, Aero Bureau, Canine Service Detail, Crisis Negotiation Unit y Detective Division (Special Operations Division); Training Bureau, Sheriff Information Bureau y High Speed Interception Unit (Office of Sheriff Support Operations). Cada una con su descripción, mandos, subunidades y link al Notion de Eleven.",
+    "[lssd] El roster del Sheriff suma a los Deputy Sheriff Trainees y a los perros del K-9 con su handler.",
+    "[lssd] Los rangos del LSSD se leen en inglés, como en la planilla. Insignias: Sheriff 5 estrellas, Undersheriff 4, Assistant Sheriff 3, Division Chief 2 y Area Commander 1.",
     "Divisiones del LSPD: la barra muestra los nombres completos (Professional Standards Bureau, Recruitment and Training Division…) y pasa a dos renglones si no entran.",
   ] },
   { v: "4.2.1", f: "18/11/2026", t: "LSSD: insignias, escudo y códigos", items: [
-    "LSSD: cada rango tiene su insignia (estrellas para el Executive Staff, hoja de roble, barras de Capitán y Teniente, galones de Sargento y Ayudantes) en el roster, el inicio y el registro.",
-    "El escudo del LSSD (y el de la SAHP) se cambia desde Administración › Marca.",
-    "Los códigos de invitación son por departamento: LSPD-, LSSD- o SAHP-. Cada uno solo sirve para registrarse en el suyo.",
-    "Si una persona tiene dos personajes en el Sheriff, cada uno tiene su cuenta: se entra con la placa o el nombre del personaje.",
+    "[lssd] LSSD: cada rango tiene su insignia (estrellas para el Executive Staff, hoja de roble, barras de Capitán y Teniente, galones de Sargento y Ayudantes) en el roster, el inicio y el registro.",
+    "[six] El escudo del LSSD (y el de la SAHP) se cambia desde Administración › Marca.",
+    "[six] Los códigos de invitación son por departamento: LSPD-, LSSD- o SAHP-. Cada uno solo sirve para registrarse en el suyo.",
+    "[lssd] Si una persona tiene dos personajes en el Sheriff, cada uno tiene su cuenta: se entra con la placa o el nombre del personaje.",
   ] },
   { v: "4.2", f: "18/11/2026", t: "LSSD, ingreso con placa y manual", items: [
     "Ingreso y registro con el número de placa: sirve si tu nombre es doble, se repite o es difícil de escribir. También se puede seguir entrando con el correo o el nombre.",
     "La pantalla de ingreso tiene selector de departamento: LSPD, LSSD (Los Santos Sheriff's Department) y SAHP (próximamente). El LSSD entra con su usuario OOC, nombre o placa.",
-    "Terminal del LSSD (en construcción): inicio, roster del Sheriff por rango y las secciones Legal, Supervisores, Capitanía, Jefatura y Detectives en preparación. Las cuentas del LSSD no ven nada del LSPD.",
-    "Consulta usa el Manual del Novato completo (132 páginas pasadas a texto).",
+    "[lssd] Terminal del LSSD (en construcción): inicio, roster del Sheriff por rango y las secciones Legal, Supervisores, Capitanía, Jefatura y Detectives en preparación. Las cuentas del LSSD no ven nada del LSPD.",
+    "[six] Consulta usa el Manual del Novato completo (132 páginas pasadas a texto).",
     "Divisiones: los nombres ya no se cortan en la barra de secciones (van abreviados; el nombre completo aparece al pasar el mouse).",
   ] },
   { v: "4.1", f: "18/11/2026", t: "Consulta, comunicados y buscadores", items: [
-    "Nueva pestaña Consulta (en prueba): preguntás lo que quieras del Manual del Novato y responde con el texto del propio manual, resaltando las palabras y diciendo de qué sección sale. Tiene el manual completo con índice y buscador, y se puede marcar una respuesta como incorrecta para revisarla.",
-    "Consulta la ven six y quienes él habilite en Administración › Accesos y administradores.",
+    "[six] Nueva pestaña Consulta (en prueba): preguntás lo que quieras del Manual del Novato y responde con el texto del propio manual, resaltando las palabras y diciendo de qué sección sale. Tiene el manual completo con índice y buscador, y se puede marcar una respuesta como incorrecta para revisarla.",
+    "[six] Consulta la ven six y quienes él habilite en Administración › Accesos y administradores.",
     "Buscadores de agentes, delitos y sugerencias: la lista ahora se abre por encima de todo (modales, tarjetas y menús) y, si no entra abajo, se abre hacia arriba.",
     "Al recargar la página quedás donde estabas, también dentro del panel de six (sin repetir la intro).",
   ] },
   { v: "4.0.8", f: "18/11/2026", t: "Fichas K-9 e Infraestructura", items: [
-    "K-9 › Fichas: registro «Oficial y canino» que queda guardado y se edita cuando haga falta. El guía se busca en el roster (placa y rango se completan solos), rango divisional según los cargos de la K-9, certificación automática desde K-9-2026-05, fotos del oficial y del canino (tocar o soltar la imagen) y salud, vacunas, temperamento y observaciones.",
-    "«Ver ficha» muestra el documento oficial de la división y lo descarga como imagen PNG.",
-    "Pizarra › Mandos › «Infraestructura San Andreas»: pasada del tablero de Miro con el mapa, los sellos y la leyenda (subestaciones, parque eólico, centrales, potabilizadora, áreas petrolíferas, HVT y zonas calientes). Se puede editar como cualquier pizarra.",
+    "[div:K-9 Division] K-9 › Fichas: registro «Oficial y canino» que queda guardado y se edita cuando haga falta. El guía se busca en el roster (placa y rango se completan solos), rango divisional según los cargos de la K-9, certificación automática desde K-9-2026-05, fotos del oficial y del canino (tocar o soltar la imagen) y salud, vacunas, temperamento y observaciones.",
+    "[div:K-9 Division] «Ver ficha» muestra el documento oficial de la división y lo descarga como imagen PNG.",
+    "[mandos] Pizarra › Mandos › «Infraestructura San Andreas»: pasada del tablero de Miro con el mapa, los sellos y la leyenda (subestaciones, parque eólico, centrales, potabilizadora, áreas petrolíferas, HVT y zonas calientes). Se puede editar como cualquier pizarra.",
   ] },
   { v: "4.0.7", f: "16/11/2026", t: "Pizarras de Mandos", items: [
-    "Pizarra › Mandos: pizarras propias de la terminal, destacadas arriba de todo con borde dorado. Solo las ven y editan Detectives y de Sargento II para arriba (al resto ni siquiera le llegan).",
-    "Primera pizarra de Mandos: «Infraestructura San Andreas». Se crean más eligiendo «Mandos» al lado de «Nueva pizarra».",
+    "[mandos] Pizarra › Mandos: pizarras propias de la terminal, destacadas arriba de todo con borde dorado. Solo las ven y editan Detectives y de Sargento II para arriba (al resto ni siquiera le llegan).",
+    "[mandos] Primera pizarra de Mandos: «Infraestructura San Andreas». Se crean más eligiendo «Mandos» al lado de «Nueva pizarra».",
     "Se quitó el tablero de Miro embebido.",
   ] },
   { v: "4.0.5", f: "16/11/2026", t: "Link de reuniones", items: [
-    "Supervisores › Reuniones: botón «Copiar link» en cada reunión. Lo pegás en Discord o donde sea y al abrirlo te lleva directo a esa reunión (si no iniciaste sesión, primero te pide entrar).",
+    "[sup] Supervisores › Reuniones: botón «Copiar link» en cada reunión. Lo pegás en Discord o donde sea y al abrirlo te lleva directo a esa reunión (si no iniciaste sesión, primero te pide entrar).",
   ] },
   { v: "4.0.4", f: "16/11/2026", t: "Rangos en PSB y 10-80", items: [
-    "PSB › Notificación: cualquier miembro puede notificar a cualquier agente, sin importar el rango.",
-    "Supervisores › 10-80: los Sargentos II ya no citan a Sargentos I; la única que puede es la Assistant Watch Commander, Evelyn Molina.",
+    "[div:Professional Standards Bureau] PSB › Notificación: cualquier miembro puede notificar a cualquier agente, sin importar el rango.",
+    "[sup] Supervisores › 10-80: los Sargentos II ya no citan a Sargentos I; la única que puede es la Assistant Watch Commander, Evelyn Molina.",
   ] },
   { v: "4.0.3", f: "16/11/2026", t: "PSB sin límite de rango", items: [
-    "Citaciones de la PSB: se puede citar a cualquier agente sin importar el rango (antes solo a rangos inferiores, como en Supervisores).",
-    "En «Citan» de la PSB aparecen todos sus miembros, no solo supervisores.",
+    "[div:Professional Standards Bureau] Citaciones de la PSB: se puede citar a cualquier agente sin importar el rango (antes solo a rangos inferiores, como en Supervisores).",
+    "[div:Professional Standards Bureau] En «Citan» de la PSB aparecen todos sus miembros, no solo supervisores.",
   ] },
   { v: "4.0.2", f: "16/11/2026", t: "Menú más limpio", items: [
     "Menú de arriba solo con íconos: la sección en la que estás muestra su nombre y el resto lo dice al pasar el mouse.",
     "Fuera del encabezado el botón «Buscar» (Ctrl + K sigue abriendo el buscador), el «Sincronizado» (solo aparece si se está guardando o no hay conexión) y el nombre y rango al lado de tu foto.",
   ] },
   { v: "4.0.1", f: "16/11/2026", t: "Invitados y portada", items: [
-    "Links de invitado (desde el panel de six › Administración): quien lo abre entra a la terminal sin iniciar sesión, solo con las secciones que six marcó (Inicio, Calendario, Informes, Agentes, Legal, Códigos o Radio) y en solo lectura: nada se guarda.",
-    "El invitado ve un aviso «Invitado · solo lectura» con el botón para iniciar sesión, una tarjeta con lo que puede mirar y hasta cuándo vence el link; en Informes solo el historial.",
-    "Cada link se puede copiar, ver cuántas veces se abrió y revocar al instante. El servidor solo le manda los datos de esas secciones.",
+    "[six] Links de invitado (desde el panel de six › Administración): quien lo abre entra a la terminal sin iniciar sesión, solo con las secciones que six marcó (Inicio, Calendario, Informes, Agentes, Legal, Códigos o Radio) y en solo lectura: nada se guarda.",
+    "[six] El invitado ve un aviso «Invitado · solo lectura» con el botón para iniciar sesión, una tarjeta con lo que puede mirar y hasta cuándo vence el link; en Informes solo el historial.",
+    "[six] Cada link se puede copiar, ver cuántas veces se abrió y revocar al instante. El servidor solo le manda los datos de esas secciones.",
     "Inicio: tocar la foto de la portada ya no la abre en pantalla completa; es solo visual.",
   ] },
   { v: "4.0", f: "13/11/2026 – 16/11/2026", t: "Terminal de Mando 4.0", items: [], g: [
@@ -97,18 +141,18 @@ const LOG: Rel[] = [
       "Botón «Revisar» en todos los textos para copiar: rojo si falta algo, amarillo si quedó algo pendiente, verde si está bien. Ahora también marca faltas de ortografía comunes y las corrige con un toque.",
       "«Copiar» con dos opciones en informes, OIS, pérdida de arma, feedback, entrevistas y 10-80: formato Discord o formato web.",
     ]],
-    ["Supervisores › Reuniones", [
+    ["[sup] Supervisores › Reuniones", [
       "Reuniones como documento abierto (como un incidente de la tablet): cada uno escribe o pega lo que quiera con formato (títulos, listas, negritas, citas) y queda firmado con su nombre y la hora.",
       "Plantillas: Briefing, Reunión de sargentos, Reunión PO III y III+ o libre, con fecha y hora. Temas como etiquetas para filtrar, temas nuevos al vuelo y edición de temas para quien la abre.",
       "Encabezan (la Capitanía, obligatoria, y la Assistant Watch Commander) y Presentes, como tags con foto y cargo. Acta fijada arriba, cerrar y reabrir, y el documento completo para copiar.",
       "Al abrirse llega la notificación (que abre esa reunión) y se agrega sola al calendario; si se borra la reunión, desaparece del calendario.",
     ]],
-    ["Supervisores › 10-80", [
+    ["[sup] Supervisores › 10-80", [
       "Pestañas «Nueva citación» e «Historial de 10-80»: se cita a uno o varios agentes (mensaje de radio en plural), se elige quién cita y se guarda en el historial.",
       "Justificación formal en formato Discord o web: lugar, motivo con texto predictivo (ascensos, condecoraciones, llamados de atención y más), asistencia por agente, presentes, medidas genéricas para sumar con un toque y «Revisar redacción».",
       "Etiquetas (Bronca, Ascenso, Felicitación, Disciplinario…) visibles y para filtrar. El historial de la PSB queda aparte y solo lo ven sus miembros.",
     ]],
-    ["Supervisores › Entrevistas, Patrullas y Robos", [
+    ["[sup] Supervisores › Entrevistas, Patrullas y Robos", [
       "Entrevistas rediseñadas: lista por rango sin textos cortados, ficha compacta con «Guardar» y después copiar, preguntas que cambian según el rango con respuestas automáticas, «Está cómodo» / «No quiere más divisiones» y quién entrevistó (con un selector nuevo).",
       "Preguntas guardadas en la base y editables por Sargento I o superior. Fechas con la marca de tiempo de Discord. SIERRA y Pelotón H en la METRO.",
       "Patrullas: revisión y registro en una sola sección, con contador por elemento (OK, falta N o N de más).",
@@ -147,7 +191,7 @@ const LOG: Rel[] = [
       "ASB: Administrativos, Entrevistas, Ideas de eventos y publicaciones, Documentación, Tareas, Convenios y Subdivisiones. MDSO con licencias de drone. HSIU con Registro TOM.",
       "PSB de punta a punta: notificación, elevación, aprobación SAJD, resolución, votaciones y expedientes.",
     ]],
-    ["Metropolitan Division", [
+    ["[div:Metropolitan Division] Metropolitan Division", [
       "Armas (coordinación): las armas reglamentarias por tipo, con munición, accesorios por ranura, autorización y «Copiar kit» con comandos, lista de ítems o texto.",
       "Entrevista de instructor por convocatorias (C1…) con postulantes, respuestas en solo lectura y preguntas revisadas.",
       "Examen escrito en línea: estado Listo / No disponible, pantalla exclusiva con una pregunta por vez, reloj, corrección automática en el servidor y strikes por salir de la pestaña, capturas o herramientas del navegador (3 desaprueban).",
@@ -196,16 +240,16 @@ const LOG: Rel[] = [
 ];
 
 /* la última versión, para el inicio */
-export const latest = () => LOG[0];
+export const latest = (me: Who) => logFor(me)[0] || LOG[0];
 export function Novedades() {
-  const [tab, setTab] = useState<"log" | "v03">("log");
+  const [tab, setTab] = useState<"log" | "v03">("log"), me = useMe(), L = logFor({ n: me.n, r: me.r, dept: DEPT.id });
   useEffect(() => { markSeen(); }, []);
   return (
     <div className="space-y-5">
       <Segmented value={tab} onChange={setTab} options={[{ value: "log", label: "Registro de cambios", icon: <ScrollText /> }, { value: "v03", label: "Primera versión (v0.3)", icon: <History /> }]} />
       {tab === "log" ? (
         <ol className="relative space-y-4 border-l border-slate-200 pl-6 dark:border-slate-800">
-          {LOG.map((r, i) => (
+          {L.map((r, i) => (
             <li key={r.v} className="relative">
               <span className={cn("absolute -left-[33px] top-4 grid size-4 place-items-center rounded-full ring-4 ring-slate-50 dark:ring-slate-950", i === 0 ? "bg-orange-500" : "bg-slate-300 dark:bg-slate-700")} />
               <Card className="p-5">

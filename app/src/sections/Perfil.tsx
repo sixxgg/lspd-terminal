@@ -8,10 +8,10 @@ import { Button, Card, Textarea } from "@/components/ui";
 import { Avatar, RankBadge } from "@/components/agents";
 import { Ribbon, RibbonRack } from "@/components/ribbon";
 import { Modal } from "@/components/modal";
-import { LOGROS, Medal, TIER } from "@/components/logros";
+import { LOGROS, Medal, TIER, isHolo } from "@/components/logros";
 import { useFeedback } from "@/components/feedback";
 import { useTick } from "@/components/fbnotif";
-import { ACC, LS, useStoreVersion } from "@/lib/store";
+import { ACC, LS, useStoreVersion, ME_ROLES } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { readImg } from "@/lib/patrol";
 import { ago, emailOf, findAgent, fmtDate, lvl, rankES, uid } from "@/lib/domain";
@@ -134,7 +134,9 @@ export function Perfil() {
         <span className="min-w-0"><b className="block truncate text-sm">{nickOf(n)}</b><small className="block truncate text-xs text-slate-500">{why || (nickOf(n) !== n ? n : "")}</small></span></button>
       {n !== me.n && <Button size="sm" variant={on ? "outline" : "primary"} onClick={() => toggleFol(n)}>{on ? "Siguiendo" : "Seguir"}</Button>}
     </div>); };
-  const logros = LOGROS.filter(l => !l.only || l.only === who).map(l => ({ ...l, on: l.ok(who, r) })), got = logros.filter(l => l.on);
+  /* logros ocultos: los ve el dueño del perfil y six; el resto ve «Logro oculto» */
+  const seeHid = who === me.n || !!ME_ROLES.six;
+  const logros = LOGROS.filter(l => !l.only || l.only === who).map(l => ({ ...l, on: l.ok(who, r), ...(l.oculto && !seeHid ? { t: "Logro oculto", d: "Solo lo ve su dueño." } : {}) })), got = logros.filter(l => l.on);
   const best = got.slice().reverse().slice(0, 3);
   /* actividad general (OOC) y la policial privada */
   const act: (Ev & { by?: string })[] = [...(P.since ? [{ t: P.since, x: "Se registró en la terminal" }] : []),
@@ -227,10 +229,10 @@ export function Perfil() {
             </div>}
 
             {tab === "log" && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{logros.map(l => (
-              <div key={l.k} className={cn("flex items-center gap-3 rounded-xl border p-3", l.on && l.tier === "mitico" ? "holo-card border-2" : l.on ? "border-slate-200 dark:border-slate-700" : "border-dashed border-slate-200 dark:border-slate-800")} style={l.on && l.tier !== "mitico" ? { boxShadow: `inset 3px 0 0 ${TIER[l.tier].c}` } : undefined}>
+              <div key={l.k} className={cn("flex items-center gap-3 rounded-xl border p-3", l.on && isHolo(l.tier) ? "holo-card border-2" : l.on ? "border-slate-200 dark:border-slate-700" : "border-dashed border-slate-200 dark:border-slate-800")} style={l.on && !isHolo(l.tier) ? { boxShadow: `inset 3px 0 0 ${TIER[l.tier].c}` } : undefined}>
                 <Medal tier={l.tier} I={l.I} on={l.on} />
                 <div className="min-w-0"><b className={cn("block text-sm", !l.on && "text-slate-400")}>{l.t}</b>
-                  <span className={cn("text-[11px] font-bold uppercase tracking-wider", l.on && l.tier === "mitico" && "holo-text")} style={l.on && l.tier === "mitico" ? undefined : { color: TIER[l.tier].c }}>{TIER[l.tier].l}</span>
+                  <span className={cn("text-[11px] font-bold uppercase tracking-wider", l.on && l.tier === "mitico" && "holo-text")} style={l.on && l.tier === "mitico" ? undefined : { color: TIER[l.tier].c }}>{TIER[l.tier].l}{l.oculto && " · oculto"}</span>
                   <p className="text-xs text-slate-500">{l.on ? l.d : "Bloqueado"}</p></div>
               </div>))}</div>}
 

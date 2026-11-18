@@ -86,7 +86,7 @@ const LSPD_AREAS: Area[] = RAW_AREAS
   .sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
 /* LSSD y SAHP: las mismas secciones del LSPD (Inicio, Agentes, Calendario, Informes, Feedback, Legal, Pizarra, Galería, Radio, Códigos y Administración),
    cada una con los datos de su departamento. Supervisores, Capitanía y Jefatura siguen en construcción. Mismas reglas de rango (escala equivalente, lib/domain.ts). */
-const SHARE = ["ini", "age", "cal", "inf", "fb", "leg", "piz", "gal", "rad", "cod"];
+const SHARE = ["ini", "me", "age", "cal", "inf", "fb", "leg", "piz", "gal", "rad", "cod"];
 const ADM_X = ["brand", "acc", "data", "gal", "ts"];
 const LSSD_DIV_SEC: Sec[] = [
   { k: "dv_sseb", l: "Special Enforcement Bureau", d: "SEB · Special Operations Division", icon: Crosshair, ready: true },

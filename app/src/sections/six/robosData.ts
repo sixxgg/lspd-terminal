@@ -104,7 +104,7 @@ export const MISIONES: Mision[] = [
   m("Infiltración y robo comisaría", "Infiltración", 4, 8, "16.000$", { robo: "comisaria", f: [54] }), m("Asalto armería de Paleto", "Encargo", 2, 6, "revisar", { robo: "ammu", f: [55] }),
   m("Asalto al carguero del puerto", "Encargo", 2, 6, "3.000$ + piezas de armas", { robo: "carguero", f: [56] }), m("Materia prohibida", "Encargo", 1, 4, "1.000$ + ítems para droga", { cat: "men", f: [57] }),
   m("Robo a la comisaría de Sandy", "Encargo", 2, 6, "revisar", { robo: "comisaria", f: [58] }), m("Asalto al carguero", "Encargo", 4, 8, "4.000$ + piezas de armas", { robo: "carguero", f: [59] }),
-  m("Depósito clandestino Walker", "Encargo", 3, 8, "3.000$", { cat: "may", f: [60] }), m("Asalta al Vanilla Unicorn", "Encargo", 4, 8, "4.000$", { cat: "esp", f: [61] }),
+  m("Depósito clandestino Walker", "Encargo", 3, 8, "3.000$", { cat: "may", f: [60] }), m("Asalta al Remolcador", "Encargo", 4, 8, "4.000$", { cat: "esp", f: [61] }),
   m("Código M", "Encargo", 2, 6, "3.000$ + ítems para droga", { cat: "esp", f: [62] }), m("Proyecto Neón", "Encargo", 2, 4, "3.000$ + ítems para droga", { cat: "esp", f: [63] }),
   m("Murrieta Factory", "Encargo", 2, 6, "3.000$ + piezas de armas", { cat: "esp", off: true, f: [64] }), m("Bunker Calafia", "Encargo", 4, 8, "falta hacerla", { cat: "may", off: true, f: [65] }),
   m("El último vínculo", "Encargo", 3, 6, "15.000$", { cat: "may", f: [66] }), m("Operación Náufrago", "Encargo", 3, 6, "9.000$", { cat: "esp", off: true, f: [67] }),
@@ -116,7 +116,11 @@ export const MISIONES: Mision[] = [
   m("Acaba con Carlson", "Asesinato", 2, 6, "15.000$", { cat: "mis", f: [78] }), m("Va de SMG la cosa", "Encargo (persecución)", 2, 8, "30.000$", { cat: "may", f: [79] }),
   m("Robo 4x4", "Robo de vehículo", 1, 4, "1.000$", { cat: "veh", f: [80] }), m("Saqueo fúnebre", "Entrega", 1, 3, "100$ + anillo de diamante", { cat: "mis", f: [81] }),
   m("Cárgate a ese sapo", "Asesinato", 1, 3, "1.500$", { cat: "mis", f: [82] }),
+  m("Kilómetro 0", "Persecución (crew · Saskia)", 4, 8, "8.000$", { cat: "may", f: [83] }), m("Clásico y renovado", "Robo de vehículo", 1, 2, "500$", { cat: "veh", f: [84] }),
+  m("High Class", "Robo de vehículo", 2, 4, "1.600$", { cat: "veh", f: [85] }), m("Null Operation", "Encargo", 2, 4, "8.000$", { cat: "esp", f: [86] }),
 ];
+/* versión del catálogo: si la publicada en la base es de otra versión, Supervisores usa la nueva sin esperar a que six la vuelva a publicar */
+export const ROBOS_V = 2;
 
 /* ---------- cruce ---------- */
 const base = (n: string) => n.replace(/\s*\((II|encargo)\)$/i, "").toLowerCase();

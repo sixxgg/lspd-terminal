@@ -9,7 +9,7 @@ import { useJSON } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import { fullDT } from "@/lib/domain";
 import { DivNav } from "../div/DivTools";
-import { CATS, WPN, catalogo, recOf, unidades, type Cat } from "../six/robosData";
+import { CATS, ROBOS_V, WPN, catalogo, recOf, unidades, type Cat } from "../six/robosData";
 import { art, pena, pubItems, type PubItem, type Ref, type RobosPub } from "../six/robosLegal";
 
 const KEYS = Object.keys(CATS) as Cat[];
@@ -41,7 +41,7 @@ function leyText(it: PubItem) {
 
 export function RobosSup() {
   const [P] = useJSON<RobosPub | null>("lspdt.robos", null);
-  const all = useMemo(() => (P?.items?.length ? P.items : pubItems(catalogo())), [P]);
+  const all = useMemo(() => (P?.items?.length && P.v === ROBOS_V ? P.items : pubItems(catalogo())), [P]);
   const [tab, setTab] = useState<"cat" | "art">("cat"), [cat, setCat] = useState<Cat | "">(""), [q, setQ] = useState(""), [sel, setSel] = useState<PubItem | null>(null);
   const s = q.trim().toLowerCase();
   const L = all.filter(x => (!cat || x.cat === cat) && (!s || `${x.n} ${[...x.ley.cons, ...x.ley.cond.flatMap(c => c.arts)].map(r => `${r.a} ${art(r.a)?.t}`).join(" ")}`.toLowerCase().includes(s)));
