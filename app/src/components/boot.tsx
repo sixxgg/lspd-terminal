@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Loader2, ShieldCheck } from "lucide-react";
 import { LS } from "@/lib/store";
 import { Avatar } from "@/components/agents";
+import { DEPT, DEPTS, deptLogo } from "@/lib/dept";
 
 const hex = (n: number) => Array.from({ length: n }, () => "0123456789ABCDEF"[Math.floor(Math.random() * 16)]).join("");
 const GLYPHS = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789";
@@ -40,7 +41,7 @@ export function BootScreen({ name, rank, badge, agents, no, divs = [], short, on
   }, [name, reduce, short]);
   useEffect(() => { const kd = (e: KeyboardEvent) => { if (e.key === "Escape" || e.key === "Enter") finish(); }; window.addEventListener("keydown", kd); return () => window.removeEventListener("keydown", kd); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const pct = Math.round((Math.min(n, steps.length) / steps.length) * 100);
-  const logo = LS.get("lspdt.logo.boot") || LS.get("lspdt.logo") || "/next/logo.svg";
+  const logo = DEPT.id !== "lspd" ? deptLogo(DEPT.id) : LS.get("lspdt.logo.boot") || LS.get("lspdt.logo") || "/next/logo.svg";
 
   return (
     <div role="status" aria-live="polite" aria-label="Verificando identidad"
@@ -51,7 +52,7 @@ export function BootScreen({ name, rank, badge, agents, no, divs = [], short, on
       <div className="relative my-8 w-[min(900px,calc(100%-32px))]">
         <div className="mb-5 flex items-center gap-3">
           <span className="boot-dot size-2 rounded-full bg-red-500 shadow-[0_0_10px_#ef4444]" />
-          <p className="text-[11px] tracking-[0.3em] text-sky-400/80">LSPD · MOBILE DATA TERMINAL · CONTROL DE IDENTIDAD</p>
+          <p className="text-[11px] tracking-[0.3em] text-sky-400/80">{DEPTS[DEPT.id].short} · MOBILE DATA TERMINAL · CONTROL DE IDENTIDAD</p>
           <span className={"ml-auto hidden rounded border px-2 py-1 text-[10px] tracking-[0.2em] sm:inline " + (done ? "border-emerald-400/50 text-emerald-300" : "border-amber-400/40 text-amber-300")}>{done ? "VALIDADO" : "VALIDANDO"}</span>
         </div>
 

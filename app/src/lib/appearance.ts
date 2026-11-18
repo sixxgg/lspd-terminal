@@ -2,7 +2,32 @@
    tipografía y puntero. Las claves son las mismas que en la clásica, así la elección se comparte entre las dos versiones. */
 import { useSyncExternalStore } from "react";
 
-type Skin = { l: string; dark: boolean; sw: [string, string, string]; bg: string; card: string; soft: string; line: string; ink: string; mut: string; acc: string };
+type Skin = { l: string; dark: boolean; sw: [string, string, string]; bg: string; card: string; soft: string; line: string; ink: string; mut: string; acc: string; dept?: "lssd" | "sahp" };
+type SkinX = Omit<Skin, "sw">;
+/* temas propios de cada departamento: el LSSD, sobre verdes (con detalles dorados del escudo); la SAHP, caqui, asfalto y azul estatal con dorado */
+const X = (dept: "lssd" | "sahp", o: Record<string, SkinX>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, { ...v, dept, sw: [v.bg, v.card, v.acc] as [string, string, string] }]));
+const LSSD_SKINS = X("lssd", {
+  s_sheriff: { l: "Sheriff · oscuro", dark: true, bg: "#06110b", card: "#0c1b12", soft: "#12261a", line: "#1e3a28", ink: "#e7f3eb", mut: "#93b49f", acc: "#d4a937" },
+  s_campo: { l: "Sheriff · claro", dark: false, bg: "#eef4ef", card: "#ffffff", soft: "#f3f8f4", line: "#d3e3d7", ink: "#12301e", mut: "#4f6f5b", acc: "#2f7d4a" },
+  s_pino: { l: "Pino", dark: true, bg: "#050e09", card: "#0b1810", soft: "#112417", line: "#1b3523", ink: "#e3f2e7", mut: "#8cae96", acc: "#4ade80" },
+  s_jade: { l: "Jade", dark: true, bg: "#03110e", card: "#081d18", soft: "#0d2922", line: "#163a31", ink: "#e1f4ee", mut: "#88b3a6", acc: "#2dd4a0" },
+  s_oliva: { l: "Oliva", dark: true, bg: "#0f1209", card: "#181d0f", soft: "#212816", line: "#313a20", ink: "#eef1e1", mut: "#a6ad8a", acc: "#b5c94e" },
+  s_tactico: { l: "Táctico", dark: true, bg: "#0b0e0a", card: "#131811", soft: "#1b2218", line: "#283223", ink: "#e9eee5", mut: "#9aa891", acc: "#8fbf5a" },
+  s_noche: { l: "Noche de patrulla", dark: true, bg: "#020604", card: "#08110c", soft: "#0d1a12", line: "#16291d", ink: "#e2efe6", mut: "#86a592", acc: "#34d399" },
+  s_salvia: { l: "Salvia · claro", dark: false, bg: "#f1f5f0", card: "#ffffff", soft: "#f5f8f4", line: "#d9e4d6", ink: "#1d3326", mut: "#5b7464", acc: "#4f8a5b" },
+  s_musgo: { l: "Musgo · claro", dark: false, bg: "#f3f5ea", card: "#fffef8", soft: "#f7f8ef", line: "#dfe3cb", ink: "#2b3318", mut: "#69714f", acc: "#6b7f2a" },
+  s_menta: { l: "Esmeralda · claro", dark: false, bg: "#ecfdf5", card: "#ffffff", soft: "#f2fdf8", line: "#c9eedd", ink: "#064e3b", mut: "#3f7a65", acc: "#059669" },
+});
+const SAHP_SKINS = X("sahp", {
+  h_patrol: { l: "Highway · oscuro", dark: true, bg: "#0a0f17", card: "#111a26", soft: "#172233", line: "#243349", ink: "#e8eef6", mut: "#93a3ba", acc: "#d4a64a" },
+  h_caqui: { l: "Highway · claro", dark: false, bg: "#f3eee3", card: "#fffdf7", soft: "#f8f4ea", line: "#e4dac4", ink: "#3a3020", mut: "#7a6c50", acc: "#a5803a" },
+  h_estatal: { l: "Azul estatal", dark: true, bg: "#06101f", card: "#0b1a33", soft: "#112444", line: "#1c3460", ink: "#e6edf8", mut: "#8ea2c4", acc: "#f2c94c" },
+  h_asfalto: { l: "Asfalto", dark: true, bg: "#0e0f11", card: "#17191c", soft: "#1f2226", line: "#2c3035", ink: "#eceef0", mut: "#9ea4ab", acc: "#facc15" },
+  h_ruta: { l: "Ruta 1", dark: true, bg: "#0f0d0a", card: "#1a1610", soft: "#241e16", line: "#352c20", ink: "#f2ebe0", mut: "#b0a28c", acc: "#e0b25a" },
+  h_arena: { l: "Arena del desierto", dark: true, bg: "#15120c", card: "#1f1a12", soft: "#2a2318", line: "#3b3123", ink: "#f3ecdf", mut: "#b3a58b", acc: "#d6b36a" },
+  h_cielo: { l: "Cielo · claro", dark: false, bg: "#eef4fb", card: "#ffffff", soft: "#f3f7fc", line: "#d3e1f0", ink: "#0d2a4a", mut: "#4d6584", acc: "#1d4ed8" },
+  h_desierto: { l: "Desierto · claro", dark: false, bg: "#f6efe2", card: "#fffcf6", soft: "#faf5ec", line: "#e8dcc5", ink: "#4a3218", mut: "#806a4f", acc: "#c2410c" },
+});
 export const SKINS: Record<string, Skin> = {
   nuevo: { l: "Nuevo · oscuro", dark: true, sw: ["#020617", "#0f172a", "#6366f1"], bg: "#020617", card: "#0f172a", soft: "#1e293b", line: "#334155", ink: "#f1f5f9", mut: "#94a3b8", acc: "#6366f1" },
   nuevoc: { l: "Nuevo · claro", dark: false, sw: ["#f8fafc", "#0f172a", "#6366f1"], bg: "#f8fafc", card: "#ffffff", soft: "#f1f5f9", line: "#e2e8f0", ink: "#0f172a", mut: "#64748b", acc: "#6366f1" },
@@ -40,7 +65,15 @@ export const SKINS: Record<string, Skin> = {
   latte: { l: "Latte", dark: false, sw: ["#eff1f5", "#ffffff", "#8839ef"], bg: "#eff1f5", card: "#ffffff", soft: "#e6e9ef", line: "#ccd0da", ink: "#4c4f69", mut: "#6c6f85", acc: "#8839ef" },
   solarl: { l: "Solarized claro", dark: false, sw: ["#fdf6e3", "#fffbf0", "#268bd2"], bg: "#fdf6e3", card: "#fffbf0", soft: "#eee8d5", line: "#e2dbc6", ink: "#073642", mut: "#657b83", acc: "#268bd2" },
   nord: { l: "Nord", dark: true, sw: ["#2e3440", "#3b4252", "#88c0d0"], bg: "#2a2f3a", card: "#2e3440", soft: "#3b4252", line: "#434c5e", ink: "#eceff4", mut: "#a3adbf", acc: "#88c0d0" },
+  ...LSSD_SKINS, ...SAHP_SKINS,
 };
+/* departamento activo (lo fija lib/dept.ts): cada uno tiene su lista de temas y recuerda el suyo */
+let SKD: "lspd" | "lssd" | "sahp" = "lspd";
+export const setSkinDept = (d: "lspd" | "lssd" | "sahp") => { if (d !== SKD) { SKD = d; applyAppearance(); } };
+export const skinsOfDept = () => Object.entries(SKINS).filter(([, s]) => (s.dept || "lspd") === SKD);
+const themeKey = () => (SKD === "lspd" ? "lspdt.theme" : `lspdt.next.theme.${SKD}`);
+const DEPT_DEF_SKIN = { lspd: "nuevo", lssd: "s_sheriff", sahp: "h_patrol" } as const;
+const okSkin = (k: string | null | undefined): k is string => !!k && !!SKINS[k] && (SKINS[k].dept || "lspd") === SKD;
 export const ACCENTS = ["#7c9cff", "#60a5fa", "#22d3ee", "#22c55e", "#facc15", "#f97316", "#ef4444", "#e879f9", "#e5e7eb", "#c9a227"];
 /* fuentes para títulos y menús (estilo táctico, como Rajdhani SemiBold); se cargan solo si se eligen */
 export const HEADS: Record<string, { l: string; fam: string; g: string; w: number; ls: string }> = {
@@ -79,11 +112,11 @@ function brandOf(own: string | null, spd: string | null) {
   return { brand: isBrand(own) ? own : isBrand(deptUi.brand) ? deptUi.brand : "rgb", brandOwn: isBrand(own), brandSpd: Math.max(1, Math.min(20, n)) };
 }
 function pref(): Pref {
-  const s = lsGet("lspdt.theme"), old = lsGet("lspdt.next.theme");
-  const skin = s && SKINS[s] ? s : SKINS[deptUi.theme] ? deptUi.theme : old === "light" ? "nuevoc" : "nuevo";
+  const s = lsGet(themeKey()), old = lsGet("lspdt.next.theme"), dT = SKD === "lspd" ? deptUi.theme : deptUi["theme." + SKD];
+  const skin = okSkin(s) ? s : okSkin(dT) ? dT : SKD === "lspd" && old === "light" ? "nuevoc" : DEPT_DEF_SKIN[SKD];
   const c = lsGet("lspdt.crt"), i = parseInt(lsGet("lspdt.crtI") || "");
   const cu = lsGet("lspdt.cursor");
-  return { skin, skinOwn: !!(s && SKINS[s]), acc: lsGet("lspdt.accent") || "", crt: c === "0" ? "0" : c && CRT_V[c] ? c : "lite", crtI: isNaN(i) ? 70 : Math.max(0, Math.min(100, i)),
+  return { skin, skinOwn: okSkin(s), acc: lsGet("lspdt.accent") || "", crt: c === "0" ? "0" : c && CRT_V[c] ? c : "lite", crtI: isNaN(i) ? 70 : Math.max(0, Math.min(100, i)),
     frame: lsGet("lspdt.frame") !== "0", neon: lsGet("lspdt.next.neon") !== "0", font: lsGet("lspdt.next.font") || "inter", head: HEADS[lsGet("lspdt.next.head") || ""] ? lsGet("lspdt.next.head")! : "rajdhani",
     cur: cu && CURS[cu] ? cu : CURS[deptUi.cursor] ? deptUi.cursor : "sys", curOwn: !!(cu && CURS[cu]), nav: lsGet("lspdt.next.navmode") === "side" ? "side" : "top",
     /* marca «Bananita» del marco: la propia o, si no eligió, la que fijó la administración */
@@ -94,7 +127,7 @@ function pref(): Pref {
 const subs = new Set<() => void>(); let ver = 0;
 export const usePref = () => { useSyncExternalStore(f => { subs.add(f); return () => { subs.delete(f); }; }, () => ver); return pref(); };
 export function setPref(k: "skin" | "acc" | "crt" | "crtI" | "frame" | "neon" | "font" | "head" | "cur" | "nav" | "brand" | "brandSpd" | "updBlur", v: string | number | boolean | null) {
-  const key = { skin: "lspdt.theme", acc: "lspdt.accent", crt: "lspdt.crt", crtI: "lspdt.crtI", frame: "lspdt.frame", neon: "lspdt.next.neon", font: "lspdt.next.font", head: "lspdt.next.head", cur: "lspdt.cursor", nav: "lspdt.next.navmode", brand: "lspdt.next.brand", brandSpd: "lspdt.next.brandSpd", updBlur: "lspdt.next.updBlur" }[k];
+  const key = { skin: themeKey(), acc: "lspdt.accent", crt: "lspdt.crt", crtI: "lspdt.crtI", frame: "lspdt.frame", neon: "lspdt.next.neon", font: "lspdt.next.font", head: "lspdt.next.head", cur: "lspdt.cursor", nav: "lspdt.next.navmode", brand: "lspdt.next.brand", brandSpd: "lspdt.next.brandSpd", updBlur: "lspdt.next.updBlur" }[k];
   lsSet(key, v === null || v === "" ? null : typeof v === "boolean" ? (v ? "1" : "0") : String(v));
   applyAppearance();
 }

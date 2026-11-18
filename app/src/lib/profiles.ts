@@ -1,4 +1,5 @@
 /* Perfiles de agentes (lspdt.profiles) y roster: mismas estructuras que la versión clásica */
+import { DEPT } from "./dept";
 import { LS } from "./store";
 import { DET, genderOf, getRoster, type Agent } from "./domain";
 import { rosterCall, rosterDivs } from "./units";
@@ -18,7 +19,7 @@ export const allProfiles = () => LS.ro<Record<string, Profile>>("lspdt.profiles"
 const withRoster = (n: string, p: Profile): Profile => { const rd = rosterDivs(n); if (rd.some(d => !p.div.includes(d))) p.div = [...p.div, ...rd.filter(d => !p.div.includes(d))]; if (!p.cs) p.cs = rosterCall(n); return p; };
 export function profFull(n: string, all = allProfiles()): Profile {
   const p = all[n]; if (p) return withRoster(n, Object.assign({ cond: [], lic: {}, div: [], notas: [], movs: [] }, p, { div: [...((p.div as string[]) || [])] }) as Profile);
-  const s = PROF_SEED[n] || {}, a = getRoster().find(x => x.n === n);
+  const s = (DEPT.id === "lspd" && PROF_SEED[n]) || {}, a = getRoster().find(x => x.n === n); /* lo cargado de fábrica es del LSPD */
   return withRoster(n, { g: genderOf(n), cs: s.cs || "", fr: s.fr || 0, main: "", ph: null, cv: null, cond: [], lic: {}, div: s.div ? [...s.div] : a && DET.includes(a.r) ? ["Detective Bureau"] : [], foto: "", notas: [], movs: [] });
 }
 export function updateProf(n: string, fn: (p: Profile) => void) {

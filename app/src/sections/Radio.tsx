@@ -2,6 +2,7 @@
    10.03 (robo en curso): canal (/rlspd interna o /rsapd para todos los departamentos; la frecuencia la pone sola la radio), código, robo, calle,
    sujetos (sexo, piel, máscara, chaqueta, camiseta, pantalones, calzado y otros) y vehículo de huida.
    Las sugerencias salen de listas base + todo lo que ya se cargó en comunicados anteriores (lspdt.radio, compartido). */
+import { DEPT, DEPTS } from "@/lib/dept";
 import { useEffect, useMemo, useState } from "react";
 import { Car, Copy, Globe, History, Lock, Plus, Radio as RadioIcon, RotateCcw, Save, Trash2, UserRound, Users } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Field, Segmented } from "@/components/ui";
@@ -19,6 +20,8 @@ import type { RobosPub } from "./six/robosLegal";
 
 type Sx = "m" | "f" | "x";
 type Suj = { sx: Sx; piel: string; masc: string; chq: string; cam: string; pan: string; cal: string; otr: string };
+/* canal interno del departamento activo (/rlspd, /rlssd o /rsahp); /rsapd es el de todos */
+const chan = (c: string) => (c === "rlspd" ? "r" + DEPT.id : c);
 type Com = { id: string; t: number; by: string; canal: "rlspd" | "rsapd"; cor: boolean; frec?: string; cod: string; robo: string; calle: string; suj: Suj[]; pie: boolean; veh: Veh; col: string; matT: string; mat: string; txt: string };
 
 const CODES = [["211", "Robo a mano armada"], ["487", "Robo mayor"], ["207", "Secuestro / rehenes"]] as const;
@@ -49,7 +52,7 @@ function build(c: Omit<Com, "id" | "t" | "by" | "txt" | "frec">) {
   const mod = c.veh.mo.trim() || c.veh.md.trim();
   const mat = c.matT === "ok" ? ` con MATRÍCULA: ${c.mat.trim().toUpperCase() || "[matrícula]"}` : c.matT === "sin" ? " sin matrícula" : c.matT === "tap" ? " con la matrícula tapada" : ", matrícula no visible";
   const veh = c.pie ? "VEHÍCULO DE HUIDA: huyeron a pie." : `VEHÍCULO DE HUIDA: ${mod || "[vehículo]"}${c.col.trim() ? ` de color ${c.col.trim()}` : ""}${mat}.`;
-  return `/${c.canal} ${head} | Sujetos: ${S || "[sujetos]"} ${veh}`;
+  return `/${chan(c.canal)} ${head} | Sujetos: ${S || "[sujetos]"} ${veh}`;
 }
 
 export function Radio() {
@@ -83,7 +86,7 @@ export function Radio() {
           <CardHeader icon={<RadioIcon />} title="Comunicado 10.03 · robo en curso" desc="Completá lo que sepas: el mensaje se arma solo. Las sugerencias aprenden de los comunicados anteriores."
             action={mine[0] && <Button size="sm" variant="outline" icon={<RotateCcw />} onClick={() => load(mine[0], true)}>Corregir el último</Button>} />
           <CardBody>
-            <Field label="Canal"><div className="grid gap-2 sm:grid-cols-2">{([["rlspd", "Interna LSPD", "Solo la escucha la LSPD", Lock], ["rsapd", "Todos los departamentos", "LSPD · LSSD · SAHP · FIB", Globe]] as const).map(([k, l, d, I]) => (
+            <Field label="Canal"><div className="grid gap-2 sm:grid-cols-2">{([["rlspd", `Interna ${DEPTS[DEPT.id].short}`, `Solo la escucha ${DEPT.id === "lspd" ? "la LSPD" : DEPT.id === "lssd" ? "el LSSD" : "la SAHP"}`, Lock], ["rsapd", "Todos los departamentos", "LSPD · LSSD · SAHP · FIB", Globe]] as const).map(([k, l, d, I]) => (
               <button key={k} type="button" onClick={() => setCanal(k)} className={cn("flex items-center gap-3 rounded-2xl border p-3 text-left transition", canal === k ? "border-brand-500 bg-brand-500/10 shadow-sm" : "border-slate-200 hover:border-slate-300 dark:border-slate-700")}>
                 <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", canal === k ? "bg-brand-600 text-white dark:bg-brand-500" : "bg-slate-100 text-slate-500 dark:bg-slate-800")}><I className="size-[18px]" /></span>
                 <span className="min-w-0"><span className="flex items-baseline gap-2"><b className="font-mono text-[14px]">/{k}</b><span className="truncate text-[12px] font-semibold text-slate-600 dark:text-slate-300">{l}</span></span><span className="block truncate text-[11.5px] text-slate-500">{d}</span></span></button>))}</div></Field>
@@ -126,7 +129,7 @@ export function Radio() {
         </Card>
       </Col>
       <Col className="lg:sticky lg:top-32 lg:self-start">
-        <CopyLine tag={`/${canal}`} label="Mensaje de radio" text={txt} errors={errs} />
+        <CopyLine tag={`/${chan(canal)}`} label="Mensaje de radio" text={txt} errors={errs} />
         <Card className="flex flex-wrap items-center gap-2 p-3">
           <p className="min-w-0 flex-1 text-[12px] text-slate-500">{txt.length} caracteres · guardalo para corregirlo después y para que las sugerencias aprendan.</p>
           <Button size="sm" variant="ghost" icon={<RotateCcw />} onClick={reset}>Limpiar</Button>
@@ -136,7 +139,7 @@ export function Radio() {
           <CardHeader icon={<History />} title="Últimos comunicados" />
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">{H.slice(0, 8).map(c => (
             <li key={c.id} className="space-y-1.5 px-4 py-2.5">
-              <p className="flex flex-wrap items-center gap-1.5 text-[11.5px] text-slate-500"><span className="rounded bg-slate-900 px-1.5 font-mono text-[10.5px] text-slate-100">/{c.canal}</span>{c.cor && <b className="text-amber-600">Corrección</b>}
+              <p className="flex flex-wrap items-center gap-1.5 text-[11.5px] text-slate-500"><span className="rounded bg-slate-900 px-1.5 font-mono text-[10.5px] text-slate-100">/{chan(c.canal)}</span>{c.cor && <b className="text-amber-600">Corrección</b>}
                 <b className="text-slate-700 dark:text-slate-200">{c.robo}</b>· {c.calle} · {fullDT(c.t)} · {c.by}</p>
               <p className="line-clamp-2 font-mono text-[11.5px] text-slate-600 dark:text-slate-300">{c.txt}</p>
               <div className="flex flex-wrap gap-1.5"><Button size="sm" variant="outline" onClick={() => load(c, false)}>Cargar</Button><Button size="sm" variant="outline" onClick={() => load(c, true)}>Corregir</Button>

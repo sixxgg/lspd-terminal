@@ -1,5 +1,5 @@
 import { q } from "../lib/db.js";
-import { query, wrap, current, PUBLIC_KEYS, SIX_KEY, isSix } from "../lib/core.js";
+import { query, wrap, current, PUBLIC_KEYS, SIX_KEY, isSix, canRead } from "../lib/core.js";
 import { cleanSecs, guestKey } from "../lib/guest.js";
 
 export default wrap(async (req, res) => {
@@ -14,6 +14,7 @@ export default wrap(async (req, res) => {
     guest = !!s && s.kind === "guest" && s.exp > Date.now() && guestKey(k, cleanSecs(s.secs)); }
   if (!pub && !who && !guest) return fail(401);
   if (SIX_KEY.test(k) && !isSix(who)) return fail(404);
+  if (who && !canRead(k, who)) return fail(404); /* imágenes de otro departamento o de una división ajena */
   const r = (await q("select v from kv where k=$1", [k])).rows[0];
   const v = r && r.v;
   const m = v && /^data:([\w/+.-]+)(;[^,]*)?,(.*)$/s.exec(v);

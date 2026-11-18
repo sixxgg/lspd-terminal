@@ -8,7 +8,7 @@ import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Eye, Search, Spark
 import { Card } from "@/components/ui";
 import { Avatar } from "@/components/agents";
 import { RibbonRack } from "@/components/ribbon";
-import { LEVEL, RANK_COLOR, divAb, emailOf, insigniaUrl, rankES } from "@/lib/domain";
+import { GROUPS, LEVEL, RANK_COLOR, divAb, emailOf, insigniaUrl, rankES } from "@/lib/domain";
 import { decorOf, type Award, type Decor } from "@/lib/decor";
 import { profFull } from "@/lib/profiles";
 import { calAll, calMine, fmtWhen, hasTime, isToday } from "@/lib/calendar";
@@ -18,7 +18,8 @@ import { latest } from "./Novedades";
 import { cn } from "@/lib/cn";
 import { fotoStyle, GAL_KEY, type Foto } from "@/lib/gal";
 
-const LADDER = Object.entries(LEVEL).filter(([r]) => r !== "Administrativo").sort((a, b) => a[1] - b[1]).map(([r]) => r);
+/* escalera de rangos del departamento activo (de menor a mayor) */
+const ladder = () => Object.values(GROUPS).flatMap(g => g.r).reverse();
 const isDet = (r: string) => /^Detective/.test(r);
 /* colores de división muy oscuros (ej. SWAT negro) se aclaran para que se lean sobre el fondo */
 const lum = (c: string) => { const n = parseInt(c.replace("#", "").slice(0, 6), 16); return Number.isNaN(n) ? 255 : ((n >> 16) & 255) * .3 + ((n >> 8) & 255) * .59 + (n & 255) * .11; };
@@ -29,7 +30,7 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
   const prof = profFull(me.n), up = LS.json<{ since?: number }>(`lspdt.uprof.${emailOf(me.n).split("@")[0]}`, {});
   const ribbons = ((prof.cond || []) as unknown as Award[]).map(a => decorOf(a.k)).filter(Boolean) as Decor[];
   const col = RANK_COLOR[me.r] || "rgb(var(--b-500))", ins = insigniaUrl(me.r);
-  const track = LADDER.filter(r => (isDet(me.r) ? isDet(r) || LEVEL[r] < 4.5 : !isDet(r))), at = track.indexOf(me.r), next = at >= 0 ? track[at + 1] : undefined;
+  const track = ladder().filter(r => (isDet(me.r) ? isDet(r) || LEVEL[r] < 4.5 : !isDet(r))), at = track.indexOf(me.r), next = at >= 0 ? track[at + 1] : undefined;
   const evs = useMemo(() => calAll().filter(e => e.at >= Date.now() - 36e5 && calMine(e, me.n)).sort((a, b) => a.at - b.at).slice(0, 5), [me.n]); // eslint-disable-line react-hooks/exhaustive-deps
   const rel = latest(), [G] = useJSON<Foto[]>(GAL_KEY, []), fotos = G.filter(f => f.on);
   const fecha = new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });

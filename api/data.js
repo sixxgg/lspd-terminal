@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { q, tx } from "../lib/db.js";
 import { audit, auditList, auditRoster, diffSum, keepVersion, versions, HIST_SKIP, ROSTER_OUT } from "../lib/audit.js";
-import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp } from "../lib/core.js";
+import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept } from "../lib/core.js";
 
 async function downloadImg(url) {
   const fail = m => Object.assign(new Error(m), { status: 400 });
@@ -64,12 +64,12 @@ export default wrap(async (req, res) => {
   }
 
   if (req.method !== "POST") return send(res, 405, { error: "method" });
-  const b = await body(req), k = b.k;
+  const b = await body(req), k = b.k, bk = typeof k === "string" ? baseKey(k) : k; /* bk: la clave «como del LSPD» (las reglas valen igual en los tres departamentos) */
   /* contraseña restablecida: hasta que la cambie no puede guardar nada */
   try { if (JSON.parse((await q("select v from meta where k='mustpw'")).rows[0]?.v || "[]").includes(u.n)) return send(res, 403, { error: "perm", msg: "Primero cambiá tu contraseña" }); } catch { /* */ }
   let why = canWrite(u, k);
   /* galería: six, administración y quienes estén habilitados en Administración › Galería */
-  if (!why && k === "lspdt.galeria" && !isSix(u) && !u.admin) { let E = []; try { E = JSON.parse((await q("select v from kv where k='lspdt.galEditors'")).rows[0]?.v || "[]"); } catch { /* */ }
+  if (!why && bk === "lspdt.galeria" && !isSix(u) && !u.admin) { let E = []; try { E = JSON.parse((await q("select v from kv where k=$1", [k.replace(/galeria$/, "galEditors")])).rows[0]?.v || "[]"); } catch { /* */ }
     if (!E.includes(u.n)) why = "Solo six y quienes estén habilitados pueden editar la galería"; }
   /* OIS remitido a la FID: cualquiera que pueda cargar OIS abre (o actualiza) el caso en la PSB, sin tocar el resto de los expedientes */
   if (b.oisFid && typeof b.oisFid === "object") {
@@ -96,7 +96,7 @@ export default wrap(async (req, res) => {
     try { const r = await q("select v from kv where k='lspdt.ui'"); const l = JSON.parse(r.rows[0].v).psb; if (Array.isArray(l) && l.includes(u.n)) why = null; } catch {}
   }
   /* calendario: quien creó un evento (o figura como creador) lo puede borrar aunque no sea de la coordinación */
-  if (why && /^lspdt\.(drec\.[a-z0-9]+\.cal|calpub)$/.test(k) && typeof b.v === "string") {
+  if (why && /^lspdt\.(drec\.[a-z0-9]+\.cal|calpub)$/.test(bk) && keyDept(k) === (u.dept || "lspd") && typeof b.v === "string") {
     try {
       const cur = JSON.parse((await q("select v from kv where k=$1", [k])).rows[0]?.v || "[]"), nv = JSON.parse(b.v), ids = new Set(nv.map(x => x.id));
       const gone = cur.filter(x => !ids.has(x.id)), same = nv.every(x => { const c = cur.find(y => y.id === x.id); return c && JSON.stringify(c) === JSON.stringify(x); });
@@ -105,11 +105,11 @@ export default wrap(async (req, res) => {
   }
   if (why) return send(res, 403, { error: "perm", msg: why });
   if (typeof b.url === "string") { // imagen por URL: el servidor la descarga y la guarda (los enlaces de Discord vencen)
-    if (!IMG_KEY.test(k)) return send(res, 400, { msg: "Esa clave no admite imágenes" });
+    if (!IMG_KEY.test(bk)) return send(res, 400, { msg: "Esa clave no admite imágenes" });
     b.v = await downloadImg(b.url); b.base = null;
   }
   if (typeof b.from === "string") { // usar una imagen ya guardada (galería)
-    if (!IMG_KEY.test(k)) return send(res, 400, { msg: "Esa clave no admite imágenes" });
+    if (!IMG_KEY.test(bk)) return send(res, 400, { msg: "Esa clave no admite imágenes" });
     const r = (await q("select v from kv where k=$1", [b.from])).rows[0];
     if (!r || !r.v || !r.v.startsWith("data:")) return send(res, 404, { msg: "No se encontró la imagen" });
     b.v = r.v; b.base = null;
@@ -128,7 +128,7 @@ export default wrap(async (req, res) => {
     if (!del && curV != null && !mine.startsWith("data:")) v = mergeText(typeof b.base === "string" ? b.base : null, mine, curV);
     if (exists && v === curV) return { v, t: +cur.t, same: 1 };
     // historial: la imagen de la terminal que se reemplaza o quita queda guardada en la galería
-    if (ADMIN_KEY.test(k) && !k.startsWith("lspdt.lib.") && curV && curV.startsWith("data:"))
+    if (ADMIN_KEY.test(bk) && !bk.startsWith("lspdt.lib.") && curV && curV.startsWith("data:"))
       await c.query("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do nothing", ["lspdt.lib.h" + Date.now().toString(36), curV, u.n, Date.now()]);
     const t = (await c.query("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do update set v=excluded.v, t=excluded.t, by=excluded.by, at=excluded.at returning t", [k, v, u.n, Date.now()])).rows[0].t;
     if (!del && !HIST_SKIP.test(k) && !v.startsWith("data:")) await keepVersion(c, k, v, u.n, exists ? { v: curV, by: cur.by, at: cur.at } : null);
@@ -137,7 +137,7 @@ export default wrap(async (req, res) => {
   const sum = del ? diffSum(out.old, null) : diffSum(out.exists ? out.old : null, out.v);
   if (!out.same && !/^Cambió: (seen|t|ts|last)$/.test(sum)) await audit(u.n, del ? "borró" : out.exists ? "editó" : "creó", k, sum, clientIp(req));
   if (k === "lspdt.roster" && !del && !out.same && out.exists) await auditRoster(u.n, out.old, out.v, clientIp(req));
-  if (k === "lspdt.roster" || k === "lspdt.ui" || /^lspdt\.(asd|k9|psb|md)Roster$|^lspdt\.(groster|groles|divacc)\./.test(k)) invalidate(); // cambió el rango o las divisiones de alguien
+  if (bk === "lspdt.roster" || k === "lspdt.ui" || /^lspdt\.(asd|k9|psb|md)Roster$|^lspdt\.(groster|groles|divacc)\./.test(bk)) invalidate(); // cambió el rango o las divisiones de alguien
   const r = { t: out.t };
   if (out.v !== mine || b.url || b.from) r.v = out.v && out.v.startsWith("data:") ? imgUrl(k, out.t) : out.v; // devuelve el resultado solo si cambió por la fusión
   return send(res, 200, r);

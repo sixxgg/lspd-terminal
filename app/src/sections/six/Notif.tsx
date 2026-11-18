@@ -9,7 +9,7 @@ import { plainOf, safeHtml } from "@/lib/richtext";
 import { ago } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 
-type FbTicket = { id: string; by: string; who?: string; no?: number; t: number; u?: number; html: string; x?: string; imgs: string[]; st: string; nota?: string };
+type FbTicket = { id: string; by: string; who?: string; dept?: string; no?: number; t: number; u?: number; html: string; x?: string; imgs: string[]; st: string; nota?: string };
 /* nombre OOC: six (sin asociarlo al personaje) o «Usuario N° X» */
 export const whoOf = (x: FbTicket) => (x.who === "six" || (!x.who && x.by === "Ryan Westbrook") ? "six" : x.who || x.by);
 const FB_PREFIX = "lspdt.six.fb.";
@@ -52,7 +52,7 @@ export function NotifTab() {
           <i className="six-corner tl" /><i className="six-corner br" />
           <header className="mb-3 flex flex-wrap items-center gap-3">
             {whoOf(x) === "six" ? <span className="grid size-[34px] place-items-center rounded-full border border-six/50 bg-six/10 font-mono text-xs font-black text-six">six</span> : <Avatar n={x.by} size={34} />}
-            <div className="min-w-0 font-sans"><p className="font-semibold text-white">{whoOf(x)}{nuevo && <span className="ml-2 rounded bg-six px-1.5 text-[10px] font-bold text-black">NUEVO</span>}</p>
+            <div className="min-w-0 font-sans"><p className="font-semibold text-white">{whoOf(x)}{x.dept && x.dept !== "lspd" && <span className="ml-2 rounded bg-emerald-600 px-1.5 text-[10px] font-bold text-white">{x.dept.toUpperCase()}</span>}{nuevo && <span className="ml-2 rounded bg-six px-1.5 text-[10px] font-bold text-black">NUEVO</span>}</p>
               <p className="text-xs text-slate-500">{whoOf(x) !== "six" && x.who && x.who !== x.by ? `${x.by} · ` : ""}{ago(x.t)}</p></div>
             <div className="ml-auto flex flex-wrap gap-1">{ORDER.map(k => { const S = FB_ST[k]; return (
               <button key={k} onClick={() => setSt(x, k)} title={S.l} style={{ ["--k" as string]: S.c }}

@@ -7,9 +7,9 @@ import { useFeedback } from "@/components/feedback";
 import { RichEditor, type RichRef } from "@/components/richedit";
 import { api } from "@/lib/api";
 import { safeHtml } from "@/lib/richtext";
-import { AREAS } from "@/nav";
 import { FB_ST, FbList, fbSt, useMyFeedback, type FbSt } from "@/components/fbnotif";
 import { cn } from "@/lib/cn";
+import { uiText } from "@/lib/templates";
 
 const FB_CATS = [
   { k: "error", l: "Error", d: "Algo no anda o se ve mal", I: Bug, c: "#ef4444", ph: "¿Qué pasó? ¿Dónde estabas y qué tocaste? Si podés, pegá una captura con Ctrl+V." },
@@ -21,13 +21,13 @@ const FILT: ("all" | FbSt)[] = ["all", "pend", "curso", "add", "fix", "rej"];
 
 export function FeedbackApp() {
   const { toast } = useFeedback(), mine = useMyFeedback(), ed = useRef<RichRef>(null);
-  const [cat, setCat] = useState<string>("error"), [area, setArea] = useState("General"), [busy, setBusy] = useState(false), [empty, setEmpty] = useState(true), [f, setF] = useState<"all" | FbSt>("all");
-  const C = FB_CATS.find(x => x.k === cat)!, areas = ["General", ...AREAS.filter(a => !a.hidden && a.k !== "fb").map(a => a.l)];
+  const [cat, setCat] = useState<string>("error"), [busy, setBusy] = useState(false), [empty, setEmpty] = useState(true), [f, setF] = useState<"all" | FbSt>("all");
+  const C = FB_CATS.find(x => x.k === cat)!;
   const send = async () => {
     const e = ed.current?.el; if (!e || ed.current?.empty()) return;
     const imgs: string[] = [];
     const html = safeHtml(e.innerHTML, el => { const s = el.getAttribute("src") || ""; if (!/^data:image\//.test(s)) return ""; imgs.push(s); return `img:${imgs.length - 1}`; });
-    setBusy(true); const r = await api("/api/feedback", { html, imgs, cat, area: area === "General" ? "" : area }); setBusy(false);
+    setBusy(true); const r = await api("/api/feedback", { html, imgs, cat }); setBusy(false);
     if (r.__s !== 200) { toast(r.msg || "No se pudo enviar el feedback", "err"); return; }
     ed.current?.clear(); toast("¡Gracias! Lo recibimos."); window.dispatchEvent(new Event("lspd:fb"));
   };
@@ -39,7 +39,7 @@ export function FeedbackApp() {
       <div className="relative overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_85%_0%,rgba(236,72,153,.4),transparent_55%),radial-gradient(circle_at_0%_100%,rgba(99,102,241,.3),transparent_55%),linear-gradient(135deg,#140b1f,#0b1020)] px-5 py-4 text-white ring-1 ring-white/10">
         <div className="pointer-events-none absolute inset-0 opacity-[.05] [background:repeating-linear-gradient(135deg,#fff_0_1px,transparent_1px_8px)]" />
         <div className="relative flex flex-wrap items-center gap-x-8 gap-y-3">
-          <div className="min-w-0 flex-1"><p className="font-mono text-[10px] font-bold uppercase tracking-[.26em] text-pink-300/90">Terminal LSPD · Feedback</p>
+          <div className="min-w-0 flex-1"><p className="font-mono text-[10px] font-bold uppercase tracking-[.26em] text-pink-300/90">{uiText("sys")} · Feedback</p>
             <h2 className="mt-0.5 text-xl font-bold tracking-tight">Ayudanos a mejorar la terminal</h2></div>
           <ol className="flex flex-wrap items-center gap-1.5 text-[11.5px] font-semibold text-white/70">{["Lo enviás", "six lo revisa", "Se trabaja", "Te avisa la campanita"].map((t, i) => (
             <li key={t} className="flex items-center gap-1.5">{i > 0 && <span className="h-px w-4 bg-white/25" />}<span className="grid size-5 place-items-center rounded-full bg-white/10 font-mono text-[10px] text-pink-200">{i + 1}</span>{t}</li>))}</ol>
@@ -54,12 +54,10 @@ export function FeedbackApp() {
                 style={on ? { background: `linear-gradient(135deg, ${x.c}, ${x.c}b3)`, boxShadow: `0 10px 22px -14px ${x.c}` } : undefined}>
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl" style={on ? { background: "rgba(255,255,255,.18)" } : { background: x.c + "1f", color: x.c }}><x.I className="size-5" /></span>
                 <span className="min-w-0"><span className="block text-[15px] font-bold leading-tight">{x.l}</span><span className={cn("block text-[12.5px] leading-snug", on ? "text-white/85" : "text-slate-500 dark:text-slate-400")}>{x.d}</span></span></button>); })}</div></div>
-          <div><p className="mb-2 text-[11px] font-bold uppercase tracking-[.16em] text-slate-400">2 · ¿Dónde?</p>
-            <div className="flex flex-wrap gap-1.5">{areas.map(a => <button key={a} onClick={() => setArea(a)} aria-pressed={area === a} className={cn("rounded-full border px-3 py-1 text-xs font-semibold transition", area === a ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900" : "border-slate-200 text-slate-500 hover:text-slate-800 dark:border-slate-700 dark:hover:text-slate-200")}>{a}</button>)}</div></div>
-          <div><p className="mb-2 text-[11px] font-bold uppercase tracking-[.16em] text-slate-400">3 · Contanos</p>
+          <div><p className="mb-2 text-[11px] font-bold uppercase tracking-[.16em] text-slate-400">2 · Contanos</p>
             <RichEditor ref={ed} key={cat} placeholder={C.ph} images={8} minH="min-h-[8.5rem]" onChange={() => setEmpty(!!ed.current?.empty())} /></div>
           <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
-            <p className="mr-auto flex flex-wrap items-center gap-1.5 text-[11.5px] text-slate-500"><span className="rounded-md px-1.5 py-0.5 font-semibold text-white" style={{ background: C.c }}>{C.l}</span>en <b className="text-slate-700 dark:text-slate-200">{area}</b> · hasta 8 fotos (arrastrar o Ctrl+V)</p>
+            <p className="mr-auto flex flex-wrap items-center gap-1.5 text-[11.5px] text-slate-500"><span className="rounded-md px-1.5 py-0.5 font-semibold text-white" style={{ background: C.c }}>{C.l}</span>Contá dónde pasó en el texto · hasta 8 fotos (arrastrar o Ctrl+V)</p>
             <Button icon={<Send />} loading={busy} disabled={empty} onClick={send} style={{ background: C.c }}>Enviar</Button></div>
         </Card>
 

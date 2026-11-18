@@ -1,4 +1,5 @@
 import { JUMP, useJump } from "@/lib/jump";
+import { DEPT, DEPTS, deptLogo } from "@/lib/dept";
 import { profOk } from "@/lib/nick";
 import { useEffect, useMemo, useRef, useState, type PointerEvent as PE } from "react";
 import { Users, LayoutGrid, Rows3, UserPlus, BadgeCheck, Trophy, Shield, Clock, TrendingUp, IdCard, Activity,
@@ -28,7 +29,9 @@ const RANKS = Object.keys(LEVEL).filter(r => LEVEL[r] > 0);
 type Ph = { x: number; y: number; z: number };
 const phOf = (p: Profile): Ph => p.ph || { x: 50, y: 22, z: 1 };
 const phStyle = (f: Ph) => ({ objectPosition: `${f.x}% ${f.y}%`, transform: `scale(${f.z})`, transformOrigin: `${f.x}% ${f.y}%` });
-const logoSrc = () => srcOf(LS.get("lspdt.logo") || "") || "/next/logo.svg";
+/* el roster del LSSD y la SAHP se carga desde la planilla (Administración › Roster y respaldo): acá no se edita */
+const rosEd = () => DEPT.id === "lspd";
+const logoSrc = () => (DEPT.id !== "lspd" ? deptLogo(DEPT.id) : srcOf(LS.get("lspdt.logo") || "") || "/next/logo.svg");
 export function mainDiv(p: Profile) {
   if (p.main && p.div.includes(p.main)) return p.main;
   const order = DIVS.map(d => d[0]);
@@ -94,13 +97,13 @@ export function Agentes() {
     <div className="space-y-5">
       <Card className="flex flex-wrap items-center gap-2 p-3">
         <SearchInput className="min-w-[14rem] flex-1" value={q} onChange={setQ} placeholder="Buscar por nombre, placa o State ID…" />
-        <Select className="w-auto text-sm" value={g} onChange={e => setG(e.target.value)}><option value="">LSPD · Todos</option>{Object.entries(GROUPS).filter(([, x]) => R.some(a => x.r.includes(a.r))).map(([k, x]) => <option key={k} value={k}>{x.l}</option>)}</Select>
+        <Select className="w-auto text-sm" value={g} onChange={e => setG(e.target.value)}><option value="">{DEPTS[DEPT.id].short} · Todos</option>{Object.entries(GROUPS).filter(([, x]) => R.some(a => x.r.includes(a.r))).map(([k, x]) => <option key={k} value={k}>{x.l}</option>)}</Select>
         <Select className="w-auto max-w-[16rem] text-sm" value={d} onChange={e => setD(e.target.value)}><option value="">Todas las divisiones</option><option value="-">Sin división</option>{ALL_DIVS.map(x => <option key={x} value={x}>{SUBDIVS.has(x) ? "— " : ""}{x}</option>)}</Select>
         <Segmented size="sm" value={view} onChange={v => { setView(v); LS.set("lspdt.agView", v); }} options={[{ value: "grid", label: <LayoutGrid className="size-4" aria-label="Tarjetas" /> }, { value: "list", label: <Rows3 className="size-4" aria-label="Lista" /> }]} />
-        {nVac > 0 && <Button variant="outline" icon={<X />} title="Pasa a Activo a todos los agentes de vacaciones" onClick={async () => {
+        {nVac > 0 && rosEd() && <Button variant="outline" icon={<X />} title="Pasa a Activo a todos los agentes de vacaciones" onClick={async () => {
           if (!(await confirm(`¿Quitar la etiqueta «Vacaciones» a ${nVac} ${nVac === 1 ? "agente" : "agentes"}? Pasan a Activo.`))) return;
           const RR = getRoster().map(x => (x.e === "Vacaciones" ? { ...x, e: "Activo" } : x)); LS.setJSON("lspdt.roster", RR); toast("Etiquetas de vacaciones quitadas"); }}>Quitar vacaciones ({nVac})</Button>}
-        <Button icon={<UserPlus />} onClick={() => setReg(null)}>Registrar agente</Button>
+        {rosEd() && <Button icon={<UserPlus />} onClick={() => setReg(null)}>Registrar agente</Button>}
       </Card>
       <p className="text-xs text-slate-400">Planilla del departamento · {list.length} de {R.length} agentes</p>
       {!list.length ? <Card><Empty icon={<Users />} title="Sin agentes para ese filtro" /></Card>
@@ -163,7 +166,7 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
   const divs = p.div.slice().sort((x, y) => ALL_DIVS.indexOf(x) - ALL_DIVS.indexOf(y));
   const tl = useMemo(() => {
     const t: { d: Date | null; c: string; b: string; s: string }[] = [], same = (x: Date | null, y: Date | null) => !!x && !!y && x.toDateString() === y.toDateString();
-    if (a.c) t.push({ d: pdate(a.c), c: "ing", b: "Ingreso al LSPD", s: "Fecha de contrato registrada en el roster" });
+    if (a.c) t.push({ d: pdate(a.c), c: "ing", b: `Ingreso al ${DEPTS[DEPT.id].short}`, s: "Fecha de contrato registrada en el roster" });
     if (a.a && a.a !== a.c && !p.movs.some(m => m.tipo === "asc" && same(new Date(m.t), pdate(a.a)))) t.push({ d: pdate(a.a), c: "", b: `Último ascenso registrado · ${rankES(a.r)}`, s: "Según el roster" });
     p.movs.forEach(m => t.push({ d: new Date(m.t), c: m.tipo === "desc" ? "desc" : "", b: `${m.tipo === "asc" ? "Ascenso" : "Descenso"}: ${rankES(m.de)} → ${rankES(m.a)}`, s: `${m.via || ""} · registrado por ${rankES(m.por.r)} ${m.por.n}` }));
     return t.sort((x, y) => +(y.d || 0) - +(x.d || 0));
@@ -211,7 +214,7 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
               <span className="absolute inset-0 grid place-items-center bg-black/50 opacity-0 transition group-hover:opacity-100"><Camera className="size-6" /></span>
               {a.e && a.e !== "Activo" && <span className="absolute inset-x-0 bottom-0 bg-amber-500/95 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-950">{a.e}</span>}
             </button>
-            <div title={md || "LSPD"} className="absolute left-[calc(50%-6.4rem)] top-[8.6rem] size-12 overflow-hidden rounded-full bg-[#08101d] p-1 ring-2 ring-white/15"><DivLogo d={md} /></div>
+            <div title={md || DEPTS[DEPT.id].short} className="absolute left-[calc(50%-6.4rem)] top-[8.6rem] size-12 overflow-hidden rounded-full bg-[#08101d] p-1 ring-2 ring-white/15"><DivLogo d={md} /></div>
             {ins && <div title={rankES(a.r)} className="absolute right-[calc(50%-6.4rem)] top-[8.6rem] grid h-12 min-w-12 place-items-center rounded-xl bg-[#08101d] px-1.5 ring-2 ring-white/15"><img src={ins} alt="" className="max-h-8 w-auto" /></div>}
             <h2 className="mt-4 text-[1.4rem] font-bold leading-tight tracking-tight">{a.n}</h2>
             <p className="mt-1 font-mono text-[11px] font-bold uppercase tracking-[.2em] text-amber-300">{rankES(a.r)}</p>
@@ -224,10 +227,10 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
             </div>
             <div className="mt-5 flex flex-wrap justify-center gap-1.5">
               {foto && <button className={act} onClick={() => { setPh({ ...phOf(p) }); setTab("res"); }}><Move />Encuadre</button>}
-              <button className={act} onClick={onEdit}><Pencil />Editar datos</button>
+              {rosEd() && <button className={act} onClick={onEdit}><Pencil />Editar datos</button>}
               {profOk() && profOk(a.n) && <button className={act} onClick={() => goTo("me", "perfil", { n: a.n })}><IdCard />Perfil social</button>}
-              {a.e && a.e !== "Activo" && <button className={act} onClick={() => { updateAgent(a.n, x => { x.e = "Activo"; }); toast(`${a.n}: vuelve a Activo`); }}><Check />Pasar a Activo</button>}
-              {me.l >= 8 && <button className={cn(act, "text-red-300 hover:bg-red-500/20")} onClick={async () => {
+              {a.e && a.e !== "Activo" && rosEd() && <button className={act} onClick={() => { updateAgent(a.n, x => { x.e = "Activo"; }); toast(`${a.n}: vuelve a Activo`); }}><Check />Pasar a Activo</button>}
+              {me.l >= 8 && rosEd() && <button className={cn(act, "text-red-300 hover:bg-red-500/20")} onClick={async () => {
                 if (!(await confirm(`¿Dar de baja a ${a.n}? Se quita del roster (su perfil y notas se conservan).`, { danger: true, ok: "Dar de baja" }))) return;
                 LS.setJSON("lspdt.roster", getRoster().filter(x => x.n !== n)); onClose(); toast("Agente dado de baja"); }}><UserMinus />Dar de baja</button>}
             </div>

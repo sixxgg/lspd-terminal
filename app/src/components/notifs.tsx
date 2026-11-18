@@ -5,7 +5,7 @@
 import { nickOf, profOk } from "@/lib/nick";
 import { LOGROS, TIER, goodTier } from "@/components/logros";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, CalendarClock, CalendarPlus, CheckCheck, Eye, Heart, Trophy, UserPlus, MessageSquare, Shield, Sparkles, TrendingDown, TrendingUp, UsersRound, type LucideIcon } from "lucide-react";
+import { Bell, CalendarClock, CalendarPlus, CheckCheck, Eye, Heart, Trophy, UserPlus, MessageSquare, Shield, Sparkles, TrendingDown, TrendingUp, UsersRound, Vote, type LucideIcon } from "lucide-react";
 import { FB_ST, fbSt, fbX, useMyFeedback, useTick } from "@/components/fbnotif";
 import { LS, useStoreVersion } from "@/lib/store";
 import { uMap } from "@/lib/units";
@@ -14,6 +14,7 @@ import { ago, dmy, lvl, rankES } from "@/lib/domain";
 import { JUMP, jumpNow } from "@/lib/jump";
 import { APP_VERSION, hasNews } from "@/sections/Novedades";
 import { cn } from "@/lib/cn";
+import { closeExpired, type Prop } from "@/lib/votes";
 import { calAck, calAll, calMine, fmtWhen, isToday, reuLabel, reuList, reuVisible } from "@/lib/calendar";
 
 type N = { id: string; t: number; I: LucideIcon; c: string; title: string; body: string; go: [string, string] };
@@ -33,6 +34,8 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
     const up = lvl(me.r) > lvl(prev), ev: Ev = { id: "rk:" + Date.now(), t: Date.now(), up, title: up ? "¡Ascendiste!" : "Cambio de rango", body: `${rankES(prev)} → ${rankES(me.r)}` };
     lsSet(kEv, [ev, ...lsGet<Ev[]>(kEv, [])].slice(0, 20)); }
     lsSet(kRk, me.r); }, [me.r, kRk, kEv]);
+  /* votaciones vencidas: las cierra la primera sesión de Sargento para arriba que esté conectada (así el aviso llega aunque nadie abra Supervisores) */
+  useEffect(() => { if (lvl(me.r) < 6) return; const x = closeExpired(LS.json<Prop[]>("lspdt.votes", [])); if (x) LS.setJSON("lspdt.votes", x); }, [ver, me.r]);
   useEffect(() => { if (!open) return; const f = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
     const k = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", f); document.addEventListener("keydown", k); return () => { document.removeEventListener("mousedown", f); document.removeEventListener("keydown", k); }; }, [open]);
@@ -70,6 +73,12 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
     /* reuniones nuevas que abrió otro (Supervisores › Reuniones) */
     for (const r of reuList()) if (r.by !== me.n && Date.now() - r.at < 14 * 864e5 && reuVisible(r))
       L.push({ id: "reu:" + r.id, t: r.at, I: UsersRound, c: "#ec4899", title: `Se abrió una reunión: ${r.t}`, body: `${reuLabel(r.tpl)} · ${dmy(r.f)}${r.h ? ` · ${r.h} h` : ""} · abierta por ${r.by}`, go: ["sup", "reu"] });
+    /* votaciones de ascenso o descenso que se cerraron (a mano o al vencer): les avisa a todos los Sargentos */
+    if (lvl(me.r) >= 6) for (const v of LS.ro<Prop[]>("lspdt.votes", [])) if (v.estado !== "abierta" && v.cierre && Date.now() - v.cierre.t < 14 * 864e5) {
+      const ok = v.estado === "aprobada", asc = v.tipo === "asc";
+      L.push({ id: `vot:${v.id}:${v.estado}`, t: v.cierre.t, I: ok ? (asc ? TrendingUp : TrendingDown) : Vote, c: ok ? (asc ? "#22c55e" : "#f59e0b") : "#94a3b8",
+        title: ok ? `${asc ? "Ascenso" : "Descenso"} aceptado: ${rankES(v.nr)} ${v.ag.n}` : `${asc ? "Ascenso" : "Descenso"} rechazado: ${v.ag.n}`,
+        body: ok ? `Ya se puede ${asc ? "ascender" : "descender"} a ${rankES(v.nr)}${v.cierre.auto ? " · la votación venció" : ""}` : `La votación ${v.cierre.auto ? "venció" : "se cerró"} sin mayoría a favor`, go: ["sup", "vot"] }); }
     if (hasNews()) L.push({ id: "ver:" + APP_VERSION, t: lsGet<number>("lspdt.next.verT:" + APP_VERSION, 0) || (lsSet("lspdt.next.verT:" + APP_VERSION, Date.now()), Date.now()), I: Sparkles, c: "#f472b6", title: `Versión ${APP_VERSION} disponible`, body: "Mirá las novedades de la terminal.", go: ["ini", "nov"] });
     return L.sort((a, b) => b.t - a.t).slice(0, 30);
   }, [fb.list, cases, psb, me.n, kEv, ver]); // eslint-disable-line react-hooks/exhaustive-deps

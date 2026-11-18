@@ -5,7 +5,7 @@ import { Card, Segmented } from "@/components/ui";
 import { LS } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "4.2.2";
+export const APP_VERSION = "4.3";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -13,6 +13,16 @@ export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
 
 type Rel = { v: string; f: string; t: string; items: string[]; g?: [string, string[]][] };
 const LOG: Rel[] = [
+  { v: "4.3", f: "18/11/2026", t: "LSPD, LSSD y SAHP: una terminal, tres departamentos", items: [
+    "El LSSD y la SAHP tienen las mismas secciones que el LSPD: Inicio, Agentes (con fotos, insignias y condecoraciones), Calendario, Informes, Feedback, Legal, Pizarra, Galería, Radio, Códigos y Administración. Cada departamento con sus propios datos.",
+    "Legal, Códigos y la Pizarra son los mismos para los tres. Radio usa el canal interno de cada uno: /rlspd, /rlssd o /rsahp (y /rsapd para todos).",
+    "Calendario: six ve los tres departamentos juntos, con la marca de cada uno y un aviso cuando dos eventos de distintos departamentos se superponen.",
+    "Divisiones del LSSD como las del LSPD: Información (todo el texto de Eleven, adentro de la terminal), Roster, Calendario, Documentación, Instrucciones, Uniformidad y Administración, con sus escudos y subdivisiones.",
+    "Temas propios: el LSSD sobre verdes con dorado y la SAHP en caqui, asfalto y azul estatal, con modo oscuro y claro.",
+    "Pantallas de carga, avisos y textos con el nombre de cada departamento; se editan en Administración › Marca, que además muestra qué logos faltan cambiar.",
+    "Votaciones: al abrir una propuesta se elige en cuántas horas vence. Al vencer se cierra sola por mayoría y a todos los Sargentos les llega «Ascenso aceptado: … ya se puede ascender».",
+    "Feedback: ya no hay que elegir dónde pasó (se cuenta en el texto).",
+  ] },
   { v: "4.2.2", f: "18/11/2026", t: "LSSD: divisiones y roster completo", items: [
     "LSSD › Divisiones: Special Enforcement Bureau, Aero Bureau, Canine Service Detail, Crisis Negotiation Unit y Detective Division (Special Operations Division); Training Bureau, Sheriff Information Bureau y High Speed Interception Unit (Office of Sheriff Support Operations). Cada una con su descripción, mandos, subunidades y link al Notion de Eleven.",
     "El roster del Sheriff suma a los Deputy Sheriff Trainees y a los perros del K-9 con su handler.",

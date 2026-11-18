@@ -11,6 +11,8 @@ import { Rtd } from "./Rtd";
 import { Unit } from "./Unit";
 import { GenDiv } from "./Gen";
 import { cn } from "@/lib/cn";
+import { DEPT, DEPTS } from "@/lib/dept";
+import { LSSD_INFO } from "@/lib/lssdDiv";
 
 /* colores de la división como variables CSS (los usan el encabezado y la barra de pestañas) */
 const hv = (d: string) => { const { acc, light, base } = heroColors(d); return { ["--ha" as string]: acc, ["--hl" as string]: light, ["--hb" as string]: base }; };
@@ -25,8 +27,8 @@ export function DivHero({ d }: { d: string }) {
       <div className="relative flex flex-wrap items-center gap-5 p-6 sm:gap-7 sm:p-7">
         <div className="dv-hero-emb relative size-24 shrink-0 sm:size-28"><DivLogo d={d} /></div>
         <div className="min-w-0 flex-1">
-          <p className="dv-hero-k text-[11px] font-bold uppercase tracking-[0.2em]">Los Santos Police Department</p>
-          <h2 className="dv-hero-t mt-1 text-2xl font-extrabold tracking-tight text-white sm:text-[2rem]">{d}</h2>
+          <p className="dv-hero-k text-[11px] font-bold uppercase tracking-[0.2em]">{LSSD_INFO[d] && DEPT.id === "lssd" ? `${DEPTS.lssd.name} · ${LSSD_INFO[d].of}` : DEPTS[DEPT.id].name}</p>
+          <h2 className="dv-hero-t mt-1 text-2xl font-extrabold uppercase tracking-tight text-white sm:text-[2rem]">{d}</h2>
           <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-white/80">{DIV_DESC[d] || divAb(d)[0]}</p>
           {subs.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{subs.map(x => <span key={x} className="rounded-full border border-white/15 bg-white/[.07] px-2.5 py-0.5 text-[11px] font-medium text-white/80 backdrop-blur">{x}</span>)}</div>}
         </div>
@@ -48,14 +50,14 @@ function SubTile({ s, on, onClick }: { s: string; on: boolean; onClick?: () => v
   if (!onClick) return (
     <div title="Subdivisión bloqueada" className="flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-center opacity-80 dark:border-slate-800 dark:bg-slate-900/60" style={{ boxShadow: `inset 0 -3px 0 ${a}` }}>
       <div className="size-14 grayscale-[35%]"><DivLogo d={s} /></div>
-      <b className="text-xs font-semibold leading-tight">{s}</b>
+      <b className="text-xs font-semibold uppercase leading-tight">{s}</b>
       <span className="inline-flex items-center gap-1 text-[11px] text-slate-400"><Lock className="size-3" />Bloqueada</span>
     </div>);
   return (
     <button onClick={onClick} title={on ? "Cerrar" : "Abrir"} className={cn("flex flex-col items-center gap-2 rounded-2xl border bg-white p-4 text-center transition hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900/60", on ? "border-[color:var(--a)] ring-2 ring-[color:var(--a)]/40" : "border-slate-200 dark:border-slate-800")}
       style={{ boxShadow: `inset 0 -3px 0 ${a}`, ["--a" as string]: a }}>
       <div className="size-14"><DivLogo d={s} /></div>
-      <b className="text-xs font-semibold leading-tight">{s}</b>
+      <b className="text-xs font-semibold uppercase leading-tight">{s}</b>
       <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-300">{GEN[s]?.tabs.includes("lic") ? <><BadgeCheck className="size-3" style={{ color: a }} />Licencias</> : <><Users className="size-3" style={{ color: a }} />{n} {n === 1 ? "integrante" : "integrantes"}</>}</span>
     </button>);
 }

@@ -1,5 +1,6 @@
 /* Divisiones con roster propio (A.S.D, K-9, PSB): mismas claves y reglas que la versión clásica */
 import { LS, ME_ROLES } from "./store";
+import { DEPT, onDept } from "./dept";
 
 type Role = [k: string, label: string, color: string, short: string];
 type Unit = {
@@ -80,6 +81,20 @@ export const GEN: Record<string, GenCfg> = Object.fromEntries([
   G("mdso", "Metropolitan Drone Support Operations", ["lic"], "Metropolitan Division"), G("cnt", "Crisis Negotiation Team", [], "Metropolitan Division"),
   G("udu", "Underwater Dive Unit", ["com", "ins"], "Metropolitan Division", "udu"),
 ]);
+const GEN_LSPD = { ...GEN };
+/* LSSD: mismas herramientas que las divisiones genéricas del LSPD (roster, uniformidad, instrucciones, comunicados, calendario, administración); ids iguales a lib/divs.js */
+const SEB = "Special Enforcement Bureau", DD = "Detective Division";
+const GEN_LSSD: Record<string, GenCfg> = Object.fromEntries([
+  G("sseb", SEB, ["inf", "ins", "doc"]), G("sswt", "Special Weapons Team", [], SEB), G("ssnp", "Sniper Detail", [], SEB), G("sexp", "Explosives Detail", [], SEB),
+  G("shaz", "Hazardous Materials Detail", [], SEB), G("ssub", "Subsurface Operations Detail", [], SEB),
+  G("sab", "Aero Bureau", ["inf", "ins", "doc"]), G("sk9", "Canine Service Detail", ["inf", "ins", "doc"]), G("scnu", "Crisis Negotiation Unit", ["inf", "ins", "doc"]),
+  G("sdd", DD, ["inf", "doc", "tar"]), G("shb", "Homicide Bureau", [], DD), G("smcb", "Major Crimes Bureau", [], DD), G("snb", "Narcotics Bureau", [], DD), G("ssvb", "Special Victims Bureau", [], DD),
+  G("sfcc", "Fraud and Cyber Crimes Bureau", [], DD), G("sget", "Gang Enforcement Team", [], DD), G("sossd", "Operation Safe Streets Detail", [], DD), G("sgsu", "Gang Surveillance Unit", [], DD),
+  G("stb", "Training Bureau", ["inf", "ins", "doc"]), G("ssib", "Sheriff Information Bureau", ["inf", "ipu", "iev", "doc"]), G("shsiu", "High Speed Interception Unit", ["inf", "tom", "ins"], undefined, "x-high-speed-interception-unit-lssd"),
+]);
+/* divisiones genéricas de cada departamento (el calendario junta los tres para six) */
+export const genFor = (d: string): Record<string, GenCfg> => (d === "lssd" ? GEN_LSSD : d === "sahp" ? {} : GEN_LSPD);
+onDept(() => { for (const k of Object.keys(GEN)) delete GEN[k]; Object.assign(GEN, DEPT.id === "lssd" ? GEN_LSSD : DEPT.id === "sahp" ? {} : GEN_LSPD); });
 export const gRoles = (id: string): GRole[] => roleOv(id) || GEN_ROLES;
 export const gMap = (id: string): Record<string, string> => { const o = LS.json<Record<string, string> | null>(`lspdt.groster.${id}`, null); return o && typeof o === "object" && !Array.isArray(o) ? o : {}; };
 export const gSave = (id: string, m: Record<string, string>) => LS.setJSON(`lspdt.groster.${id}`, m);
@@ -132,12 +147,14 @@ export const isRTD = (n: string) => !!ME_ROLES.admin || rtdMem().includes(n);
 /* divisiones e indicativo que salen de los rosters cargados (se suman a lo que tenga el perfil del agente) */
 const MD_SUB_DIV: Record<string, string> = { swat: "Special Weapons And Tactics", sierra: "SIERRA", h: "Pelotón H", bq: "Bomb Squad", cnt: "Crisis Negotiation Team", udu: "Underwater Dive Unit" };
 export function rosterDivs(n: string): string[] {
-  const out: string[] = [], md = uMap("md")[n];
+  const out: string[] = [], md = DEPT.id === "lspd" ? uMap("md")[n] : null;
   if (md) { out.push("Metropolitan Division"); for (const r of md) if (MD_SUB_DIV[r]) out.push(MD_SUB_DIV[r]); }
-  if (uMap("asd")[n]) out.push("Air Support Division");
-  if (uMap("k9")[n]) out.push("K-9 Division");
-  if (uMap("psb")[n]) out.push("Professional Standards Bureau");
-  if (rtdMem().includes(n)) out.push("Recruitment and Training Division");
+  if (DEPT.id === "lspd") {
+    if (uMap("asd")[n]) out.push("Air Support Division");
+    if (uMap("k9")[n]) out.push("K-9 Division");
+    if (uMap("psb")[n]) out.push("Professional Standards Bureau");
+    if (rtdMem().includes(n)) out.push("Recruitment and Training Division");
+  }
   for (const [d, c] of Object.entries(GEN)) if (!out.includes(d) && isGMem(c.id, n)) out.push(d);
   return out;
 }

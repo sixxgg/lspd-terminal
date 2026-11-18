@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { updLogo } from "@/lib/brand";
+import { DEPT, DEPTS } from "@/lib/dept";
 
 export const OPS_STEPS = ["Descargar el paquete de actualización", "Verificar la firma digital", "Instalar los módulos", "Migrar la configuración local", "Optimizar la terminal", "Reiniciar el sistema"];
 const TIPS = [
@@ -28,7 +29,7 @@ export function OpsLoad({ v, pct, n, inside, resume, t }: { v: string; pct: numb
       <div aria-hidden className="ops-l" /><div aria-hidden className="ops-r" /><div aria-hidden className="ops-stripes" /><div aria-hidden className="ops-vig" />
       <header className="absolute inset-x-0 top-0 flex items-center gap-3 px-6 py-5 sm:px-10">
         <img src={updLogo()} alt="" className="size-9 object-contain drop-shadow-[0_0_12px_rgba(56,189,248,.35)]" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />
-        <p className="font-mono text-[11px] tracking-[.3em] text-white/70">LSPD <span className="text-white/30">//</span> {T.head}</p>
+        <p className="font-mono text-[11px] tracking-[.3em] text-white/70">{DEPTS[DEPT.id].short} <span className="text-white/30">//</span> {T.head}</p>
         <span className="ops-live ml-auto inline-flex items-center gap-2 rounded-sm border border-white/20 px-2.5 py-1 font-mono text-[10px] tracking-[.25em]"><i className="size-1.5 rounded-full bg-red-500" />{T.live}</span>
       </header>
 
@@ -47,7 +48,7 @@ export function OpsLoad({ v, pct, n, inside, resume, t }: { v: string; pct: numb
           <p className="mt-2 font-mono text-[12px] tracking-[.22em] text-white/70">{T.sub}</p>
           <p key={tip} className="ops-tip mt-5 max-w-2xl text-[13.5px] leading-snug text-white/80"><b className="mr-2 font-mono text-[10px] tracking-[.25em] text-amber-300">CONSEJO</b>{TIPS[tip]}</p>
         </div>
-        <div aria-hidden className="ops-tape mt-5"><span>LSPD · LÍNEA POLICIAL · NO CRUZAR · LSPD · LÍNEA POLICIAL · NO CRUZAR · LSPD · LÍNEA POLICIAL · NO CRUZAR · LSPD · LÍNEA POLICIAL · NO CRUZAR · LSPD · LÍNEA POLICIAL · NO CRUZAR · LSPD · LÍNEA POLICIAL · NO CRUZAR · </span></div>
+        <div aria-hidden className="ops-tape mt-5"><span>{`${DEPTS[DEPT.id].short} · LÍNEA POLICIAL · NO CRUZAR · `.repeat(6)}</span></div>
         <div className="flex items-center gap-4 bg-black/60 px-6 py-3 sm:px-10">
           <Loader2 className="size-4 shrink-0 animate-spin text-sky-300" />
           <p className="min-w-0 flex-1 truncate font-mono text-[11px] tracking-[.18em] text-white/80">{(resume ? T.end : T.steps[Math.min(n, T.steps.length - 1)]).toUpperCase()}…</p>

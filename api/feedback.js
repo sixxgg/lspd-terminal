@@ -19,7 +19,7 @@ const excerpt = h => { const n = (String(h).match(/<img[^>]*>/gi) || []).length,
 /* quién lo manda, en OOC: six o «Usuario N° X» (orden en que se creó la cuenta) */
 async function whoOf(u) {
   if (isSix(u)) return { who: "six", no: 0 };
-  const no = +((await q("select count(*) as n from accounts where created <= (select created from accounts where name=$1)", [u.n])).rows[0]?.n || 0);
+  const no = +((await q("select count(*) as n from accounts where created <= (select created from accounts where name=$1)", [u.acc || u.n])).rows[0]?.n || 0);
   return { who: no ? `Usuario N° ${no}` : "Usuario", no };
 }
 /* limpieza básica en el servidor (al mostrarlo, la terminal vuelve a filtrar todo con una lista blanca) */
@@ -91,7 +91,7 @@ export default wrap(async (req, res) => {
   for (let i = 0; i < imgs.length; i++) { const k = `lspdt.six.fbi.${id}.${i}`; keys.push(k);
     await q("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do nothing", [k, imgs[i], u.n, now]); }
   const CATS = ["error", "idea", "mejora", "otro"], cat = CATS.includes(b.cat) ? b.cat : "", area = String(b.area || "").replace(/[<>@`*_~|]/g, "").slice(0, 40);
-  const t = { id, by: u.n, ...(await whoOf(u)), t: now, u: now, html, x: excerpt(html), imgs: keys, st: "pend", ...(cat ? { cat } : {}), ...(area ? { area } : {}) };
+  const t = { id, by: u.n, ...(await whoOf(u)), dept: u.dept || "lspd", t: now, u: now, html, x: excerpt(html), imgs: keys, st: "pend", ...(cat ? { cat } : {}), ...(area ? { area } : {}) };
   await q("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do nothing", [`lspdt.six.fb.${id}`, JSON.stringify(t), u.n, now]);
   const prevIds = await myIds(u.n);
   await q("insert into meta(k,v) values($1,$2) on conflict(k) do update set v=excluded.v", [IX(u.n), [...new Set([...prevIds, id])].slice(-200).join(",")]);

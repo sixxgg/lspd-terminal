@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { DIVS, divAb, divEmblem } from "./domain";
 import { LS, ME_ROLES } from "./store";
 import { GEN, UNITS, isGMem, isRTD, isUMem, roleOv, type UnitKey } from "./units";
+import { DEPT, onDept } from "./dept";
+import { LSSD_INFO } from "./lssdDiv";
 
 export const DIV_DESC: Record<string, string> = {
   "Detective Bureau": "Investigaciones criminales del departamento: delitos graves, crimen organizado, narcotráfico y delitos tecnológicos.",
@@ -25,6 +27,17 @@ export const DIV_DESC: Record<string, string> = {
   "K-9 Division": "Unidad canina: detección de sustancias y explosivos, búsqueda de personas y apoyo en operativos.",
 };
 export const DIV_DONE: Record<string, "rtd" | UnitKey> = { "Recruitment and Training Division": "rtd", "Air Support Division": "asd", "K-9 Division": "k9", "Professional Standards Bureau": "psb", "Metropolitan Division": "md" };
+/* al cambiar de departamento: descripciones y unidades propias (el LSSD y la SAHP usan solo divisiones genéricas) */
+const DESC_LSPD = { ...DIV_DESC }, DONE_LSPD = { ...DIV_DONE };
+const DESC_LSSD: Record<string, string> = { ...Object.fromEntries(Object.entries(LSSD_INFO).map(([n, x]) => [n, x.d])),
+  "Special Weapons Team": "Equipo táctico del SEB para intervenciones de alto riesgo.", "Sniper Detail": "Tiradores de precisión del SEB.", "Explosives Detail": "Artefactos explosivos y su desactivación.",
+  "Hazardous Materials Detail": "Situaciones con materiales peligrosos.", "Subsurface Operations Detail": "Operaciones subacuáticas y en zonas subterráneas.",
+  "Homicide Bureau": "Investigación de homicidios.", "Major Crimes Bureau": "Investigación de delitos graves.", "Narcotics Bureau": "Investigación del narcotráfico.", "Special Victims Bureau": "Delitos contra víctimas especiales.",
+  "Fraud and Cyber Crimes Bureau": "Fraude y delitos informáticos.", "Gang Enforcement Team": "Persecución de pandillas.", "Operation Safe Streets Detail": "Prevención de la violencia de pandillas en las calles.", "Gang Surveillance Unit": "Vigilancia de pandillas." };
+onDept(() => {
+  for (const k of Object.keys(DIV_DESC)) delete DIV_DESC[k]; Object.assign(DIV_DESC, DEPT.id === "lssd" ? DESC_LSSD : DEPT.id === "sahp" ? {} : DESC_LSPD);
+  for (const k of Object.keys(DIV_DONE)) delete DIV_DONE[k]; if (DEPT.id === "lspd") Object.assign(DIV_DONE, DONE_LSPD);
+});
 /* división con roster genérico: entra solo quien está cargado en su roster (también lo controla el servidor) */
 export const divOpen = (d: string, me: string) => { const k = DIV_DONE[d]; if (k) return k === "rtd" ? isRTD(me) : isUMem(k, me); const g = GEN[d]; return !!ME_ROLES.admin || (!!g && isGMem(g.id, me)); };
 /* qué divisiones aparecen en el menú: las que tienen contenido, solo para quien está cargado en su roster;
@@ -60,7 +73,7 @@ function loadColors(src: string) {
   img.src = src;
 }
 function divColors(d: string): [string, string, string] {
-  const def = !LS.get("lspdt.divlogo." + d) && DVC_DEF[d]; if (def) return def;
+  const def = !LS.get("lspdt.divlogo." + d) && DEPT.id === "lspd" && DVC_DEF[d]; if (def) return def;
   const src = divEmblem(d); if (src && DVC["2:" + src]) return DVC["2:" + src];
   if (src) loadColors(src);
   const c = divAb(d)[1]; return [c, "#e6c65a", "#0b1220"];

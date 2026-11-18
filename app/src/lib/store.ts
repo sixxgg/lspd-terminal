@@ -24,13 +24,25 @@ let net: NetState = "ok";
 const setNet = (s: NetState) => { if (net !== s) { net = s; bump(); } };
 export const getNet = () => net;
 
+/* departamentos: las secciones usan siempre las claves del LSPD (lspdt.*); en el LSSD y la SAHP se leen y escriben en lspdt.<depto>.*.
+   Lo compartido (marca, Legal, Pizarra, robos, lo privado de six) es igual para los tres. Lo mismo decide el servidor (lib/core.js, SHARED_KEY). */
+const SHARED = /^lspdt\.(logo|fav|ui|img|bg|ico|lib|six|anita|penal|legacc|boards?|miro|robos|lssd|sahp)(\.|$)/;
+let KD = "";
+export function setKeyDept(d: string) { const n = d === "lspd" ? "" : d; if (n === KD) return; KD = n; RO.clear(); bump(); }
+/* la clave real en la base para el departamento activo (y la de otro departamento, para las vistas que juntan los tres) */
+export const dk = (k: string, d = KD) => (!d || d === "lspd" || isLocal(k) || SHARED.test(k) || !k.startsWith("lspdt.") ? k : `lspdt.${d}.${k.slice(6)}`);
+const undk = (k: string) => (KD && k.startsWith(`lspdt.${KD}.`) ? "lspdt." + k.slice(7 + KD.length) : k);
+
 const RO = new Map<string, [string, unknown]>();
 export const LS = {
   get(k: string): string | null {
     if (isLocal(k)) { try { return localStorage.getItem(k); } catch { return null; } }
-    return has(CACHE, k) ? CACHE[k] : null;
+    k = dk(k); return has(CACHE, k) ? CACHE[k] : null;
   },
+  /* leer la clave de otro departamento tal cual (calendario con los tres departamentos) */
+  raw(k: string): string | null { return has(CACHE, k) ? CACHE[k] : null; },
   set(k: string, v: string) {
+    if (!isLocal(k)) k = dk(k);
     if (isLocal(k)) { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } bump(); return; }
     if (!ONLINE || CACHE[k] === v) return;
     if (GUEST.on) { guestNo(); return; }
@@ -39,6 +51,7 @@ export const LS = {
     CACHE[k] = v; bump(); Sync.push(k);
   },
   del(k: string) {
+    if (!isLocal(k)) k = dk(k);
     if (isLocal(k)) { try { localStorage.removeItem(k); } catch { /* */ } bump(); return; }
     if (!ONLINE || !has(CACHE, k)) return;
     if (GUEST.on) { guestNo(); return; }
@@ -47,11 +60,11 @@ export const LS = {
     delete CACHE[k]; bump(); Sync.push(k);
   },
   /* lectura cacheada: solo vuelve a parsear si cambió el texto (no mutar lo que devuelve) */
-  ro<T>(k: string, d: T): T { const v = LS.get(k); if (!v) return d; const c = RO.get(k); if (c && c[0] === v) return c[1] as T;
+  ro<T>(k: string, d: T): T { const v = LS.get(k); if (!v) return d; k = dk(k); const c = RO.get(k); if (c && c[0] === v) return c[1] as T;
     try { const o = JSON.parse(v) as T; RO.set(k, [v, o]); return o; } catch { return d; } },
   json<T>(k: string, d: T): T { try { const v = LS.get(k); return v ? (JSON.parse(v) as T) : d; } catch { return d; } },
   setJSON(k: string, v: unknown) { LS.set(k, JSON.stringify(v)); },
-  keys(prefix = ""): string[] { return Object.keys(CACHE).filter(k => k.startsWith(prefix)); },
+  keys(prefix = ""): string[] { const p = dk(prefix); return Object.keys(CACHE).filter(k => k.startsWith(p)).map(undk); },
 };
 
 let onToast: (msg: string, kind?: "ok" | "err") => void = () => {};
@@ -159,6 +172,7 @@ export function useJSON<T>(k: string, d: T): [T, (v: T) => void] {
 
 /* el servidor descarga una imagen desde un link y la guarda en la clave */
 export async function fetchImageTo(k: string, url: string): Promise<{ ok: boolean; msg?: string }> {
+  k = dk(k);
   const r = await api("/api/data", { k, url }) as { __s: number; v?: string; t?: number; msg?: string };
   if (r.__s !== 200 || typeof r.v !== "string") return { ok: false, msg: r.msg || "No se pudo descargar la imagen de ese link" };
   CACHE[k] = BASE[k] = r.v; KT[k] = r.t || 0; bump(); return { ok: true };

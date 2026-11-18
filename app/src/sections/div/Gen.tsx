@@ -3,7 +3,7 @@
    Los registros (licencias, tareas, convenios…) son listas de fichas en lspdt.drec.<id>.<sección>. */
 import { useMemo, useState, type ReactNode } from "react";
 import { MessageCircle, ArrowDown, ArrowUp, BadgeCheck, BookOpen, CalendarDays, Car, Check, ClipboardList, Copy, ExternalLink, FileText, GraduationCap, Handshake, Layers, Lightbulb, ListTodo,
-  Megaphone, Palette, Pencil, Phone, Plus, RotateCcw, Shirt, Trash2, UserCog, Users } from "lucide-react";
+  Info, Megaphone, Palette, Pencil, Phone, Plus, RotateCcw, Shirt, Trash2, UserCog, Users } from "lucide-react";
 import { Button, Card, Checkbox, Empty, Field, Input, SearchInput, Select, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { AgentCombo, Avatar } from "@/components/agents";
@@ -20,6 +20,7 @@ import { Comunicados } from "./Comunicados";
 import { Instrucciones } from "./Instrucciones";
 import { DivCal } from "./DivCal";
 import { AsbEnt } from "./AsbEnt";
+import { DivInfo } from "./DivInfo";
 
 /* ---------- editor de roles (Administración) ---------- */
 export function RoleEditor({ id, roles, coFlag = true, locked = [] }: { id: string; roles: GRole[]; coFlag?: boolean; locked?: string[] }) {
@@ -199,12 +200,17 @@ const F_LIC: FDef[] = [{ k: "ag", l: "Agente", t: "agent", req: true }, { k: "ac
 /* ---------- la división genérica ---------- */
 const TAB: Record<string, [string, typeof Users]> = { ros: ["Roster", Users], uni: ["Uniformidad", Shirt], adm2: ["Administrativos", UserCog], iev: ["Ideas de eventos", CalendarDays], ipu: ["Ideas de publicaciones", Lightbulb],
   doc: ["Documentación", FileText], tar: ["Tareas", ListTodo], conv: ["Convenios", Handshake], subs: ["Subdivisiones", Layers], tom: ["Registro TOM", Car], lic: ["Licencias", BadgeCheck],
-  com: ["Comunicados", Megaphone], ins: ["Instrucciones", GraduationCap], cal: ["Calendario", CalendarDays], ent: ["Entrevistas", MessageCircle] };
+  com: ["Comunicados", Megaphone], ins: ["Instrucciones", GraduationCap], cal: ["Calendario", CalendarDays], ent: ["Entrevistas", MessageCircle], inf: ["Información", Info] };
+/* tipos de instrucción sugeridos por división (la UDU, los suyos) */
+const TIPOS: Record<string, string[]> = { udu: ["Persecución marítima", "Buceo", "Rescate subacuático", "Navegación"],
+  sseb: ["CQB", "Terreno abierto", "Buceo", "Rehenes", "Explosivos", "Licencia de medio calibre"], sab: ["Vuelo", "Búsqueda y rescate", "Drones", "Apoyo a persecución"],
+  sk9: ["Detección de narcóticos", "Detección de explosivos", "Rastreo", "Obediencia", "Protección"], scnu: ["Negociación", "Rehenes", "Suicidio en altura", "Amenaza con explosivos"],
+  stb: ["Academia", "Prácticas", "Capacitación"], shsiu: ["Conducción avanzada", "Intercepción", "PIT", "Persecución"] };
 export function GenDiv({ d }: { d: string }) {
   useStoreVersion();
   const me = useMe(), c = GEN[d], id = c.id, ab = (d.match(/[A-Z]/g) || []).join("") || d, mem = !!ME_ROLES.admin || isGMem(id, me.n), co = isGCo(id, me.n);
   const only = c.tabs.includes("lic"); /* MDSO: solo licencias */
-  const keys = only ? c.tabs : ["ros", ...[...c.tabs, "uni", "cal"].sort((a, b) => TAB[a][0].localeCompare(TAB[b][0], "es"))];
+  const keys = only ? c.tabs : [...(c.tabs.includes("inf") ? ["inf"] : []), "ros", ...[...c.tabs.filter(x => x !== "inf"), "uni", "cal"].sort((a, b) => TAB[a][0].localeCompare(TAB[b][0], "es"))];
   const base: DivTab[] = keys.map(v => { const [l, I] = TAB[v]; return { value: v, label: l, icon: <I />, txt: l }; });
   const opts = only ? base : divTabs(id, base, co);
   const [t0, setT] = useState(() => LS.get("lspdt.next.gtab." + id) || keys[0]), t = opts.some(x => x.value === t0) ? t0 : opts[0]?.value || "ros";
@@ -214,7 +220,8 @@ export function GenDiv({ d }: { d: string }) {
   const insR = (n: string): "coord" | "inst" | "instp" | "" => { const r = gMap(id)[n]; return !r ? "" : gRoleOf(id, r).co ? "coord" : r === "inst" ? "inst" : ""; };
   const rec = (s: string, f: FDef[], noun: string, icon: ReactNode, o: { add?: boolean; tpl?: (r: Rec) => string } = {}) =>
     <RecList k={`lspdt.drec.${id}.${s}`} fields={f} noun={noun} icon={icon} canAdd={o.add ?? mem} canAll={co} tpl={o.tpl} />;
-  const body = t === "adm" ? <DivAdmin id={id} ab={ab} dn={d} tabs={base} extra={<RoleEditor id={id} roles={R} />} />
+  const body = t === "inf" ? <DivInfo d={d} />
+    : t === "adm" ? <DivAdmin id={id} ab={ab} dn={d} tabs={base} extra={<RoleEditor id={id} roles={R} />} />
     : t === "ros" ? <GenRoster id={id} ab={ab} canEdit={rosterCo(id, me.n)} />
     : t === "uni" ? <Uniformidad id={c.uni} ab={ab} dn={d} canEdit={co} roles={uRoles} mine={mine} />
     : t === "lic" ? rec("lic", F_LIC, "Licencia", <BadgeCheck />, { add: co })
@@ -229,7 +236,7 @@ export function GenDiv({ d }: { d: string }) {
     : t === "conv" ? <Convenios id={id} mem={mem} co={co} />
     : t === "subs" ? <Subdivs />
     : t === "com" ? <Comunicados div="udu" canEdit={mem} />
-    : <Instrucciones div={id} ab={ab} names={names} roleOf={insR} tipos={["Persecución marítima", "Buceo", "Rescate subacuático", "Navegación"]} canEdit={mem} isCoord={co} />;
+    : <Instrucciones div={id} ab={ab} names={names} roleOf={insR} tipos={TIPOS[id] || []} canEdit={mem} isCoord={co} />;
   return (
     <div className="space-y-4">
       {opts.length > 1 && <DivNav value={t} onChange={go} options={opts} />}

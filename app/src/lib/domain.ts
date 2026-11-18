@@ -1,11 +1,17 @@
 import { LS, DEF_ROSTER, type Agent } from "./store";
 export type { Agent };
 import gta from "./gta.json";
+import { DEPT, onDept } from "./dept";
+import { isXRank, xInsSvg } from "./xins";
 
 export const LEVEL: Record<string, number> = {
   "Chief of Police": 13, "Assistant Chief": 12, "Deputy Chief": 11, "Commander": 10, "Captain": 9, "Lieutenant": 8,
   "Sergeant II": 7, "Sergeant I": 6, "Detective III": 5.5, "Detective II": 5, "Detective I": 4.5,
   "Police Officer III+": 4, "Police Officer III": 3, "Police Officer II": 2, "Police Officer I": 1, "Administrativo": 0,
+  /* LSSD y SAHP: su nivel equivalente en la escala del LSPD (mismas reglas de rango en los tres; igual que en el servidor, lib/lssd.js) */
+  "Sheriff": 13, "Undersheriff": 12, "Assistant Sheriff": 11.5, "Division Chief": 11, "Area Commander": 10, "Sergeant": 7,
+  "Deputy Sheriff Master FTO": 4, "Deputy Sheriff Bonus II": 3, "Deputy Sheriff Bonus I": 2, "Deputy Sheriff": 1, "Deputy Sheriff Trainee": 0.5,
+  "Commissioner": 13, "Deputy Commissioner": 12, "Assistant Commissioner": 11.5, "Chief": 11, "Officer": 1, "Cadet": 0.5,
 };
 const RANK_ES: Record<string, string> = {
   "Chief of Police": "Jefe de Policía", "Assistant Chief": "Jefe Adjunto", "Deputy Chief": "Jefe Supervisor", "Commander": "Comandante",
@@ -18,32 +24,52 @@ export const RANK_COLOR: Record<string, string> = {
   "Lieutenant": "#f59e0b", "Sergeant II": "#ec4899", "Sergeant I": "#f472b6", "Detective III": "#a855f7", "Detective II": "#9f7aea",
   "Detective I": "#c084fc", "Police Officer III+": "#3b82f6", "Police Officer III": "#3b82f6", "Police Officer II": "#3b82f6",
   "Police Officer I": "#3b82f6", "Administrativo": "#94a3b8",
+  "Sheriff": "#e3b33c", "Undersheriff": "#d4a937", "Assistant Sheriff": "#c99a2e", "Division Chief": "#b8892a", "Area Commander": "#22c55e", "Sergeant": "#ec4899",
+  "Deputy Sheriff Master FTO": "#10b981", "Deputy Sheriff Bonus II": "#34d399", "Deputy Sheriff Bonus I": "#4ade80", "Deputy Sheriff": "#16a34a", "Deputy Sheriff Trainee": "#94a3b8",
 };
 const INSIG: Record<string, string> = {
   "Police Officer III": "po3", "Police Officer III+": "po3p", "Sergeant I": "sgt1", "Sergeant II": "sgt2", "Detective I": "det1",
   "Detective II": "det2", "Detective III": "det3", "Lieutenant": "lt", "Captain": "cap", "Commander": "cmd", "Deputy Chief": "dep",
   "Assistant Chief": "asst", "Chief of Police": "chief",
 };
-export const insigniaUrl = (r: string) => (INSIG[r] ? `/ins/${INSIG[r]}.webp?v=2` : "");
-export const GROUPS: Record<string, { l: string; r: string[] }> = {
+export const insigniaUrl = (r: string) => (INSIG[r] && DEPT.id === "lspd" ? `/ins/${INSIG[r]}.webp?v=2` : isXRank(r) ? xInsSvg(r) : "");
+const GROUPS_LSPD: Record<string, { l: string; r: string[] }> = {
   jef: { l: "Jefatura", r: ["Chief of Police", "Assistant Chief", "Deputy Chief", "Commander"] },
   cap: { l: "Capitanía", r: ["Captain", "Lieutenant"] },
   sup: { l: "Supervisores", r: ["Sergeant II", "Sergeant I"] },
   det: { l: "Detectives", r: ["Detective III", "Detective II", "Detective I"] },
   ofi: { l: "Patrulleros", r: ["Police Officer III+", "Police Officer III", "Police Officer II", "Police Officer I"] },
 };
+/* grupos del LSSD como en su planilla (mismas claves que el LSPD: las secciones filtran por ellas) */
+const GROUPS_LSSD: Record<string, { l: string; r: string[] }> = {
+  jef: { l: "Executive Staff", r: ["Sheriff", "Undersheriff", "Assistant Sheriff", "Division Chief"] },
+  cap: { l: "Command Staff", r: ["Area Commander", "Captain", "Lieutenant"] },
+  sup: { l: "Supervisor Staff", r: ["Sergeant"] },
+  det: { l: "Deputies", r: ["Deputy Sheriff Master FTO", "Deputy Sheriff Bonus II", "Deputy Sheriff Bonus I"] },
+  ofi: { l: "Deputy Sheriff", r: ["Deputy Sheriff", "Deputy Sheriff Trainee"] },
+};
+const GROUPS_SAHP: Record<string, { l: string; r: string[] }> = {
+  jef: { l: "Executive Staff", r: ["Commissioner", "Deputy Commissioner", "Assistant Commissioner", "Chief"] },
+  cap: { l: "Command Staff", r: ["Captain", "Lieutenant"] },
+  sup: { l: "Supervisor Staff", r: ["Sergeant"] },
+  ofi: { l: "Officers", r: ["Officer", "Cadet"] },
+};
+export const GROUPS: Record<string, { l: string; r: string[] }> = { ...GROUPS_LSPD };
 const FEM = new Set(["Claire Robinson", "Madison Wells", "Vega Chambers", "Evelyn Molina", "Lara Calloway", "Madison Pierce", "Yooa Baek-Harrington",
   "Naia Bishop", "Haley Brenner-Scott", "Olivia Molina", "Morvanna Montenegro", "Madison Lopez", "Hailey Deacon", "Mía Johnson", "May-Lin Chen",
   "Jia Li Chen", "Violet Faith", "Alessia Lennox"]);
 
 export const lvl = (r?: string) => (r ? LEVEL[r] ?? 0 : 0);
-export const rankES = (r?: string) => (r ? RANK_ES[r] || r : "");
+export const rankES = (r?: string) => (r ? (DEPT.id === "lspd" && RANK_ES[r]) || r : ""); /* en el LSSD y la SAHP, en inglés como su planilla */
 export const norm = (s: unknown) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 export const emailOf = (n: string) => norm(n).replace(/[^a-z0-9]/g, "") + "@sanandreas.eu";
 export const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
 
+/* roster del departamento activo (en el LSSD, sin los perros del K-9: esos se ven en su roster y en su división) */
+let K9F: [unknown, Agent[]] = [null, []];
 export function getRoster(): Agent[] {
   const a = LS.ro<Agent[] | null>("lspdt.roster", null);
+  if (DEPT.id !== "lspd") { if (!Array.isArray(a)) return []; if (K9F[0] !== a) K9F = [a, a.filter(x => x && x.r !== "K-9")]; return K9F[1]; }
   return Array.isArray(a) && a.length ? a : DEF_ROSTER;
 }
 export const findAgent = (n: string) => getRoster().find(a => a.n === n) || null;
@@ -74,8 +100,7 @@ export const imgOpt = (u: string, w: number) => u.startsWith("data:") ? srcOf(u)
     ? `/_vercel/image?url=${encodeURIComponent(u)}&w=${w}&q=75` : u;
 
 export const LUGARES: string[] = [...gta.zonas, ...gta.calles];
-export const DIVISIONES = ["Patrulla", "Detective Bureau", "Metropolitan Division", "Air Support Division", "K-9 Division", "High Speed Interception Unit",
-  "Recruitment and Training Division", "Professional Standards Bureau", "Administration Services Bureau"];
+export const DIVISIONES: string[] = [];
 
 export const pad2 = (n: number) => String(n).padStart(2, "0");
 export const hoyDMY = () => { const d = new Date(); return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`; };
@@ -114,18 +139,35 @@ export const apellido = (n: string) => String(n).trim().split(/\s+/).slice(1).jo
 export const rkFem = (r: string, n: string) => { let s = rankES(r); if (genderOf(n) === "f") s = s.replace(/^Capitán\b/, "Capitana").replace(/^Jefe\b/, "Jefa"); return s; };
 export const dcIdOfAgent = (a?: Agent | null) => { const d = String(a?.i || a?.d || "").trim(); return /^\d{15,21}$/.test(d) ? d : ""; };
 
-export const DIVS: [string, string[]?][] = [["Detective Bureau", ["High Tech Crime Unit", "Gang and Narcotics Division", "Major Crimes Division"]],
+const DIVS_LSPD: [string, string[]?][] = [["Detective Bureau", ["High Tech Crime Unit", "Gang and Narcotics Division", "Major Crimes Division"]],
   ["Metropolitan Division", ["Special Weapons And Tactics", "SIERRA", "Pelotón H", "Bomb Squad", "Metropolitan Drone Support Operations", "Crisis Negotiation Team", "Underwater Dive Unit"]],
   ["Air Support Division"], ["Administration Services Bureau"], ["High Speed Interception Unit"], ["Recruitment and Training Division"], ["Professional Standards Bureau"], ["K-9 Division"]];
-export const ALL_DIVS = DIVS.flatMap(d => [d[0], ...(d[1] || [])]);
+/* LSSD: «Bureaus / Divisions» de Eleven (las mismas que lib/divs.js en el servidor) */
+const DIVS_LSSD: [string, string[]?][] = [["Special Enforcement Bureau", ["Special Weapons Team", "Sniper Detail", "Explosives Detail", "Hazardous Materials Detail", "Subsurface Operations Detail"]],
+  ["Aero Bureau"], ["Canine Service Detail"], ["Crisis Negotiation Unit"],
+  ["Detective Division", ["Homicide Bureau", "Major Crimes Bureau", "Narcotics Bureau", "Special Victims Bureau", "Fraud and Cyber Crimes Bureau", "Gang Enforcement Team", "Operation Safe Streets Detail", "Gang Surveillance Unit"]],
+  ["Training Bureau"], ["Sheriff Information Bureau"], ["High Speed Interception Unit"]];
+/* divisiones del departamento activo (cambian con el departamento, sin recargar) */
+export const DIVS: [string, string[]?][] = [...DIVS_LSPD];
+export const ALL_DIVS: string[] = DIVS.flatMap(d => [d[0], ...(d[1] || [])]);
 const DIV_INFO: Record<string, [string, string]> = {
   "Detective Bureau": ["DB", "#7c3aed"], "High Tech Crime Unit": ["HTCU", "#b8975a"], "Gang and Narcotics Division": ["GND", "#3f8f3a"], "Major Crimes Division": ["MCD", "#d4a937"], "Metropolitan Division": ["METRO", "#1f6fb0"],
   "Special Weapons And Tactics": ["SWAT", "#111827"], "SIERRA": ["SIERRA", "#b45309"], "Pelotón H": ["PEL. H", "#0e7490"], "Bomb Squad": ["BS", "#b91c1c"], "Metropolitan Drone Support Operations": ["MDSO", "#0f766e"], "Crisis Negotiation Team": ["CNT", "#9333ea"], "Underwater Dive Unit": ["UDU", "#b7985d"],
   "Air Support Division": ["ASD", "#1b8cb9"], "Administration Services Bureau": ["ASB", "#475569"], "High Speed Interception Unit": ["HSIU", "#dc2626"], "Recruitment and Training Division": ["RTD", "#b3262a"],
   "Professional Standards Bureau": ["PSB", "#1e3a8a"], "K-9 Division": ["K-9", "#1f8f4a"] };
+const DIV_INFO_LSSD: Record<string, [string, string]> = { "Special Enforcement Bureau": ["SEB", "#15803d"], "Special Weapons Team": ["SWT", "#111827"], "Sniper Detail": ["SNIPER", "#4d7c0f"],
+  "Explosives Detail": ["EOD", "#b91c1c"], "Hazardous Materials Detail": ["HAZMAT", "#ca8a04"], "Subsurface Operations Detail": ["SOD", "#0e7490"], "Aero Bureau": ["AB", "#0284c7"],
+  "Canine Service Detail": ["K-9", "#1f8f4a"], "Crisis Negotiation Unit": ["CNU", "#9333ea"], "Detective Division": ["DD", "#7c3aed"], "Homicide Bureau": ["HB", "#991b1b"], "Major Crimes Bureau": ["MCB", "#d4a937"],
+  "Narcotics Bureau": ["NB", "#3f8f3a"], "Special Victims Bureau": ["SVB", "#be185d"], "Fraud and Cyber Crimes Bureau": ["FCCB", "#b8975a"], "Gang Enforcement Team": ["GET", "#57534e"],
+  "Operation Safe Streets Detail": ["OSS", "#0f766e"], "Gang Surveillance Unit": ["GSU", "#334155"], "Training Bureau": ["TB", "#b45309"], "Sheriff Information Bureau": ["SIB", "#2563eb"],
+  "High Speed Interception Unit": ["HSIU", "#dc2626"] };
+const DIV_INFO_LSPD = { ...DIV_INFO };
+const DIVISIONES_LSPD = ["Patrulla", "Detective Bureau", "Metropolitan Division", "Air Support Division", "K-9 Division", "High Speed Interception Unit",
+  "Recruitment and Training Division", "Professional Standards Bureau", "Administration Services Bureau"];
 export const divAb = (d: string) => DIV_INFO[d] || [d.split(/\s+/).map(w => w[0]).join("").slice(0, 4).toUpperCase(), "#334155"];
 const DIV_LOGO: Record<string, string> = { "Recruitment and Training Division": "rtd", "Underwater Dive Unit": "udu", "Metropolitan Division": "metro", "Major Crimes Division": "mcd", "High Tech Crime Unit": "htcu", "Gang and Narcotics Division": "gnd", "Air Support Division": "asd" };
-export const divEmblem = (d: string) => srcOf(LS.get("lspdt.divlogo." + d) || "") || (DIV_LOGO[d] ? `/div/${DIV_LOGO[d]}.webp?v=3` : "");
+export const divEmblem = (d: string) => srcOf(LS.get("lspdt.divlogo." + d) || "") || (DEPT.id === "lspd" ? (DIV_LOGO[d] ? `/div/${DIV_LOGO[d]}.webp?v=3` : "") : DIV_INFO_LSSD[d] && DEPT.id === "lssd" ? `/next/sdiv/${slugOf(d)}.svg?v=1` : "");
+const slugOf = (d: string) => d.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 export const isoToDMY = (s?: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return m ? `${m[3]}/${m[2]}/${m[1]}` : ""; };
 /* AAAA-MM-DD → DD/MM/AAAA */
 export const dmy = (iso?: string) => (iso ? iso.split("-").reverse().join("/") : "—");
@@ -142,3 +184,17 @@ const nkey = (n: string) => norm(n).replace(/[^a-z0-9]/g, "");
 export const findLoose = (n: string) => findAgent(n) || getRoster().find(a => nkey(a.n) === nkey(n)) || null;
 /* borradores y preferencias de formularios: por persona (nadie hereda lo que dejó otro en la misma computadora) */
 export const myKey = (k: string, n: string) => `lspdt.next.${k}.${n.replace(/[^A-Za-z0-9]/g, "")}`;
+
+/* divisiones de cada departamento (Administración › Marca: escudos que faltan cambiar) */
+export const deptDivNames = (d: string) => (d === "lssd" ? DIVS_LSSD : d === "sahp" ? [] : DIVS_LSPD).flatMap(x => [x[0], ...(x[1] || [])]);
+export const hasDivFile = (d: string, dept: string) => (dept === "lspd" ? !!DIV_LOGO[d] : false);
+/* al cambiar de departamento: grupos de rango y divisiones del nuevo (se cambian en el lugar: todo lo que los importó ve los nuevos) */
+function swapDept() {
+  const G = DEPT.id === "lssd" ? GROUPS_LSSD : DEPT.id === "sahp" ? GROUPS_SAHP : GROUPS_LSPD;
+  for (const k of Object.keys(GROUPS)) delete GROUPS[k]; Object.assign(GROUPS, G);
+  const DV = DEPT.id === "lssd" ? DIVS_LSSD : DEPT.id === "sahp" ? [] : DIVS_LSPD;
+  DIVS.splice(0, DIVS.length, ...DV); ALL_DIVS.splice(0, ALL_DIVS.length, ...DV.flatMap(d => [d[0], ...(d[1] || [])]));
+  for (const k of Object.keys(DIV_INFO)) delete DIV_INFO[k]; Object.assign(DIV_INFO, DEPT.id === "lssd" ? DIV_INFO_LSSD : DIV_INFO_LSPD);
+  DIVISIONES.splice(0, DIVISIONES.length, ...(DEPT.id === "lspd" ? DIVISIONES_LSPD : ["Patrulla", ...DV.map(d => d[0])]));
+}
+swapDept(); onDept(swapDept);

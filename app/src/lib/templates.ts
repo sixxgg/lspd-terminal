@@ -1,4 +1,5 @@
 import { LS } from "./store";
+import { DEPT, type DeptId } from "./dept";
 import TPL from "./tpl.json";
 
 export type TplKey = keyof typeof TPL;
@@ -13,7 +14,12 @@ export function dcfg(): DcCfg {
 }
 export const tplOf = (k: TplKey) => LS.get("lspdt.tpl." + k) || TPL_DEF[k].t;
 export const fillTpl = (t: string, v: Record<string, string>) => t.replace(/\{(\w+)\}/g, (m, k) => (v[k] !== undefined ? v[k] : m)).replace(/\n{3,}/g, "\n\n").trim();
-export const uiText = (k: "title" | "kicker" | "foot" | "place" | "bot") => {
-  const d = { title: "Terminal de Mando", kicker: "Los Santos Police Department", foot: "Mission Row 10 · Uso interno", place: "Los Santos · Mission Row 10", bot: "LSPD Terminal" };
-  return (String(LS.json<Record<string, string>>("lspdt.ui", {})[k] || "")).trim() || d[k];
+/* textos de la interfaz por departamento (Administración › Marca): en el LSSD y la SAHP se guardan como «clave.depto» dentro de lspdt.ui */
+export type UiKey = "title" | "kicker" | "foot" | "place" | "bot" | "sys";
+export const UI_DEF: Record<DeptId, Record<UiKey, string>> = {
+  lspd: { title: "Terminal de Mando", kicker: "Los Santos Police Department", foot: "Mission Row 10 · Uso interno", place: "Los Santos · Mission Row 10", bot: "LSPD Terminal", sys: "Terminal LSPD" },
+  lssd: { title: "Terminal de Mando", kicker: "Los Santos Sheriff's Department", foot: "Sheriff's Station · Uso interno", place: "Los Santos · Sheriff's Station", bot: "LSSD Terminal", sys: "Terminal LSSD" },
+  sahp: { title: "Terminal de Mando", kicker: "San Andreas Highway Patrol", foot: "Highway Patrol · Uso interno", place: "San Andreas · Highway Patrol", bot: "SAHP Terminal", sys: "Terminal SAHP" },
 };
+export const uiKey = (k: UiKey, d: DeptId = DEPT.id) => (d === "lspd" ? k : `${k}.${d}`);
+export const uiText = (k: UiKey, d: DeptId = DEPT.id) => (String(LS.json<Record<string, string>>("lspdt.ui", {})[uiKey(k, d)] || "")).trim() || UI_DEF[d][k];

@@ -5,7 +5,7 @@ import {
   CalendarDays, Home, BookOpenCheck, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
   Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint, UserRound, Presentation, UserMinus, RadioTower, UsersRound, Images } from "lucide-react";
 import { GUEST, LS, ME_ROLES } from "./lib/store";
-import { DEPT, lssdLvl, onDept } from "./lib/dept";
+import { DEPT, onDept } from "./lib/dept";
 import { Helicopter } from "./components/icons";
 import { lvl } from "./lib/domain";
 
@@ -84,30 +84,38 @@ const lab = (x: { l: string; sl?: string }) => x.sl || x.l, byLabel = (a: { l: s
 const LSPD_AREAS: Area[] = RAW_AREAS
   .map(a => (a.k === "ini" ? a : { ...a, sec: a.sec.slice().sort(byLabel) }))
   .sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
-/* LSSD (Sheriff): todo en construcción salvo el roster; el rango usa la escala del Sheriff (Sargento 7, Teniente 8, Comandante de Área 10) */
-const LSSD_AREAS: Area[] = [
-  { k: "ini", l: "Inicio", icon: Home, min: 0, sec: [{ k: "home", l: "Inicio", d: "Los Santos Sheriff's Department", icon: Home, ready: true }] },
-  { k: "lag", l: "Agentes", icon: Users, min: 0, sec: [{ k: "ros", l: "Roster", d: "Personal del departamento por rango", icon: Users, ready: true }] },
-  { k: "ldiv", l: "Divisiones", icon: Landmark, min: 0, sec: [
-    { k: "seb", l: "Special Enforcement Bureau", d: "SEB · Special Operations Division", icon: Crosshair, ready: true },
-    { k: "ab", l: "Aero Bureau", d: "AB · Special Operations Division", icon: Helicopter, ready: true },
-    { k: "k9", l: "Canine Service Detail", d: "K-9 · Special Operations Division", icon: Dog, ready: true },
-    { k: "cnu", l: "Crisis Negotiation Unit", d: "CNU · Special Operations Division", icon: MessageCircle, ready: true },
-    { k: "dd", l: "Detective Division", d: "DD · Special Operations Division", icon: Search, ready: true },
-    { k: "tb", l: "Training Bureau", d: "TB · Office of Sheriff Support Operations", icon: GraduationCap, ready: true },
-    { k: "sib", l: "Sheriff Information Bureau", d: "SIB · Office of Sheriff Support Operations", icon: RadioTower, ready: true },
-    { k: "hsiu", l: "High Speed Interception Unit", d: "HSIU · Office of Sheriff Support Operations", icon: Gauge, ready: true },
-  ] },
-  { k: "lleg", l: "Legal", icon: Scale, min: 0, sec: [{ k: "leg", l: "Legal", d: "Código penal y normativa", icon: Scale, ready: true }] },
-  { k: "lsup", l: "Supervisores", icon: ClipboardList, min: 7, req: "Sergeant", sec: [{ k: "sup", l: "Supervisores", d: "Herramientas de supervisión", icon: ClipboardList, ready: true }] },
-  { k: "lcap", l: "Capitanía", icon: Briefcase, min: 8, req: "Lieutenant", sec: [{ k: "cap", l: "Capitanía", d: "Herramientas de Capitanía", icon: Briefcase, ready: true }] },
-  { k: "ljef", l: "Jefatura", icon: Star, min: 10, req: "Area Commander", sec: [{ k: "jef", l: "Jefatura", d: "Herramientas de Jefatura", icon: Star, ready: true }] },
-  { k: "ldet", l: "Detectives", icon: Search, min: 0, sec: [{ k: "det", l: "Detectives", d: "Unidad de investigación", icon: Search, ready: true }] },
+/* LSSD y SAHP: las mismas secciones del LSPD (Inicio, Agentes, Calendario, Informes, Feedback, Legal, Pizarra, Galería, Radio, Códigos y Administración),
+   cada una con los datos de su departamento. Supervisores, Capitanía y Jefatura siguen en construcción. Mismas reglas de rango (escala equivalente, lib/domain.ts). */
+const SHARE = ["ini", "age", "cal", "inf", "fb", "leg", "piz", "gal", "rad", "cod"];
+const ADM_X = ["brand", "acc", "data", "gal", "ts"];
+const LSSD_DIV_SEC: Sec[] = [
+  { k: "dv_sseb", l: "Special Enforcement Bureau", d: "SEB · Special Operations Division", icon: Crosshair, ready: true },
+  { k: "dv_sab", l: "Aero Bureau", d: "AB · Special Operations Division", icon: Helicopter, ready: true },
+  { k: "dv_sk9", l: "Canine Service Detail", d: "K-9 · Special Operations Division", icon: Dog, ready: true },
+  { k: "dv_scnu", l: "Crisis Negotiation Unit", d: "CNU · Special Operations Division", icon: MessageCircle, ready: true },
+  { k: "dv_sdd", l: "Detective Division", d: "DD · Special Operations Division", icon: Search, ready: true },
+  { k: "dv_stb", l: "Training Bureau", d: "TB · Office of Sheriff Support Operations", icon: GraduationCap, ready: true },
+  { k: "dv_ssib", l: "Sheriff Information Bureau", d: "SIB · Office of Sheriff Support Operations", icon: RadioTower, ready: true },
+  { k: "dv_shsiu", l: "High Speed Interception Unit", d: "HSIU · Office of Sheriff Support Operations", icon: Gauge, ready: true },
 ];
+const SOON = (k: string, l: string, icon: LucideIcon, min: number, req: string): Area => ({ k, l, icon, min, req, sec: [{ k: "soon", l, d: "En construcción", icon, ready: true }] });
+function xAreas(d: "lssd" | "sahp"): Area[] {
+  const base = LSPD_AREAS.filter(a => SHARE.includes(a.k)).map(a => (a.k === "ini" ? { ...a, sec: a.sec.map(s => (s.k === "home" ? { ...s, d: d === "lssd" ? "Los Santos Sheriff's Department" : "San Andreas Highway Patrol" } : s)) }
+    : a.k === "rad" ? { ...a, sec: a.sec.map(s => ({ ...s, d: `10.03 con sujetos y vehículo de huida, por /r${d} o /rsapd` })) } : a));
+  const div: Area = d === "lssd" ? { k: "div", l: "Divisiones", icon: Landmark, min: 0, sec: LSSD_DIV_SEC } : SOON("div", "Divisiones", Landmark, 0, "");
+  const adm = LSPD_AREAS.find(a => a.k === "adm")!;
+  /* Supervisores: por ahora solo Condecoraciones (las mismas del LSPD: se ven en Agentes y en el Inicio) */
+  const sup = LSPD_AREAS.find(x => x.k === "sup")!;
+  const L = [...base, div, { ...sup, req: "Sergeant", sec: sup.sec.filter(x => x.k === "cond") }, SOON("cap", "Capitanía", Briefcase, 8, "Lieutenant"),
+    SOON("jef", "Jefatura", Star, 10, d === "lssd" ? "Area Commander" : "Chief"), { ...adm, sec: adm.sec.filter(s => ADM_X.includes(s.k)) }];
+  return L.sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
+}
+const LSSD_AREAS = xAreas("lssd"), SAHP_AREAS = xAreas("sahp");
 /* el menú cambia de departamento sin recargar: AREAS es la lista del departamento activo */
 export const AREAS: Area[] = [...LSPD_AREAS];
-onDept(() => { AREAS.splice(0, AREAS.length, ...(DEPT.id === "lssd" ? LSSD_AREAS : LSPD_AREAS)); });
-const isLssd = () => DEPT.id === "lssd";
+onDept(() => { AREAS.splice(0, AREAS.length, ...(DEPT.id === "lssd" ? LSSD_AREAS : DEPT.id === "sahp" ? SAHP_AREAS : LSPD_AREAS)); });
+/* áreas que en el LSSD y la SAHP todavía están en construcción */
+export const isSoon = (a: Area) => a.sec.length === 1 && a.sec[0].k === "soon";
 
 /* Legal: solo six y a quien six le da acceso desde Administración */
 const legalOk = () => !!ME_ROLES.six || LS.json<string[]>("lspdt.legacc", []).includes(PROF.me);
@@ -115,11 +123,11 @@ const conOk = () => !!ME_ROLES.six || LS.json<string[]>("lspdt.consultaAcc", [])
 const galOk = () => !!ME_ROLES.six || !!ME_ROLES.admin || LS.json<string[]>("lspdt.galEditors", []).includes(PROF.me);
 /* invitado: solo las secciones que abrió six (Novedades va siempre con el Inicio) */
 const guestSec = (a: string, s: string) => GUEST.secs.includes(`${a}/${s}`) || (a === "ini" && s === "nov");
-export const canArea = (a: Area, r?: string) => isLssd() ? !!ME_ROLES.six || lssdLvl(r) >= a.min : (GUEST.on ? a.sec.some(s => guestSec(a.k, s.k)) : a.k === "gal" ? galOk() : a.k === "con" ? conOk() : a.k === "me" ? profOk() : a.k === "leg" ? legalOk() : a.admin ? !!ME_ROLES.admin : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : lvl(r) >= a.min);
+export const canArea = (a: Area, r?: string) => (isSoon(a) ? !!ME_ROLES.six || lvl(r) >= a.min : GUEST.on ? a.sec.some(s => guestSec(a.k, s.k)) : a.k === "gal" ? galOk() : a.k === "con" ? conOk() : a.k === "me" ? profOk() : a.k === "leg" ? legalOk() : a.admin ? !!ME_ROLES.admin : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : lvl(r) >= a.min);
 /* áreas del menú (sin las ocultas) */
 export const menuAreas = (r?: string) => AREAS.filter(a => !a.hidden && canArea(a, r));
 /* secciones bloqueadas para ese rango (se muestran con candado) */
-export const lockedOf = (a: Area, r?: string) => (GUEST.on || isLssd() ? [] : a.sec.filter(s => s.min && lvl(r) < s.min));
+export const lockedOf = (a: Area, r?: string) => (GUEST.on ? [] : a.sec.filter(s => s.min && lvl(r) < s.min));
 /* secciones que ve cada uno dentro de un área (algunas piden más rango que el área) */
-export const secsOf = (a: Area, r?: string) => isLssd() ? a.sec : GUEST.on ? a.sec.filter(s => guestSec(a.k, s.k)) : a.sec.filter(s => (!s.min || lvl(r) >= s.min) && (a.k !== "div" || divVisible(s.l, PROF.me))); /* el rango manda también para los administradores */
+export const secsOf = (a: Area, r?: string) => isSoon(a) ? a.sec : GUEST.on ? a.sec.filter(s => guestSec(a.k, s.k)) : a.sec.filter(s => (!s.min || lvl(r) >= s.min) && (a.k !== "div" || divVisible(s.l, PROF.me))); /* el rango manda también para los administradores */
 

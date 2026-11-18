@@ -8,6 +8,7 @@ import { Eye, LogIn, Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, Use
 import { AREAS, canArea, lockedOf, menuAreas, secsOf, type Area, type Sec } from "@/nav";
 import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
+import { uiText } from "@/lib/templates";
 import { rankES } from "@/lib/domain";
 import { GUEST, LS, ME_ROLES, getNet, useStoreVersion } from "@/lib/store";
 import { DEPT, DEPTS, deptLogo, setDept, type DeptId } from "@/lib/dept";
@@ -90,11 +91,11 @@ function DeptMenu({ onClose, home }: { onClose: () => void; home: () => void }) 
     <div ref={ref} className="absolute left-3 top-[4.9rem] z-50 w-80 origin-top-left animate-fade-in rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-2xl backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/95">
       <p className="px-2.5 pb-1.5 pt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Cambiar de departamento</p>
       {(Object.keys(DEPTS) as DeptId[]).map(d => { const D = DEPTS[d], on = DEPT.id === d; return (
-        <button key={d} disabled={D.soon} onClick={() => { if (!on) setDept(d); onClose(); }}
-          className={cn("flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition", on ? "bg-brand-500/10 ring-1 ring-inset ring-brand-500/30" : "hover:bg-slate-100 dark:hover:bg-slate-800", D.soon && "cursor-not-allowed opacity-50")}>
+        <button key={d} onClick={() => { if (!on) setDept(d); onClose(); }}
+          className={cn("flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition", on ? "bg-brand-500/10 ring-1 ring-inset ring-brand-500/30" : "hover:bg-slate-100 dark:hover:bg-slate-800")}>
           <img src={d === "lspd" ? LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || D.logo : deptLogo(d)} alt="" className="size-9 object-contain" onError={e => { e.currentTarget.style.visibility = "hidden"; }} />
           <span className="min-w-0 flex-1"><b className="block text-sm">{D.short}</b><span className="block truncate text-[12px] text-slate-500">{D.name}</span></span>
-          {on ? <Check className="size-4 text-brand-500" /> : D.soon ? <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-[10px] font-bold text-slate-500">Pronto</span> : null}</button>); })}
+          {on ? <Check className="size-4 text-brand-500" /> : null}</button>); })}
       <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
       <button onClick={home} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-[13px] font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"><Home className="size-4" />Ir al inicio</button>
     </div>);
@@ -115,7 +116,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
     window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h); }, [go]);
   const [open, setOpen] = useState(false), [acc, setAcc] = useState(false);
   useStoreVersion();
-  const ui = LS.json<Record<string, string>>("lspdt.ui", {}), lssd = DEPT.id === "lssd", title = (ui.title || "").trim() || "Terminal de Mando", kicker = lssd ? DEPTS.lssd.name : ((ui.kicker || "").trim() || "Los Santos Police Department").replace(/\bDept\.?$/i, "Department");
+  const title = uiText("title"), kicker = uiText("kicker").replace(/\bDept\.?$/i, "Department");
   /* pestaña: favicon de la marca con punto ONLINE que parpadea y una sesión cifrada que va rotando */
   const fav = LS.get("lspdt.fav") || LS.get("lspdt.logo") || "/next/logo.svg", ico = useRef<[string, string] | null>(null), ses = useRef(cipher(2, 4));
   useEffect(() => { ico.current = null; void onlineIcons(fav).then(x => { ico.current = x; }); }, [fav]);
@@ -126,7 +127,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
   useEffect(() => { LS.set("lspdt.sec." + area.k, sec.k); }, [area.k, sec.k]);
   useEffect(brandSave, [LS.get("lspdt.logo"), LS.get("lspdt.logo.upd"), LS.get("lspdt.fav")]); // eslint-disable-line react-hooks/exhaustive-deps
   const { nav: mode } = usePref();
-  const logo = <img decoding="async" src={lssd ? deptLogo("lssd") : LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className="h-9 w-9 object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />;
+  const logo = <img decoding="async" src={DEPT.id !== "lspd" ? deptLogo(DEPT.id) : LS.get("lspdt.logo.header") || LS.get("lspdt.logo") || "/next/logo.svg"} alt="" className="h-9 w-9 object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />;
   /* estado de sincronización: barra que recorre el indicador cada pocos segundos (guardando: barra continua; sin conexión: rojo) */
   const sync = (
     <span role="status" title={net === "off" ? "Sin conexión: los cambios se guardan al volver" : net === "saving" ? "Guardando cambios…" : "Todo sincronizado con el servidor"}
@@ -177,7 +178,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
             <nav aria-label="Secciones" className={cn("scrollbar-none mx-auto flex max-w-[1760px] gap-0.5 px-3 py-2 sm:px-5", divBar ? "flex-wrap justify-center gap-y-1 max-sm:flex-nowrap max-sm:justify-start max-sm:overflow-x-auto" : "overflow-x-auto [&>*:first-child]:ml-auto [&>*:last-child]:mr-auto")}>
               {secsOf(area, me.r).filter(s => !s.hide).map(s => { const on = s.k === sec.k, I = s.icon; return (
                 <button key={s.k} onClick={() => go(area.k, s.k)} title={s.d} aria-current={on ? "page" : undefined}
-                  className={cn("inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-[12.5px] font-semibold transition min-[1800px]:px-3.5 min-[1800px]:text-[13px]", divBar ? "text-[13px] tracking-[0.01em]" : "uppercase tracking-wide", focusRing,
+                  className={cn("inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-[12.5px] font-semibold transition min-[1800px]:px-3.5 min-[1800px]:text-[13px]", "uppercase tracking-wide", focusRing,
                     on ? "bg-brand-500/15 text-brand-700 ring-1 ring-inset ring-brand-500/40 dark:text-brand-200" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-white")}>
                   <I className="size-4 shrink-0" />{s.sl || s.l}</button>); })}
               {lockedOf(area, me.r).map(s => <span key={s.k} title="Bloqueada para tu rango" className="inline-flex shrink-0 cursor-not-allowed items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-[12.5px] font-semibold uppercase tracking-wide text-red-500/70 dark:text-red-400/70 min-[1800px]:px-3.5 min-[1800px]:text-[13px]"><Lock className="size-3.5 shrink-0" />{s.sl || s.l}</span>)}

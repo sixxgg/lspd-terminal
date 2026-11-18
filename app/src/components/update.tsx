@@ -5,6 +5,8 @@ import { LS, ME_ROLES } from "@/lib/store";
 import { usePref } from "@/lib/appearance";
 import { APP_VERSION } from "@/sections/Novedades";
 import { OPS_STEPS, OpsLoad } from "./opsload";
+import { DEPT, deptLogo } from "@/lib/dept";
+import { uiText } from "@/lib/templates";
 
 /* aviso de versión nueva: notificación del sistema que baja desde el borde de arriba de la pantalla de la tablet, como en un teléfono.
    Detrás, la pantalla se puede desenfocar (Apariencia). «Reiniciar» recarga sin caché; «Más tarde» o deslizarla hacia arriba la guarda
@@ -33,7 +35,7 @@ export function UpdateBar() {
   const test = nueva.b === "test";
   const later = () => { setOut(true); if (!test) try { localStorage.setItem(SKIP, nueva.b); } catch { /* */ } setTimeout(() => { setNueva(null); setOut(false); setDy(0); setBusy(false); }, 380); };
   const restart = () => { setBusy(true); setTimeout(() => setInst(true), 350); };
-  const logo = LS.get("lspdt.logo") || "/next/logo.svg", blur = p.updBlur ?? (ME_ROLES.six ? 10 : 0);
+  const logo = DEPT.id !== "lspd" ? deptLogo(DEPT.id) : LS.get("lspdt.logo") || "/next/logo.svg", blur = p.updBlur ?? (ME_ROLES.six ? 10 : 0);
   /* dentro de la pantalla de la tablet (sale por el borde); sin marco, arriba de la ventana */
   const host = document.querySelector<HTMLElement>(".tab-screen"), inside = !!host;
   const ui = (
@@ -45,7 +47,7 @@ export function UpdateBar() {
           onPointerMove={e => { if (y0.current !== null) setDy(Math.min(0, e.clientY - y0.current)); }}
           onPointerUp={() => { if (y0.current === null) return; y0.current = null; if (dy < -40) later(); else setDy(0); }}>
           <div className="flex items-center gap-2 px-4 pt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">
-            <img src={logo} alt="" className="size-4 rounded object-contain" /><span>Terminal LSPD · Sistema</span><span className="ml-auto normal-case tracking-normal">ahora</span>
+            <img src={logo} alt="" className="size-4 rounded object-contain" /><span>{uiText("sys")} · Sistema</span><span className="ml-auto normal-case tracking-normal">ahora</span>
           </div>
           <div className="flex items-start gap-3 px-4 pb-3 pt-2">
             <span className="upd-ico grid size-11 shrink-0 place-items-center rounded-2xl">{busy ? <Loader2 className="size-5 animate-spin" /> : <RotateCw className="size-5" />}</span>

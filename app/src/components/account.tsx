@@ -7,11 +7,12 @@ import { copyText } from "@/components/output";
 import { authApi } from "@/lib/api";
 import { emailOf, fmtDate, rankES } from "@/lib/domain";
 import { LS } from "@/lib/store";
+import { uiText } from "@/lib/templates";
 
 /* códigos de recuperación: se muestran una sola vez */
 export function RecCodes({ codes }: { codes: string[] }) {
   const { toast } = useFeedback(), txt = codes.join("\n");
-  const dl = () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([`Códigos de recuperación · Terminal LSPD\n\n${txt}\n\nCada código sirve una sola vez.`], { type: "text/plain" })); a.download = "codigos-recuperacion-lspd.txt"; a.click(); };
+  const dl = () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([`Códigos de recuperación · ${uiText("sys")}\n\n${txt}\n\nCada código sirve una sola vez.`], { type: "text/plain" })); a.download = "codigos-recuperacion-lspd.txt"; a.click(); };
   return (
     <div className="space-y-3 rounded-xl border border-amber-300/60 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
       <p className="flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-200"><LifeBuoy className="size-4" />Guardá estos códigos de recuperación</p>

@@ -6,20 +6,20 @@ import { UPD_RESUME, UpdateBar } from "./components/update";
 import { LoginOps, OpsLoad } from "./components/opsload";
 import { CalAlert } from "./components/calalert";
 import { ExamWatch } from "./components/mdexam";
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Login, type PubInfo } from "./layout/Login";
 import { Shell } from "./layout/Shell";
 import { Home } from "./sections/Home";
 import { MeCtx } from "./lib/me";
-import { Division, PerdidaArmamento, VIEWS, lz } from "./routes";
+import { Division, LssdSoon, PerdidaArmamento, VIEWS, lz } from "./routes";
 import { cn } from "./lib/cn";
 const Six = lz(() => import("./sections/six/Six"), "Six");
 const PublicBoard = lz(() => import("./sections/Pizarra"), "PublicBoard");
 const QS = new URLSearchParams(location.search), SHARE = QS.get("pizarra"), VER = QS.get("ver"), ROB = QS.get("robos"), INV = QS.get("inv");
 const RobosShare = lz(() => import("./sections/six/RobosShare"), "RobosShare");
 const PublicSection = lz(() => import("./sections/div/DivTools"), "PublicSection");
-import { AREAS, canArea, secsOf } from "./nav";
+import { AREAS, canArea, isSoon, secsOf } from "./nav";
 import { api, authApi } from "./lib/api";
 import { BootScreen } from "./components/boot";
 import { ForcePw } from "./layout/ForcePw";
@@ -31,7 +31,7 @@ import { Eye } from "lucide-react";
 import { goodTier, stampLogros } from "./components/logros";
 import { confetti } from "./lib/confetti";
 import { JUMP, jumpNow } from "./lib/jump";
-import { DEPT, lssdRoster, onDept, savedDept, setDept } from "./lib/dept";
+import { DEPT, onDept, savedDept, setDept } from "./lib/dept";
 import { ACC, GUEST, LS, ME_ROLES, PREV, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
 import { emailOf, findAgent, getRoster, rankES } from "./lib/domain";
 import { useFeedback } from "./components/feedback";
@@ -87,8 +87,7 @@ function PrevBar({ r }: { r: string }) {
     <Eye className="size-4 text-amber-300" /><span>Vista previa como <b>{rankES(r)}</b> sin divisiones</span><button onClick={prevStop} className="rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-slate-900 hover:bg-amber-300">Salir</button></div></div>;
 }
 /* la apariencia por defecto del depto (tema, puntero, marca del marco) viene pública: se aplica ya en el ingreso */
-const navKey = () => (DEPT.id === "lssd" ? "lspdt.next.nav.lssd" : "lspdt.next.nav");
-const LssdHome = lazy(() => import("./sections/Lssd").then(m => ({ default: m.LssdHome })));
+const navKey = () => (DEPT.id === "lspd" ? "lspdt.next.nav" : `lspdt.next.nav.${DEPT.id}`);
 const deptFromBrand = (b: Boot) => { const u = b.brand?.["lspdt.ui"]; if (u) try { setDeptUi(JSON.parse(u)); } catch { /* */ } };
 function Main() {
   const [boot, setBoot] = useState<Boot | null>(null);
@@ -108,13 +107,13 @@ function Main() {
     /* «Ver como» (solo administración): otra identidad sin divisiones ni permisos */
     const pv = prevGet(); if (pv && d.me?.admin) { PREV.on = true; d = { ...d, me: { n: "Vista previa", r: pv.r, admin: false, owner: false, six: false, anita: false } }; }
     PREV.must = !!d.me?.must; loadStore(d);
-    /* las cuentas del LSSD siempre ven el LSSD; six arranca en el último departamento que eligió */
-    setDept(d.me?.dept === "lssd" ? "lssd" : d.me?.six ? savedDept() : "lspd", d.me?.dept === "lssd" || !d.me?.six);
+    /* las cuentas del LSSD y la SAHP siempre ven su departamento; six arranca en el último que eligió */
+    setDept(d.me?.dept ? d.me.dept : d.me?.six ? savedDept() : "lspd", !!d.me?.dept || !d.me?.six);
     setMe(d.me!);
     let seen = false; try { seen = !!sessionStorage.getItem("lspdt.next.booted"); sessionStorage.setItem("lspdt.next.booted", "1"); } catch { /* */ }
     if (fresh || !seen) setFx(fresh ? "full" : "short");
     /* limpieza: el código penal viejo guardado en la base ya no se usa (Legal es la única fuente); se borra una sola vez */
-    if (LS.get("lspdt.penal") != null) LS.del("lspdt.penal"); }, []);
+    if (!d.me?.dept && LS.get("lspdt.penal") != null) LS.del("lspdt.penal"); }, []);
   const lost = useCallback(() => { goOffline(); setMe(null); toast("La sesión se cerró. Volvé a ingresar.", "err"); void api("/api/auth").then(r => { deptFromBrand(r as unknown as Boot); setBoot(r as unknown as Boot); }); }, [toast]);
   useEffect(() => { storeHooks(toast, lost); }, [toast, lost]);
   /* enlace directo desde Discord (?ir=six-not): abre six en Notificaciones */
@@ -134,7 +133,7 @@ function Main() {
   useEffect(() => { const f = (e: Event) => { setNav((e as CustomEvent<{ a: string; s: string }>).detail); scrollTopApp(); }; window.addEventListener("lspd:go", f); return () => window.removeEventListener("lspd:go", f); }, []);
   useEffect(() => { try { if (nav.a !== "six" && nav.a !== "anita") { localStorage.setItem(navKey(), JSON.stringify(nav)); sessionStorage.removeItem("lspdt.panel"); } else sessionStorage.setItem("lspdt.panel", nav.a); } catch { /* */ } }, [nav]); /* six nunca queda como página de inicio */
 
-  const lssdAcc = me?.dept === "lssd";
+  const lssdAcc = !!me?.dept; /* cuenta del LSSD o la SAHP */
   useEffect(() => { if (!me || lssdAcc) return; const t = setTimeout(() => { void import("./sections/Informes"); void import("./sections/Legal"); }, 2500); return () => clearTimeout(t); }, [me]);
   /* perfil: fecha de ingreso (una vez) y última visita (cada 30 min); a six se le pasa lo que tenía en su perfil viejo */
   useEffect(() => { if (!me || lssdAcc) return; const k = `lspdt.uprof.${emailOf(me.n).split("@")[0]}`, p = LS.json<{ since?: number; seen?: number; bio?: string }>(k, {}), now = Date.now();
@@ -152,7 +151,7 @@ function Main() {
   if (!boot) return <Device><div className="relative grid min-h-[var(--app-h,100dvh)] place-items-center text-slate-400">{UPD_RESUME != null ? <OpsLoad v={UPD_RESUME || APP_VERSION} pct={100} n={5} inside resume /> : <Loader2 className="size-6 animate-spin" />}</div></Device>;
   if (!me) return <Device brand={boot.brand}><UpdateBar /><Login pub={boot} onDone={r => enter((r as { data: Parameters<typeof loadStore>[0] }).data, true)} /></Device>;
 
-  const ag = lssdAcc ? null : findAgent(me.n), user = { n: me.n, r: ag?.r || me.r, p: ag?.p || me.p };
+  const ag = findAgent(me.n), user = { n: me.n, r: ag?.r || me.r, p: ag?.p || me.p };
   if (nav.a === "anita" && ME_ROLES.anita && !me.must) return <MeCtx.Provider value={user}><Suspense fallback={<div className="min-h-[100dvh] bg-black" />}><Six who="anita" resume={nav.s === "re"} onExit={() => { setNav({ a: "ini", s: "home" }); scrollTopApp(); }} /></Suspense></MeCtx.Provider>;
   if (nav.a === "six" && ME_ROLES.six && !me.must) return <MeCtx.Provider value={user}><Suspense fallback={<div className="min-h-[100dvh] bg-black" />}><Six start={nav.s === "not" ? "not" : "ini"} resume={nav.s === "re"} onExit={() => { setNav({ a: "ini", s: "home" }); scrollTopApp(); }} /></Suspense></MeCtx.Provider>;
   let area = AREAS.find(a => a.k === nav.a) || AREAS[0];
@@ -162,12 +161,13 @@ function Main() {
   const logout = async () => { await authApi({ a: "logout" }); goOffline(); setMe(null); const r = await api("/api/auth"); setBoot(r as unknown as Boot); };
 
   let view;
-  if (sec.k === "home") view = DEPT.id === "lssd" ? <LssdHome /> : <Home me={user} go={go} />;
+  if (sec.k === "home") view = <Home me={user} go={go} />;
+  else if (isSoon(area)) view = <LssdSoon k={area.k} t={area.l} />;
   else if (area.k === "sup" && sec.k === "parm") view = <PerdidaArmamento me={user} />;
   else if (area.k === "div") view = <Division d={sec.l} />;
   else if (VIEWS[`${area.k}/${sec.k}`]) view = VIEWS[`${area.k}/${sec.k}`]();
   else view = null;
-  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className={cn("animate-fade-in", area.k === "sup" && "sup-c")}><Suspense fallback={<div className="grid min-h-[40vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{view}</Suspense></div></Shell><UpdateBar />{!fx && !lssdAcc && <CalAlert me={user.n} />}{!fx && !PREV.on && !lssdAcc && <ExamWatch me={user.n} />}{PREV.on && <PrevBar r={user.r} />}</MeCtx.Provider>{fx === "full" && <LoginOps name={me.n} rank={lssdAcc ? user.r : rankES(user.r)} agents={lssdAcc ? lssdRoster().length : getRoster().length} divs={lssdAcc ? 0 : rosterDivs(me.n).length} onDone={() => setFx("")} />}{fx === "short" && <BootScreen name={me.n} rank={lssdAcc ? user.r : rankES(user.r)} badge={user.p} agents={lssdAcc ? lssdRoster().length : getRoster().length} no={lssdAcc ? undefined : ACC.names.indexOf(me.n) + 1 || undefined} divs={lssdAcc ? [] : rosterDivs(me.n)} short={fx === "short"} onDone={() => setFx("")} />}{breach && <ErrorScreen onDone={endBreach} />}{me.must && !PREV.on && <ForcePwPortal n={me.n} onDone={() => { PREV.must = false; setMe({ ...me, must: false }); toast("Contraseña actualizada. ¡Listo!"); }} onLogout={logout} />}</Device>;
+  return <Device><MeCtx.Provider value={user}><Shell me={user} area={area} sec={sec} go={go} onLogout={logout}><div key={`${area.k}/${sec.k}`} className={cn("animate-fade-in", area.k === "sup" && "sup-c")}><Suspense fallback={<div className="grid min-h-[40vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{view}</Suspense></div></Shell><UpdateBar />{!fx && !lssdAcc && <CalAlert me={user.n} />}{!fx && !PREV.on && !lssdAcc && <ExamWatch me={user.n} />}{PREV.on && <PrevBar r={user.r} />}</MeCtx.Provider>{fx === "full" && <LoginOps name={me.n} rank={rankES(user.r)} agents={getRoster().length} divs={rosterDivs(me.n).length} onDone={() => setFx("")} />}{fx === "short" && <BootScreen name={me.n} rank={rankES(user.r)} badge={user.p} agents={getRoster().length} no={lssdAcc ? undefined : ACC.names.indexOf(me.n) + 1 || undefined} divs={rosterDivs(me.n)} short={fx === "short"} onDone={() => setFx("")} />}{breach && <ErrorScreen onDone={endBreach} />}{me.must && !PREV.on && <ForcePwPortal n={me.n} onDone={() => { PREV.must = false; setMe({ ...me, must: false }); toast("Contraseña actualizada. ¡Listo!"); }} onLogout={logout} />}</Device>;
 }
 
 /* el cambio obligatorio de contraseña va dentro de la pantalla de la tablet (o arriba de todo sin marco) */

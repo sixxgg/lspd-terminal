@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { DEPTS, deptLogo, setDept } from "@/lib/dept";
+import { DEL, DEPTS, deptLogo, setDept, type DeptId } from "@/lib/dept";
 import { LssdIns } from "@/components/lssdIns";
 import { Eye, EyeOff, LogIn, UserPlus, Clock, AlertCircle, ShieldCheck, LifeBuoy, CheckCircle2 } from "lucide-react";
 import { RecCodes } from "@/components/account";
@@ -9,7 +9,7 @@ import { emailOf, norm, rankES } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 import { cipher, tabIcon, useTabFx } from "@/lib/tabfx";
 
-export type PubInfo = { names: string[]; roster?: { n: string; r: string; p?: string }[]; brand?: Record<string, string>; lssd?: { n: string; r: string; p: string }[]; lssdNames?: string[] };
+export type PubInfo = { names: string[]; roster?: { n: string; r: string; p?: string }[]; brand?: Record<string, string>; lssd?: { n: string; r: string; p: string }[]; lssdNames?: string[]; sahp?: { n: string; r: string; p: string }[]; sahpNames?: string[] };
 type Msg = { kind: "err" | "pend" | "ok"; text: string } | null;
 
 /* pantalla de ingreso: la pestaña muestra una calavera y un título cifrado con caracteres aleatorios */
@@ -22,17 +22,19 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
   const [pw, setPw] = useState(""), [pw2, setPw2] = useState(""), [code, setCode] = useState("");
   const [keep, setKeep] = useState(true), [show, setShow] = useState(false), [busy, setBusy] = useState(false);
   const [name, setName] = useState(""), [msg, setMsg] = useState<Msg>(null);
-  /* departamento: LSPD o LSSD (SAHP más adelante); cambia escudo, roster y cómo se identifica cada uno */
-  const [dep, setDep0] = useState<"lspd" | "lssd">(() => { try { return localStorage.getItem("lspdt.next.loginDept") === "lssd" ? "lssd" : "lspd"; } catch { return "lspd"; } });
-  const setDep = (d: "lspd" | "lssd") => { setDep0(d); setName(""); setMsg(null); setU(""); setDept(d, true); try { localStorage.setItem("lspdt.next.loginDept", d); } catch { /* */ } };
+  /* departamento: LSPD, LSSD o SAHP (la SAHP se habilita cuando tiene roster); cambia escudo, roster y cómo se identifica cada uno */
+  const [dep, setDep0] = useState<DeptId>(() => { try { const d = localStorage.getItem("lspdt.next.loginDept"); return d === "lssd" || d === "sahp" ? d : "lspd"; } catch { return "lspd"; } });
+  const setDep = (d: DeptId) => { setDep0(d); setName(""); setMsg(null); setU(""); setDept(d, true); try { localStorage.setItem("lspdt.next.loginDept", d); } catch { /* */ } };
   useEffect(() => { setDept(dep, true); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const lssd = dep === "lssd", R = (lssd ? pub.lssd : pub.roster) || [], rkES = (r: string) => (lssd ? r : rankES(r));
-  const reg = useMemo(() => new Set(lssd ? pub.lssdNames || [] : pub.names), [pub.names, pub.lssdNames, lssd]), isReg = (a: { n: string; p?: string }) => reg.has(lssd ? "#" + a.p : a.n);
+  /* lssd: LSSD o SAHP (se entra con usuario OOC, nombre o placa) */
+  const lssd = dep !== "lspd", R = (dep === "lspd" ? pub.roster : pub[dep]) || [], rkES = (r: string) => (lssd ? r : rankES(r));
+  const xOn = (d: DeptId) => d !== "sahp" || !!pub.sahp?.length;
+  const reg = useMemo(() => new Set(dep === "lspd" ? pub.names : pub[`${dep}Names`] || []), [pub, dep]), isReg = (a: { n: string; p?: string }) => reg.has(lssd ? "#" + a.p : a.n);
   const sug = useMemo(() => { const s = norm(name.trim()).replace(/^#/, ""); if (s.length < 2) return []; return R.filter(a => norm(a.n).includes(s) || String(a.p) === s).slice(0, 6); }, [name, R]);
   /* elegido: el nombre exacto (si no se repite) o el número de placa */
   const [pick, setPick] = useState<{ n: string; r: string; p?: string } | null>(null);
   const picked = pick && pick.n === name ? pick : (() => { const s = norm(name.trim()).replace(/^#/, ""); if (!s) return null; const byP = /^\d+$/.test(s) ? R.filter(a => String(a.p) === s) : [], byN = R.filter(a => norm(a.n) === s); return byP.length === 1 ? byP[0] : byN.length === 1 ? byN[0] : null; })();
-  const logo = lssd ? deptLogo("lssd", pub.brand) : pub.brand?.["lspdt.logo.login"] || pub.brand?.["lspdt.logo"] || "/next/logo.svg";
+  const logo = lssd ? deptLogo(dep, pub.brand) : pub.brand?.["lspdt.logo.login"] || pub.brand?.["lspdt.logo"] || "/next/logo.svg";
 
   async function login(e: FormEvent) {
     e.preventDefault(); setMsg(null);
@@ -76,13 +78,13 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
         <div className="rounded-3xl border border-slate-200 bg-white/90 p-7 shadow-xl shadow-slate-900/5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-black/40">
           <div className="flex flex-col items-center text-center">
             <img decoding="async" src={logo} alt="" className="h-16 w-auto drop-shadow" />
-            <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.2em] text-brand-600 dark:text-brand-300">{lssd ? DEPTS.lssd.name : "Los Santos Police Department"}</p>
+            <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.2em] text-brand-600 dark:text-brand-300">{DEPTS[dep].name}</p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight">Terminal de Mando</h1>
           </div>
           {!codes && <div role="radiogroup" aria-label="Departamento" className="mt-5 grid grid-cols-3 gap-1.5 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800/70">
             {(["lspd", "lssd", "sahp"] as const).map(d => { const D = DEPTS[d], on = dep === d; return (
-              <button key={d} type="button" role="radio" aria-checked={on} disabled={D.soon} onClick={() => d !== "sahp" && setDep(d)} title={D.soon ? `${D.name} · próximamente` : D.name}
-                className={cn("flex items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-[12px] font-bold transition", on ? "bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200", D.soon && "cursor-not-allowed opacity-40")}>
+              <button key={d} type="button" role="radio" aria-checked={on} disabled={!xOn(d)} onClick={() => setDep(d)} title={!xOn(d) ? `${D.name} · próximamente` : D.name}
+                className={cn("flex items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-[12px] font-bold transition", on ? "bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200", !xOn(d) && "cursor-not-allowed opacity-40")}>
                 <img src={d === "lspd" ? pub.brand?.["lspdt.logo.login"] || pub.brand?.["lspdt.logo"] || D.logo : deptLogo(d, pub.brand)} alt="" className="size-5 object-contain" />{D.short}</button>); })}
           </div>}
           {codes ? <div className="mt-6 space-y-4"><RecCodes codes={codes.rec} /><Button size="lg" className="w-full" onClick={codes.then}>Ya los guardé, continuar</Button></div> : <>
@@ -122,7 +124,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
             </form>
           ) : (
             <form onSubmit={register} className="mt-6 space-y-4">
-              <Field label="Tu personaje" hint={lssd ? "(nombre o placa del roster del Sheriff)" : "(nombre o placa, como figura en el roster)"}>
+              <Field label="Tu personaje" hint={lssd ? `(nombre o placa del roster ${DEL[dep]})` : "(nombre o placa, como figura en el roster)"}>
                 <div className="relative">
                   <Input value={name} onChange={e => setName(e.target.value)} placeholder="Nombre o número de placa" autoComplete="off" />
                   {sug.length > 0 && !picked && (
@@ -142,7 +144,7 @@ export function Login({ pub, onDone }: { pub: PubInfo; onDone: (r: { data: unkno
                 <Field label="Contraseña"><Input type="password" autoComplete="new-password" value={pw} onChange={e => setPw(e.target.value)} /></Field>
                 <Field label="Repetir"><Input type="password" autoComplete="new-password" value={pw2} onChange={e => setPw2(e.target.value)} /></Field>
               </div>
-              <Field label="Código de invitación" hint="(te lo da la administración)"><Input value={code} onChange={e => setCode(e.target.value)} placeholder={`${lssd ? "LSSD" : "LSPD"}-XXXXX-XXXXX`} className="font-mono uppercase" autoComplete="off" /></Field>
+              <Field label="Código de invitación" hint="(te lo da la administración)"><Input value={code} onChange={e => setCode(e.target.value)} placeholder={`${DEPTS[dep].short}-XXXXX-XXXXX`} className="font-mono uppercase" autoComplete="off" /></Field>
               <MsgBox m={msg} />
               <Button type="submit" size="lg" loading={busy} className="w-full">Crear cuenta</Button>
             </form>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Vote, Plus, ThumbsUp, ThumbsDown, MinusCircle, Send, Trash2, Check, X, ArrowRight, FileSignature, Download, Upload, MessagesSquare } from "lucide-react";
+import { Clock, Vote, Plus, ThumbsUp, ThumbsDown, MinusCircle, Send, Trash2, Check, X, ArrowRight, FileSignature, Download, Upload, MessagesSquare } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Select, Textarea } from "@/components/ui";
 import { AgentPicker, Avatar, RankBadge } from "@/components/agents";
 import { useFeedback } from "@/components/feedback";
@@ -10,11 +10,8 @@ import { addMov, goTo } from "@/lib/profiles";
 import { cn } from "@/lib/cn";
 import { eligibleFor, rankOptionsFor } from "./Ascensos";
 
-type V = "favor" | "contra" | "abst";
-type Msg = { a?: string; r?: string; m: string; t: number; sys?: 1 };
-export type Prop = { id: string; tipo: "asc" | "desc"; ag: { n: string; r: string; p?: string }; nr: string; motivo: string; autor: { n: string; r: string }; t: number;
-  estado: "abierta" | "aprobada" | "rechazada"; votos: Record<string, { v: V; r: string; t: number }>; chat: Msg[]; cierre?: { n: string; r: string; t: number } };
-export const tally = (p: Prop) => { const c = { favor: 0, contra: 0, abst: 0 }; Object.values(p.votos || {}).forEach(v => c[v.v]++); return c; };
+import { closeExpired, expLeft, tally, type Msg, type Prop, type V } from "@/lib/votes";
+export { tally, type Prop };
 const VOPT: [V, string, typeof ThumbsUp, string, string][] = [
   ["favor", "A favor", ThumbsUp, "text-emerald-600 dark:text-emerald-400", "bg-emerald-600 text-white border-emerald-600 dark:bg-emerald-500 dark:border-emerald-500"],
   ["contra", "En contra", ThumbsDown, "text-red-600 dark:text-red-400", "bg-red-600 text-white border-red-600 dark:bg-red-500 dark:border-red-500"],
@@ -29,6 +26,8 @@ export function Votaciones() {
   useEffect(() => { (window as unknown as { __vcur?: string }).__vcur = undefined; }, []);
   const save = (fn: (l: Prop[]) => Prop[]) => setVotes(fn(VOTES.map(p => ({ ...p }))));
   const upd = (id: string, fn: (p: Prop) => void) => save(l => l.map(p => { if (p.id !== id) return p; const x = structuredClone(p); fn(x); return x; }));
+  /* al abrir la sección se cierran las vencidas */
+  useEffect(() => { const x = closeExpired(VOTES); if (x) setVotes(x); }); // eslint-disable-line react-hooks/exhaustive-deps
   const list = VOTES.slice().sort((a, b) => b.t - a.t).filter(p => fil === "all" || (fil === "open" ? p.estado === "abierta" : p.estado !== "abierta"));
   const p = VOTES.find(x => x.id === cur);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -59,7 +58,7 @@ export function Votaciones() {
           {list.length ? list.map(x => { const c = tally(x); return (
             <button key={x.id} onClick={() => { setCur(x.id); setNuevo(false); }}
               className={cn("w-full rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500", x.id === cur ? "border-brand-300 bg-brand-50 dark:border-brand-500/40 dark:bg-brand-500/10" : "border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50")}>
-              <div className="flex items-center gap-1.5"><TipoBadge t={x.tipo} /><EstadoBadge e={x.estado} /></div>
+              <div className="flex items-center gap-1.5"><TipoBadge t={x.tipo} /><EstadoBadge e={x.estado} />{x.estado === "abierta" && x.exp && <span className="ml-auto inline-flex items-center gap-1 text-[10.5px] font-bold text-amber-600 dark:text-amber-400"><Clock className="size-3" />{expLeft(x.exp)}</span>}</div>
               <p className="mt-1.5 truncate text-sm font-semibold">{x.ag.n}</p>
               <p className="flex items-center gap-1 text-xs text-slate-500">{rankES(x.ag.r)}<ArrowRight className="size-3" />{rankES(x.nr)}</p>
               <p className="mt-1 text-[11px] text-slate-400"><span className="text-emerald-600 dark:text-emerald-400">{c.favor} a favor</span> · <span className="text-red-600 dark:text-red-400">{c.contra} en contra</span> · {(x.chat || []).filter(m => !m.sys).length} mensajes</p>
@@ -96,7 +95,8 @@ function Detail({ p, upd, del, resolve }: { p: Prop; upd: (fn: (p: Prop) => void
               <div className="flex items-center gap-1.5"><TipoBadge t={p.tipo} /><EstadoBadge e={p.estado} /></div>
               <h2 className="mt-1 text-xl font-bold tracking-tight">{p.ag.n}{p.ag.p && <span className="ml-2 font-mono text-sm font-normal text-slate-400">#{p.ag.p}</span>}</h2>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5"><RankBadge r={p.ag.r} /><ArrowRight className="size-4 text-slate-400" /><RankBadge r={p.nr} /></div>
-              <p className="mt-2 text-xs text-slate-500">Propuesta por {rankES(p.autor.r)} {p.autor.n} · {fmtDate(p.t)}{p.cierre && <> · Cerrada por {rankES(p.cierre.r)} {p.cierre.n} · {fmtDate(p.cierre.t)}</>}</p>
+              <p className="mt-2 text-xs text-slate-500">Propuesta por {rankES(p.autor.r)} {p.autor.n} · {fmtDate(p.t)}{p.cierre && (p.cierre.auto ? <> · Venció el {fmtDate(p.cierre.t)} y se cerró por mayoría</> : <> · Cerrada por {rankES(p.cierre.r)} {p.cierre.n} · {fmtDate(p.cierre.t)}</>)}</p>
+              {open && p.exp && <p className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-amber-400/10 px-2 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300"><Clock className="size-3.5" />Vence en {expLeft(p.exp)} ({fmtDate(p.exp)}): se cierra sola por mayoría y les avisa a los Sargentos.</p>}
             </div>
           </div>
           {p.motivo && <blockquote className="mt-4 rounded-xl border-l-4 border-brand-400 bg-slate-50 px-4 py-3 text-sm italic text-slate-700 dark:bg-slate-800/50 dark:text-slate-300">“{p.motivo}”</blockquote>}
@@ -152,7 +152,7 @@ function Detail({ p, upd, del, resolve }: { p: Prop; upd: (fn: (p: Prop) => void
 
 function NewProp({ onCancel, onCreate }: { onCancel: () => void; onCreate: (p: Prop) => void }) {
   const me = useMe(), { toast } = useFeedback();
-  const [tipo, setTipo] = useState<"asc" | "desc">("asc"), [ag, setAg] = useState(""), [nr, setNr] = useState(""), [mot, setMot] = useState("");
+  const [tipo, setTipo] = useState<"asc" | "desc">("asc"), [ag, setAg] = useState(""), [nr, setNr] = useState(""), [mot, setMot] = useState(""), [hs, setHs] = useState("24");
   const a = ag ? findAgent(ag) : null, opts = a ? rankOptionsFor(a, tipo, me.l) : [], r = opts.includes(nr) ? nr : opts[0] || "";
   return (
     <Card>
@@ -165,10 +165,16 @@ function NewProp({ onCancel, onCreate }: { onCancel: () => void; onCreate: (p: P
         </Field>
         <Field label="Rango propuesto"><Select value={r} disabled={!a} onChange={e => setNr(e.target.value)}>{a ? opts.map(o => <option key={o} value={o}>{rankES(o)}</option>) : <option>Elegí un agente</option>}</Select></Field>
         <Field label="Motivo"><Textarea rows={4} value={mot} onChange={e => setMot(e.target.value)} placeholder="Por qué proponés este movimiento…" /></Field>
+        <Field label="La votación vence en" hint="(al vencer se cierra sola por mayoría y les avisa a todos los Sargentos)">
+          <div className="flex flex-wrap items-center gap-2"><Segmented size="sm" value={["0", "12", "24", "48", "72"].includes(hs) ? hs : "x"} onChange={v => setHs(v === "x" ? "6" : v)}
+            options={[{ value: "0", label: "Sin vencimiento" }, { value: "12", label: "12 h" }, { value: "24", label: "24 h" }, { value: "48", label: "48 h" }, { value: "72", label: "72 h" }, { value: "x", label: "Otro" }]} />
+            {!["0", "12", "24", "48", "72"].includes(hs) && <Input type="number" min={1} max={720} value={hs} onChange={e => setHs(e.target.value)} className="w-24" aria-label="Horas" />}{!["0", "12", "24", "48", "72"].includes(hs) && <span className="text-sm text-slate-500">horas</span>}</div>
+        </Field>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onCancel}>Cancelar</Button>
           <Button icon={<Vote />} onClick={() => { if (!a) { toast("Elegí un agente", "err"); return; }
-            onCreate({ id: uid(), tipo, ag: { n: a.n, r: a.r, p: a.p }, nr: r, motivo: mot.trim(), autor: { n: me.n, r: me.r }, t: Date.now(), estado: "abierta", votos: {}, chat: [] }); }}>Abrir votación</Button>
+            const h = Math.max(0, Math.min(720, +hs || 0));
+            onCreate({ id: uid(), tipo, ag: { n: a.n, r: a.r, p: a.p }, nr: r, motivo: mot.trim(), autor: { n: me.n, r: me.r }, t: Date.now(), estado: "abierta", votos: {}, chat: [], ...(h ? { exp: Date.now() + h * 36e5 } : {}) }); }}>Abrir votación</Button>
         </div>
       </CardBody>
     </Card>

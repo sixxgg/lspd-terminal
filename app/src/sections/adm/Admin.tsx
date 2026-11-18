@@ -5,7 +5,11 @@ import { prevStart } from "@/lib/preview";
 import { AgentCombo, Avatar } from "@/components/agents";
 import { ImagePicker, imgSpec } from "@/components/imagepick";
 import { useFeedback } from "@/components/feedback";
-import { ALL_DIVS, findAgent, fmtDate, getRoster, norm, rankES, RANK_COLOR } from "@/lib/domain";
+import { DEPT, DEL, DEPTS } from "@/lib/dept";
+import { RosterImport } from "@/sections/Lssd";
+import { UI_DEF, uiKey, type UiKey } from "@/lib/templates";
+import { dk } from "@/lib/store";
+import { ALL_DIVS, deptDivNames, hasDivFile, findAgent, fmtDate, getRoster, norm, rankES, RANK_COLOR } from "@/lib/domain";
 import { authApi } from "@/lib/api";
 import { DEF_ROSTER, LS, ME_ROLES, syncIdle, useJSON, useStoreVersion } from "@/lib/store";
 import { parseCSV } from "@/lib/csv";
@@ -33,6 +37,11 @@ function OwnerAcc({ k, t, icon, area }: { k: string; t: string; icon: React.Reac
 }
 
 /* ---------- solicitudes de acceso y administradores ---------- */
+/* LSSD y SAHP: los accesos que da six (Legal); las solicitudes y los administradores son del LSPD */
+export function AdmAccesosX() {
+  return <div className="space-y-5">{ME_ROLES.six && <OwnerAcc k="lspdt.legacc" t="Acceso a Legal" icon={<Scale />} area="Legal" />}
+    <p className="text-sm text-slate-500">Las cuentas {DEL[DEPT.id]} entran con su código de invitación (lo generás en tu panel, eligiendo el departamento). No hay solicitudes ni administradores aparte.</p></div>;
+}
 export function AdmAccesos() {
   const { toast, confirm } = useFeedback();
   const [req, setReq] = useState<{ pending: { n: string; c: number }[]; approved: string[] } | null>(null);
@@ -103,28 +112,49 @@ const BRAND: [string, string, string, number, boolean, "sq" | "bg", string][] = 
   ["lspdt.img.cover", "Portada por defecto de los perfiles", "El fondo de arriba del perfil cuando no tiene portada propia.", 1920, false, "bg", "Perfiles de agentes"],
   ["lspdt.img.dcav", "Avatar de la vista previa de Discord", "La imagen redonda al lado del nombre en la vista previa.", 256, true, "sq", "Otras imágenes"],
 ];
-const UI_TXT: [string, string, string][] = [["title", "Título de la terminal", "Terminal de Mando"], ["kicker", "Subtítulo", "Los Santos Police Department"], ["foot", "Pie del inicio de sesión", "Mission Row 10 · Uso interno"],
-  ["place", "Lugar (reloj del Inicio y pie)", "Los Santos · Mission Row 10"], ["bot", "Nombre en la vista previa de Discord", "LSPD Terminal"]];
+const UI_TXT: [UiKey, string][] = [["title", "Título de la terminal"], ["kicker", "Subtítulo (nombre del departamento)"], ["foot", "Pie del inicio de sesión"],
+  ["place", "Lugar (reloj del Inicio y pie)"], ["bot", "Nombre en la vista previa de Discord"], ["sys", "Nombre del sistema (avisos de actualización, feedback y códigos)"]];
+/* logos que siguen con el de fábrica: los de la terminal, los escudos de cada departamento y los emblemas de las divisiones de los tres */
+function Faltan({ onPick }: { onPick: (k: string, t: string, max: number) => void }) {
+  useStoreVersion();
+  const logos = BRAND.filter(([k, , , , , , g]) => g === "Logos" && !LS.get(k)).map(([k, t]) => ({ k, t }));
+  const divs = (["lspd", "lssd", "sahp"] as const).map(d => ({ d, L: deptDivNames(d).filter(n => !LS.raw(dk("lspdt.divlogo." + n, d))) })).filter(x => x.L.length);
+  const n = logos.length + divs.reduce((a, x) => a + x.L.length, 0);
+  return (
+    <Card>
+      <CardHeader icon={<ImagePlus />} title={n ? `Logos por cambiar · ${n}` : "Todos los logos están cambiados"} desc="Los que todavía usan el de fábrica (o el dibujado por la terminal). Tocá uno para subir el tuyo; los de otro departamento se cambian estando en ese departamento." />
+      {n > 0 && <CardBody className="space-y-3">
+        {logos.length > 0 && <div><p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Terminal y departamentos</p>
+          <div className="flex flex-wrap gap-1.5">{logos.map(x => <button key={x.k} onClick={() => onPick(x.k, x.t, 512)} className="rounded-full border border-amber-400/50 bg-amber-400/10 px-2.5 py-1 text-[12px] font-semibold text-amber-700 transition hover:bg-amber-400/20 dark:text-amber-300">{x.t}</button>)}</div></div>}
+        {divs.map(x => <div key={x.d}><p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Divisiones {DEL[x.d]}</p>
+          <div className="flex flex-wrap gap-1.5">{x.L.map(n => { const here = x.d === DEPT.id; return (
+            <button key={n} disabled={!here} title={here ? "Subir el emblema" : `Cambiá al ${DEPTS[x.d].short} para subirlo`} onClick={() => onPick("lspdt.divlogo." + n, "Emblema · " + n, 400)}
+              className={cn("rounded-full border px-2.5 py-1 text-[12px] font-semibold uppercase transition", here ? "border-amber-400/50 bg-amber-400/10 text-amber-700 hover:bg-amber-400/20 dark:text-amber-300" : "border-slate-200 text-slate-400 dark:border-slate-700")}>{n}{hasDivFile(n, x.d) ? " · oficial" : ""}</button>); })}</div></div>)}
+      </CardBody>}
+    </Card>);
+}
 export function AdmMarca() {
   useStoreVersion();
   const { toast, confirm } = useFeedback();
   const [pick, setPick] = useState<{ k: string; t: string; max: number; alpha: boolean; wide?: boolean } | null>(null);
-  const ui = LS.json<Record<string, string>>("lspdt.ui", {}), setUi = (k: string, v: string, msg?: string) => { LS.setJSON("lspdt.ui", { ...LS.json<Record<string, string>>("lspdt.ui", {}), [k]: v }); if (msg) toast(msg); }, [txt, setTxt] = useState<Record<string, string>>(() => Object.fromEntries(UI_TXT.map(([k]) => [k, ui[k] || ""])));
+  const ui = LS.json<Record<string, string>>("lspdt.ui", {}), setUi = (k: string, v: string, msg?: string) => { LS.setJSON("lspdt.ui", { ...LS.json<Record<string, string>>("lspdt.ui", {}), [k]: v }); if (msg) toast(msg); }, [txt, setTxt] = useState<Record<string, string>>(() => Object.fromEntries(UI_TXT.map(([k]) => [k, ui[uiKey(k)] || ""])));
+  const thK = DEPT.id === "lspd" ? "theme" : "theme." + DEPT.id; /* tema por defecto de cada departamento */
   const SUBS = ["lspdt.logo.login", "lspdt.logo.boot", "lspdt.logo.header", "lspdt.logo.hero", "lspdt.logo.wm", "lspdt.fav"];
   const freeze = () => { const cur = LS.get("lspdt.logo") || "/next/logo.svg"; SUBS.forEach(k => { if (!LS.get(k)) LS.set(k, cur); }); };
   let grp = "";
   return (
     <div className="space-y-5">
+      <Faltan onPick={(k, t, max) => setPick({ k, t, max, alpha: true })} />
       <Card>
-        <CardHeader icon={<Type />} title="Textos de la interfaz" desc="Los ven todos, en las dos versiones." />
-        <CardBody><div className="grid gap-4 sm:grid-cols-2">{UI_TXT.map(([k, l, d]) => <Field key={k} label={l}><Input value={txt[k]} onChange={e => setTxt({ ...txt, [k]: e.target.value })} placeholder={d} /></Field>)}</div>
-          <div className="flex justify-end"><Button size="sm" icon={<Save />} onClick={() => { const c = LS.json<Record<string, string>>("lspdt.ui", {}); UI_TXT.forEach(([k]) => { c[k] = (txt[k] || "").trim(); }); LS.setJSON("lspdt.ui", c); toast("Textos guardados · lo ven todos"); }}>Guardar textos</Button></div></CardBody>
+        <CardHeader icon={<Type />} title={`Textos de la interfaz · ${DEPTS[DEPT.id].short}`} desc={`Los ${DEL[DEPT.id]}: encabezado, ingreso, pantallas de carga y avisos. Cada departamento tiene los suyos (cambiá de departamento tocando el escudo).`} />
+        <CardBody><div className="grid gap-4 sm:grid-cols-2">{UI_TXT.map(([k, l]) => <Field key={k} label={l}><Input value={txt[k]} onChange={e => setTxt({ ...txt, [k]: e.target.value })} placeholder={UI_DEF[DEPT.id][k]} /></Field>)}</div>
+          <div className="flex justify-end"><Button size="sm" icon={<Save />} onClick={() => { const c = LS.json<Record<string, string>>("lspdt.ui", {}); UI_TXT.forEach(([k]) => { c[uiKey(k)] = (txt[k] || "").trim(); }); LS.setJSON("lspdt.ui", c); toast("Textos guardados · lo ven todos"); }}>Guardar textos</Button></div></CardBody>
       </Card>
       <Card>
         <CardHeader icon={<Palette />} title="Apariencia por defecto del departamento" desc="La ve quien no eligió una propia en Apariencia (en las dos versiones)." />
         <CardBody>
-          <Field label="Tema"><SkinGrid value={ui.theme || ""} onPick={k => { const c = LS.json<Record<string, string>>("lspdt.ui", {}); c.theme = k; LS.setJSON("lspdt.ui", c); toast("Tema por defecto del departamento: " + SKINS[k].l); }} /></Field>
-          <Field label="Puntero"><CursorGrid value={ui.cursor || "sys"} acc={SKINS[ui.theme]?.acc || "#6366f1"} onPick={k => { const c = LS.json<Record<string, string>>("lspdt.ui", {}); c.cursor = k; LS.setJSON("lspdt.ui", c); toast("Puntero por defecto actualizado"); }} /></Field>
+          <Field label={`Tema ${DEL[DEPT.id]}`}><SkinGrid value={ui[thK] || ""} onPick={k => { const c = LS.json<Record<string, string>>("lspdt.ui", {}); c[thK] = k; LS.setJSON("lspdt.ui", c); toast("Tema por defecto del departamento: " + SKINS[k].l); }} /></Field>
+          <Field label="Puntero"><CursorGrid value={ui.cursor || "sys"} acc={SKINS[ui[thK]]?.acc || "#6366f1"} onPick={k => { const c = LS.json<Record<string, string>>("lspdt.ui", {}); c.cursor = k; LS.setJSON("lspdt.ui", c); toast("Puntero por defecto actualizado"); }} /></Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Marca «Bananita» del marco de tablet"><Segmented size="sm" value={ui.brand || "rgb"} onChange={v => setUi("brand", v, "Marca por defecto actualizada")} options={[{ value: "rgb", label: "RGB" }, { value: "magenta", label: "Magenta neón" }, { value: "off", label: "Desactivada" }]} /></Field>
             <Field label={`Velocidad del RGB · ${ui.brandSpd || 6} s por vuelta`}><input type="range" min={1} max={20} step={0.5} value={+(ui.brandSpd || 6)} disabled={(ui.brand || "rgb") !== "rgb"} onChange={e => setUi("brandSpd", e.target.value)} className="mt-3 w-full accent-brand-600 disabled:opacity-40" /></Field>
@@ -172,6 +202,8 @@ function rosterFromCSV(t: string) {
   const g = (r: string[], i: number) => (i >= 0 ? (r[i] || "").trim() : "");
   return rows.slice(1).filter(r => g(r, iN)).map(r => ({ n: g(r, iN), p: g(r, iP), r: g(r, iR), e: g(r, iE), a: g(r, iA), c: g(r, iC), d: g(r, iD), i: g(r, iI).replace(/\D/g, ""), s: g(r, iS), o: g(r, iO).replace(/\s+/g, " ") }));
 }
+/* LSSD y SAHP: el roster se carga pegando la planilla (o un CSV) */
+export function AdmDatosX() { return <RosterImport />; }
 export function AdmDatos() {
   useStoreVersion();
   const { toast, confirm } = useFeedback(), csv = useRef<HTMLInputElement>(null), bk = useRef<HTMLInputElement>(null);

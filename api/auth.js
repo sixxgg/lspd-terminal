@@ -3,8 +3,9 @@ import { audit } from "../lib/audit.js";
 import { send, body, wrap, roster, findIn, lvl, CAP, norm, emailOf, hashPw, checkPw, needsRehash, randomPw, safeEq, clientIp, loginBlocked, loginFail, loginOk, sessionToken, tokenHash, newSession, endSession, current, PUBLIC_KEYS, query, canEnter, invalidate, isSix, SIX_OWNER, ID_PIN, OWNERS, dbAdmins, parseList, parseRoster as parseRosterRaw } from "../lib/core.js";
 import { fullData } from "../lib/store.js";
 import { randomBytes } from "node:crypto";
-import { LSSD_KEY, isLssdAcc, lssdAcc, lssdFind, lssdList, lssdOfAcc, lssdUser } from "../lib/lssd.js";
-const lssdRoster = async () => lssdList((await q("select v from kv where k=$1", [LSSD_KEY])).rows[0]?.v);
+import { XDEPTS, deptAcc, deptFind, deptList, deptOfAcc, deptUser, isDeptAcc, rosterKey } from "../lib/lssd.js";
+const xRoster = async d => deptList((await q("select v from kv where k=$1", [rosterKey(d)])).rows[0]?.v, d);
+const XN = { lssd: "LSSD", sahp: "SAHP" };
 const digits = s => (/^#?(\d{1,5})$/.exec(String(s || "").trim()) || [])[1] || "";
 
 const slim = list => list.map(a => ({ n: a.n, r: a.r, p: a.p }));
@@ -50,8 +51,10 @@ export default wrap(async (req, res) => {
     /* orden de registro = ID de la cuenta en los perfiles (six, el fundador, siempre es el #1) */
     acc.sort(byId);
     /* las cuentas del LSSD se publican por placa (el usuario OOC no sale de acá) */
-    const LS = await lssdRoster(), lssdNames = acc.filter(r => isLssdAcc(r.k)).map(r => lssdOfAcc(LS, r.k)).filter(Boolean).map(a => "#" + a.p);
-    const out = { me: me ? (me.acc ? me.n : me.n) : null, names: acc.filter(r => !isLssdAcc(r.k)).map(r => r.k), lssdNames, lssd: LS.filter(a => a.r !== "K-9" && a.u).map(a => ({ n: a.n, r: a.r, p: a.p })), brand };
+    const out = { me: me ? me.n : null, names: acc.filter(r => !isDeptAcc(r.k)).map(r => r.k), brand };
+    for (const d of XDEPTS) { const L = await xRoster(d);
+      out[d + "Names"] = acc.filter(r => r.k.startsWith(d + ":")).map(r => deptOfAcc(L, r.k)).filter(Boolean).map(a => "#" + a.p);
+      out[d] = L.filter(a => a.r !== "K-9" && a.u).map(a => ({ n: a.n, r: a.r, p: a.p })); }
     if (me && query(req).full) out.data = await fullData(me); // ahorra una vuelta al iniciar
     else out.roster = slim(parseRosterRaw(raw).list);
     return send(res, 200, out);
@@ -64,25 +67,25 @@ export default wrap(async (req, res) => {
     if (!u || !b.pw) return send(res, 400, { msg: "Completá el correo y la contraseña." });
     const ip = clientIp(req), wait = await loginBlocked(u, ip);
     if (wait) return send(res, 429, { msg: `Demasiados intentos fallidos. Probá de nuevo en ${wait} min.` });
-    const rows = (await q("select name,email,hash from accounts")).rows, dept = b.dept === "lssd" ? "lssd" : "lspd";
+    const rows = (await q("select name,email,hash from accounts")).rows, dept = XDEPTS.includes(b.dept) ? b.dept : "lspd", X = dept !== "lspd";
     let acc = null, lag = null;
-    if (dept === "lssd") { /* LSSD: usuario OOC, placa o nombre (si no se repite) */
-      lag = lssdFind(await lssdRoster(), u);
+    if (X) { /* LSSD y SAHP: usuario OOC, placa o nombre (si no se repite) */
+      const L0 = await xRoster(dept); lag = deptFind(L0, u);
       if (lag && lag.amb) return send(res, 400, { msg: `Con ese usuario hay ${lag.amb.length} personajes (${lag.amb.map(a => a.n).join(" y ")}). Entrá con la placa o el nombre del que quieras usar.` });
-      if (lag) { const L0 = await lssdRoster(); acc = rows.find(x => x.name === lssdAcc(lag)) || rows.find(x => isLssdAcc(x.name) && lssdOfAcc(L0, x.name) === lag) || null; }
+      if (lag) acc = rows.find(x => x.name === deptAcc(lag, dept)) || rows.find(x => x.name.startsWith(dept + ":") && deptOfAcc(L0, x.name) === lag) || null;
     } else {
-      acc = rows.find(x => !isLssdAcc(x.name) && (norm(x.email) === u || norm(x.name) === u || norm(x.email.split("@")[0]) === u)) || null;
+      acc = rows.find(x => !isDeptAcc(x.name) && (norm(x.email) === u || norm(x.name) === u || norm(x.email.split("@")[0]) === u)) || null;
       /* también con el número de placa (para nombres dobles o difíciles de escribir) */
       if (!acc && digits(u)) { const ag0 = (await roster()).list.find(a => String(a.p) === digits(u)); if (ag0) acc = rows.find(x => x.name === ag0.n) || null; }
     }
-    if (!acc) { await loginFail("", ip); return send(res, 404, { msg: dept === "lssd" ? "No hay una cuenta del LSSD con ese usuario o placa. Registrate primero." : "No hay una cuenta con ese correo, nombre o placa. Registrate primero." }); }
+    if (!acc) { await loginFail("", ip); return send(res, 404, { msg: X ? `No hay una cuenta del ${XN[dept]} con ese usuario o placa. Registrate primero.` : "No hay una cuenta con ese correo, nombre o placa. Registrate primero." }); }
     if (!checkPw(b.pw, acc.hash)) { await loginFail(u, ip); await audit(acc.name, "contraseña incorrecta", "login", "", ip); await new Promise(r => setTimeout(r, 600)); return send(res, 403, { msg: "Contraseña incorrecta." }); }
     await loginOk(u);
     if (needsRehash(acc.hash)) await q("update accounts set hash=$2 where name=$1", [acc.name, hashPw(b.pw)]);
-    if (dept === "lssd") {
+    if (X) {
       await q("update accounts set last=$2 where name=$1", [acc.name, Date.now()]);
-      await newSession(res, acc.name, !!b.keep); await audit(lag.n, "inició sesión (LSSD)", "login", b.keep ? "Mantener sesión" : "", ip);
-      return send(res, 200, { n: lag.n, e: acc.email, dept, data: await fullData(lssdUser(lag, acc.name)) });
+      await newSession(res, acc.name, !!b.keep); await audit(lag.n, `inició sesión (${XN[dept]})`, "login", b.keep ? "Mantener sesión" : "", ip);
+      return send(res, 200, { n: lag.n, e: acc.email, dept, data: await fullData(deptUser(lag, acc.name, dept)) });
     }
     const ag = findIn((await roster()).list, acc.name);
     if (!ag) return send(res, 403, { msg: "Tu agente ya no figura en el roster." });
@@ -95,23 +98,23 @@ export default wrap(async (req, res) => {
     return send(res, 200, { n: acc.name, e: acc.email, data: await fullData(await userOf(acc.name, ag)) });
   }
 
-  if (a === "register" && b.dept === "lssd") {
-    const lag = lssdFind(await lssdRoster(), b.n);
+  if (a === "register" && XDEPTS.includes(b.dept)) {
+    const D = b.dept, lag = deptFind(await xRoster(D), b.n);
     if (lag && lag.amb) return send(res, 400, { msg: "Ese usuario tiene varios personajes: elegilo por nombre o placa." });
-    if (!lag) return send(res, 400, { msg: "Elegí tu personaje del roster del LSSD (por nombre o placa)." });
+    if (!lag) return send(res, 400, { msg: `Elegí tu personaje del roster del ${XN[D]} (por nombre o placa).` });
     if (tooShort(b.pw)) return send(res, 400, { msg: "La contraseña tiene que tener al menos 8 caracteres." });
     const ip = clientIp(req), wait = await loginBlocked("inv", ip);
     if (wait) return send(res, 429, { msg: `Demasiados intentos. Probá de nuevo en ${wait} min.` });
     const all = await metaObjs("invites"), ic = String(b.code || "").trim().toUpperCase(), inv = all.find(x => x && !x.u && x.exp > Date.now() && safeEq(x.c, ic));
     if (!inv) { await loginFail("", ip); return send(res, 403, { msg: "El código de invitación no es válido o ya se usó. Pedíselo a la administración de la terminal." }); }
-    if ((inv.d || "lspd") !== "lssd") return send(res, 403, { msg: "Ese código es de otro departamento. Pedí uno del LSSD (empieza con «LSSD-»)." });
-    const now = Date.now(), an = lssdAcc(lag), email = norm(lag.u).replace(/[^a-z0-9]/g, "") + "@lssd.sanandreas.eu";
+    if ((inv.d || "lspd") !== D) return send(res, 403, { msg: `Ese código es de otro departamento. Pedí uno del ${XN[D]} (empieza con «${XN[D]}-»).` });
+    const now = Date.now(), an = deptAcc(lag, D), email = norm(lag.u).replace(/[^a-z0-9]/g, "") + `@${D}.sanandreas.eu`;
     const r = await q("insert into accounts(name,email,hash,created,last) values($1,$2,$3,$4,$4) on conflict do nothing returning name", [an, email, hashPw(b.pw), now]);
     if (!r.rows[0]) return send(res, 409, { msg: "Ese agente ya tiene cuenta. Iniciá sesión." });
     inv.u = an; inv.ut = now; await setMeta("invites", all.filter(x => x && (x.exp > now || x.u)).slice(-300));
     const rec = await newRec(an);
-    await newSession(res, an, b.keep !== false); await audit(lag.n, "creó su cuenta (LSSD)", "cuenta", "Con invitación de " + (inv.by || "—"), ip);
-    return send(res, 200, { n: lag.n, e: email, dept: "lssd", rec, data: await fullData(lssdUser(lag, an)) });
+    await newSession(res, an, b.keep !== false); await audit(lag.n, `creó su cuenta (${XN[D]})`, "cuenta", "Con invitación de " + (inv.by || "—"), ip);
+    return send(res, 200, { n: lag.n, e: email, dept: D, rec, data: await fullData(deptUser(lag, an, D)) });
   }
   if (a === "register") {
     const R0 = (await roster()).list, ag = findIn(R0, b.n) || (digits(b.n) ? R0.find(x => String(x.p) === digits(b.n)) : null);
@@ -142,8 +145,8 @@ export default wrap(async (req, res) => {
     const u = norm(String(b.u || "").trim()), ip = clientIp(req), wait = await loginBlocked(u, ip);
     if (wait) return send(res, 429, { msg: `Demasiados intentos fallidos. Probá de nuevo en ${wait} min.` });
     if (tooShort(b.pw)) return send(res, 400, { msg: "La nueva contraseña tiene que tener al menos 8 caracteres." });
-    const AR = (await q("select name,email from accounts")).rows, lg = b.dept === "lssd" ? lssdFind(await lssdRoster(), u) : null;
-    const acc = lg && !lg.amb ? AR.find(x => x.name === lssdAcc(lg)) : AR.find(x => norm(x.email) === u || norm(x.name) === u || norm(x.email.split("@")[0]) === u);
+    const AR = (await q("select name,email from accounts")).rows, lg = XDEPTS.includes(b.dept) ? deptFind(await xRoster(b.dept), u) : null;
+    const acc = lg && !lg.amb ? AR.find(x => x.name === deptAcc(lg, b.dept)) : AR.find(x => norm(x.email) === u || norm(x.name) === u || norm(x.email.split("@")[0]) === u);
     const L = acc ? await metaList("rec:" + acc.name) : [], h = tokenHash(normRec(b.code)), i = L.indexOf(h);
     if (!acc || i < 0) { await loginFail(u, ip); await new Promise(r => setTimeout(r, 600)); return send(res, 403, { msg: "La cuenta o el código de recuperación no son correctos." }); }
     L.splice(i, 1); await setMeta("rec:" + acc.name, L);
@@ -165,7 +168,7 @@ export default wrap(async (req, res) => {
     return send(res, 200, { e: r.email, c: +r.created, last: +r.last, no: all.findIndex(x => x.k === an) + 1, rec: (await metaList("rec:" + an)).length });
   }
   if (a === "recgen") return send(res, 200, { rec: await newRec(an) });
-  if (me.dept === "lssd" && a !== "passwd") return send(res, 403, { msg: "No disponible para el LSSD todavía" });
+  if (me.dept && a !== "passwd") return send(res, 403, { msg: "No disponible para tu departamento todavía" });
   if (["invites", "invite", "uninvite"].includes(a) && !canInvite(me)) return send(res, 403, { msg: "Las invitaciones las generan solo los dueños de la terminal." });
   if (a === "invites") return send(res, 200, { list: (await invList()).filter(x => x.by === me.n), used: (await metaObjs("invites")).filter(x => x.by === me.n && x.u).slice(-20), max: INV_MAX });
   if (a === "invite") {

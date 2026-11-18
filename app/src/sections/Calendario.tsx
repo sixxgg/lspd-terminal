@@ -1,11 +1,12 @@
 /* Calendario del departamento: cabecera con el mes y sus números, filtros por vista y división, grilla del mes con los
    eventos como píldoras (hora + nombre) y, al costado, la agenda agrupada por día (o el día elegido) con el próximo destacado. */
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock, Eye, Globe2, Star, UserRound } from "lucide-react";
+import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, Eye, Globe2, Star, UserRound } from "lucide-react";
 import { Card, Empty } from "@/components/ui";
 import { EvModal, banSrc, tipoC } from "@/components/calui";
-import { calAck, calAll, calMarkSeen, calMine, dayKey, fmtWhen, hasTime, isToday, type CalItem } from "@/lib/calendar";
-import { useStoreVersion } from "@/lib/store";
+import { calAck, calAll, calClash, calMarkSeen, calMine, dayKey, fmtWhen, hasTime, isToday, type CalItem } from "@/lib/calendar";
+import { ME_ROLES, useStoreVersion } from "@/lib/store";
+import { DEPT, DEPTS, type DeptId } from "@/lib/dept";
 import { useMe } from "@/lib/me";
 import { cn } from "@/lib/cn";
 
@@ -22,7 +23,9 @@ export function Calendario() {
   const [ver, setVer] = useState<"mine" | "all" | "ano">("mine"), [div, setDiv] = useState(""), [m, setM] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [cur, setCur] = useState<CalItem | null>(null), [day, setDay] = useState("");
   const ack = calAck(me.n);
-  const ALL = calAll(), L = ALL.filter(e => (ver === "all" || (ver === "ano" ? !!ack[e.id]?.a : calMine(e, me.n))) && (!div || e.d === div));
+  /* six ve los tres departamentos juntos (con su marca) para notar lo que se superpone */
+  const [dp, setDp] = useState(""), multi = !!ME_ROLES.six;
+  const ALL = calAll(), L = ALL.filter(e => (ver === "all" || (ver === "ano" ? !!ack[e.id]?.a : calMine(e, me.n) || (multi && e.dp !== DEPT.id))) && (!div || e.d === div) && (!dp || e.dp === dp));
   const divs = useMemo(() => [...new Map(ALL.map(e => [e.d, e])).values()].sort((a, b) => a.ab.localeCompare(b.ab)), [ALL.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const by = useMemo(() => { const o = new Map<string, CalItem[]>(); for (const e of L) { const k = dayKey(e.at); o.set(k, [...(o.get(k) || []), e]); } o.forEach(v => v.sort((a, b) => a.at - b.at)); return o; }, [L]);
   /* grilla del mes empezando en lunes */
@@ -54,6 +57,8 @@ export function Calendario() {
         <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
           <div className="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800/70">{VIEWS.map(([k, l, I]) => (
             <button key={k} onClick={() => setVer(k)} className={cn("inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition", ver === k ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200")}><I className="size-3.5" />{l}</button>))}</div>
+          {multi && <div className="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800/70">{([["", "Los 3"], ["lspd", "LSPD"], ["lssd", "LSSD"], ["sahp", "SAHP"]] as const).map(([k, l]) => (
+            <button key={k} onClick={() => setDp(k)} className={cn("rounded-lg px-2.5 py-1.5 text-[12px] font-bold transition", dp === k ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200")}>{l}</button>))}</div>}
           <div className="scrollbar-none flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
             <button onClick={() => setDiv("")} className={cn("shrink-0 rounded-full border px-3 py-1 text-[11.5px] font-semibold transition", !div ? "border-transparent bg-brand-600 text-white dark:bg-brand-500" : "border-slate-200 text-slate-500 hover:border-slate-300 dark:border-slate-700")}>Todas</button>
             {divs.map(e => { const on = div === e.d; return (
@@ -76,7 +81,7 @@ export function Calendario() {
                   <span className={cn("grid size-7 place-items-center rounded-lg text-[12.5px] font-bold tabular-nums", isT ? "bg-brand-600 text-white shadow-md shadow-brand-500/30 dark:bg-brand-500" : "text-slate-600 dark:text-slate-300")}>{d.getDate()}</span>
                   {ev.length > 0 && <span className="flex gap-0.5">{ev.slice(0, 4).map(e => <i key={e.id} className="size-1.5 rounded-full" style={{ background: e.col }} />)}</span>}
                 </span>
-                {ev.slice(0, 2).map(e => <span key={e.id} title={`${e.ab} · ${e.n}`} className="flex min-w-0 items-center gap-1 overflow-hidden rounded-r-md py-[3px] pl-1.5 pr-1 text-[10.5px] font-semibold leading-none" style={{ background: e.col + "22", color: e.col, borderLeft: `2.5px solid ${e.col}` }}>
+                {ev.slice(0, 2).map(e => <span key={e.id} title={`${multi && e.dp ? DEPTS[e.dp].short + " · " : ""}${e.ab} · ${e.n}`} className="flex min-w-0 items-center gap-1 overflow-hidden rounded-r-md py-[3px] pl-1.5 pr-1 text-[10.5px] font-semibold leading-none" style={{ background: e.col + "22", color: e.col, borderLeft: `2.5px solid ${e.col}` }}>
                   {hhmm(e) && <span className="shrink-0 tabular-nums opacity-80">{hhmm(e)}</span>}<span className="truncate text-slate-700 dark:text-slate-200">{e.n}</span></span>)}
                 {ev.length > 2 && <span className="px-1 text-[10px] font-bold text-slate-400">+{ev.length - 2} más</span>}
               </button>); })}
@@ -96,21 +101,25 @@ export function Calendario() {
               {next && <Next e={next} onClick={() => setCur(next)} />}
               {groups.map(([g, es]) => { const rest = es.filter(e => e !== next); if (!rest.length) return null; return (
                 <div key={g}><p className="mb-1.5 flex items-center gap-2 px-1 text-[10.5px] font-bold uppercase tracking-[.14em] text-slate-400">{g}<span className="h-px flex-1 bg-slate-100 dark:bg-slate-800" /></p>
-                  <div className="space-y-1.5">{rest.map(e => <Row key={e.id} e={e} star={!!ack[e.id]?.a} onClick={() => setCur(e)} />)}</div></div>); })}
+                  <div className="space-y-1.5">{rest.map(e => <Row key={e.id} e={e} star={!!ack[e.id]?.a} dept={multi} clash={multi ? calClash(e, ALL) : []} onClick={() => setCur(e)} />)}</div></div>); })}
             </div>}
         </Card>
       </div>
       <EvModal e={cur} onClose={() => setCur(null)} />
     </div>);
 }
-function Row({ e, star, onClick }: { e: CalItem; star: boolean; onClick: () => void }) {
+const DPC: Record<string, string> = { lspd: "#3b82f6", lssd: "#16a34a", sahp: "#d4a64a" };
+/* marca del departamento (cuando se ven los tres juntos) */
+const DpTag = ({ d }: { d?: string }) => (d ? <span className="rounded px-1.5 py-px text-[10px] font-black tracking-wider text-white" style={{ background: DPC[d] }}>{DEPTS[d as DeptId].short}</span> : null);
+function Row({ e, star, onClick, dept, clash }: { e: CalItem; star: boolean; onClick: () => void; dept?: boolean; clash?: string[] }) {
   return (
     <button onClick={onClick} className="group flex w-full items-stretch gap-3 rounded-xl border border-slate-200 bg-white text-left transition hover:border-brand-400/50 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/50">
       <span className="w-1 shrink-0 rounded-l-xl" style={{ background: e.col }} />
       <span className="flex w-12 shrink-0 flex-col items-center justify-center py-2 text-center"><Clock className="mb-0.5 size-3 text-slate-400" /><b className="text-[12.5px] tabular-nums">{hhmm(e) || "Día"}</b></span>
       <span className="min-w-0 flex-1 py-2 pr-3">
         <span className="flex items-center gap-1.5"><b className="truncate text-[13.5px] group-hover:text-brand-700 dark:group-hover:text-brand-300">{e.n}</b>{star && <Star className="size-3 shrink-0 fill-amber-400 text-amber-400" />}{e.pub && <Globe2 className="size-3 shrink-0 text-slate-400" />}</span>
-        <span className="mt-0.5 flex items-center gap-1.5 text-[11px]"><span className="rounded px-1.5 py-px font-bold text-white" style={{ background: e.col }}>{e.ab}</span><span className="font-semibold" style={{ color: tipoC(e.tipo) }}>{e.tipo}</span>{e.cre && <span className="truncate text-slate-500">· {e.cre}</span>}</span>
+        <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px]">{dept && <DpTag d={e.dp} />}<span className="rounded px-1.5 py-px font-bold text-white" style={{ background: e.col }}>{e.ab}</span><span className="font-semibold" style={{ color: tipoC(e.tipo) }}>{e.tipo}</span>{e.cre && <span className="truncate text-slate-500">· {e.cre}</span>}</span>
+        {clash && clash.length > 0 && <span className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400"><AlertTriangle className="size-3" />Se superpone con {clash.map(d => DEPTS[d as DeptId].short).join(" y ")}</span>}
       </span>
     </button>);
 }

@@ -4,13 +4,13 @@ import { ME_ROLES } from "@/lib/store";
 import { Checkbox, Field, Segmented, Select } from "@/components/ui";
 import { langOf, langPref, setLangPref } from "@/lib/lang";
 import { Modal } from "@/components/modal";
-import { ACCENTS, CRT_V, CURS, HEADS, SKINS, curSvg, deptUiNow, setPref, usePref } from "@/lib/appearance";
+import { ACCENTS, CRT_V, CURS, HEADS, SKINS, curSvg, deptUiNow, setPref, skinsOfDept, usePref } from "@/lib/appearance";
 import { cn } from "@/lib/cn";
 
 export function SkinGrid({ value, onPick, auto }: { value: string; onPick: (k: string) => void; auto?: () => void }) {
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-      {Object.entries(SKINS).map(([k, s]) => (
+      {skinsOfDept().map(([k, s]) => (
         <button key={k} type="button" onClick={() => onPick(k)}
           className={cn("flex items-center gap-2.5 rounded-xl border p-2 text-left text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
             value === k ? "border-brand-500 bg-brand-50 dark:bg-brand-500/10" : "border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50")}>
