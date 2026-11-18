@@ -32,6 +32,7 @@ import { goodTier, stampLogros } from "./components/logros";
 import { confetti } from "./lib/confetti";
 import { JUMP, jumpNow } from "./lib/jump";
 import { DEPT, onDept, savedDept, setDept } from "./lib/dept";
+import { cacheLoad, cacheOwner } from "./lib/cache";
 import { ACC, GUEST, LS, ME_ROLES, PREV, goOffline, loadStore, storeHooks, useStoreVersion, type Me } from "./lib/store";
 import { emailOf, findAgent, getRoster, rankES } from "./lib/domain";
 import { useFeedback } from "./components/feedback";
@@ -128,7 +129,16 @@ function Main() {
     if (!fbKnown.current) { fbKnown.current = new Set(ks); return; }
     for (const k of ks) if (!fbKnown.current.has(k)) { fbKnown.current.add(k); const t = LS.ro<{ by: string; who?: string } | null>(k, null); if (t) toast(`💗 Nuevo feedback de ${t.who || t.by} · six → Notificaciones`); } });
   useEffect(() => {
-    void api("/api/auth?full=1").then(r => { const b = r as unknown as Boot; ACC.names = b.names || []; deptFromBrand(b); setBoot(b); if (b.me && b.data) enter(b.data); });
+    /* con copia local de esta cuenta: se pide solo lo que cambió (ahorra la transferencia de la base); sin copia, todo como siempre */
+    const hint = cacheOwner();
+    void api("/api/auth" + (hint ? "" : "?full=1")).then(async r => { const b = r as unknown as Boot; ACC.names = b.names || []; deptFromBrand(b);
+      if (!b.me || b.data) { setBoot(b); if (b.me && b.data) enter(b.data); return; }
+      const c = hint.split("|")[0] === b.me ? await cacheLoad() : null, ok = !!c && c.owner === hint;
+      const d = await api("/api/data", { a: "sync", have: ok ? c!.kt : {} });
+      if (d.__s !== 200 || !d.store) { const f = await api("/api/data"); setBoot(b); if (f.__s === 200 && f.store) enter(f as unknown as Parameters<typeof loadStore>[0]); return; }
+      const store: Record<string, string> = {}, kt: Record<string, number> = {};
+      for (const k of (d.keys as string[]) || Object.keys(d.store)) { const v = d.store[k] ?? (ok ? c!.store[k] : undefined); if (v == null) continue; store[k] = v; kt[k] = d.kt?.[k] ?? (ok ? c!.kt[k] : 0) ?? 0; }
+      setBoot(b); enter({ ...(d as unknown as Parameters<typeof loadStore>[0]), store, kt }); });
   }, [enter]);
   useEffect(() => { const f = (e: Event) => { setNav((e as CustomEvent<{ a: string; s: string }>).detail); scrollTopApp(); }; window.addEventListener("lspd:go", f); return () => window.removeEventListener("lspd:go", f); }, []);
   useEffect(() => { try { if (nav.a !== "six" && nav.a !== "anita") { localStorage.setItem(navKey(), JSON.stringify(nav)); sessionStorage.removeItem("lspdt.panel"); } else sessionStorage.setItem("lspdt.panel", nav.a); } catch { /* */ } }, [nav]); /* six nunca queda como página de inicio */

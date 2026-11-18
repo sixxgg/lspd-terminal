@@ -25,7 +25,7 @@ async function downloadImg(url) {
   return `data:${type};base64,${buf.toString("base64")}`;
 }
 import { mergeText } from "../lib/merge.js";
-import { fullData, imgUrl, SEL } from "../lib/store.js";
+import { fullData, imgUrl, SEL, shapeVal } from "../lib/store.js";
 
 export default wrap(async (req, res) => {
   const u = await requireUser(req, res);
@@ -36,7 +36,7 @@ export default wrap(async (req, res) => {
     if (qs.since !== undefined && qs.since !== "" && Number.isFinite(since) && since >= 0) {
       // cambios desde la última consulta (con margen, el cliente descarta lo que ya tiene)
       const rows = (await q(SEL + " where t > $1 order by t", [since - 50])).rows.filter(r => canRead(r.k, u));
-      const ch = rows.map(r => [r.k, r.img ? imgUrl(r.k, r.t) : r.v, +r.t]);
+      const ch = rows.map(r => [r.k, r.img ? imgUrl(r.k, r.t) : shapeVal(r.k, r.v, u), +r.t]);
       const t = rows.length ? Math.max(since, ...rows.map(r => +r.t)) : since;
       return send(res, 200, { ch, t, me: { admin: u.admin, owner: u.owner, six: isSix(u), anita: !!u.anita } });
     }
@@ -65,6 +65,8 @@ export default wrap(async (req, res) => {
 
   if (req.method !== "POST") return send(res, 405, { error: "method" });
   const b = await body(req), k = b.k, bk = typeof k === "string" ? baseKey(k) : k; /* bk: la clave «como del LSPD» (las reglas valen igual en los tres departamentos) */
+  /* carga inicial por diferencias: el navegador manda {clave: t} de lo que ya tiene guardado y recibe solo lo que cambió */
+  if (b.a === "sync") return send(res, 200, await fullData(u, b.have && typeof b.have === "object" ? b.have : {}));
   /* contraseña restablecida: hasta que la cambie no puede guardar nada */
   try { if (JSON.parse((await q("select v from meta where k='mustpw'")).rows[0]?.v || "[]").includes(u.n)) return send(res, 403, { error: "perm", msg: "Primero cambiá tu contraseña" }); } catch { /* */ }
   let why = canWrite(u, k);

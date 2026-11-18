@@ -1,5 +1,6 @@
 /* Datos compartidos del departamento: misma API, mismas claves y misma fusión que la versión clásica,
    así las dos versiones conviven sobre la misma base de datos sin pisarse. */
+import { cacheClear, cacheSave } from "./cache";
 import { useSyncExternalStore } from "react";
 import { mergeText } from "./merge.js";
 import { api } from "./api";
@@ -12,7 +13,9 @@ let SYNC_T = 0;
 let ONLINE = false;
 let version = 0;
 const subs = new Set<() => void>();
-const bump = () => { version++; subs.forEach(f => f()); };
+/* dueño de la copia local (cache.ts): se guarda unos segundos después de cada cambio */
+let OWN = "";
+const bump = () => { version++; subs.forEach(f => f()); if (OWN && !PREV.on) cacheSave(() => ({ owner: OWN, store: { ...BASE }, kt: { ...KT }, t: SYNC_T })); };
 
 /* claves que viven solo en este navegador (igual que en la versión clásica) */
 const LOCAL = /^lspdt\.(session|accounts|theme|frame|rankLang|seenVersion|area|sec\..*|agView|upd.*|iconpng|fix\..*|patrol|recent|altFirma|altDraft|cursor|accent|crt|crtI|rtdDraft|dvc|psbCargo|infDraft|next\..*)$/;
@@ -152,7 +155,7 @@ export const ACC: { names: string[] } = { names: [] };
 export const PREV = { on: false, must: false };
 const noRoles = () => { if (PREV.on) Object.assign(ME_ROLES, { admin: false, owner: false, six: false, anita: false }); };
 export const ME_ROLES: { admin?: boolean; owner?: boolean; six?: boolean; anita?: boolean } = {};
-export type Me = { n: string; r: string; admin: boolean; owner: boolean; six?: boolean; anita?: boolean; must?: boolean; dept?: "lssd"; p?: string };
+export type Me = { n: string; r: string; admin: boolean; owner: boolean; six?: boolean; anita?: boolean; must?: boolean; dept?: "lssd" | "sahp"; p?: string };
 export let DEF_ROSTER: Agent[] = [];
 export type Agent = { n: string; p?: string; r: string; e?: string; s?: string; i?: string; d?: string; a?: string; c?: string };
 
@@ -162,13 +165,13 @@ export function loadStore(d: { store: Dict; kt?: Record<string, number>; t?: num
   for (const k of Object.keys(CACHE)) delete CACHE[k];
   for (const k of Object.keys(BASE)) delete BASE[k];
   Object.assign(CACHE, d.store); Object.assign(BASE, d.store); Object.assign(KT, d.kt || {});
-  SYNC_T = d.t || 0; DEF_ROSTER = d.defRoster || DEF_ROSTER; ONLINE = true;
+  SYNC_T = d.t || 0; DEF_ROSTER = d.defRoster || DEF_ROSTER; ONLINE = true; OWN = guest || !d.me?.n ? "" : `${d.me.n}|${d.me.dept || "lspd"}`;
   Object.assign(ME_ROLES, { admin: !!d.me?.admin, owner: !!d.me?.owner, six: !!d.me?.six, anita: !!d.me?.anita }); noRoles();
   bump(); if (guest) return; schedule();
   document.addEventListener("visibilitychange", () => { if (!document.hidden) void poll(); });
   addEventListener("online", () => { void poll(); void Sync.run(); });
 }
-export function goOffline() { ONLINE = false; clearTimeout(pollT); for (const k of Object.keys(CACHE)) delete CACHE[k]; bump(); }
+export function goOffline() { ONLINE = false; OWN = ""; cacheClear(); clearTimeout(pollT); for (const k of Object.keys(CACHE)) delete CACHE[k]; bump(); }
 
 /* hooks: el componente se vuelve a dibujar cuando cambia cualquier dato */
 const subscribe = (f: () => void) => { subs.add(f); return () => subs.delete(f); };
