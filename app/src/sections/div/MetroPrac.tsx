@@ -32,13 +32,15 @@ function calc(s: S) {
 }
 const ST: Record<string, [string, string]> = { pen: ["Pendiente", "text-slate-400"], apr: ["Aprobado", "text-emerald-600 dark:text-emerald-400"], rep: ["No aprobado", "text-red-600 dark:text-red-400"] };
 
+/* escala 0 (peor) → 10 (mejor): rojo por debajo de 6, ámbar de 6 a 7,9, verde de 8 en adelante */
+const tone = (v: number) => (v < APR ? "border-red-400/50 bg-red-500/10 text-red-600 dark:text-red-300" : v < 8 ? "border-amber-400/50 bg-amber-400/10 text-amber-700 dark:text-amber-300" : "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300");
 function Nota({ v, set }: { v?: number; set: (x?: number) => void }) {
   const [t, setT] = useState<string | null>(null);
   const shown = t ?? (typeof v === "number" ? String(v).replace(".", ",") : "");
   const commit = () => { if (t === null) return; const x = parseFloat(t.replace(",", ".")); set(t.trim() === "" || isNaN(x) ? undefined : Math.min(10, Math.max(0, x))); setT(null); };
-  return <input inputMode="decimal" value={shown} placeholder="–" onChange={e => setT(e.target.value)} onBlur={commit} onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+  return <input inputMode="decimal" value={shown} placeholder="–" title="Nota de 0 (peor) a 10 (mejor)" onChange={e => setT(e.target.value)} onBlur={commit} onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
     className={cn("h-8 w-12 rounded-lg border bg-transparent text-center text-[13px] tabular-nums outline-none transition focus:border-brand-500 focus:bg-white dark:focus:bg-slate-900",
-      typeof v === "number" ? (v >= APR ? "border-slate-200 dark:border-slate-700" : "border-red-300 text-red-600 dark:border-red-500/40 dark:text-red-400") : "border-dashed border-slate-200 dark:border-slate-700")} />;
+      typeof v === "number" ? tone(v) : "border-dashed border-slate-200 dark:border-slate-700")} />;
 }
 
 export function MetroPrac() {
@@ -57,7 +59,7 @@ export function MetroPrac() {
       <div className="flex flex-wrap items-center gap-2">
         {convs.map(x => <button key={x.id} onClick={() => setCid(x.id)} className={cn("rounded-xl border px-3 py-1.5 text-[13px] font-semibold transition", x.id === c.id ? "border-brand-500/60 bg-brand-500/10 text-brand-700 dark:text-brand-300" : "border-slate-200 text-slate-500 hover:text-slate-800 dark:border-slate-700 dark:hover:text-white")}>{x.n}</button>)}
         <button onClick={addConv} title="Nueva convocatoria" className="grid size-8 place-items-center rounded-xl border border-dashed border-slate-300 text-slate-400 hover:text-brand-600 dark:border-slate-700"><Plus className="size-4" /></button>
-        <span className="ml-auto flex items-center gap-3 text-xs text-slate-500"><span className="inline-flex items-center gap-1"><Trophy className="size-3.5 text-emerald-500" /><b className="text-slate-800 dark:text-white">{apr}</b>/{c.rows.length} aprobados</span>{pen > 0 && <span>{pen} pendientes</span>}<span>Aprueba con {APR}</span></span>
+        <span className="ml-auto flex items-center gap-3 text-xs text-slate-500"><span className="inline-flex items-center gap-1"><Trophy className="size-3.5 text-emerald-500" /><b className="text-slate-800 dark:text-white">{apr}</b>/{c.rows.length} aprobados</span>{pen > 0 && <span>{pen} pendientes</span>}<span>Notas de 0 a 10 · aprueba con {APR}</span></span>
       </div>
       <Card className="overflow-x-auto p-0">
         <table className="w-full min-w-[60rem] border-collapse text-sm">
@@ -77,7 +79,7 @@ export function MetroPrac() {
               {(["c1", "c2"] as const).map(k => <td key={k} className="px-1 py-1.5 text-center">
                 <button onClick={() => upd(r.id, { [k]: NEXT[r[k]] })} title="Tocá para cambiar" className={cn("h-7 w-[5.5rem] rounded-lg text-[11.5px] font-semibold transition", r[k] ? AS[r[k] as Exclude<As, "">][1] : "border border-dashed border-slate-300 text-slate-400 dark:border-slate-700")}>{r[k] ? AS[r[k] as Exclude<As, "">][0] : "—"}</button></td>)}
               {EJ.flatMap(([, , ks]) => ks.map((k, i) => <td key={k} className={cn("px-1 py-1.5 text-center", i === 0 && "border-l border-slate-100 dark:border-slate-800")}><Nota v={r.s[k]} set={x => upd(r.id, { s: { ...r.s, [k]: x } })} /></td>))}
-              <td className="border-l border-slate-100 bg-brand-500/[.04] px-3 text-center font-display text-base font-bold tabular-nums dark:border-slate-800">{g === null ? <span className="text-slate-300">—</span> : f1(g)}</td>
+              <td className="border-l border-slate-100 bg-brand-500/[.04] px-3 text-center font-display text-base font-bold tabular-nums dark:border-slate-800">{g === null ? <span className="text-slate-300">—</span> : <span className={g < APR ? "text-red-600 dark:text-red-400" : g < 8 ? "text-amber-600 dark:text-amber-300" : "text-emerald-600 dark:text-emerald-400"}>{f1(g)}</span>}</td>
               <td className="px-3"><span className={cn("inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold", ST[st][1])}>{st === "apr" && <Check className="size-3.5" />}{ST[st][0]}</span></td>
             </tr>)) : <tr><td colSpan={14} className="px-3 py-8 text-center text-slate-400">Sin aspirantes en esta convocatoria.</td></tr>}</tbody>
         </table>
@@ -85,7 +87,7 @@ export function MetroPrac() {
       <div className="flex flex-wrap items-center gap-2">
         <Input value={nuevo} onChange={e => setNuevo(e.target.value)} onKeyDown={e => e.key === "Enter" && add()} placeholder="Nombre del aspirante" className="max-w-xs" />
         <Button variant="outline" icon={<Plus />} onClick={add} disabled={!nuevo.trim()}>Agregar aspirante</Button>
-        <span className="ml-auto flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">{Object.values(AS).map(([l, cl]) => <span key={l} className={cn("rounded-md px-1.5 py-0.5 font-semibold", cl)}>{l}</span>)}<span>· notas de 0 a 10</span></span>
+        <span className="ml-auto flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">{Object.values(AS).map(([l, cl]) => <span key={l} className={cn("rounded-md px-1.5 py-0.5 font-semibold", cl)}>{l}</span>)}<span className="ml-2 inline-flex items-center gap-1">Nota: <b>0</b><span className="h-1.5 w-16 rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-emerald-500" /><b>10</b><span>(0 la peor · 10 la mejor)</span></span></span>
       </div>
       <DiscordOutput title="Resultados" text={txt} sticky={false} />
     </div>);
