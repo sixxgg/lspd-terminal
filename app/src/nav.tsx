@@ -3,7 +3,7 @@ import { divVisible } from "@/lib/divisions";
 import type { LucideIcon } from "lucide-react";
 import {
   CalendarDays, Home, BookOpenCheck, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
-  Gavel, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint, UserRound, Presentation, UserMinus, RadioTower, UsersRound, Images } from "lucide-react";
+  Gavel, Pill, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint, UserRound, Presentation, UserMinus, RadioTower, UsersRound, Images } from "lucide-react";
 import { GUEST, LS, ME_ROLES } from "./lib/store";
 import { DEPT, onDept } from "./lib/dept";
 import { Helicopter } from "./components/icons";
@@ -54,7 +54,8 @@ const RAW_AREAS: Area[] = [
   /* consulta del Manual del Novato: en prueba, solo six y quienes habilite en Administración › Accesos */
   { k: "con", l: "Consulta", icon: BookOpenCheck, min: 0, beta: true, sec: [{ k: "con", l: "Consulta", d: "Preguntas sobre el Manual del Novato, respondidas con el manual", icon: BookOpenCheck, ready: true }] },
   { k: "rad", l: "Radio", icon: RadioTower, min: 0, sec: [{ k: "rad", l: "Comunicados por radio", d: "10.03 con sujetos y vehículo de huida, por /rlspd o /rsapd", icon: RadioTower, ready: true }] },
-  { k: "cod", l: "Códigos", icon: Radio, min: 0, sec: [{ k: "cod", l: "Códigos radiales", d: "Códigos de radio, 10-X, terminología, derechos y alfabeto NATO", icon: Radio, ready: true }] },
+  { k: "cod", l: "Códigos", icon: Radio, min: 0, sec: [{ k: "cod", l: "Códigos radiales", d: "Códigos de radio, 10-X, terminología, derechos y alfabeto NATO", icon: Radio, ready: true },
+    { k: "pro", l: "Procedimientos", d: "Actualización de sanciones por estupefacientes y dinero no justificado", icon: Pill, min: 3, ready: true }] },
   { k: "jef", l: "Jefatura", icon: Star, min: 10, req: "Comandante", sec: [
     { k: "ros", l: "Estado del roster", d: "Composición del departamento", icon: BarChart3, ready: true },
     { k: "his", l: "Historial de votaciones", d: "Propuestas cerradas y su resultado", icon: History, ready: true },
@@ -102,7 +103,8 @@ const SOON = (k: string, l: string, icon: LucideIcon, min: number, req: string):
 /* g: áreas que se abren completas (iguales al LSPD, con los datos del departamento) para las cuentas con acceso dado desde Administración */
 function xAreas(d: "lssd" | "sahp", g: { sup?: boolean; cap?: boolean; jef?: boolean } = {}): Area[] {
   const base = LSPD_AREAS.filter(a => SHARE.includes(a.k)).map(a => (a.k === "ini" ? { ...a, sec: a.sec.map(s => (s.k === "home" ? { ...s, d: d === "lssd" ? "Los Santos Sheriff's Department" : "San Andreas Highway Patrol" } : s)) }
-    : a.k === "rad" ? { ...a, sec: a.sec.map(s => ({ ...s, d: `10.03 con sujetos y vehículo de huida, por /r${d} o /rsapd` })) } : a));
+    : a.k === "rad" ? { ...a, sec: a.sec.map(s => ({ ...s, d: `10.03 con sujetos y vehículo de huida, por /r${d} o /rsapd` })) }
+    : a.k === "cod" ? { ...a, sec: a.sec.filter(s => s.k !== "pro") } /* Procedimientos es del LSPD */ : a));
   const div: Area = d === "lssd" ? { k: "div", l: "Divisiones", icon: Landmark, min: 0, sec: LSSD_DIV_SEC } : SOON("div", "Divisiones", Landmark, 0, "");
   const adm = LSPD_AREAS.find(a => a.k === "adm")!;
   /* Supervisores: por ahora solo Condecoraciones (las mismas del LSPD: se ven en Agentes y en el Inicio) */
