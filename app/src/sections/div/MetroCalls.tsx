@@ -4,17 +4,17 @@
    Cada sección tiene su lista (se edita solo el indicativo de esa serie), su mapa de libres/ocupados y se pueden sumar o retirar
    casillas al final. Abajo, historial de movimientos y comunicado para Discord firmado por Coordinación e Instructores.
    Gestionan la coordinación y los instructores (más six, Liam y Molina); el resto de la división lo ve. */
-import { useMemo, useState } from "react";
-import { ArrowRight, Check, History, Megaphone, Minus, Plus, Search, Settings2, Shield, Target, UserPlus, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, ArrowUpCircle, Bookmark, Check, History, LogOut, Megaphone, Minus, MoreVertical, Plus, RefreshCw, Search, Settings2, Shield, Target, UserCheck, UserPlus, X } from "lucide-react";
 import { Button, Card, Input, Textarea } from "@/components/ui";
 import { Avatar } from "@/components/agents";
 import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
-import { LS, useJSON, useStoreVersion } from "@/lib/store";
+import { LS, syncWait, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { getRoster } from "@/lib/domain";
 import { UNITS, insRole, rosterCall, uMap, uTop } from "@/lib/units";
-import { CS_CFG0, K_CFG, K_LOG, K_RES, csNums, csTok, logOf, resOf, setCall, withTok, type CsCfg, type CsLog, type CsTipo } from "@/lib/mdcalls";
+import { CS_CFG0, K_CFG, K_LOG, K_RES, MOVE_L, csNums, csTok, isReserva, logOf, moveMember, resOf, setCall, setReserva, withTok, type CsCfg, type CsLog, type CsTipo, type Move } from "@/lib/mdcalls";
 import { cn } from "@/lib/cn";
 
 type Ser = "D" | "C";
@@ -26,7 +26,7 @@ const SEC: Record<Ser, { l: string; sub: string; acc: string; from: number; top0
 /* qué es cada casilla según su número */
 const slotRole = (s: Ser, n: number): [string, string] => s === "D"
   ? n < 10 ? ["Mando", "#a78bfa"] : n % 10 === 0 ? ["Team Leader · Pelotón D", "#f5a524"] : n % 10 === 5 ? ["Instructor", "#22c55e"] : ["Operador SWAT", "#e05a52"]
-  : n === 30 ? ["Team Pelotón Leader", "#f5a524"] : ["Operador METRO", "#3b8fd9"];
+  : n === 30 ? ["Team Pelotón Leader", "#f5a524"] : ["METRO", "#3b8fd9"];
 const LEG: Record<Ser, [string, string][]> = { D: [["Mando (R01D–R09D)", "#a78bfa"], ["Team Leader (termina en 0)", "#f5a524"], ["Instructor (termina en 5)", "#22c55e"], ["Operador", "#e05a52"]],
   C: [["Team Pelotón Leader (R30C)", "#f5a524"], ["Operador / aspirante", "#3b8fd9"]] };
 const fecha = (t: number) => { const d = new Date(t), p = (x: number) => String(x).padStart(2, "0"); return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`; };
@@ -46,12 +46,28 @@ export function MetroCalls({ can }: { can: boolean }) {
     const out: P[] = [], seen = new Set<string>();
     for (const [n, r] of Object.entries(M)) { if (!Array.isArray(r)) continue; const t = uTop("md", r); out.push({ n, role: t[1], c: t[2], tipo: "miembro", asp: t[0] === "asp", swat: r.includes("swat") }); seen.add(n); }
     const prac = LS.json<{ rows: { n: string }[] }[]>("lspdt.mdx.prac", []);
-    for (const n of [...(Array.isArray(prac) ? prac.flatMap(c => (c.rows || []).map(r => r.n)) : []), ...Object.keys(res), ...extra]) if (n && !seen.has(n)) { seen.add(n); out.push({ n, role: extra.includes(n) && !res[n] ? "Fuera del roster" : "Aspirante / reserva", c: "#8a8f97", tipo: "reserva", asp: true, swat: false }); }
+    for (const n of [...(Array.isArray(prac) ? prac.flatMap(c => (c.rows || []).map(r => r.n)) : []), ...Object.keys(res), ...extra]) if (n && !seen.has(n)) { seen.add(n); out.push({ n, role: extra.includes(n) && !res[n] ? "Fuera del roster" : "Aspirante", c: "#8a8f97", tipo: "reserva", asp: true, swat: false }); }
+    for (const p of out) if (isReserva(p.n)) { p.role = "Reserva"; p.c = "#14b8a6"; }
     return out;
-  }, [M, res, extra]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [M, res, extra, log.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const callOf = (p: P) => (p.tipo === "miembro" ? rosterCall(p.n) : res[p.n] || "");
   const numOf = (p: P, s: Ser = ser) => csNums(callOf(p), s)[0] || 0;
   const setNum = (p: P, n: number, s: Ser = ser) => { const v = withTok(callOf(p), s, n); if (setCall(p.n, v, me.n, p.tipo)) toast(n ? `${p.n} · ${csTok(n, s)}` : `${p.n} · ${s === "D" ? "SWAT" : "METRO"} liberado`); setSel(""); };
+
+  /* movimientos de personal: retirar de la METRO, ascender al Pelotón D, aspirante → Operador METRO, reserva */
+  const [menu, setMenu] = useState("");
+  useEffect(() => { if (!menu) return; const f = () => setMenu(""); window.addEventListener("click", f); return () => window.removeEventListener("click", f); }, [menu]);
+  const doMove = async (p: P, mv: Move) => { const q = { op: `¿${p.n} pasa a Operador METRO? Deja de ser aspirante${res[p.n] ? ` y se queda con ${res[p.n]}` : ""}.`, swat: `¿${p.n} asciende al Pelotón D (SWAT)? Libera su callsign de la serie C; después elegís su callsign D.`, out: `¿Retirar a ${p.n} de la METRO? Sale del roster y libera todos sus callsigns.` }[mv];
+    if (!(await confirm(q, { danger: mv === "out" }))) return; moveMember(p.n, mv, me.n); toast(`${p.n} · ${MOVE_L[mv]}`); if (mv === "swat") { go("D"); setSel(p.n); } };
+  const acts = (p: P): [string, typeof X, () => void, boolean?][] => {
+    const inRoster = p.tipo === "miembro", L: [string, typeof X, () => void, boolean?][] = [];
+    if (p.asp) L.push(["Pasar a Operador METRO", UserCheck, () => void doMove(p, "op")], [isReserva(p.n) ? "Quitar de la reserva" : "Dejar en reserva", Bookmark, () => { setReserva(p.n, !isReserva(p.n), me.n); toast(isReserva(p.n) ? `${p.n} en reserva` : `${p.n} salió de la reserva`); }]);
+    if (inRoster && !p.asp && !p.swat) L.push(["Ascender al Pelotón D (SWAT)", ArrowUpCircle, () => void doMove(p, "swat")]);
+    if (inRoster) L.push(["Retirar de la METRO", LogOut, () => void doMove(p, "out"), true]);
+    else if (res[p.n] !== undefined) L.push(["Quitar de la lista", LogOut, async () => { if (await confirm(`¿Quitar a ${p.n}? Libera su callsign reservado.`, { danger: true })) { setCall(p.n, "", me.n, "reserva"); const R = resOf(); delete R[p.n]; LS.setJSON(K_RES, R); } }, true]);
+    return L; };
+  const [syncing, setSyncing] = useState(false);
+  const refresh = async () => { setSyncing(true); try { await syncWait(); toast("Callsigns y roster actualizados"); } finally { setSyncing(false); } };
 
   /* ocupación por serie */
   const occ = useMemo(() => { const m: Record<Ser, Map<number, string[]>> = { C: new Map(), D: new Map() };
@@ -87,7 +103,8 @@ export function MetroCalls({ can }: { can: boolean }) {
   const blockOf = (s: Ser) => { const L = net.map(x => ({ n: x.n, d: csNums(x.de, s)[0] || 0, a: csNums(x.a, s)[0] || 0 })).filter(x => x.d !== x.a).sort((x, y) => (x.a || x.d) - (y.a || y.d));
     if (!L.length) return []; return [`### ${s === "D" ? "🛡️ SWAT · Pelotón D" : `${EM} METRO`}`, ...L.map(x => !x.d ? `> ${EM} **${x.n}** ➜ \`${csTok(x.a, s)}\` · ${slotRole(s, x.a)[0]}` : !x.a ? `> ${EM} **${x.n}** · ~~\`${csTok(x.d, s)}\`~~ liberado`
       : `> ${EM} **${x.n}** · \`${csTok(x.d, s)}\` ➜ \`${csTok(x.a, s)}\` · ${slotRole(s, x.a)[0]}`), ""]; };
-  const body = [...blockOf("D"), ...blockOf("C")];
+  const per = [...log].filter(l => chosen.includes(l.id) && l.mot).sort((a, b) => a.t - b.t).map(l => `> ${EM} **${l.n}** · ${l.mot}`);
+  const body = [...(per.length ? ["### 👥 Movimientos de personal", ...per, ""] : []), ...blockOf("D"), ...blockOf("C")];
   const txt = [`## ${EM} Metropolitan Division · Callsigns ${EM}`, cfg.rol.trim() ? `<@&${cfg.rol.trim()}>` : "", "", intro.trim(), "", ...body,
     cierre.trim(), "", `${EM} **Coordinación e Instructores · Metropolitan Division**`, names && firmantes.length ? `-# ${firmantes.join(" · ")}` : "", "*Departamento de Policía de Los Santos*"]
     .join("\n").replace(/\n{3,}/g, "\n\n").trim();
@@ -106,9 +123,10 @@ export function MetroCalls({ can }: { can: boolean }) {
 
       <div style={{ ["--a" as string]: S.acc }} className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         {/* lista */}
-        <Card className="overflow-hidden p-0">
+        <Card className="p-0">
           <div className="flex items-center gap-2 border-b border-slate-100 p-3 dark:border-slate-800">
             <label className="relative flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input value={q} onChange={e => setQ(e.target.value)} placeholder={`Buscar en ${S.l}`} className="pl-9" /></label>
+            <button onClick={refresh} disabled={syncing} title="Traer lo último (también se actualiza solo)" className="grid size-9 shrink-0 place-items-center rounded-xl border border-slate-200 text-slate-500 hover:text-slate-800 disabled:opacity-50 dark:border-slate-700 dark:hover:text-white"><RefreshCw className={cn("size-4", syncing && "animate-spin")} /></button>
             {!can && <span className="text-[11px] text-slate-400">Solo lectura</span>}</div>
           {groups.map(([gl, L]) => L.length > 0 && <div key={gl}>
             <div className="border-b border-slate-100 bg-slate-50 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[.14em] text-slate-500 dark:border-slate-800 dark:bg-slate-900/60">{gl} <span className="font-mono text-slate-400">{L.length}</span></div>
@@ -123,6 +141,9 @@ export function MetroCalls({ can }: { can: boolean }) {
                   onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
                   className={cn("h-8 w-[4.6rem] rounded-lg border bg-transparent text-center font-mono text-[12.5px] font-bold uppercase outline-none transition focus:border-[color:var(--a)]", d ? "border-red-400 text-red-600" : n ? "border-slate-200 dark:border-slate-700" : "border-dashed border-slate-300 text-slate-400 dark:border-slate-700")} />
                   : <span className={cn("w-[4.6rem] text-center font-mono text-[12.5px] font-bold", d ? "text-red-600" : !n && "text-slate-400")}>{n ? csTok(n, ser) : "—"}</span>}
+                {can && acts(p).length > 0 && <div className="relative"><button aria-label={`Acciones de ${p.n}`} title="Movimientos de personal" onClick={e => { e.stopPropagation(); setMenu(menu === p.n ? "" : p.n); }} className={cn("grid size-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white", menu === p.n && "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-white")}><MoreVertical className="size-4" /></button>
+                  {menu === p.n && <div onClick={e => e.stopPropagation()} className="absolute right-0 top-8 z-30 w-60 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl dark:border-slate-700 dark:bg-slate-900">{acts(p).map(([l, I, f, danger]) => (
+                    <button key={l} onClick={() => { setMenu(""); f(); }} className={cn("flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] transition hover:bg-slate-50 dark:hover:bg-slate-800", danger ? "text-red-600 dark:text-red-400" : "text-slate-700 dark:text-slate-200")}><I className="size-4 shrink-0 opacity-80" />{l}</button>))}</div>}</div>}
                 {can && <button aria-label={`Retirar el callsign de ${p.n}`} title="Retirar" disabled={!n} onClick={async e => { e.stopPropagation(); if (await confirm(`¿Retirar ${csTok(n, ser)} a ${p.n}?`)) setNum(p, 0); }} className="text-slate-300 enabled:hover:text-red-500 disabled:opacity-0"><X className="size-4" /></button>}
               </div>); })}</div></div>)}
           {!inSec.length && <p className="px-4 py-10 text-center text-sm text-slate-400">Nadie coincide.</p>}
@@ -162,7 +183,8 @@ export function MetroCalls({ can }: { can: boolean }) {
               <li key={l.id} className="flex items-center gap-2 py-1.5">
                 <span className="w-[4.6rem] shrink-0 font-mono text-[11px] text-slate-400">{fecha(l.t)}</span>
                 <b className="min-w-0 truncate">{l.n}</b>
-                <span className="ml-auto inline-flex shrink-0 items-center gap-1 font-mono text-[11.5px]"><span className={l.de ? "text-slate-500 line-through decoration-slate-400/60" : "text-slate-300"}>{l.de || "—"}</span><ArrowRight className="size-3 text-slate-400" /><span className={l.a ? "font-semibold text-brand-700 dark:text-brand-300" : "text-red-500"}>{l.a || "libre"}</span></span>
+                {l.mot && <span className={cn("shrink-0 rounded-md bg-amber-400/15 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-700 dark:text-amber-300", l.de === l.a && "ml-auto")}>{l.mot}</span>}
+                {l.de !== l.a && <span className="ml-auto inline-flex shrink-0 items-center gap-1 font-mono text-[11.5px]"><span className={l.de ? "text-slate-500 line-through decoration-slate-400/60" : "text-slate-300"}>{l.de || "—"}</span><ArrowRight className="size-3 text-slate-400" /><span className={l.a ? "font-semibold text-brand-700 dark:text-brand-300" : "text-red-500"}>{l.a || "libre"}</span></span>}
                 <span title={`Por ${l.by}${l.pub ? " · comunicado" : ""}`} className="hidden w-16 shrink-0 truncate text-right text-[11px] text-slate-400 sm:block">{l.pub && <Check className="mr-0.5 inline size-3 text-emerald-500" />}{l.by.split(" ")[0]}</span>
               </li>))}</ul>}
           {hist.length > hn && <button onClick={() => setHn(hn + 60)} className="text-xs font-semibold text-brand-600 hover:underline dark:text-brand-300">Ver más ({hist.length - hn})</button>}
@@ -182,7 +204,7 @@ export function MetroCalls({ can }: { can: boolean }) {
           <ul className="max-h-40 space-y-0.5 overflow-y-auto rounded-xl border border-slate-200 p-1.5 text-[12.5px] dark:border-slate-700">{log.slice(0, 80).map(l => { const on = chosen.includes(l.id); return (
             <li key={l.id}><label className={cn("flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1", on ? "bg-brand-500/10" : "hover:bg-slate-50 dark:hover:bg-slate-800/50")}>
               <input type="checkbox" checked={on} onChange={() => setPick(on ? chosen.filter(x => x !== l.id) : [...chosen, l.id])} className="accent-[rgb(var(--b-500))]" />
-              <span className="min-w-0 flex-1 truncate">{l.n}</span><span className="shrink-0 font-mono text-[11px] text-slate-500">{l.a || "libre"}</span>{l.pub && <Check className="size-3 text-emerald-500" />}</label></li>); })}
+              <span className="min-w-0 flex-1 truncate">{l.n}</span><span className="shrink-0 font-mono text-[11px] text-slate-500">{l.mot || l.a || "libre"}</span>{l.pub && <Check className="size-3 text-emerald-500" />}</label></li>); })}
             {!log.length && <li className="px-2 py-4 text-center text-slate-400">Sin movimientos</li>}</ul>
           <Textarea value={intro} onChange={e => setIntro(e.target.value)} rows={3} className="text-[13px]" />
           <Input value={cierre} onChange={e => setCierre(e.target.value)} className="text-[13px]" />
