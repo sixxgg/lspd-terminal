@@ -143,6 +143,9 @@ export async function reloadAll(): Promise<boolean> {
   SYNC_T = Math.max(SYNC_T, Number(r.t) || 0); bump(); return true;
 }
 /* sincroniza ya (la pizarra la usa cada 2 s mientras está abierta) */
+/* sincronizar ya y esperar; huella (t) de lo último guardado de una clave */
+export const syncWait = () => poll();
+export const ktOf = (k: string) => KT[dk(k)] || KT[k] || 0;
 export const syncNow = () => { if (!document.hidden) void poll(); };
 /* actividad: la base (Neon) se apaga sola si nadie consulta unos minutos, y eso ahorra la cuota del mes.
    Mientras se usa la terminal se sincroniza cada 5 s; sin tocar nada, cada vez menos, y a los 20 min para hasta que vuelvas a moverte. */

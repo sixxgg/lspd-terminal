@@ -3,7 +3,7 @@
 import { q } from "../lib/db.js";
 import { send, body, wrap, requireUser, canRead } from "../lib/core.js";
 
-export const BOARD = /^lspdt\.board\.[a-z0-9]+\.[a-z0-9]+$/;
+export const BOARD = /^lspdt\.board\.[a-z0-9]+\.[a-z0-9]+$|^lspdt\.mdx\.prac$/;
 export async function liveOf(b, not = "") {
   const r = await q("select n, v, t, (select t from kv where k=$1) as kt from live where b=$1 and n<>$2 and t>$3", [b, not, Date.now() - 10000]);
   const kt = r.rows[0]?.kt != null ? +r.rows[0].kt : +((await q("select t from kv where k=$1", [b])).rows[0]?.t || 0);
@@ -13,7 +13,7 @@ export default wrap(async (req, res) => {
   if (req.method !== "POST") return send(res, 405, { error: "method" });
   const u = await requireUser(req, res); if (!u) return;
   const b = await body(req);
-  if (typeof b.b !== "string" || !BOARD.test(b.b)) return send(res, 400, { msg: "Pizarra inválida" });
+  if (typeof b.b !== "string" || !BOARD.test(b.b)) return send(res, 400, { msg: "Clave inválida" });
   if (!canRead(b.b, u)) return send(res, 403, { msg: "Solo los miembros de la división" });
   const now = Date.now();
   if (b.s === null) await q("delete from live where b=$1 and n=$2", [b.b, u.n]);
