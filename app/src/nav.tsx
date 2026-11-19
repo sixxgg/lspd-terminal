@@ -117,7 +117,7 @@ function xAreas(d: "lssd" | "sahp", g: { sup?: boolean; cap?: boolean; jef?: boo
    En el LSSD y la SAHP, Supervisores, Capitanía y Jefatura se abren completas para six y para quien tenga acceso (Administración › Accesos). */
 export const AREAS: Area[] = [...LSPD_AREAS];
 let AK = "lspd";
-export function syncAreas() {
+function syncAreas() {
   const d = DEPT.id;
   if (d === "lspd") { if (AK !== "lspd") { AK = "lspd"; AREAS.splice(0, AREAS.length, ...LSPD_AREAS); } return; }
   const A = LS.json<Record<string, string[]>>("lspdt.areaAcc", {}), g = Object.fromEntries(["sup", "cap", "jef"].map(k => [k, !!ME_ROLES.six || !!A[k]?.includes(PROF.me)]));
