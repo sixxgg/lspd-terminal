@@ -3,7 +3,7 @@
 import { q } from "../lib/db.js";
 import { send, body, wrap, requireUser, canRead } from "../lib/core.js";
 
-export const BOARD = /^lspdt\.board\.[a-z0-9]+\.[a-z0-9]+$|^lspdt\.mdx\.prac$/;
+export const BOARD = /^lspdt\.board\.[a-z0-9]+\.[a-z0-9]+$|^lspdt\.mdx\.(prac|exam)$/;
 export async function liveOf(b, not = "") {
   const r = await q("select n, v, t, (select t from kv where k=$1) as kt from live where b=$1 and n<>$2 and t>$3", [b, not, Date.now() - 10000]);
   const kt = r.rows[0]?.kt != null ? +r.rows[0].kt : +((await q("select t from kv where k=$1", [b])).rows[0]?.t || 0);
