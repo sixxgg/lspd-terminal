@@ -15,6 +15,7 @@ import { LS, ME_ROLES, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { K9_PL, MD_CALLS, UNITS, uRosterCo, unitRoles, insRole, isUCoord, isUMem, uMap, uSaveMap, uTop, type UnitKey } from "@/lib/units";
 import { unitPalette } from "@/lib/divisions";
+import { setCall } from "@/lib/mdcalls";
 import { cn } from "@/lib/cn";
 import { Psb, dcIdOf } from "./Psb";
 import { RoleEditor } from "./Gen";
@@ -25,6 +26,7 @@ import { DivCal } from "./DivCal";
 const Armas = lazy(() => import("./Armas").then(m => ({ default: m.Armas })));
 const K9Fichas = lazy(() => import("./K9Ficha").then(m => ({ default: m.K9Fichas })));
 const ExamTab = lazy(() => import("./MdExam").then(m => ({ default: m.ExamTab }))), ExamAdmin = lazy(() => import("./MdExam").then(m => ({ default: m.ExamAdmin })));
+const MetroCalls = lazy(() => import("./MetroCalls").then(m => ({ default: m.MetroCalls })));
 const MetroPrac = lazy(() => import("./MetroPrac").then(m => ({ default: m.MetroPrac })));
 const MetroExam = lazy(() => import("./Metro").then(m => ({ default: m.MetroExam })));
 const Lazy = ({ children }: { children: React.ReactNode }) => <Suspense fallback={<div className="grid min-h-[30vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{children}</Suspense>;
@@ -98,7 +100,7 @@ export function Unit({ k, dn }: { k: UnitKey; dn?: string }) {
     ...(k === "asd" ? [["com", "Comunicados", Megaphone] as TB] : []), ...(k === "asd" && co ? [["exa", "Exámenes", GraduationCap] as TB] : []),
     ...(k === "md" && co ? [["arm", "Armas", Crosshair] as TB] : []), ...(k === "k9" ? [["fic", "Fichas", IdCard] as TB] : []),
     ...(k === "md" && (mem || co || exEn) ? [["mdo", "Examen", ClipboardCheck] as TB] : []), ...(k === "md" && co ? [["mdg", "Gestión de exámenes", ClipboardList] as TB] : []),
-    ...(prac ? [["mdp", "Examen práctico", Target] as TB] : []),
+    ...(prac ? [["mdp", "Examen práctico", Target] as TB] : []), ...(k === "md" && (mem || co || prac) ? [["mdcs", "Callsign", Radio] as TB] : []),
     ...(mdIns ? [["mde", "Examen escrito", ClipboardCheck], ["mdi", "Entrevista de instructor", MessageCircle], ["mdl", "Lista de elegibles", Trophy]] as TB[] : []),
     ["ins", "Instrucciones", GraduationCap], ["uni", "Uniformidad", Shirt], ["cal", "Calendario", CalendarDays]];
   const names = Object.keys(uMap(k)).filter(n => findAgent(n)).sort((a, b) => a.localeCompare(b, "es"));
@@ -119,6 +121,7 @@ export function Unit({ k, dn }: { k: UnitKey; dn?: string }) {
         : t === "fic" && k === "k9" ? <Lazy><K9Fichas canEdit={mem || co} /></Lazy>
         : t === "arm" && k === "md" && co ? <Lazy><Armas /></Lazy>
         : t === "ins" ? <Instrucciones div={k} ab={u.ab} names={names} roleOf={n => insRole(k, n)} tipos={INS_TIPOS[k]} canEdit={mem} isCoord={co} />
+        : t === "mdcs" && k === "md" ? <Lazy><MetroCalls can={co || mdIns || prac || !!ME_ROLES.admin} /></Lazy>
         : t === "mdp" && prac ? <Lazy><MetroPrac /></Lazy>
         : t === "mde" || t === "mdi" || t === "mdl" ? <Lazy><MetroExam tab={t === "mde" ? "exa" : t === "mdi" ? "ent" : "list"} /></Lazy>
         : t === "reg" ? <RegForm k={k} onSaved={() => go("log")} /> : t === "log" ? <LogView k={k} /> : t === "exa" ? <Exams pal={pal.roles} /> : t === "com" ? <Comunicados div="asd" canEdit={co} />
@@ -130,7 +133,7 @@ export function Unit({ k, dn }: { k: UnitKey; dn?: string }) {
 function Roster({ k, pal }: { k: UnitKey; pal: Record<string, string> }) {
   const me = useMe(), u = UNITS[k], co = uRosterCo(k, me.n), m = uMap(k, me.n);
   return <RosterBoard ab={u.ab} roles={u.R.map(([x, l]) => ({ k: x, l, c: pal[x] }))} subs={(u.SUB || []).map(([x, l]) => ({ k: x, l, c: pal[x] || "#94a3b8" }))} map={m} canEdit={co} onSave={x => uSaveMap(k, x)}
-    call={k === "md" ? { l: "Indicativo", ph: "R20D", get: callOf, set: (n, v) => LS.setJSON("lspdt.mdCalls", { ...MD_CALLS, ...LS.json<Record<string, string>>("lspdt.mdCalls", {}), [n]: v }) } : undefined}
+    call={k === "md" ? { l: "Indicativo", ph: "R20D", get: callOf, set: (n, v) => setCall(n, v, me.n, "miembro") } : undefined}
     disc={k === "psb" ? { l: "Discord ID", ph: "123456789012345678", get: n => LS.json<Record<string, string>>("lspdt.psbIds", {})[n] || dcIdOf(n), set: (n, v) => { const M = LS.json<Record<string, string>>("lspdt.psbIds", {}); if (v) M[n] = v; else delete M[n]; LS.setJSON("lspdt.psbIds", M); } } : undefined}
     tags={n => <>{k === "k9" && <DogEd n={n} can={false} />}{k === "asd" && asdSusp(n) && <span title={asdSuspTxt(n)} className="inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-300">Patrullaje aéreo suspendido</span>}</>}
     info={n => K9_PL[n] ? `#${K9_PL[n]} · fuera del roster cargado` : ""}

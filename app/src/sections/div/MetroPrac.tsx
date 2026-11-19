@@ -4,7 +4,7 @@
    Edición en equipo: cada uno trabaja sobre un borrador (sus cambios encima de lo guardado) y guarda con «Guardar». Se ve en vivo quién
    está editando y qué; si dos tocan la misma nota, al guardar se pregunta si reemplazar o quedarse con lo del otro. */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, CircleSlash, FileText, Plus, RotateCcw, Save, Trash2, Trophy, UserPlus, Users, Wand2, X } from "lucide-react";
+import { Check, CircleSlash, FileText, Plus, RefreshCw, RotateCcw, Save, Send, Trash2, Trophy, UserPlus, Users, Wand2, X } from "lucide-react";
 import { Button, Card, Input } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { Avatar } from "@/components/agents";
@@ -15,6 +15,7 @@ import { LS, ktOf, syncWait, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { api } from "@/lib/api";
 import { rosterCall, uMap, uRosterCo, uSaveMap } from "@/lib/units";
+import { callOfAny, resOf, setCall } from "@/lib/mdcalls";
 import { cn } from "@/lib/cn";
 
 type As = "" | "si" | "jus" | "no";
@@ -122,14 +123,23 @@ export function MetroPrac() {
   /* callsigns «C» desde R30C (Team Pelotón Leader) hacia arriba: ocupados por el roster, asignados a aspirantes, libres y repetidos */
   const cs = useMemo(() => {
     const used = new Map<number, string[]>(), nums = (s: string) => [...(s || "").toUpperCase().matchAll(/R(\d+)C/g)].map(m => +m[1]).filter(x => x >= 30);
-    for (const n of Object.keys(M)) for (const x of nums(rosterCall(n))) used.set(x, [...(used.get(x) || []), n]);
-    for (const r of c.rows) for (const x of nums(r.cs || "")) used.set(x, [...(used.get(x) || []), r.n]);
+    const addU = (x: number, n: string) => { const L = used.get(x) || []; if (!L.includes(n)) used.set(x, [...L, n]); };
+    /* ocupados según la pestaña Callsign (roster + reservas), salvo la reserva de un aspirante de esta convocatoria: ahí manda la planilla */
+    const R = resOf(), here = new Set(c.rows.map(r => r.n));
+    for (const n of Object.keys(M)) for (const x of nums(rosterCall(n))) addU(x, n);
+    for (const [n, v] of Object.entries(R)) if (!here.has(n)) for (const x of nums(v)) addU(x, n);
+    for (const r of c.rows) for (const x of nums(r.cs || "")) addU(x, r.n);
     const sin = c.rows.filter(r => !nums(r.cs || "").length);
     let top = Math.max(48, ...used.keys()); const free = () => Array.from({ length: top - 29 }, (_, i) => 30 + i).filter(x => !used.has(x));
     while (free().length < sin.length + 2) top++;
     return { used, top, free: free(), sin, dup: [...used].filter(([, v]) => v.length > 1).map(([k]) => k), nums };
   }, [c, M]);
   const assign = (rid: string, n: number) => { edit(key(rid, "cs"), `R${n}C`); setPick(""); };
+  /* con la pestaña Callsign: traer lo asignado allá (refrescar) o reservar allá lo que se asignó acá */
+  const fromTab = c.rows.map(r => ({ r, v: callOfAny(r.n) })).filter(x => x.v && x.v !== (x.r.cs || ""));
+  const toTab = c.rows.filter(r => r.cs && !callOfAny(r.n));
+  const refresh = () => { const ch: Record<string, V> = {}; for (const x of fromTab) ch[key(x.r.id, "cs")] = x.v; editMany(ch); toast(`${fromTab.length} callsign${fromTab.length === 1 ? "" : "s"} actualizado${fromTab.length === 1 ? "" : "s"} desde la pestaña Callsign · guardá para confirmar`); };
+  const push = () => { let n = 0; for (const r of toTab) if (setCall(r.n, r.cs || "", me.n, inRoster(r.n) ? "miembro" : "reserva")) n++; toast(`${n} callsign${n === 1 ? "" : "s"} reservado${n === 1 ? "" : "s"} en la pestaña Callsign`); };
   const autoAssign = () => { const ch: Record<string, V> = {}; cs.sin.forEach((r, i) => { if (cs.free[i] != null) ch[key(r.id, "cs")] = `R${cs.free[i]}C`; }); editMany(ch); toast(`${Object.keys(ch).length} callsigns asignados · guardá para confirmar`); };
 
   /* en vivo: aviso qué estoy tocando y cuándo guardo; veo a los demás y me entero si guardaron sobre lo mío */
@@ -244,6 +254,8 @@ export function MetroPrac() {
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-[15px] font-semibold">Callsigns desde R30C <span className="text-xs font-normal text-slate-500">(Team Pelotón Leader) hacia arriba</span></h3>
           <span className="ml-auto text-xs text-slate-500"><b className="text-emerald-600 dark:text-emerald-400">{cs.free.length}</b> libres · <b className={cs.sin.length ? "text-amber-600 dark:text-amber-300" : ""}>{cs.sin.length}</b> aspirantes sin callsign{cs.dup.length > 0 && <> · <b className="text-red-600">{cs.dup.length}</b> repetidos</>}</span>
+          <Button size="sm" variant={fromTab.length ? "primary" : "outline"} icon={<RefreshCw />} onClick={refresh} disabled={!fromTab.length} title="Trae los callsigns asignados en la pestaña Callsign">Refrescar desde Callsign{fromTab.length ? ` (${fromTab.length})` : ""}</Button>
+          {toTab.length > 0 && <Button size="sm" variant="outline" icon={<Send />} onClick={push} title="Reserva en la pestaña Callsign los que se asignaron acá (queda en el historial)">Pasar a Callsign ({toTab.length})</Button>}
           {cs.sin.length > 0 && <Button size="sm" variant="outline" icon={<Wand2 />} onClick={autoAssign}>Asignar libres</Button>}
         </div>
         <div className="flex flex-wrap gap-1.5">{Array.from({ length: cs.top - 29 }, (_, i) => 30 + i).map(x => { const who = cs.used.get(x), d = cs.dup.includes(x), asp = who?.some(n => c.rows.some(r => r.n === n));
@@ -251,7 +263,7 @@ export function MetroPrac() {
             : <button key={x} onClick={() => { const r = c.rows.find(r => r.id === pick) || cs.sin[0]; if (r) assign(r.id, x); }} title={pick ? `Asignar a ${c.rows.find(r => r.id === pick)?.n}` : cs.sin[0] ? `Asignar a ${cs.sin[0].n}` : "Libre"}
               className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-2 py-1 font-mono text-[11.5px] font-semibold text-emerald-700 transition hover:bg-emerald-500/20 dark:text-emerald-300">R{x}C</button>; })}</div>
         <p className="text-xs text-slate-500">{pick ? <>Tocá un callsign libre (verde) para dárselo a <b>{c.rows.find(r => r.id === pick)?.n}</b>.</> : cs.sin.length ? <>Faltan: {cs.sin.map(r => r.n).join(", ")}. Tocá su casilla de callsign y elegí uno libre, o «Asignar libres».</> : "Todos los aspirantes tienen callsign."}
-          <span className="ml-1 text-slate-400">Gris: roster · azul: aspirantes · rojo: repetido.</span></p>
+          <span className="ml-1 text-slate-400">Gris: roster y reservas de la pestaña Callsign · azul: aspirantes · rojo: repetido.</span></p>
       </Card>
 
       {/* publicar */}
