@@ -1,7 +1,7 @@
 import { DivAdmin, DivNav, Uniformidad, divTabs, type DivTab, type URole } from "./DivTools";
 import { Comunicados } from "./Comunicados";
 import { lazy, Suspense, useMemo, useState } from "react";
-import { CalendarDays, Megaphone, Shirt, Users, Check, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History, Dog, ClipboardCheck, MessageCircle, Trophy, Loader2, Crosshair, ClipboardList, IdCard } from "lucide-react";
+import { CalendarDays, Megaphone, Shirt, Users, Check, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History, Dog, ClipboardCheck, MessageCircle, Trophy, Loader2, Crosshair, ClipboardList, IdCard, Target } from "lucide-react";
 import { ExamStatus } from "@/components/mdexam";
 import { useExam } from "@/lib/mdexam";
 import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input, Segmented, Select } from "@/components/ui";
@@ -11,7 +11,7 @@ import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { Col, Split } from "@/components/layout";
 import { LUGARES, fmtDate, findAgent, lvl, norm, rankES, uid } from "@/lib/domain";
-import { LS, useStoreVersion } from "@/lib/store";
+import { LS, ME_ROLES, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { K9_PL, MD_CALLS, UNITS, uRosterCo, unitRoles, insRole, isUCoord, isUMem, uMap, uSaveMap, uTop, type UnitKey } from "@/lib/units";
 import { unitPalette } from "@/lib/divisions";
@@ -25,6 +25,7 @@ import { DivCal } from "./DivCal";
 const Armas = lazy(() => import("./Armas").then(m => ({ default: m.Armas })));
 const K9Fichas = lazy(() => import("./K9Ficha").then(m => ({ default: m.K9Fichas })));
 const ExamTab = lazy(() => import("./MdExam").then(m => ({ default: m.ExamTab }))), ExamAdmin = lazy(() => import("./MdExam").then(m => ({ default: m.ExamAdmin })));
+const MetroPrac = lazy(() => import("./MetroPrac").then(m => ({ default: m.MetroPrac })));
 const MetroExam = lazy(() => import("./Metro").then(m => ({ default: m.MetroExam })));
 const Lazy = ({ children }: { children: React.ReactNode }) => <Suspense fallback={<div className="grid min-h-[30vh] place-items-center text-slate-400"><Loader2 className="size-6 animate-spin" /></div>}>{children}</Suspense>;
 
@@ -91,10 +92,13 @@ export function Unit({ k, dn }: { k: UnitKey; dn?: string }) {
   const me = useMe(), u = UNITS[k], co = isUCoord(k, me.n), pal = unitPalette(k);
   type TB = [string, string, typeof Bell];
   const mdIns = k === "md" && (co || !!insRole("md", me.n)), mem = isUMem(k, me.n), ex = useExam(), exEn = !!ex?.en.includes(me.n);
+  /* examen práctico de aspirantes: solo six, Liam Campbell y Evelyn Molina */
+  const prac = k === "md" && (!!ME_ROLES.six || ["Liam Campbell", "Evelyn Molina"].includes(me.n));
   const tabs0: TB[] = [["ros", "Roster", Users], ...(k === "psb" ? PSB_TABS : u.reg ? [["reg", u.reg, ClipboardPen], ["log", `${u.regs} (${uLog(k).length})`, ListChecks]] as TB[] : []),
     ...(k === "asd" ? [["com", "Comunicados", Megaphone] as TB] : []), ...(k === "asd" && co ? [["exa", "Exámenes", GraduationCap] as TB] : []),
     ...(k === "md" && co ? [["arm", "Armas", Crosshair] as TB] : []), ...(k === "k9" ? [["fic", "Fichas", IdCard] as TB] : []),
     ...(k === "md" && (mem || co || exEn) ? [["mdo", "Examen", ClipboardCheck] as TB] : []), ...(k === "md" && co ? [["mdg", "Gestión de exámenes", ClipboardList] as TB] : []),
+    ...(prac ? [["mdp", "Examen práctico", Target] as TB] : []),
     ...(mdIns ? [["mde", "Examen escrito", ClipboardCheck], ["mdi", "Entrevista de instructor", MessageCircle], ["mdl", "Lista de elegibles", Trophy]] as TB[] : []),
     ["ins", "Instrucciones", GraduationCap], ["uni", "Uniformidad", Shirt], ["cal", "Calendario", CalendarDays]];
   const names = Object.keys(uMap(k)).filter(n => findAgent(n)).sort((a, b) => a.localeCompare(b, "es"));
@@ -115,6 +119,7 @@ export function Unit({ k, dn }: { k: UnitKey; dn?: string }) {
         : t === "fic" && k === "k9" ? <Lazy><K9Fichas canEdit={mem || co} /></Lazy>
         : t === "arm" && k === "md" && co ? <Lazy><Armas /></Lazy>
         : t === "ins" ? <Instrucciones div={k} ab={u.ab} names={names} roleOf={n => insRole(k, n)} tipos={INS_TIPOS[k]} canEdit={mem} isCoord={co} />
+        : t === "mdp" && prac ? <Lazy><MetroPrac /></Lazy>
         : t === "mde" || t === "mdi" || t === "mdl" ? <Lazy><MetroExam tab={t === "mde" ? "exa" : t === "mdi" ? "ent" : "list"} /></Lazy>
         : t === "reg" ? <RegForm k={k} onSaved={() => go("log")} /> : t === "log" ? <LogView k={k} /> : t === "exa" ? <Exams pal={pal.roles} /> : t === "com" ? <Comunicados div="asd" canEdit={co} />
         : t === "cit" ? <T1080 psbOnly /> : <Psb tab={t} go={go} />}
