@@ -15,8 +15,17 @@ export const resOf = () => LS.json<Record<string, string>>(K_RES, {});
 export const logOf = () => { const L = LS.json<CsLog[]>(K_LOG, []); return Array.isArray(L) ? L : []; };
 /* callsign vigente de alguien: el del roster si es miembro, si no su reserva */
 export const callOfAny = (n: string) => rosterCall(n) || resOf()[n] || "";
-/* números de cada serie dentro de un texto («R20D · R30C» → D20, C30) */
-export const csNums = (s: string, serie: "C" | "D") => [...(s || "").toUpperCase().matchAll(/R(\d+)([CD])/g)].filter(m => m[2] === serie).map(m => +m[1]);
+/* números de cada serie dentro de un texto («R20D · R30C» → D20, C30). La serie D también acepta el formato viejo «D-01» (= R01D) */
+const RX = { C: /R(\d+)C/gi, D: /R(\d+)D|\bD-(\d+)/gi };
+export const csNums = (s: string, serie: "C" | "D") => [...(s || "").matchAll(RX[serie])].map(m => +(m[1] || m[2]));
+export const csTok = (n: number, serie: "C" | "D") => `R${String(n).padStart(2, "0")}${serie}`;
+/* cambia (o saca, con 0) el indicativo de una serie dentro del texto completo, sin tocar el de la otra */
+export function withTok(cur: string, serie: "C" | "D", n: number): string {
+  const parts = (cur || "").split(/\s*·\s*/).map(x => x.trim()).filter(Boolean), re = new RegExp(RX[serie].source, "i");
+  const i = parts.findIndex(x => re.test(x)), tok = n ? csTok(n, serie) : "";
+  if (i >= 0) { if (tok) parts[i] = tok; else parts.splice(i, 1); } else if (tok) parts.push(tok);
+  return parts.join(" · ");
+}
 const csClean = (s: string) => s.toUpperCase().replace(/\s*[·,/|]\s*/g, " · ").replace(/\s+/g, " ").trim();
 
 /* cambia el callsign (miembro o reserva) y lo anota en el historial; devuelve false si no cambió nada */

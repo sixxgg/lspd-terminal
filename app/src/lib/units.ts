@@ -25,7 +25,7 @@ const MD_DEF: Record<string, string[]> = {
   "Tariq Okafor": ["op", "swat"], "Lloyd Burnett": ["op", "swat"], "Charles Jhonson Smith": ["op", "swat"], "Antonio Santos": ["op", "swat"],
   "Kane Anderson": ["op"], "Elioth Smith": ["op"], "Hailey Deacon": ["op"], "James West": ["op"], "Logan Barrett": ["op"], "Matthew Coleman": ["op"], "Rodney Deacon": ["op"],
   "Clancy Skinner": ["op"], "Kai Jeon-Soo": ["op"], "Khalan Smith": ["op"], "Lara Calloway": ["op"], "William Weston": ["op"], "Yooa Baek-Harrington": ["op"] };
-export const MD_CALLS: Record<string, string> = { "Derek McGarrett": "D-01", "Evelyn Molina": "D-02 · R10D", "Ryan Westbrook": "R20D · R30C", "Liam Campbell": "R25D", "Tariq Okafor": "R21D",
+export const MD_CALLS: Record<string, string> = { "Derek McGarrett": "R01D", "Evelyn Molina": "R02D · R10D", "Ryan Westbrook": "R20D · R30C", "Liam Campbell": "R25D", "Tariq Okafor": "R21D",
   "Lloyd Burnett": "R22D", "Charles Jhonson Smith": "R26D", "Antonio Santos": "R27D", "Kane Anderson": "R32C", "Elioth Smith": "R48C", "Hailey Deacon": "R35C", "James West": "R47C",
   "Logan Barrett": "R43C", "Matthew Coleman": "R44C", "Rodney Deacon": "R36C", "Clancy Skinner": "R46C", "Kai Jeon-Soo": "R38C", "Khalan Smith": "R42C", "Lara Calloway": "R39C",
   "William Weston": "R45C", "Yooa Baek-Harrington": "R37C" };
