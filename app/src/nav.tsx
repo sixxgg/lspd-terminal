@@ -99,21 +99,31 @@ const LSSD_DIV_SEC: Sec[] = [
   { k: "dv_shsiu", l: "High Speed Interception Unit", d: "HSIU · Office of Sheriff Support Operations", icon: Gauge, ready: true },
 ];
 const SOON = (k: string, l: string, icon: LucideIcon, min: number, req: string): Area => ({ k, l, icon, min, req, sec: [{ k: "soon", l, d: "En construcción", icon, ready: true }] });
-function xAreas(d: "lssd" | "sahp"): Area[] {
+/* g: áreas que se abren completas (iguales al LSPD, con los datos del departamento) para las cuentas con acceso dado desde Administración */
+function xAreas(d: "lssd" | "sahp", g: { sup?: boolean; cap?: boolean; jef?: boolean } = {}): Area[] {
   const base = LSPD_AREAS.filter(a => SHARE.includes(a.k)).map(a => (a.k === "ini" ? { ...a, sec: a.sec.map(s => (s.k === "home" ? { ...s, d: d === "lssd" ? "Los Santos Sheriff's Department" : "San Andreas Highway Patrol" } : s)) }
     : a.k === "rad" ? { ...a, sec: a.sec.map(s => ({ ...s, d: `10.03 con sujetos y vehículo de huida, por /r${d} o /rsapd` })) } : a));
   const div: Area = d === "lssd" ? { k: "div", l: "Divisiones", icon: Landmark, min: 0, sec: LSSD_DIV_SEC } : SOON("div", "Divisiones", Landmark, 0, "");
   const adm = LSPD_AREAS.find(a => a.k === "adm")!;
   /* Supervisores: por ahora solo Condecoraciones (las mismas del LSPD: se ven en Agentes y en el Inicio) */
   const sup = LSPD_AREAS.find(x => x.k === "sup")!;
-  const L = [...base, div, { ...sup, req: "Sergeant", sec: sup.sec.filter(x => x.k === "cond") }, SOON("cap", "Capitanía", Briefcase, 8, "Lieutenant"),
-    SOON("jef", "Jefatura", Star, 10, d === "lssd" ? "Area Commander" : "Chief"), { ...adm, sec: adm.sec.filter(s => ADM_X.includes(s.k)) }];
+  const cap = LSPD_AREAS.find(x => x.k === "cap")!, jef = LSPD_AREAS.find(x => x.k === "jef")!;
+  const L = [...base, div, g.sup ? { ...sup, req: "Sergeant" } : { ...sup, req: "Sergeant", sec: sup.sec.filter(x => x.k === "cond") },
+    g.cap ? { ...cap, req: "Lieutenant" } : SOON("cap", "Capitanía", Briefcase, 8, "Lieutenant"),
+    g.jef ? { ...jef, req: d === "lssd" ? "Area Commander" : "Chief" } : SOON("jef", "Jefatura", Star, 10, d === "lssd" ? "Area Commander" : "Chief"), { ...adm, sec: adm.sec.filter(s => ADM_X.includes(s.k)) }];
   return L.sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
 }
-const LSSD_AREAS = xAreas("lssd"), SAHP_AREAS = xAreas("sahp");
-/* el menú cambia de departamento sin recargar: AREAS es la lista del departamento activo */
+/* el menú cambia de departamento sin recargar: AREAS es la lista del departamento activo.
+   En el LSSD y la SAHP, Supervisores, Capitanía y Jefatura se abren completas para six y para quien tenga acceso (Administración › Accesos). */
 export const AREAS: Area[] = [...LSPD_AREAS];
-onDept(() => { AREAS.splice(0, AREAS.length, ...(DEPT.id === "lssd" ? LSSD_AREAS : DEPT.id === "sahp" ? SAHP_AREAS : LSPD_AREAS)); });
+let AK = "lspd";
+export function syncAreas() {
+  const d = DEPT.id;
+  if (d === "lspd") { if (AK !== "lspd") { AK = "lspd"; AREAS.splice(0, AREAS.length, ...LSPD_AREAS); } return; }
+  const A = LS.json<Record<string, string[]>>("lspdt.areaAcc", {}), g = Object.fromEntries(["sup", "cap", "jef"].map(k => [k, !!ME_ROLES.six || !!A[k]?.includes(PROF.me)]));
+  const key = d + JSON.stringify(g); if (key === AK) return; AK = key; AREAS.splice(0, AREAS.length, ...xAreas(d, g));
+}
+onDept(syncAreas);
 /* áreas que en el LSSD y la SAHP todavía están en construcción */
 export const isSoon = (a: Area) => a.sec.length === 1 && a.sec[0].k === "soon";
 
@@ -125,10 +135,10 @@ const galOk = () => !!ME_ROLES.six || !!ME_ROLES.admin || LS.json<string[]>("lsp
 const guestSec = (a: string, s: string) => GUEST.secs.includes(`${a}/${s}`) || (a === "ini" && s === "nov");
 /* acceso dado desde Administración › Accesos: cuenta como Sargento I (Supervisores), Teniente (Capitanía) o Comandante (Jefatura) */
 const AREA_L: Record<string, number> = { sup: 6, cap: 8, jef: 10 };
-const effL = (r?: string) => { if (DEPT.id !== "lspd") return lvl(r); const A = LS.json<Record<string, string[]>>("lspdt.areaAcc", {}); return Math.max(lvl(r), ...Object.entries(AREA_L).map(([k, l]) => (A[k]?.includes(PROF.me) ? l : 0))); };
+const effL = (r?: string) => { const A = LS.json<Record<string, string[]>>("lspdt.areaAcc", {}); return Math.max(lvl(r), ...Object.entries(AREA_L).map(([k, l]) => (A[k]?.includes(PROF.me) ? l : 0))); };
 export const canArea = (a: Area, r?: string) => (isSoon(a) ? !!ME_ROLES.six || lvl(r) >= a.min : GUEST.on ? a.sec.some(s => guestSec(a.k, s.k)) : a.k === "gal" ? galOk() : a.k === "con" ? conOk() : a.k === "me" ? profOk() : a.k === "leg" ? legalOk() : a.admin ? !!ME_ROLES.admin : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : effL(r) >= a.min);
 /* áreas del menú (sin las ocultas) */
-export const menuAreas = (r?: string) => AREAS.filter(a => !a.hidden && canArea(a, r));
+export const menuAreas = (r?: string) => (syncAreas(), AREAS).filter(a => !a.hidden && canArea(a, r));
 /* secciones bloqueadas para ese rango (se muestran con candado) */
 export const lockedOf = (a: Area, r?: string) => (GUEST.on ? [] : a.sec.filter(s => s.min && effL(r) < s.min));
 /* secciones que ve cada uno dentro de un área (algunas piden más rango que el área) */

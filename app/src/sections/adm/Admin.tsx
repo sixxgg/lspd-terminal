@@ -39,25 +39,28 @@ function OwnerAcc({ k, t, icon, area }: { k: string; t: string; icon: React.Reac
 /* ---------- solicitudes de acceso y administradores ---------- */
 /* LSSD y SAHP: los accesos que da six (Legal); las solicitudes y los administradores son del LSPD */
 export function AdmAccesosX() {
-  return <div className="space-y-5">{ME_ROLES.six && <OwnerAcc k="lspdt.legacc" t="Acceso a Legal" icon={<Scale />} area="Legal" />}
+  return <div className="space-y-5"><AreaAcc />{ME_ROLES.six && <OwnerAcc k="lspdt.legacc" t="Acceso a Legal" icon={<Scale />} area="Legal" />}
     <p className="text-sm text-slate-500">Las cuentas {DEL[DEPT.id]} entran con su código de invitación (lo generás en tu panel, eligiendo el departamento). No hay solicitudes ni administradores aparte.</p></div>;
 }
 /* acceso a Supervisores, Capitanía y Jefatura sin tener el rango: se elige la cuenta y listo (el servidor la trata como ese rango en esas áreas) */
-const AREAS_ACC: [string, string, string][] = [["sup", "Supervisores", "Sargento I"], ["cap", "Capitanía", "Teniente"], ["jef", "Jefatura", "Comandante"]];
+const AREAS_ACC = (): [string, string, string][] => (DEPT.id === "lspd" ? [["sup", "Supervisores", "Sargento I"], ["cap", "Capitanía", "Teniente"], ["jef", "Jefatura", "Comandante"]]
+  : [["sup", "Supervisores", "Sergeant"], ["cap", "Capitanía", "Lieutenant"], ["jef", "Jefatura", DEPT.id === "lssd" ? "Area Commander" : "Chief"]]);
+/* cuentas creadas del departamento activo (las del LSPD por nombre; las del LSSD y la SAHP salen del directorio) */
+const hasAcc = (n: string) => (DEPT.id === "lspd" ? ACC.names.includes(n) : ACC.dir.some(x => x.n === n && x.d === DEPT.id));
 function AreaAcc() {
   const { toast } = useFeedback(), [A, setA] = useJSON<Record<string, string[]>>("lspdt.areaAcc", {}), [sel, setSel] = useState<Record<string, string>>({});
   const put = (k: string, L: string[]) => setA({ ...A, [k]: L });
   return (
     <Card className="xl:col-span-2">
       <CardHeader icon={<KeyRound />} title="Acceso a áreas" desc="Quién ve cada área aunque no tenga el rango." />
-      <div className="grid gap-px bg-slate-100 md:grid-cols-3 dark:bg-slate-800">{AREAS_ACC.map(([k, t, r]) => { const L = A[k] || []; return (
+      <div className="grid gap-px bg-slate-100 md:grid-cols-3 dark:bg-slate-800">{AREAS_ACC().map(([k, t, r]) => { const L = A[k] || []; return (
         <div key={k} className="flex flex-col gap-3 bg-white p-4 dark:bg-slate-900">
           <p className="flex items-baseline gap-2"><b className="text-sm">{t}</b><span className="text-xs text-slate-400">como {r}</span><span className="ml-auto font-mono text-xs text-slate-400">{L.length}</span></p>
           <div className="flex min-h-8 flex-wrap gap-1.5">{L.length ? L.map(n => (
             <span key={n} className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 py-0.5 pl-1 pr-2 text-xs font-medium dark:bg-slate-800"><Avatar n={n} size={20} />{n}
               <button aria-label={`Quitar a ${n}`} onClick={() => { put(k, L.filter(x => x !== n)); toast(`${n} ya no ve ${t}`); }} className="text-slate-400 hover:text-red-500"><X className="size-3" /></button></span>))
             : <span className="text-xs text-slate-400">Solo por rango.</span>}</div>
-          <div className="mt-auto flex gap-1.5"><AgentCombo className="flex-1" value={sel[k] || ""} onChange={v => setSel({ ...sel, [k]: v })} filter={a => ACC.names.includes(a.n) && !L.includes(a.n)} />
+          <div className="mt-auto flex gap-1.5"><AgentCombo className="flex-1" value={sel[k] || ""} onChange={v => setSel({ ...sel, [k]: v })} filter={a => hasAcc(a.n) && !L.includes(a.n)} />
             <Button size="sm" disabled={!sel[k]} onClick={() => { put(k, [...L, sel[k]]); toast(`${sel[k]} ahora ve ${t}`); setSel({ ...sel, [k]: "" }); }}>Dar</Button></div>
         </div>); })}</div>
     </Card>);

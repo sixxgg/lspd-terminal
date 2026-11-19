@@ -10,7 +10,7 @@ import { DET, lvl } from "@/lib/domain";
 import { rosterDivs } from "@/lib/units";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "5.0.4";
+export const APP_VERSION = "5.0.5";
 const vnum = (v: string) => v.split(".").reduce((a, x, i) => a + (+x || 0) / 100 ** i, 0);
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => vnum(LS.get("lspdt.seenVersion") || "0") < vnum(APP_VERSION);
@@ -63,6 +63,7 @@ const LOG: Rel[] = [
       "La terminal consulta menos al servidor cuando nadie la está usando: más liviana y sin gastar de más.",
     ]],
     ["[six] Panel de six e imágenes", [
+      "LSSD y SAHP: con «Acceso a áreas» (Administración › Accesos) cualquier cuenta creada del departamento ve Supervisores, Capitanía y Jefatura completas, con los datos de su propio departamento.",
       "Administración › Accesos: «Acceso a áreas» para que una cuenta vea Supervisores, Capitanía o Jefatura sin tener el rango (se elige la cuenta y listo).",
       "Panel de six y de Anita › Armas: todo el weapons.lua (armas, accesorios y munición) para buscar y copiar cada ítem, varios juntos o el archivo entero.",
       "Panel de six › Sitio web: la página del LSPD (con la Metropolitan Division) adentro de la terminal, con el roster, las fotos y los logos de las divisiones de la terminal. Lo que edites se guarda solo.",
@@ -116,7 +117,7 @@ const LOG: Rel[] = [
       "El examen de la METRO, los avisos de feedback y la pizarra en vivo consultan menos seguido y traen solo lo justo.",
       "Actualizada por dentro: React 19, Vite 8 y los íconos nuevos de Lucide.",
     ]],
-  ], sub: [["4.1", "Consulta, comunicados y buscadores"], ["4.2", "LSSD, ingreso con placa y manual"], ["4.2.1", "Insignias, escudo y códigos del LSSD"], ["4.2.2", "Divisiones y roster completo del LSSD"], ["4.3", "Mismas secciones en los tres departamentos"], ["5.0.0", "Robos, logros y notificaciones desde arriba"], ["5.0.1", "Perfiles en los tres departamentos e imágenes por departamento"], ["5.0.2", "Notificaciones nuevas y Sitio web en el panel de six"], ["5.0.3", "Números de caso de la PSB con testigos"], ["5.0.4", "Acceso a áreas, Pizarra con contornos y banners, Armas"]] },
+  ], sub: [["4.1", "Consulta, comunicados y buscadores"], ["4.2", "LSSD, ingreso con placa y manual"], ["4.2.1", "Insignias, escudo y códigos del LSSD"], ["4.2.2", "Divisiones y roster completo del LSSD"], ["4.3", "Mismas secciones en los tres departamentos"], ["5.0.0", "Robos, logros y notificaciones desde arriba"], ["5.0.1", "Perfiles en los tres departamentos e imágenes por departamento"], ["5.0.2", "Notificaciones nuevas y Sitio web en el panel de six"], ["5.0.3", "Números de caso de la PSB con testigos"], ["5.0.4", "Acceso a áreas, Pizarra con contornos y banners, Armas"], ["5.0.5", "Supervisores, Capitanía y Jefatura en el LSSD y la SAHP"]] },
   { v: "4.0", from: "3.1", f: "13/11/2026 – 18/11/2026", t: "Inicio nuevo, Radio, Reuniones y Galería", d: "Inicio con portada, buscador Ctrl + K, borradores automáticos, Radio, Reuniones colaborativas y Galería.", items: [], g: [
     ["Inicio", [
       "Inicio nuevo y sin subpestañas: arriba de todo, a todo el ancho, las fotos de la Galería con fundido y un acercamiento lento; los costados y el borde inferior se funden con el fondo y el saludo va escrito sobre la foto.",
