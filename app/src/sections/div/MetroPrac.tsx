@@ -4,23 +4,25 @@
    Edición en equipo: cada uno trabaja sobre un borrador (sus cambios encima de lo guardado) y guarda con «Guardar». Se ve en vivo quién
    está editando y qué; si dos tocan la misma nota, al guardar se pregunta si reemplazar o quedarse con lo del otro. */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bookmark, Check, CircleSlash, FileText, Plus, RefreshCw, RotateCcw, Save, Send, UserCheck, Trash2, Trophy, UserPlus, Users, Wand2, X } from "lucide-react";
-import { Button, Card, Input } from "@/components/ui";
+import { Bookmark, CalendarClock, Check, CircleSlash, PauseCircle, StickyNote, FileText, Plus, RefreshCw, RotateCcw, Save, Send, UserCheck, Trash2, Trophy, UserPlus, Users, Wand2, X } from "lucide-react";
+import { Button, Card, Input, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { Avatar } from "@/components/agents";
 import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { getRoster, uid } from "@/lib/domain";
-import { LS, ktOf, syncWait, useStoreVersion } from "@/lib/store";
+import { LS, ktOf, syncWait, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { api } from "@/lib/api";
 import { rosterCall, uMap, uRosterCo, uSaveMap } from "@/lib/units";
-import { callOfAny, csNums, csTok, isReserva, moveMember, resOf, setCall, setReserva, withTok } from "@/lib/mdcalls";
+import { CS_CFG0, K_CFG, callOfAny, csNums, csTok, isReserva, metroComm, moveMember, resOf, setCall, setReserva, withTok, type CsCfg } from "@/lib/mdcalls";
 import { cn } from "@/lib/cn";
 
 type As = "" | "si" | "jus" | "no";
 type S = { tc?: number; td?: number; to?: number; ac?: number; ad?: number; ao?: number; neg?: number; cir?: number };
-type Row = { id: string; n: string; c1: As; c2: As; cs?: string; s: S };
+/* ex: "" se presentó · "pau" no se presentó con justificación (en pausa hasta próximo aviso) · "aus" no se presentó sin justificar */
+type Ex = "" | "pau" | "aus";
+type Row = { id: string; n: string; c1: As; c2: As; cs?: string; s: S; ex?: Ex; exh?: string; nota?: string };
 type Conv = { id: string; n: string; rows: Row[] };
 type V = string | number | undefined;
 const K = "lspdt.mdx.prac", DRAFT = "lspdt.next.pracDraft", APR = 6, DEL = "\u0000";
@@ -32,7 +34,7 @@ const AS: [Exclude<As, "">, string, typeof Check, string][] = [["si", "Asiste", 
 const EJ: [string, string, (keyof S)[]][] = [["Mando de Táctico", "MT", ["tc", "td", "to"]], ["246", "246", ["ac", "ad", "ao"]], ["Negociación", "NEG", ["neg"]], ["Circuito de Agilidad", "CA", ["cir"]]];
 const SUB = ["Comunicación", "Decisión", "Organización"];
 const SK = EJ.flatMap(e => e[2]);
-const FL: Record<string, string> = { n: "Aspirante", c1: "Clase 1", c2: "Clase 2", cs: "Callsign", ...Object.fromEntries(EJ.flatMap(([l, , ks]) => ks.map((k, i) => ["s." + k, ks.length > 1 ? `${l} · ${SUB[i]}` : l]))) };
+const FL: Record<string, string> = { n: "Aspirante", c1: "Clase 1", c2: "Clase 2", cs: "Callsign", ex: "Presentación al examen", exh: "Revisar el", nota: "Nota del instructor", ...Object.fromEntries(EJ.flatMap(([l, , ks]) => ks.map((k, i) => ["s." + k, ks.length > 1 ? `${l} · ${SUB[i]}` : l]))) };
 const f1 = (n: number) => (Math.round(n * 100) / 100).toLocaleString("es-AR", { maximumFractionDigits: 2 });
 const avg = (L: number[]) => L.reduce((a, b) => a + b, 0) / L.length;
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -41,17 +43,21 @@ function calc(s: S) {
   const g = ej.every(x => x !== null) ? avg(ej as number[]) : null;
   return { ej, g, st: g === null ? "pen" : g >= APR ? "apr" : "rep" } as const;
 }
-const ST: Record<string, [string, string, string]> = { pen: ["Pendiente", "text-slate-400", "⏳"], apr: ["Aprobado", "text-emerald-600 dark:text-emerald-400", "✅"], rep: ["No aprobado", "text-red-600 dark:text-red-400", "❌"] };
+/* estado final: si no se presentó, manda eso (en pausa no es «No aprobado») */
+const stOf = (r: Row) => { const c = calc(r.s); return { ...c, st: r.ex === "pau" ? "pau" : r.ex === "aus" ? "aus" : c.st }; };
+const vence = (r: Row) => r.ex === "pau" && !!r.exh && r.exh <= new Date().toISOString().slice(0, 10);
+const dmy = (iso: string) => (iso ? iso.split("-").reverse().join("/") : "");
+const ST: Record<string, [string, string, string]> = { pau: ["En pausa", "text-amber-600 dark:text-amber-300", "⏸️"], aus: ["No se presentó", "text-red-600 dark:text-red-400", "❌"], pen: ["Pendiente", "text-slate-400", "⏳"], apr: ["Aprobado", "text-emerald-600 dark:text-emerald-400", "✅"], rep: ["No aprobado", "text-red-600 dark:text-red-400", "❌"] };
 const tone = (v: number) => (v < APR ? "border-red-400/50 bg-red-500/10 text-red-600 dark:text-red-300" : v < 8 ? "border-amber-400/50 bg-amber-400/10 text-amber-700 dark:text-amber-300" : "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300");
 const gTone = (g: number) => (g < APR ? "text-red-600 dark:text-red-400" : g < 8 ? "text-amber-600 dark:text-amber-300" : "text-emerald-600 dark:text-emerald-400");
 
 /* ---------- borrador: lo guardado aplanado en claves «conv|fila|campo» y mis cambios encima ---------- */
 function flat(L: Conv[]) {
   const m: Record<string, V> = {};
-  for (const c of L) { m[c.id + "|_"] = c.n; for (const r of c.rows) { const p = `${c.id}|${r.id}|`; m[p + "n"] = r.n; m[p + "c1"] = r.c1 || ""; m[p + "c2"] = r.c2 || ""; m[p + "cs"] = r.cs || ""; for (const k of SK) m[p + "s." + k] = r.s?.[k]; } }
+  for (const c of L) { m[c.id + "|_"] = c.n; for (const r of c.rows) { const p = `${c.id}|${r.id}|`; m[p + "n"] = r.n; m[p + "c1"] = r.c1 || ""; m[p + "c2"] = r.c2 || ""; m[p + "cs"] = r.cs || ""; m[p + "ex"] = r.ex || ""; m[p + "exh"] = r.exh || ""; m[p + "nota"] = r.nota || ""; for (const k of SK) m[p + "s." + k] = r.s?.[k]; } }
   return m;
 }
-const rowOf = (id: string, get: (f: string) => V): Row => ({ id, n: String(get("n") ?? ""), c1: (get("c1") || "") as As, c2: (get("c2") || "") as As, cs: String(get("cs") || ""),
+const rowOf = (id: string, get: (f: string) => V): Row => ({ id, n: String(get("n") ?? ""), c1: (get("c1") || "") as As, c2: (get("c2") || "") as As, cs: String(get("cs") || ""), ex: String(get("ex") || "") as Ex, exh: String(get("exh") || ""), nota: String(get("nota") || ""),
   s: Object.fromEntries(SK.map(k => [k, get("s." + k)]).filter(([, v]) => typeof v === "number")) as S });
 function apply(L: Conv[], mine: Record<string, V>): Conv[] {
   const ks = Object.keys(mine), out: Conv[] = [];
@@ -93,7 +99,7 @@ export function MetroPrac() {
   const putDr = (d: typeof dr) => { setDr(d); try { localStorage.setItem(DRAFT, JSON.stringify(d)); } catch { /* */ } };
   const S0 = useMemo(() => flat(stored), [stored]), view = useMemo(() => apply(stored, dr.mine), [stored, dr.mine]);
   const [cid, setCid] = useState(""), [nuevo, setNuevo] = useState(""), [pick, setPick] = useState(""), [desg, setDesg] = useState(false), [saving, setSaving] = useState(false);
-  const [conf, setConf] = useState<{ k: string; theirs: V; mine: V }[] | null>(null);
+  const [exR, setExR] = useState(""), [conf, setConf] = useState<{ k: string; theirs: V; mine: V }[] | null>(null);
   const c = view.find(x => x.id === cid) || view[view.length - 1], savedC = stored.find(x => x.id === c.id);
   const nCh = Object.keys(dr.mine).filter(k => !same(dr.mine[k], S0[k])).length;
 
@@ -191,12 +197,17 @@ export function MetroPrac() {
   const showV = (k: string, v: V) => { const f = k.split("|")[2]; if (v === DEL || (f === "n" && v === undefined)) return "eliminado"; if (f === "c1" || f === "c2") return AS.find(a => a[0] === v)?.[1] || "—"; return v === undefined || v === "" ? "—" : typeof v === "number" ? f1(v) : String(v); };
 
   /* resultados para Discord: lo guardado; solo la nota final (el desglose, opcional) */
-  const pub = (savedC || { id: c.id, n: c.n, rows: [] }) as Conv, res = c.rows.map(r => ({ r, ...calc(r.s) })), resPub = pub.rows.map(r => ({ r, ...calc(r.s) }));
-  const apr = res.filter(x => x.st === "apr").length, pen = res.filter(x => x.st === "pen").length;
-  const txt = [`## 🎯 Metropolitan Division · Examen práctico · ${pub.n}`, `-# Nota final de 0 a 10 · se aprueba con ${APR}`, "",
-    ...[...resPub].sort((a, b) => (b.g ?? -1) - (a.g ?? -1)).map(x => `${ST[x.st][2]} **${x.r.n}** — ${x.g === null ? "pendiente" : `**${f1(x.g)}**`} · ${ST[x.st][0]}${desg && x.g !== null ? `\n-# ${x.ej.map((e, i) => `${EJ[i][0]} ${e === null ? "—" : f1(e)}`).join(" · ")}` : ""}`), "",
-    desg ? "-# Mando de Táctico y 246 promedian comunicación, decisión y organización; Negociación y Circuito de Agilidad tienen una nota cada uno. La nota final es el promedio de los cuatro."
-      : "-# La nota final es el promedio de los cuatro ejercicios: Mando de Táctico, 246, Negociación y Circuito de Agilidad. Si querés ver el desglose de tu nota, consultalo con un instructor."].join("\n");
+  const pub = (savedC || { id: c.id, n: c.n, rows: [] }) as Conv, res = c.rows.map(r => ({ r, ...stOf(r) })), resPub = pub.rows.map(r => ({ r, ...stOf(r) }));
+  const apr = res.filter(x => x.st === "apr").length, pen = res.filter(x => x.st === "pen").length, pau = res.filter(x => x.st === "pau").length;
+  const [cfg] = useJSON<Partial<CsCfg>>(K_CFG, CS_CFG0);
+  const nota = (x: { g: number | null; ej: (number | null)[] }) => (x.g === null ? "" : ` — **${f1(x.g)}**${desg ? ` (${x.ej.map((e, i) => `${EJ[i][1]} ${e === null ? "—" : f1(e)}`).join(" · ")})` : ""}`);
+  const ord = [...resPub].sort((a, b) => (b.g ?? -1) - (a.g ?? -1) || a.r.n.localeCompare(b.r.n, "es"));
+  const by = (k: string) => ord.filter(x => x.st === k);
+  const txt = metroComm({ cfg, title: `Examen práctico – ${pub.n}`, intro: `Desde la **Metropolitan Division** de **Los Santos Police Department** informamos los resultados del **examen práctico** de la **${pub.n}**.`,
+    secs: [["✅ APROBADOS", by("apr").map(x => `• **${x.r.n}**${nota(x)}`)], ["❌ NO APROBADOS", [...by("rep").map(x => `• **${x.r.n}**${nota(x)}`), ...by("aus").map(x => `• **${x.r.n}** — no se presentó`)]],
+      ["⏸️ EN PAUSA", by("pau").map(x => `• **${x.r.n}** — no se presentó (justificado). Queda pendiente ${x.r.exh ? `hasta el ${dmy(x.r.exh)}` : "hasta próximo aviso"}.`)],
+      ["⏳ PENDIENTES DE EVALUAR", by("pen").map(x => `• **${x.r.n}**`)],
+      ["📌 INDICACIONES", [`• La nota final es de **0 a 10** y se aprueba con **${APR}**: es el promedio de Mando de Táctico, 246, Negociación y Circuito de Agilidad.`, desg ? "• Mando de Táctico y 246 promedian comunicación, decisión y organización." : "• Si querés ver el desglose de tu nota, consultalo con un instructor.", "• Cualquier duda debe comunicarse a la **coordinación por ticket**."]]] });
   const th = "px-1.5 py-2 text-center font-semibold";
   const editors = others.filter(o => (o.v?.k || []).length);
 
@@ -209,7 +220,7 @@ export function MetroPrac() {
         <div className="ml-auto flex flex-wrap items-center gap-3 text-xs text-slate-500">
           {others.length > 0 && <span className="inline-flex items-center gap-1.5"><Users className="size-3.5" /><span className="flex -space-x-1.5">{others.map(o => <span key={o.n} title={`${o.n}${(o.v?.k || []).length ? ` · editando ${(o.v?.k || []).length} campo${(o.v?.k || []).length === 1 ? "" : "s"}` : " · mirando"}`} className={cn("rounded-full ring-2", (o.v?.k || []).length ? "ring-amber-400" : "ring-white dark:ring-slate-900")}><Avatar n={o.n} size={22} /></span>)}</span>
             {editors.length ? <span className="text-amber-600 dark:text-amber-300">{editors.map(o => o.n.split(" ")[0]).join(" y ")} {editors.length > 1 ? "están" : "está"} editando</span> : <span>en línea</span>}</span>}
-          <span className="inline-flex items-center gap-1"><Trophy className="size-3.5 text-emerald-500" /><b className="text-slate-800 dark:text-white">{apr}</b>/{c.rows.length} aprobados</span>{pen > 0 && <span>{pen} pendientes</span>}<span>0 a 10 · aprueba con {APR}</span>
+          <span className="inline-flex items-center gap-1"><Trophy className="size-3.5 text-emerald-500" /><b className="text-slate-800 dark:text-white">{apr}</b>/{c.rows.length} aprobados</span>{pau > 0 && <span className="text-amber-600 dark:text-amber-300">{pau} en pausa</span>}{pen > 0 && <span>{pen} pendientes</span>}<span>0 a 10 · aprueba con {APR}</span>
         </div>
       </div>
 
@@ -247,7 +258,11 @@ export function MetroPrac() {
               {(["c1", "c2"] as const).map(k => <td key={k} className="px-1 py-1.5 text-center"><Asis v={r[k]} set={x => edit(key(r.id, k), x)} busy={busyOf(key(r.id, k))} /></td>)}
               {EJ.flatMap(([, , ks]) => ks.map((k, i) => <td key={k} className={cn("px-1 py-1.5 text-center", i === 0 && "border-l border-slate-100 dark:border-slate-800")}><Nota v={r.s[k]} set={x => edit(key(r.id, "s." + k), x)} busy={busyOf(key(r.id, "s." + k))} /></td>))}
               <td className="border-l border-slate-100 bg-brand-500/[.04] px-3 text-center font-display text-base font-bold tabular-nums dark:border-slate-800">{g === null ? <span className="text-slate-300">—</span> : <span className={gTone(g)}>{f1(g)}</span>}</td>
-              <td className="px-3"><span className={cn("inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold", ST[st][1])}>{st === "apr" ? <Check className="size-3.5" /> : st === "rep" ? <CircleSlash className="size-3.5" /> : null}{ST[st][0]}</span>
+              <td className="whitespace-nowrap px-3"><button onClick={() => setExR(r.id)} title={[r.ex === "pau" ? `En pausa ${r.exh ? "hasta el " + dmy(r.exh) : "hasta próximo aviso"}` : r.ex === "aus" ? "No se presentó (sin justificar)" : "Presentación al examen y nota", r.nota].filter(Boolean).join("\n")}
+                className={cn("mr-1.5 inline-grid size-6 place-items-center rounded-md border align-middle transition", r.ex === "pau" ? "border-amber-400/60 bg-amber-400/15 text-amber-600 dark:text-amber-300" : r.ex === "aus" ? "border-red-400/60 bg-red-500/10 text-red-600" : r.nota ? "border-brand-400/50 text-brand-600 dark:text-brand-300" : "border-slate-200 text-slate-400 hover:text-slate-700 dark:border-slate-700 dark:hover:text-white")}>
+                {r.ex === "pau" ? <PauseCircle className="size-3.5" /> : r.nota ? <StickyNote className="size-3.5" /> : <CalendarClock className="size-3.5" />}</button>
+                <span className={cn("inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold", ST[st][1])}>{st === "apr" ? <Check className="size-3.5" /> : st === "rep" || st === "aus" ? <CircleSlash className="size-3.5" /> : null}{ST[st][0]}</span>
+                {vence(r) && <span title="Llegó la fecha para revisar" className="ml-1 rounded bg-amber-400/20 px-1 text-[10px] font-bold text-amber-700 dark:text-amber-300">revisar</span>}
                 {st === "apr" && !opOf(r.n) && <span className="ml-1.5 inline-flex gap-1 align-middle"><button onClick={() => void move(r, "op")} title="Pasar a Operador METRO (deja de ser aspirante)" className="grid size-6 place-items-center rounded-md border border-sky-500/40 text-sky-600 hover:bg-sky-500/15 dark:text-sky-300"><UserCheck className="size-3.5" /></button>
                   <button onClick={() => void move(r, "res")} title={isReserva(r.n) ? "Quitar de la reserva" : "Dejar en reserva"} className={cn("grid size-6 place-items-center rounded-md border border-teal-500/40 hover:bg-teal-500/15", isReserva(r.n) ? "bg-teal-500/20 text-teal-700 dark:text-teal-200" : "text-teal-600 dark:text-teal-300")}><Bookmark className="size-3.5" /></button></span>}</td>
             </tr>); }) : <tr><td colSpan={15} className="px-3 py-8 text-center text-slate-400">Sin aspirantes en esta convocatoria.</td></tr>}</tbody>
@@ -286,6 +301,21 @@ export function MetroPrac() {
         </div>
         <DiscordOutput title="Resultados" text={txt} sticky={false} />
       </div>
+
+      {/* presentación al examen: en pausa (justificado), ausente o se presentó; fecha para revisar y nota del instructor */}
+      {(() => { const r = c.rows.find(x => x.id === exR); if (!r) return null; const set = (f: string, v: V) => edit(key(r.id, f), v);
+        const OP: [Ex, string, string, typeof Check, string][] = [["", "Se presentó", "Cuenta la nota del examen.", Check, "emerald"], ["pau", "No se presentó · justificado", "Queda en pausa hasta próximo aviso: no sale como No aprobado.", PauseCircle, "amber"], ["aus", "No se presentó · sin justificar", "Sale como No aprobado.", X, "red"]];
+        return <Modal open onClose={() => setExR("")} size="md" icon={<CalendarClock />} title={r.n} desc="Presentación al examen práctico" footer={<Button onClick={() => setExR("")}>Listo</Button>}>
+          <div className="space-y-4">
+            <div className="grid gap-2">{OP.map(([k, l, d, I, col]) => { const on = (r.ex || "") === k; return (
+              <button key={k} onClick={() => set("ex", k)} className={cn("flex items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition", on ? (col === "emerald" ? "border-emerald-500 bg-emerald-500/10" : col === "amber" ? "border-amber-400 bg-amber-400/10" : "border-red-400 bg-red-500/10") : "border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50")}>
+                <I className={cn("mt-0.5 size-4 shrink-0", col === "emerald" ? "text-emerald-500" : col === "amber" ? "text-amber-500" : "text-red-500")} /><span><b className="block text-sm">{l}</b><span className="text-xs text-slate-500">{d}</span></span></button>); })}</div>
+            {r.ex === "pau" && <label className="block space-y-1 text-xs font-semibold text-slate-500">Revisar el <span className="font-normal text-slate-400">(opcional; sin fecha queda «hasta próximo aviso»)</span>
+              <Input type="date" value={r.exh || ""} onChange={e => set("exh", e.target.value)} className="max-w-[12rem]" /></label>}
+            <label className="block space-y-1 text-xs font-semibold text-slate-500">Nota del instructor <span className="font-normal text-slate-400">(interna, no sale en Discord)</span>
+              <Textarea value={r.nota || ""} onChange={e => set("nota", e.target.value)} rows={3} placeholder="Ej.: avisó por ticket que no podía; reprogramar para la próxima jornada." className="text-[13px] font-normal" /></label>
+            <p className="text-[11px] text-slate-400">Queda como cambio sin guardar: tocá «Guardar» arriba para que lo vean los demás.</p>
+          </div></Modal>; })()}
 
       {/* choque: alguien guardó lo mismo antes */}
       <Modal open={!!conf} onClose={() => setConf(null)} size="md" title="Alguien guardó lo mismo antes que vos" desc="Elegí qué queda. El resto de tus cambios se guarda igual."

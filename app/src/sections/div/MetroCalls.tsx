@@ -14,7 +14,7 @@ import { LS, syncWait, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { getRoster } from "@/lib/domain";
 import { UNITS, insRole, rosterCall, uMap, uTop } from "@/lib/units";
-import { CS_CFG0, K_CFG, K_LOG, K_RES, MOVE_L, csNums, csTok, isReserva, logOf, moveMember, resOf, setCall, setReserva, withTok, type CsCfg, type CsLog, type CsTipo, type Move } from "@/lib/mdcalls";
+import { CS_CFG0, K_CFG, K_LOG, K_RES, MOVE_L, emOf, metroComm, csNums, csTok, isReserva, logOf, moveMember, resOf, setCall, setReserva, withTok, type CsCfg, type CsLog, type CsTipo, type Move } from "@/lib/mdcalls";
 import { cn } from "@/lib/cn";
 
 type Ser = "D" | "C";
@@ -93,21 +93,21 @@ export function MetroCalls({ can }: { can: boolean }) {
   /* ---------- comunicado ---------- */
   const pend = log.filter(l => !l.pub);
   const [pick, setPick] = useState<string[] | null>(null), chosen = pick ?? pend.map(l => l.id);
-  const [intro, setIntro] = useState("Se informan los movimientos de callsigns de la Metropolitan Division. A partir de este momento, cada integrante debe usar en radio y en servicio el indicativo que tiene asignado.");
-  const [cierre, setCierre] = useState("Ante cualquier duda, consultar con Coordinación o con los Instructores."), [names, setNames] = useState(true);
+  const [intro, setIntro] = useState("Desde la **Metropolitan Division** de **Los Santos Police Department** informamos los últimos movimientos de personal y de callsigns de la división.");
+  const [indic, setIndic] = useState("A partir de este momento, cada integrante debe usar en radio y en servicio el **indicativo que tiene asignado**.\nCualquier duda o error debe comunicarse a la **coordinación por ticket**.");
+  const [cierre, setCierre] = useState(""), [names, setNames] = useState(false), [ment, setMent] = useState(true);
   const net = useMemo(() => { const by = new Map<string, CsLog[]>(); for (const l of [...log].filter(l => chosen.includes(l.id)).sort((a, b) => a.t - b.t)) by.set(l.n, [...(by.get(l.n) || []), l]);
     return [...by].map(([n, L]) => ({ n, de: L[0].de, a: L[L.length - 1].a })); }, [log, chosen]);
-  const EM = cfg.em.trim() || "🔷";
+  const EM = emOf(cfg);
   const firmantes = Object.entries(M).filter(([n, r]) => Array.isArray(r) && !!insRole("md", n)).map(([n]) => n)
     .sort((a, b) => R.findIndex(x => x[0] === uTop("md", M[a])[0]) - R.findIndex(x => x[0] === uTop("md", M[b])[0]));
-  const blockOf = (s: Ser) => { const L = net.map(x => ({ n: x.n, d: csNums(x.de, s)[0] || 0, a: csNums(x.a, s)[0] || 0 })).filter(x => x.d !== x.a).sort((x, y) => (x.a || x.d) - (y.a || y.d));
-    if (!L.length) return []; return [`### ${s === "D" ? "🛡️ SWAT · Pelotón D" : `${EM} METRO`}`, ...L.map(x => !x.d ? `> ${EM} **${x.n}** ➜ \`${csTok(x.a, s)}\` · ${slotRole(s, x.a)[0]}` : !x.a ? `> ${EM} **${x.n}** · ~~\`${csTok(x.d, s)}\`~~ liberado`
-      : `> ${EM} **${x.n}** · \`${csTok(x.d, s)}\` ➜ \`${csTok(x.a, s)}\` · ${slotRole(s, x.a)[0]}`), ""]; };
-  const per = [...log].filter(l => chosen.includes(l.id) && l.mot).sort((a, b) => a.t - b.t).map(l => `> ${EM} **${l.n}** · ${l.mot}`);
-  const body = [...(per.length ? ["### 👥 Movimientos de personal", ...per, ""] : []), ...blockOf("D"), ...blockOf("C")];
-  const txt = [`## ${EM} Metropolitan Division · Callsigns ${EM}`, cfg.rol.trim() ? `<@&${cfg.rol.trim()}>` : "", "", intro.trim(), "", ...body,
-    cierre.trim(), "", `${EM} **Coordinación e Instructores · Metropolitan Division**`, names && firmantes.length ? `-# ${firmantes.join(" · ")}` : "", "*Departamento de Policía de Los Santos*"]
-    .join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  const linesOf = (s: Ser) => net.map(x => ({ n: x.n, d: csNums(x.de, s)[0] || 0, a: csNums(x.a, s)[0] || 0 })).filter(x => x.d !== x.a).sort((x, y) => (x.a || x.d) - (y.a || y.d))
+    .map(x => !x.d ? `• **${x.n}** ➜ \`${csTok(x.a, s)}\` (${slotRole(s, x.a)[0]})` : !x.a ? `• **${x.n}** · ~~\`${csTok(x.d, s)}\`~~ liberado` : `• **${x.n}** · \`${csTok(x.d, s)}\` ➜ \`${csTok(x.a, s)}\` (${slotRole(s, x.a)[0]})`);
+  const per = [...log].filter(l => chosen.includes(l.id) && l.mot).sort((a, b) => a.t - b.t).map(l => `• **${l.n}** — ${l.mot}`);
+  const secs: [string, string[]][] = [["👥 MOVIMIENTOS DE PERSONAL", per], ["🛡️ SWAT · PELOTÓN D", linesOf("D")], [`${EM} METRO`, linesOf("C")]];
+  const body = secs.flatMap(x => x[1]);
+  const txt = metroComm({ cfg, title: "Actualización de callsigns", intro, secs: [...secs, ["📌 INDICACIONES", indic.split("\n").map(x => x.trim()).filter(Boolean).map(x => `• ${x.replace(/^[•\-]\s*/, "")}`)]],
+    cierre, names: names ? firmantes : undefined, mention: ment });
   const markPub = () => { const ids = new Set(chosen); LS.setJSON(K_LOG, logOf().map(l => (ids.has(l.id) ? { ...l, pub: true } : l))); setPick(null); toast("Movimientos marcados como comunicados"); };
   const hist = log.filter(l => !hq.trim() || `${l.n} ${l.de} ${l.a} ${l.by}`.toLowerCase().includes(hq.trim().toLowerCase()));
 
@@ -193,12 +193,12 @@ export function MetroCalls({ can }: { can: boolean }) {
         {/* comunicado */}
         {can ? <Card className="space-y-3 p-4">
           <div className="flex flex-wrap items-center gap-2"><Megaphone className="size-4 text-brand-500" /><h3 className="text-[15px] font-semibold">Comunicado</h3>
-            <span className="text-xs text-slate-500">Firmado por Coordinación e Instructores</span>
+            <span className="text-xs text-slate-500">Coordinación & Instrucción de la METRO</span>
             <button onClick={() => setCfgOpen(!cfgOpen)} className="ml-auto inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-white"><Settings2 className="size-3.5" />Emote y mención</button></div>
           {cfgOpen && <div className="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-2 dark:border-slate-700">
-            <label className="space-y-1 text-xs text-slate-500">Emote de la METRO (se guarda para todos)<Input key={cfg.em} defaultValue={cfg.em} placeholder="<:METRO:123456789012345678>" onBlur={e => e.target.value.trim() !== cfg.em && setCfg({ ...cfg, em: e.target.value.trim() })} className="font-mono text-xs" /></label>
-            <label className="space-y-1 text-xs text-slate-500">ID del rol a mencionar (opcional)<Input key={cfg.rol} defaultValue={cfg.rol} placeholder="123456789012345678" onBlur={e => e.target.value.trim() !== cfg.rol && setCfg({ ...cfg, rol: e.target.value.replace(/\D/g, "") })} className="font-mono text-xs" /></label>
-            <p className="text-[11px] text-slate-400 sm:col-span-2">En Discord escribí <span className="font-mono">\:METRO:</span> y pegá acá lo que aparece. Sin emote se usa 🔷.</p></div>}
+            <label className="space-y-1 text-xs text-slate-500">Emote de la METRO (se guarda para todos)<Input key={cfg.em} defaultValue={cfg.em} placeholder="<:Metro:1316164549975736452>" onBlur={e => e.target.value.trim() !== cfg.em && setCfg({ ...cfg, em: e.target.value.trim() })} className="font-mono text-xs" /></label>
+            <label className="space-y-1 text-xs text-slate-500">Roles a mencionar (IDs separados por espacio)<Input key={cfg.rol} defaultValue={cfg.rol} placeholder="1493377759714742308 1493377759714742309" onBlur={e => { const v = (e.target.value.match(/\d{15,20}/g) || []).join(" "); if (v !== cfg.rol) setCfg({ ...cfg, rol: v }); }} className="font-mono text-xs" /></label>
+            <p className="text-[11px] text-slate-400 sm:col-span-2">Vacío vuelve al emblema y los roles de la METRO de siempre. Sirven también para los resultados del examen práctico.</p></div>}
           <div className="flex items-center text-xs font-semibold text-slate-500">Movimientos a incluir <span className="ml-1 font-mono font-normal text-slate-400">{chosen.length}</span>
             <button onClick={() => setPick(pend.map(l => l.id))} className="ml-auto font-normal hover:text-slate-800 dark:hover:text-white">Sin comunicar ({pend.length})</button><span className="mx-1 text-slate-300">·</span><button onClick={() => setPick([])} className="font-normal hover:text-slate-800 dark:hover:text-white">Ninguno</button></div>
           <ul className="max-h-40 space-y-0.5 overflow-y-auto rounded-xl border border-slate-200 p-1.5 text-[12.5px] dark:border-slate-700">{log.slice(0, 80).map(l => { const on = chosen.includes(l.id); return (
@@ -206,9 +206,11 @@ export function MetroCalls({ can }: { can: boolean }) {
               <input type="checkbox" checked={on} onChange={() => setPick(on ? chosen.filter(x => x !== l.id) : [...chosen, l.id])} className="accent-[rgb(var(--b-500))]" />
               <span className="min-w-0 flex-1 truncate">{l.n}</span><span className="shrink-0 font-mono text-[11px] text-slate-500">{l.mot || l.a || "libre"}</span>{l.pub && <Check className="size-3 text-emerald-500" />}</label></li>); })}
             {!log.length && <li className="px-2 py-4 text-center text-slate-400">Sin movimientos</li>}</ul>
-          <Textarea value={intro} onChange={e => setIntro(e.target.value)} rows={3} className="text-[13px]" />
-          <Input value={cierre} onChange={e => setCierre(e.target.value)} className="text-[13px]" />
-          <div className="flex flex-wrap items-center gap-2"><label className="flex items-center gap-2 text-xs text-slate-500"><input type="checkbox" checked={names} onChange={e => setNames(e.target.checked)} className="accent-[rgb(var(--b-500))]" />Nombres de quienes firman ({firmantes.length})</label>
+          <label className="block space-y-1 text-xs font-semibold text-slate-500">Introducción<Textarea value={intro} onChange={e => setIntro(e.target.value)} rows={2} className="text-[13px] font-normal" /></label>
+          <label className="block space-y-1 text-xs font-semibold text-slate-500">📌 Indicaciones <span className="font-normal text-slate-400">(una por línea)</span><Textarea value={indic} onChange={e => setIndic(e.target.value)} rows={3} className="text-[13px] font-normal" /></label>
+          <label className="block space-y-1 text-xs font-semibold text-slate-500">Cierre <span className="font-normal text-slate-400">(opcional)</span><Input value={cierre} onChange={e => setCierre(e.target.value)} className="text-[13px] font-normal" /></label>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2"><label className="flex items-center gap-2 text-xs text-slate-500"><input type="checkbox" checked={ment} onChange={e => setMent(e.target.checked)} className="accent-[rgb(var(--b-500))]" />Mencionar roles (oculto)</label>
+            <label className="flex items-center gap-2 text-xs text-slate-500"><input type="checkbox" checked={names} onChange={e => setNames(e.target.checked)} className="accent-[rgb(var(--b-500))]" />Nombres de quienes firman ({firmantes.length})</label>
             <Button size="sm" variant="outline" icon={<Check />} onClick={markPub} disabled={!chosen.length} className="ml-auto">Marcar como comunicado</Button></div>
         </Card> : <div />}
       </div>

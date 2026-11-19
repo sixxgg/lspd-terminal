@@ -9,7 +9,24 @@ export const K_RES = "lspdt.mdx.csRes", K_LOG = "lspdt.mdx.csLog", K_CFG = "lspd
 export type CsTipo = "miembro" | "reserva";
 export type CsLog = { id: string; t: number; by: string; n: string; de: string; a: string; tipo: CsTipo; pub?: boolean; mot?: string };
 export type CsCfg = { em: string; rol: string };
-export const CS_CFG0: CsCfg = { em: "", rol: "" };
+/* comunicados de la METRO: emblema, roles a mencionar y formato (como los comunicados reales de la división) */
+const METRO_EM = "<:Metro:1316164549975736452>", VERIF_EM = "<a:verifiedwhite:1349401777522344018>";
+const METRO_ROLES = "1493377759714742308 1493377759714742309";
+export const CS_CFG0: CsCfg = { em: METRO_EM, rol: METRO_ROLES };
+export const emOf = (c: Partial<CsCfg>) => (c.em || "").trim() || METRO_EM;
+const mentionOf = (rol: string) => { const ids = (rol.trim() ? rol : METRO_ROLES).match(/\d{15,20}/g) || []; return ids.length ? `|| ${ids.map(i => `<@&${i}>`).join("")} ||` : ""; };
+/* # EM TÍTULO EM · intro · ## secciones con citas · cierre · firma · mención oculta */
+export function metroComm(o: { cfg: Partial<CsCfg>; title: string; intro: string; secs: [string, string[]][]; cierre?: string; asist?: boolean; names?: string[]; mention?: boolean }): string {
+  const em = emOf(o.cfg), L: string[] = [`# ${em} ${o.title.toUpperCase()} ${em}`, ""];
+  if (o.intro.trim()) L.push(o.intro.trim(), "");
+  for (const [t, xs] of o.secs) if (xs.length) L.push(`## ${t}`, ...xs.map(x => `> ${x}`), "");
+  if (o.cierre?.trim()) L.push(o.cierre.trim(), "");
+  if (o.asist) L.push(`Confirmar asistencia con ${VERIF_EM}`, "");
+  L.push(`**${em} Metropolitan Division | Los Santos Police Department**`, "*Coordinación & Instrucción de la Metropolitan Division*");
+  if (o.names?.length) L.push(`-# ${o.names.join(" · ")}`);
+  if (o.mention !== false) { const m = mentionOf(o.cfg.rol || ""); if (m) L.push("", m); }
+  return L.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
 
 export const resOf = () => LS.json<Record<string, string>>(K_RES, {});
 export const logOf = () => { const L = LS.json<CsLog[]>(K_LOG, []); return Array.isArray(L) ? L : []; };
