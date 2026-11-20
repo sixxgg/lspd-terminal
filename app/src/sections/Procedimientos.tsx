@@ -2,7 +2,7 @@
    Arriba, una guía rápida por cantidad para saber qué artículo va; abajo, cada artículo con cuándo se aplica y qué hacer, en pasos cortos.
    Tocar el artículo lo copia («29.12 Tenencia…»). Lo marcado con **…** va en negrita. */
 import { Fragment, useState } from "react";
-import { AlertTriangle, Banknote, Check, Copy, Crosshair, Pill, Zap } from "lucide-react";
+import { AlertTriangle, Banknote, Car, Check, Copy, Crosshair, MapPin, Pill, Users, Zap } from "lucide-react";
 import { DivNav } from "@/sections/div/DivTools";
 import { LS } from "@/lib/store";
 import { Card, CardHeader, SearchInput } from "@/components/ui";
@@ -76,32 +76,62 @@ function Drogas() {
     </div>);
 }
 
-/* ---------- mando del táctico en un 487: cómo se reparten las funciones desde que se llega (lo que se hace en el servidor) ---------- */
-const TAC: [string, string, string[]][] = [
-  ["Mando del táctico", "La primera unidad que llega designa quién manda el táctico.", ["Prioridad: **SWAT** por sobre **METRO**, y METRO por sobre un **Oficial III** del LSPD.", "Si hay SWAT en el táctico, manda SWAT; si no, METRO."]],
-  ["Cod.8", "Se pide para gestionar a los heridos y el estado de salud de los rehenes.", ["Atender a los **heridos** del 487.", "Revisar y controlar el **estado de salud de los rehenes**."]],
-  ["Negociador", "El mando elige a un integrante del táctico para negociar.", ["Lo que se negocie define cómo se prepara la huida."]],
-  ["Huida: interceptores y helicópteros", "Si el vehículo de huida es rápido, se negocia por **interceptores**; también se tienen en cuenta los **helicópteros**.", ["**En cabeza:** un interceptor con licencia de **HSIU**.", "**En cola:** el segundo vehículo más rápido, que no sea de la HSIU."]],
-  ["Cod.100", "Unidades en posición para interceptar en la ruta de huida.", ["Se reparten sobre los recorridos posibles antes de que salgan."]],
-  ["Perímetro", "Unidades dedicadas a cerrar y controlar la zona.", ["Separadas de las que van a la persecución."]],
-  ["SAHP", "Se coordina con la San Andreas Highway Patrol.", ["Es el departamento que se encarga del **tráfico**."]],
+/* ---------- mando del táctico en un 487 (lo que se hace en el servidor, contado por six) ----------
+   Ordenado por fases: jurisdicción y mando → roles en el 487 → huida (254-V) → cod.77. Lo que cambia según el 487 sea en el sur o en el norte
+   se elige arriba (Sur: LSPD · Norte: LSSD). */
+type Jur = "sur" | "norte";
+type Row = [string, string | ((j: Jur) => string)];
+type Fase = { n: string; t: string; d: string; icon: React.ReactNode; rows: Row[]; tone?: "warn" };
+const FASES: Fase[] = [
+  { n: "1", t: "Jurisdicción y mando", d: "Lo primero: quién manda según dónde sea el 487.", icon: <MapPin />, rows: [
+    ["Mando", j => j === "sur" ? "Lo lleva el **sur (LSPD)**. Prioridad: **SWAT** por sobre **METRO**, y METRO por sobre un **Oficial III**." : "Prioridad del **Sheriff (LSSD)**: manda su METRO, el **SEB**."],
+    ["Si faltan unidades", j => j === "sur" ? "Se pide **6-ADAM** por radio interna al **LSSD** y a la **SAHP** para que acudan al 487." : "El LSSD nos puede pedir **6-ADAM** y acudimos al 487 como apoyo."],
+  ] },
+  { n: "2", t: "Roles en el 487", d: "Se reparten durante el 487, antes de la huida.", icon: <Users />, rows: [
+    ["Cod.8", "Para gestionar a los **heridos** y el **estado de salud de los rehenes**."],
+    ["Negociadores", j => `Un **negociador** y un **segundo negociador**, por si el primero no rinde. Por lo general, de la unidad de negociación de la ${j === "sur" ? "**METRO**" : "**SEB**"} (según la jurisdicción).`],
+    ["SAHP", "Se elige **después del negociador**: coordina el **tráfico**."],
+    ["Perímetro", "**Todas las unidades** hacen perímetro, **salvo el MANDO del 487 y los dos negociadores**."],
+    ["Aire", "Según lo que se negocie, el helicóptero **se retira unos minutos** (no hay un tiempo fijo) durante el 487 o durante el 254-V."],
+  ] },
+  { n: "3", t: "Huida · 254-V", d: "Cómo sale cada unidad. Un 254-V no se cancela.", icon: <Car />, rows: [
+    ["Interceptores", "Si el vehículo de huida es rápido, se negocia por interceptores: **en cabeza**, uno con licencia de **HSIU**; **en cola**, el segundo más rápido que **no sea de la HSIU**."],
+    ["Cod.100", "Las unidades del **perímetro se suman al 254-V como cod.100**: van por **calles paralelas o aledañas**, **nunca a la par** del 254-V."],
+  ] },
+  { n: "4", t: "Cod.77 · bloqueo", d: "Cuando se informa por radio, o antes de llegar al vehículo donde se va a hacer.", icon: <AlertTriangle />, tone: "warn", rows: [
+    ["Prioridad del MANDO", "Ordenar que **el aire despegue** y se sume al **254-V**."],
+    ["Clave Robert", "Art. 22: **prohibido activarla para pinchar ruedas en zonas urbanas o pobladas**; solo en **vías secundarias, autopistas o zonas despobladas**. Disparar para abatir a quien huye de espaldas sin peligro inminente es motivo de causa judicial."],
+  ] },
 ];
 function Tactico() {
+  const [j, setJ] = useState<Jur>(() => (LS.get("lspdt.next.procjur") === "norte" ? "norte" : "sur"));
+  const pick = (v: Jur) => { setJ(v); LS.set("lspdt.next.procjur", v); };
   return (
     <div className="space-y-4">
-      <Card className="p-0"><CardHeader icon={<Crosshair />} title="Mando del táctico en un 487" desc="Las funciones se reparten durante el 487, antes de la huida: quién manda, quién negocia y cómo sale cada unidad." />
-        <ol className="grid gap-px overflow-hidden border-t border-slate-100 bg-slate-100 sm:grid-cols-2 xl:grid-cols-3 dark:border-slate-800 dark:bg-slate-800">{TAC.map(([t, d, L], i) => (
-          <li key={t} className={cn("bg-white p-4 dark:bg-slate-900", i === TAC.length - 1 && "sm:col-span-2 xl:col-span-3")}>
-            <p className="flex items-center gap-2 text-[14px] font-semibold"><span className="grid size-6 shrink-0 place-items-center rounded-lg bg-brand-500/15 font-mono text-xs font-bold text-brand-700 dark:text-brand-300">{i + 1}</span>{t}</p>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">{md(d)}</p>
-            <ul className="mt-1.5 space-y-1">{L.map(x => <li key={x} className="flex gap-2 text-[13px] leading-relaxed text-slate-600 dark:text-slate-300"><span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-brand-500" /><span className="min-w-0 flex-1">{md(x)}</span></li>)}</ul>
-          </li>))}</ol>
+      <Card className="flex flex-wrap items-center gap-3 p-4">
+        <span className="grid size-10 place-items-center rounded-xl bg-brand-500/15 text-brand-600 dark:text-brand-300"><Crosshair className="size-5" /></span>
+        <div className="min-w-0 flex-1"><p className="font-semibold">Mando del táctico en un 487</p><p className="text-xs text-slate-500">Quién manda, quién negocia y cómo sale cada unidad, en orden.</p></div>
+        <div className="inline-flex rounded-xl border border-slate-200 p-1 dark:border-slate-700" role="radiogroup" aria-label="Jurisdicción">
+          {([["sur", "Sur · LSPD"], ["norte", "Norte · LSSD"]] as const).map(([v, l]) => (
+            <button key={v} role="radio" aria-checked={j === v} onClick={() => pick(v)} className={cn("rounded-lg px-3 py-1.5 text-[13px] font-semibold transition", j === v ? "bg-brand-600 text-white dark:bg-brand-500" : "text-slate-500 hover:text-slate-900 dark:hover:text-white")}>{l}</button>))}
+        </div>
       </Card>
-      <Card className="flex items-start gap-3 border-amber-500/30 bg-amber-500/[.06] p-4">
-        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-500" />
-        <div className="text-[13px] leading-relaxed text-slate-600 dark:text-slate-300"><p className="font-semibold text-slate-900 dark:text-white">Clave Robert (fuerza letal)</p>
-          <p>{md("Art. 22: **prohibido activarla para pinchar las ruedas de un fugitivo en zonas urbanas o pobladas**; solo en **vías secundarias, autopistas o zonas despobladas**. Disparar con intención de abatir a quien huye de espaldas sin peligro inminente para terceros o compañeros es motivo de causa judicial.")}</p></div>
-      </Card>
+      <ol className="relative space-y-3 before:absolute before:bottom-6 before:left-[21px] before:top-6 before:w-px before:bg-slate-200 dark:before:bg-slate-800">
+        {FASES.map(f => (
+          <li key={f.n} className="relative flex gap-3">
+            <span className={cn("relative z-10 grid size-11 shrink-0 place-items-center rounded-2xl ring-4 ring-slate-50 dark:ring-slate-950 [&>svg]:size-5",
+              f.tone === "warn" ? "bg-amber-500 text-black" : "bg-brand-600 text-white dark:bg-brand-500")}>{f.icon}</span>
+            <Card className={cn("min-w-0 flex-1 overflow-hidden p-0", f.tone === "warn" && "border-amber-500/40")}>
+              <div className={cn("flex flex-wrap items-baseline gap-x-2 border-b px-4 py-2.5", f.tone === "warn" ? "border-amber-500/30 bg-amber-500/[.07]" : "border-slate-100 dark:border-slate-800")}>
+                <span className="font-mono text-xs font-bold text-slate-400">FASE {f.n}</span><p className="font-semibold">{f.t}</p><p className="text-xs text-slate-500">{f.d}</p></div>
+              <dl className="divide-y divide-slate-100 dark:divide-slate-800">{f.rows.map(([k, v]) => (
+                <div key={k} className="grid gap-1 px-4 py-2.5 sm:grid-cols-[11rem_1fr] sm:gap-4">
+                  <dt className="text-[13px] font-semibold text-slate-900 dark:text-white">{k}</dt>
+                  <dd className="text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">{md(typeof v === "function" ? v(j) : v)}</dd>
+                </div>))}</dl>
+            </Card>
+          </li>))}
+      </ol>
     </div>);
 }
 
