@@ -1,8 +1,7 @@
 import { DivAdmin, DivNav, Uniformidad, divTabs, type DivTab, type URole } from "./DivTools";
 import { Comunicados } from "./Comunicados";
 import { lazy, Suspense, useMemo, useState, type ReactNode } from "react";
-import { CalendarDays, Scale, Megaphone, Shirt, Users, Check, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History, Dog, ClipboardCheck, MessageCircle, Trophy, Loader2, Crosshair, IdCard } from "lucide-react";
-import { ExamStatus } from "@/components/mdexam";
+import { CalendarDays, PenLine, Settings2, Scale, Megaphone, Shirt, Users, Check, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History, Dog, ClipboardCheck, MessageCircle, Trophy, Loader2, Crosshair, IdCard } from "lucide-react";
 import { useExam } from "@/lib/mdexam";
 import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input, Segmented, Select } from "@/components/ui";
 import { AgentCombo, AgentPicker, Avatar } from "@/components/agents";
@@ -92,12 +91,13 @@ const PSB_TABS: [string, string, typeof Bell][] = [["not", "Notificación", Bell
 
 /* pestañas de METRO que pasaron a Exámenes y Entrevistas (lo último abierto sigue funcionando) */
 const OLD_MD: Record<string, string> = { mdo: "mdx", mdg: "mdx", mdp: "mdx", mde: "mdx", mdi: "mdv" };
+const SUB_ICO: Record<string, ReactNode> = { mdo: <ClipboardCheck />, mde: <PenLine />, mdp: <Crosshair />, mdg: <Settings2 />, mdi: <GraduationCap />, mdlp: <Users /> };
 /* subpestañas dentro de una pestaña de la división, de la A a la Z, recordando la última abierta */
 function SubTabs({ id, opts, render }: { id: string; opts: [string, string][]; render: (v: string) => ReactNode }) {
   const L = opts.slice().sort((a, b) => a[1].localeCompare(b[1], "es", { numeric: true })), K = `lspdt.next.sub.${id}`;
   const [v, setV] = useState(() => LS.get(K) || ""), cur = L.some(x => x[0] === v) ? v : L[0][0];
   return <div className="space-y-4">
-    {L.length > 1 && <Segmented size="sm" value={cur} onChange={x => { setV(x); LS.set(K, x); }} options={L.map(([value, label]) => ({ value, label: value === "mdo" ? <span className="inline-flex items-center gap-1.5">{label}<ExamStatus /></span> : label }))} />}
+    {L.length > 1 && <DivNav sub value={cur} onChange={x => { setV(x); LS.set(K, x); }} options={L.map(([value, label]) => ({ value, label, txt: label, icon: SUB_ICO[value] }))} />}
     {render(cur)}
   </div>;
 }
@@ -116,13 +116,13 @@ export function Unit({ k, dn }: { k: UnitKey; dn?: string }) {
     /* METRO: Exámenes y Entrevistas agrupan lo suyo en subpestañas (cada una con su permiso de siempre) */
     ...(mdX.length ? [["mdx", "Exámenes", ClipboardCheck] as TB] : []), ...(k === "md" && (mem || co || prac) ? [["mdcs", "Callsign", Radio] as TB] : []),
     ...(mdIns ? [["mdv", "Entrevistas", MessageCircle], ["mdl", "Lista de elegibles", Trophy]] as TB[] : []),
-    ["ins", "Instrucciones", GraduationCap], ["uni", "Uniformidad", Shirt], ["cal", "Calendario", CalendarDays]];
+    ["ins", "Instrucciones", GraduationCap], ...(k === "psb" ? [] : [["uni", "Uniformidad", Shirt] as TB]), ["cal", "Calendario", CalendarDays]]; /* la PSB no usa uniformidad */
   const names = Object.keys(uMap(k)).filter(n => findAgent(n)).sort((a, b) => a.localeCompare(b, "es"));
   /* Roster siempre primero; el resto de la A a la Z */
   const tabs = [tabs0[0], ...tabs0.slice(1).sort((a, b) => a[1].localeCompare(b[1], "es", { numeric: true }))];
   const [tab, setTab] = useState(() => { const v = LS.get(`lspdt.next.utab.${k}`) || "ros"; if (!OLD_MD[v]) return v; LS.set(`lspdt.next.sub.${OLD_MD[v]}`, v); return OLD_MD[v]; });
   /* pestañas que la coordinación dejó visibles para los miembros (+ Administración para la coordinación) */
-  const base: DivTab[] = tabs.map(([v, l, I]) => ({ value: v, label: v === "mdx" && mdX.some(x => x[0] === "mdo") ? <span className="inline-flex items-center gap-1.5">{l}<ExamStatus /></span> : l, icon: <I />, txt: l })), opts = divTabs(k, base, co);
+  const base: DivTab[] = tabs.map(([v, l, I]) => ({ value: v, label: l, icon: <I />, txt: l })), opts = divTabs(k, base, co);
   const t = opts.some(x => x.value === tab) ? tab : opts[0]?.value || "ros";
   const go = (v: string) => { setTab(v); LS.set(`lspdt.next.utab.${k}`, v); };
   return (

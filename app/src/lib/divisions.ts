@@ -39,7 +39,9 @@ onDept(() => {
   for (const k of Object.keys(DIV_DONE)) delete DIV_DONE[k]; if (DEPT.id === "lspd") Object.assign(DIV_DONE, DONE_LSPD);
 });
 /* división con roster genérico: entra solo quien está cargado en su roster (también lo controla el servidor) */
-export const divOpen = (d: string, me: string) => { const k = DIV_DONE[d]; if (k) return k === "rtd" ? isRTD(me) : isUMem(k, me); const g = GEN[d]; return !!ME_ROLES.admin || (!!g && isGMem(g.id, me)); };
+/* academia conjunta de los tres departamentos: abierta para todos */
+export const SATD = "San Andreas Training Division";
+export const divOpen = (d: string, me: string) => { if (d === SATD) return true; const k = DIV_DONE[d]; if (k) return k === "rtd" ? isRTD(me) : isUMem(k, me); const g = GEN[d]; return !!ME_ROLES.admin || (!!g && isGMem(g.id, me)); };
 /* qué divisiones aparecen en el menú: las que tienen contenido, solo para quien está cargado en su roster;
    las que todavía no tienen contenido, solo para quien la tiene en su perfil. La administración ve todas. */
 export const divVisible = (d: string, me: string) => !!ME_ROLES.admin || divOpen(d, me);

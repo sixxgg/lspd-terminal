@@ -6,5 +6,5 @@ export const GUEST_OPTS: [string, string, string][] = [
   ["age/prof", "Agentes", "Planilla del departamento por rango"],
   ["leg/ley", "Legal", "Código penal e infracciones"],
   ["ofi/cod", "Códigos", "Códigos radiales, 10-X y alfabeto NATO"],
-  ["rad/rad", "Radio", "Armado del 10.03 (no se guarda nada)"],
+  ["ofi/rad", "Radio", "Armado del 10.03 (no se guarda nada)"],
 ];

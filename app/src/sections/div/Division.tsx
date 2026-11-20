@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { BadgeCheck, Lock, Users } from "lucide-react";
+import { BadgeCheck, Construction, GraduationCap, Lock, Users } from "lucide-react";
 import { GEN, gMap } from "@/lib/units";
 import { Card } from "@/components/ui";
 import { DivLogo } from "@/sections/sup/Agentes";
-import { DIV_DESC, DIV_DONE, divOpen, heroColors, subsOf, useDivColors } from "@/lib/divisions";
+import { DIV_DESC, DIV_DONE, SATD, divOpen, heroColors, subsOf, useDivColors } from "@/lib/divisions";
 import { divAb, rankES } from "@/lib/domain";
 import { useMe } from "@/lib/me";
 import { LS, useStoreVersion } from "@/lib/store";
@@ -18,7 +18,7 @@ import { LSSD_INFO } from "@/lib/lssdDiv";
 const hv = (d: string) => { const { acc, light, base } = heroColors(d); return { ["--ha" as string]: acc, ["--hl" as string]: light, ["--hb" as string]: base }; };
 export function DivHero({ d }: { d: string }) {
   useDivColors(d);
-  const { acc, light, base } = heroColors(d), subs = subsOf(d);
+  const { acc, light, base } = heroColors(d), subs = subsOf(d).slice().sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
   return (
     <div className="dv-hero group relative overflow-hidden rounded-2xl" style={{ ["--ha" as string]: acc, ["--hl" as string]: light, ["--hb" as string]: base }}>
       <div className="dv-hero-bg absolute inset-0" />
@@ -38,7 +38,7 @@ export function DivHero({ d }: { d: string }) {
 }
 /* subdivisiones: todas se abren con su roster, uniformidad y administración (la MDSO, solo con licencias) */
 function SubTiles({ d, sel, onSel, open }: { d: string; sel: string; onSel: (s: string) => void; open: boolean }) {
-  const subs = subsOf(d); if (!subs.length) return null;
+  const subs = subsOf(d).slice().sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" })); if (!subs.length) return null; /* de la A a la Z */
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {subs.map(s => <SubTile key={s} s={s} on={sel === s} onClick={open && GEN[s] ? () => onSel(sel === s ? "" : s) : undefined} />)}
@@ -79,9 +79,25 @@ export function Division({ d }: { d: string }) {
       <p className="mt-1 max-w-sm text-sm text-slate-500">Solo los miembros cargados en el roster de la división pueden entrar.</p>
       <p className="mt-3 text-xs text-slate-400">Estás ingresado como {rankES(me.r)} {me.n}.</p>
     </Card>);
+  else if (d === SATD) return <SatdSoon />;
   else if (k === "rtd") body = <Rtd dn={d} />;
   else if (k) body = <Unit k={k} dn={d} />;
   else if (GEN[d]) body = <GenDiv d={d} />;
   if (open && GEN[sub] && subsOf(d).includes(sub)) body = <SubBody sub={sub} />;
   return <div className="space-y-4" style={hv(d)}><DivHero d={d} /><SubTiles d={d} open={open} sel={sub} onSel={s => { setSub(s); LS.set("lspdt.next.dsub." + d, s); }} />{body}</div>;
+}
+
+/* San Andreas Training Division: academia conjunta (todavía sin información) */
+function SatdSoon() {
+  return (
+    <Card className="relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_80%_at_50%_0%,rgb(var(--b-500)/.14),transparent)]" />
+      <div className="relative flex flex-col items-center px-6 py-20 text-center">
+        <span className="grid size-16 place-items-center rounded-2xl bg-brand-500/15 text-brand-600 ring-1 ring-inset ring-brand-500/30 dark:text-brand-300"><GraduationCap className="size-8" /></span>
+        <p className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-300"><Construction className="size-3.5" />Próximamente</p>
+        <h2 className="mt-3 font-display text-3xl font-bold">San Andreas Training Division</h2>
+        <p className="mt-2 max-w-lg text-sm text-slate-500 dark:text-slate-400">La academia conjunta del Los Santos Police Department, el Los Santos Sheriff's Department y la San Andreas Highway Patrol. Formación común para los tres departamentos.</p>
+        <div className="mt-6 flex flex-wrap justify-center gap-2">{["LSPD", "LSSD", "SAHP"].map(x => <span key={x} className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold dark:border-slate-700">{x}</span>)}</div>
+      </div>
+    </Card>);
 }

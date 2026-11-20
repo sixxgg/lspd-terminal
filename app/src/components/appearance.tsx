@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Palette, MonitorSmartphone, Sparkles, Type, MousePointer2, Check, Tv, BellRing } from "lucide-react";
-import { ME_ROLES } from "@/lib/store";
+import { LS, ME_ROLES, useStoreVersion } from "@/lib/store";
+import { PROF } from "@/lib/nick";
 import { Checkbox, Field, Segmented, Select } from "@/components/ui";
 import { langOf, langPref, setLangPref } from "@/lib/lang";
 import { Modal } from "@/components/modal";
@@ -34,9 +35,15 @@ export function CursorGrid({ value, onPick, acc }: { value: string; onPick: (k: 
 
 export function AppearanceModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const p = usePref(), acc = p.acc || SKINS[p.skin].acc;
+  useStoreVersion();
+  /* estilo «clasic»: solo para quien se lo dio la administración; cada uno puede apagarlo y volver a la terminal de siempre */
+  const clasicOk = LS.json<string[]>("lspdt.clasic", []).includes(PROF.me), clasicOn = clasicOk && LS.get("lspdt.next.clasic") !== "0";
 
   return (
     <Modal open={open} onClose={onClose} title="Apariencia" desc="Se guarda en este navegador." icon={<Palette />} size="lg">
+      {clasicOk && <Field label="Estilo" hint={clasicOn ? "(con clasic, el tema y los efectos quedan fijos)" : undefined}>
+        <Segmented size="sm" value={clasicOn ? "c" : "t"} onChange={v => { LS.set("lspdt.next.clasic", v === "c" ? "1" : "0"); onClose(); }} options={[{ value: "t", label: "Terminal" }, { value: "c", label: "Clasic" }]} /></Field>}
+      {!clasicOn && <>
       <Field label="Tema"><SkinGrid value={p.skinOwn ? p.skin : ""} onPick={k => setPref("skin", k)} auto={() => setPref("skin", null)} /></Field>
       <Field label="Color de acento">
         <div className="flex flex-wrap items-center gap-2">
@@ -78,6 +85,7 @@ export function AppearanceModal({ open, onClose }: { open: boolean; onClose: () 
       </Field>
       <Field label="Puntero del mouse"><div className="flex items-start gap-2"><MousePointer2 className="mt-2 size-4 text-slate-400" /><div className="flex-1"><CursorGrid value={p.cur} onPick={k => setPref("cur", k)} acc={acc} /></div></div></Field>
       <p className="flex items-center gap-1.5 text-xs text-slate-400"><Tv className="size-3.5" />Los administradores definen el tema y el puntero por defecto del departamento en Administración › Marca e imágenes.</p>
+      </>}
     </Modal>
   );
 }

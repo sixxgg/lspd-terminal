@@ -2,7 +2,7 @@
    tipografía y puntero. Las claves son las mismas que en la clásica, así la elección se comparte entre las dos versiones. */
 import { useSyncExternalStore } from "react";
 
-type Skin = { l: string; dark: boolean; sw: [string, string, string]; bg: string; card: string; soft: string; line: string; ink: string; mut: string; acc: string; dept?: "lssd" | "sahp" };
+type Skin = { l: string; dark: boolean; sw: [string, string, string]; bg: string; card: string; soft: string; line: string; ink: string; mut: string; acc: string; dept?: "lssd" | "sahp" | "*" };
 type SkinX = Omit<Skin, "sw">;
 /* temas propios de cada departamento: el LSSD, sobre verdes (con detalles dorados del escudo); la SAHP, caqui, asfalto y azul estatal con dorado */
 const X = (dept: "lssd" | "sahp", o: Record<string, SkinX>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, { ...v, dept, sw: [v.bg, v.card, v.acc] as [string, string, string] }]));
@@ -64,7 +64,12 @@ export const SKINS: Record<string, Skin> = {
   github: { l: "GitHub claro", dark: false, sw: ["#f6f8fa", "#ffffff", "#0969da"], bg: "#f6f8fa", card: "#ffffff", soft: "#f6f8fa", line: "#d0d7de", ink: "#1f2328", mut: "#59636e", acc: "#0969da" },
   dawn: { l: "Rosé Pine claro", dark: false, sw: ["#faf4ed", "#fffaf3", "#b4637a"], bg: "#faf4ed", card: "#fffaf3", soft: "#f2e9e1", line: "#dfdad9", ink: "#575279", mut: "#797593", acc: "#b4637a" },
   ...LSSD_SKINS, ...SAHP_SKINS,
+  /* estilo «clasic» (panel tipo Eleven): no se elige en la lista, lo da la administración (Administración › Accesos) */
+  clasic: { l: "Clasic", dark: true, dept: "*", sw: ["#0a0c10", "#0f1217", "#e4e7ec"], bg: "#0a0c10", card: "#0f1217", soft: "#171b22", line: "#232831", ink: "#eceef2", mut: "#9aa1ad", acc: "#e4e7ec" },
 };
+/* «clasic»: lo activa la app cuando el agente está en la lista que maneja la administración (y no lo apagó en Apariencia) */
+let CLASIC = false;
+export const setClasic = (on: boolean) => { if (on !== CLASIC) { CLASIC = on; applyAppearance(); } };
 /* departamento activo (lo fija lib/dept.ts): cada uno tiene su lista de temas y recuerda el suyo */
 let SKD: "lspd" | "lssd" | "sahp" = "lspd";
 export const setSkinDept = (d: "lspd" | "lssd" | "sahp") => { if (d !== SKD) { SKD = d; applyAppearance(); } };
@@ -111,7 +116,7 @@ function brandOf(own: string | null, spd: string | null) {
   const n = parseFloat(spd || "") || parseFloat(deptUi.brandSpd || "") || 6;
   return { brand: isBrand(own) ? own : isBrand(deptUi.brand) ? deptUi.brand : "rgb", brandOwn: isBrand(own), brandSpd: Math.max(1, Math.min(20, n)) };
 }
-function pref(): Pref {
+function pref0(): Pref {
   const s0 = lsGet(themeKey()), s = (s0 && OLD_SKIN[s0]) || s0, old = lsGet("lspdt.next.theme"), dT0 = SKD === "lspd" ? deptUi.theme : deptUi["theme." + SKD], dT = (dT0 && OLD_SKIN[dT0]) || dT0;
   const skin = okSkin(s) ? s : okSkin(dT) ? dT : SKD === "lspd" && old === "light" ? "nuevoc" : DEPT_DEF_SKIN[SKD];
   const c = lsGet("lspdt.crt"), i = parseInt(lsGet("lspdt.crtI") || "");
@@ -124,6 +129,8 @@ function pref(): Pref {
     /* desenfoque de la pantalla al llegar una notificación del sistema (null = el de fábrica) */
     updBlur: lsGet("lspdt.next.updBlur") === null ? null : Math.max(0, Math.min(24, parseFloat(lsGet("lspdt.next.updBlur") || "0") || 0)) };
 }
+/* con «clasic»: su tema, menú lateral, sin marco de tablet, sin efectos de pantalla ni neón, y tipografía Inter */
+function pref(): Pref { const p = pref0(); return CLASIC ? { ...p, skin: "clasic", acc: "", crt: "0", frame: false, neon: false, nav: "side", font: "inter", head: "none" } : p; }
 const subs = new Set<() => void>(); let ver = 0;
 export const usePref = () => { useSyncExternalStore(f => { subs.add(f); return () => { subs.delete(f); }; }, () => ver); return pref(); };
 export function setPref(k: "skin" | "acc" | "crt" | "crtI" | "frame" | "neon" | "font" | "head" | "cur" | "nav" | "brand" | "brandSpd" | "updBlur", v: string | number | boolean | null) {
@@ -157,7 +164,7 @@ export function applyAppearance() {
   /* texto sobre el acento: blanco o casi negro según lo claro que sea */
   const on = (c: number[]) => trip(lum(c) > 0.6 ? [11, 12, 16] : W);
   st.setProperty("--b-ink5", on(B[5])); st.setProperty("--b-ink6", on(B[6]));
-  root.dataset.skin = p.skin; root.classList.toggle("neon", p.neon); root.classList.toggle("font-classic", p.font === "public");
+  root.dataset.skin = p.skin; root.classList.toggle("clasic", CLASIC); root.classList.toggle("neon", p.neon); root.classList.toggle("font-classic", p.font === "public");
   const H = HEADS[p.head] || HEADS.none; root.dataset.head = p.head;
   st.setProperty("--fh", H.fam ? `${H.fam}, ui-sans-serif, system-ui, sans-serif` : "inherit"); st.setProperty("--fhw", String(H.w)); st.setProperty("--fhls", H.ls || "normal");
 

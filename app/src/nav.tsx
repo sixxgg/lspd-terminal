@@ -1,5 +1,5 @@
 import { PROF, profOk } from "@/lib/nick";
-import { divVisible } from "@/lib/divisions";
+import { SATD, divVisible } from "@/lib/divisions";
 import type { LucideIcon } from "lucide-react";
 import {
   CalendarDays, Home, BookOpenCheck, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
@@ -12,6 +12,8 @@ import { lvl } from "./lib/domain";
 export type Sec = { k: string; l: string; sl?: string; d: string; icon: LucideIcon; ready?: boolean; min?: number; hide?: boolean }; /* hide: no aparece en la barra de secciones (se entra por otro lado) */
 export type Area = { k: string; l: string; icon?: LucideIcon; min: number; req?: string; admin?: boolean; hidden?: boolean; beta?: boolean; sec: Sec[] };
 
+/* San Andreas Training Division: academia conjunta del LSPD, el LSSD y la SAHP (la ven los tres departamentos) */
+const SATD_SEC: Sec = { k: "dv_satd", l: SATD, d: "Academia conjunta del LSPD, el LSSD y la SAHP · próximamente", icon: GraduationCap, ready: true };
 /* áreas y secciones de la terminal */
 const RAW_AREAS: Area[] = [
   { k: "ini", l: "Inicio", icon: Home, min: 0, sec: [{ k: "home", l: "Inicio", d: "Resumen del departamento", icon: Home, ready: true },
@@ -24,6 +26,7 @@ const RAW_AREAS: Area[] = [
     { k: "inf", l: "Informes policiales", sl: "Informes", d: "Redactar, registrar y buscar informes", icon: FileText, ready: true },
     { k: "cod", l: "Códigos radiales", d: "Códigos de radio, 10-X, terminología, derechos y alfabeto NATO", icon: Radio, ready: true },
     { k: "pro", l: "Procedimientos", d: "Actualización de sanciones por estupefacientes y dinero no justificado", icon: Pill, ready: true },
+    { k: "rad", l: "Comunicados por radio", sl: "Radio", d: "10.03 con sujetos y vehículo de huida, por /rlspd o /rsapd", icon: RadioTower, ready: true },
   ] },
   /* oculta del menú: se entra desde el nombre del encabezado (por ahora solo six, BETA) */
   { k: "me", l: "Mi perfil", icon: UserRound, min: 0, hidden: true, sec: [{ k: "perfil", l: "Mi perfil", d: "Perfiles de la terminal (BETA)", icon: UserRound, ready: true }] },
@@ -58,7 +61,6 @@ const RAW_AREAS: Area[] = [
   { k: "gal", l: "Galería", icon: Images, min: 0, sec: [{ k: "gal", l: "Galería", d: "Fotos de Fivemanager para el carrusel del Inicio", icon: Images, ready: true }] },
   /* consulta del Manual del Novato: en prueba, solo six y quienes habilite en Administración › Accesos */
   { k: "con", l: "Consulta", icon: BookOpenCheck, min: 0, beta: true, sec: [{ k: "con", l: "Consulta", d: "Preguntas sobre el Manual del Novato, respondidas con el manual", icon: BookOpenCheck, ready: true }] },
-  { k: "rad", l: "Radio", icon: RadioTower, min: 0, sec: [{ k: "rad", l: "Comunicados por radio", d: "10.03 con sujetos y vehículo de huida, por /rlspd o /rsapd", icon: RadioTower, ready: true }] },
   { k: "jef", l: "Jefatura", icon: Star, min: 10, req: "Comandante", sec: [
     { k: "ros", l: "Estado del roster", d: "Composición del departamento", icon: BarChart3, ready: true },
     { k: "his", l: "Historial de votaciones", d: "Propuestas cerradas y su resultado", icon: History, ready: true },
@@ -72,6 +74,7 @@ const RAW_AREAS: Area[] = [
     { k: "dv_md", l: "Metropolitan Division", d: "Roster, instrucciones, exámenes de instructor", icon: Crosshair, ready: true },
     { k: "dv_psb", l: "Professional Standards Bureau", d: "Expedientes de principio a fin: notificación, elevación, Justicia/SAJD y resolución", icon: Shield, ready: true },
     { k: "dv_rtd", l: "Recruitment and Training Division", d: "Entrevistas de aspirantes", icon: GraduationCap, ready: true },
+    SATD_SEC,
   ] },
   { k: "adm", l: "Administración", icon: Settings, min: 0, admin: true, sec: [
     { k: "acc", l: "Accesos y administradores", d: "Solicitudes de acceso, administradores y accesos a RTD/PSB", icon: UserCheck, ready: true },
@@ -92,9 +95,10 @@ const LSPD_AREAS: Area[] = RAW_AREAS
   .sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
 /* LSSD y SAHP: las mismas secciones del LSPD (Inicio, Agentes, Calendario, Oficiales, Feedback, Legal, Pizarra, Galería, Radio y Administración),
    cada una con los datos de su departamento. Supervisores, Capitanía y Jefatura siguen en construcción. Mismas reglas de rango (escala equivalente, lib/domain.ts). */
-const SHARE = ["ini", "me", "age", "cal", "ofi", "fb", "leg", "piz", "gal", "rad"];
+const SHARE = ["ini", "me", "age", "cal", "ofi", "fb", "leg", "piz", "gal"];
 const ADM_X = ["brand", "acc", "data", "gal", "ts"];
 const LSSD_DIV_SEC: Sec[] = [
+  SATD_SEC,
   { k: "dv_sseb", l: "Special Enforcement Bureau", d: "SEB · Unidad de Operaciones Especiales", icon: Crosshair, ready: true },
   { k: "dv_sab", l: "Aero Bureau", d: "Airborne Law Enforcement · División Aérea (Patrol, Surveillance, Search & Rescue)", icon: Helicopter, ready: true },
   { k: "dv_sk9", l: "Canine Service Detail", d: "K-9 · Unidad Canina", icon: Dog, ready: true },
@@ -109,9 +113,9 @@ const SOON = (k: string, l: string, icon: LucideIcon, min: number, req: string):
 /* g: áreas que se abren completas (iguales al LSPD, con los datos del departamento) para las cuentas con acceso dado desde Administración */
 function xAreas(d: "lssd" | "sahp", g: { sup?: boolean; cap?: boolean; jef?: boolean } = {}): Area[] {
   const base = LSPD_AREAS.filter(a => SHARE.includes(a.k)).map(a => (a.k === "ini" ? { ...a, sec: a.sec.map(s => (s.k === "home" ? { ...s, d: d === "lssd" ? "Los Santos Sheriff's Department" : "San Andreas Highway Patrol" } : s)) }
-    : a.k === "rad" ? { ...a, sec: a.sec.map(s => ({ ...s, d: `10.03 con sujetos y vehículo de huida, por /r${d} o /rsapd` })) }
-    : a.k === "ofi" ? { ...a, sec: a.sec.filter(s => s.k !== "pro"), ...(d === "sahp" ? { min: 1, req: "Officer" } : { req: "Deputy Sheriff Bonus II" }) } /* Procedimientos es del LSPD; en la SAHP no hay Officer III */ : a));
-  const div: Area = d === "lssd" ? { k: "div", l: "Divisiones", icon: Landmark, min: 0, sec: LSSD_DIV_SEC } : SOON("div", "Divisiones", Landmark, 0, "");
+    : a.k === "ofi" ? { ...a, sec: a.sec.filter(s => s.k !== "pro").map(s => (s.k === "rad" ? { ...s, d: `10.03 con sujetos y vehículo de huida, por /r${d} o /rsapd` } : s)), ...(d === "sahp" ? { min: 1, req: "Officer" } : { req: "Deputy Sheriff Bonus II" }) } /* Procedimientos es del LSPD; en la SAHP no hay Officer III */ : a));
+  /* LSSD: sus divisiones; SAHP: por ahora solo la academia conjunta (San Andreas Training Division) */
+  const div: Area = { k: "div", l: "Divisiones", icon: Landmark, min: 0, sec: (d === "lssd" ? LSSD_DIV_SEC : [SATD_SEC]).slice().sort(byLabel) };
   const adm0 = LSPD_AREAS.find(a => a.k === "adm")!, adm = { ...adm0, sec: [...adm0.sec, ...RAW_AREAS.find(a => a.k === "adm")!.sec.filter(x => x.k === "fbt")].sort(byLabel) };
   /* Supervisores: por ahora solo Condecoraciones (las mismas del LSPD: se ven en Agentes y en el Inicio) */
   const sup = LSPD_AREAS.find(x => x.k === "sup")!;
@@ -156,8 +160,8 @@ const conOk = () => !!ME_ROLES.six || LS.json<string[]>("lspdt.consultaAcc", [])
 const galOk = () => !!ME_ROLES.six || !!ME_ROLES.admin || (DEPT.id !== "lspd" && !!ME_ROLES.jef) || LS.json<string[]>("lspdt.galEditors", []).includes(PROF.me); /* LSSD/SAHP: Jefatura maneja la portada */
 /* invitado: solo las secciones que abrió six (Novedades va siempre con el Inicio) */
 const guestSec = (a: string, s: string) => GUEST.secs.includes(`${a}/${s}`) || (a === "ini" && s === "nov");
-/* Informes y Códigos pasaron a Oficiales: los accesos guardados (última pantalla, enlaces) siguen andando */
-const MOVED: Record<string, string> = { inf: "ofi", cod: "ofi" };
+/* Informes, Códigos y Radio pasaron a Oficiales: los accesos guardados (última pantalla, enlaces) siguen andando */
+const MOVED: Record<string, string> = { inf: "ofi", cod: "ofi", rad: "ofi" };
 export const fixNav = <T extends { a: string; s: string }>(n: T): T => (MOVED[n.a] ? { ...n, a: MOVED[n.a] } : n);
 /* acceso dado desde Administración › Accesos: cuenta como Sargento I (Supervisores), Teniente (Capitanía) o Comandante (Jefatura) */
 const AREA_L: Record<string, number> = { sup: 6, cap: 8, jef: 10 };

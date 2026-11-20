@@ -4,7 +4,7 @@ import { brandSave } from "@/lib/brand";
 import { profOk } from "@/lib/nick";
 import { cipher, onlineIcons, useTabFx } from "@/lib/tabfx";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { Eye, LogIn, Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, UserRound, KeyRound, BellRing, CalendarClock, MoreHorizontal, Check, Home } from "lucide-react";
+import { Eye, LogIn, Lock, LogOut, Menu, Palette, X, CloudOff, ChevronRight, UserRound, KeyRound, BellRing, CalendarClock, MoreHorizontal, Check, Home, ChevronDown, ChevronsUpDown, Search } from "lucide-react";
 import { AREAS, canArea, lockedOf, menuAreas, secsOf, type Area, type Sec } from "@/nav";
 import { Avatar } from "@/components/agents";
 import { cn } from "@/lib/cn";
@@ -14,7 +14,7 @@ import { GUEST, LS, ME_ROLES, getNet, useStoreVersion } from "@/lib/store";
 import { DEPT, DEPTS, logoOf, setDept, type DeptId } from "@/lib/dept";
 import { AccountModal } from "@/components/account";
 import { AppearanceModal } from "@/components/appearance";
-import { usePref } from "@/lib/appearance";
+import { setClasic, usePref } from "@/lib/appearance";
 import { focusRing } from "@/components/ui";
 import { APP_VERSION, hasNews } from "@/sections/Novedades";
 import { NotifBell } from "@/components/notifs";
@@ -126,6 +126,11 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
     window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h); }, [go]);
   const [open, setOpen] = useState(false), [acc, setAcc] = useState(false);
   useStoreVersion();
+  /* estilo «clasic»: para quien está en la lista de la administración (y no lo apagó en Apariencia) */
+  const clasic = !GUEST.on && LS.json<string[]>("lspdt.clasic", []).includes(me.n) && LS.get("lspdt.next.clasic") !== "0";
+  useEffect(() => { setClasic(clasic); }, [clasic]);
+  useEffect(() => () => setClasic(false), []);
+  const [fold, setFold] = useState<string[]>(() => LS.json<string[]>("lspdt.next.clasicFold", []));
   const title = uiText("title"), kicker = uiText("kicker").replace(/\bDept\.?$/i, "Department");
   /* pestaña: favicon de la marca con punto ONLINE que parpadea y una sesión cifrada que va rotando */
   const fav = LS.get("lspdt.fav") || logoOf(), ico = useRef<[string, string] | null>(null), ses = useRef(cipher(2, 4));
@@ -162,6 +167,61 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
     <span title={`Link de invitado${GUEST.exp ? ` · vence el ${new Date(GUEST.exp).toLocaleString("es-AR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}`} className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/12 px-2.5 py-1 text-[11.5px] font-bold text-amber-700 ring-1 ring-inset ring-amber-500/30 dark:text-amber-300"><Eye className="size-3.5" /><span className="hidden sm:inline">Invitado · solo lectura</span><span className="sm:hidden">Invitado</span></span>
     <button onClick={onLogout} className={cn("inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-brand-500 dark:bg-brand-500", focusRing)}><LogIn className="size-3.5" />Iniciar sesión</button></div>;
   const goArea = (a: Area) => { const l = LS.get("lspdt.sec." + a.k); const S = secsOf(a, me.r).filter(s => !s.hide); go(a.k, S.some(s => s.k === l) ? l! : S[0].k); };
+
+  /* ---------- estilo «clasic»: menú lateral por grupos (General y una sección por área), migas de pan y el contenido en un panel ---------- */
+  if (clasic) {
+    const one = areas.filter(a => secsOf(a, me.r).filter(s => !s.hide).length === 1), many = areas.filter(a => !one.includes(a));
+    const tog = (k: string) => { const f = fold.includes(k) ? fold.filter(x => x !== k) : [...fold, k]; setFold(f); LS.set("lspdt.next.clasicFold", JSON.stringify(f)); };
+    const item = (on: boolean, I: Sec["icon"], l: string, f: () => void, extra?: ReactNode) => (
+      <button onClick={f} aria-current={on ? "page" : undefined} className={cn("cl-item", on && "on", focusRing)}><I className="size-4 shrink-0" /><span className="min-w-0 flex-1 truncate">{l}</span>{extra}</button>);
+    const group = (k: string, l: string, body: ReactNode) => (
+      <div key={k}><button onClick={() => tog(k)} className="cl-group" aria-expanded={!fold.includes(k)}>{l}<ChevronDown className={cn("size-3.5 transition", fold.includes(k) && "-rotate-90")} /></button>
+        {!fold.includes(k) && <div className="mt-0.5 space-y-0.5">{body}</div>}</div>);
+    const side = (
+      <aside className={cn("cl-side fixed inset-y-0 left-0 z-40 flex w-[264px] flex-col transition-transform duration-200 lg:sticky lg:top-0 lg:h-[var(--app-h,100dvh)] lg:translate-x-0", open ? "translate-x-0 shadow-2xl" : "-translate-x-full")}>
+        <div className="relative flex items-center gap-2 px-3 pb-2 pt-3">
+          <button onClick={logoClick} title="Inicio" className={cn("flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-white/[.04]", focusRing)}>
+            <img decoding="async" src={logoOf("lspdt.logo.header")} alt="" className="size-6 shrink-0 rounded object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />
+            <span className="truncate text-[14px] font-semibold">{DEPTS[DEPT.id].short} Terminal</span>{ME_ROLES.six && !DEPT.forced && <ChevronDown className="size-3.5 shrink-0 text-slate-400" />}</button>
+          <button onClick={() => dispatchEvent(new Event("lspdt:cmdk"))} aria-label="Buscar" title="Buscar (Ctrl + K)" className="cl-ico"><Search className="size-4" /></button>
+          {!GUEST.on && <span className="cl-bell"><NotifBell me={me} go={go} /></span>}
+          <button onClick={() => setOpen(false)} className="cl-ico lg:hidden" aria-label="Cerrar menú"><X className="size-4" /></button>
+          {dm && <DeptMenu onClose={() => setDm(false)} home={() => { setDm(false); go("ini", "home"); }} />}
+        </div>
+        <nav className="scrollbar-thin flex-1 space-y-4 overflow-y-auto px-3 py-2" aria-label="Secciones">
+          {group("gen", "General", one.map(a => { const s = secsOf(a, me.r).filter(x => !x.hide)[0]; return <div key={a.k}>{item(a.k === area.k, a.icon || s.icon, a.l, () => goArea(a), a.k === "cal" ? <CalBadge n={me.n} /> : a.beta ? <span className="beta-tag">BETA</span> : undefined)}</div>; }))}
+          {many.map(a => group(a.k, a.l, secsOf(a, me.r).filter(s => !s.hide).map(s => <div key={s.k}>{item(a.k === area.k && s.k === sec.k, s.icon, s.sl || s.l, () => go(a.k, s.k))}</div>)))}
+        </nav>
+        <div className="flex items-center gap-1 border-t border-white/[.06] p-2">
+          {GUEST.on ? guestBox : <><UserMenu onAcc={() => setAcc(true)} go={go} up wide>
+            <Avatar n={me.n} size={30} />
+            <div className="min-w-0 flex-1 text-left"><p className="truncate text-[13.5px] font-semibold">{me.n}</p><p className="truncate text-[11.5px] text-slate-400">{rankES(me.r)}{me.p ? ` · #${me.p}` : ""}</p></div>
+            <ChevronsUpDown className="size-4 shrink-0 text-slate-500" />
+          </UserMenu>
+          <button onClick={onLogout} title="Cerrar sesión" aria-label="Cerrar sesión" className="cl-ico hover:!text-red-400"><LogOut className="size-4" /></button></>}
+        </div>
+      </aside>);
+    return (
+      <div className="cl-root flex min-h-[var(--app-h,100dvh)]">
+        {modals}{side}
+        {open && <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setOpen(false)} />}
+        <div className="cl-panel flex min-w-0 flex-1 flex-col">
+          <header className="cl-head sticky top-0 z-20 flex h-14 items-center gap-2 px-4 sm:px-6">
+            <button onClick={() => setOpen(true)} className="cl-ico lg:hidden" aria-label="Abrir menú"><Menu className="size-5" /></button>
+            <nav aria-label="Ruta" className="flex min-w-0 flex-1 items-center gap-1.5 text-[14px]">
+              <button onClick={() => go("ini", "home")} className="shrink-0 text-slate-400 hover:text-slate-200">Inicio</button>
+              {area.k !== "ini" && <><ChevronRight className="size-3.5 shrink-0 text-slate-600" /><button onClick={() => goArea(area)} className="truncate text-slate-400 hover:text-slate-200">{area.l}</button></>}
+              {area.k !== "ini" && secsOf(area, me.r).filter(s => !s.hide).length > 1 && <><ChevronRight className="size-3.5 shrink-0 text-slate-600" /><span className="truncate font-semibold text-slate-100">{sec.sl || sec.l}</span></>}
+            </nav>
+            {net !== "ok" && sync}{tools}
+          </header>
+          <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-8 sm:px-8">
+            {pageHead}
+            <div key={area.k + sec.k} className="animate-fade-in"><DraftZone id={`${me.n}|${area.k}/${sec.k}`}>{children}</DraftZone></div>
+          </main>
+        </div>
+      </div>);
+  }
 
   /* menú arriba, por áreas (como la versión clásica) */
   if (mode === "top") return (

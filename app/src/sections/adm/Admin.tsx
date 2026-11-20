@@ -23,11 +23,11 @@ const Row = ({ n, children }: { n: string; children?: React.ReactNode }) => { co
   <div className="flex flex-wrap items-center gap-3 px-4 py-2.5"><Avatar n={n} size={30} /><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{n}</p><p className="text-xs text-slate-500">{a ? rankES(a.r) + (a.p ? " · #" + a.p : "") : "Fuera del roster"}</p></div>{children}</div>); };
 
 /* ---------- accesos que solo da el dueño: Legal y Consulta (en prueba) ---------- */
-function OwnerAcc({ k, t, icon, area }: { k: string; t: string; icon: React.ReactNode; area: string }) {
+function OwnerAcc({ k, t, icon, area, desc }: { k: string; t: string; icon: React.ReactNode; area: string; desc?: string }) {
   const { toast, confirm } = useFeedback(), [L, setL] = useJSON<string[]>(k, []), [sel, setSel] = useState("");
   return (
     <Card>
-      <CardHeader icon={icon} title={t} desc={`Solo vos podés darlo. ${L.length} con acceso además de vos.`} />
+      <CardHeader icon={icon} title={t} desc={desc ? `${desc} ${L.length} con acceso.` : `Solo vos podés darlo. ${L.length} con acceso además de vos.`} />
       <div className="divide-y divide-slate-100 dark:divide-slate-800">{L.length ? L.map(n => <Row key={n} n={n}>
         <button aria-label={`Quitar a ${n}`} onClick={async () => { if (await confirm(`¿Quitarle el acceso a ${area} a ${n}?`, { danger: true })) { setL(L.filter(x => x !== n)); toast(`${n} ya no ve ${area}`); } }} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10"><X className="size-4" /></button></Row>)
         : <p className="px-4 py-3 text-sm text-slate-400">Nadie más tiene acceso.</p>}</div>
@@ -36,11 +36,14 @@ function OwnerAcc({ k, t, icon, area }: { k: string; t: string; icon: React.Reac
     </Card>);
 }
 
+/* estilo «clasic» (panel con menú lateral, como el de Eleven): lo da six o la administración; la lista sirve para los tres departamentos */
+const ClasicAcc = () => <OwnerAcc k="lspdt.clasic" t="Estilo clasic" icon={<Palette />} area="el estilo clasic"
+  desc="Cambia toda la terminal al estilo clasic (menú lateral, sin marco de tablet). Lo da six o la administración; cada uno puede apagarlo en Apariencia." />;
 /* ---------- solicitudes de acceso y administradores ---------- */
 /* LSSD y SAHP: los accesos que da six (Legal); las solicitudes y los administradores son del LSPD */
 export function AdmAccesosX() {
   const dadm = !!ME_ROLES.dadm && !ME_ROLES.six;
-  return <div className="space-y-5"><AreaAcc />{ME_ROLES.six && <OwnerAcc k="lspdt.legacc" t="Acceso a Legal" icon={<Scale />} area="Legal" />}
+  return <div className="space-y-5"><AreaAcc />{ME_ROLES.six && <OwnerAcc k="lspdt.legacc" t="Acceso a Legal" icon={<Scale />} area="Legal" />}{(ME_ROLES.six || ME_ROLES.admin) && <ClasicAcc />}
     {(dadm || ME_ROLES.six) && <div className="grid gap-5 xl:grid-cols-2"><DeptInvites /><DeptAccounts /></div>}
     <p className="text-sm text-slate-500">{dadm ? `Como administración ${DEL[DEPT.id]} manejás el acceso a las áreas, las invitaciones y ves las cuentas ${DEL[DEPT.id]}. Marca, roster y respaldo los maneja six.`
       : `Las cuentas ${DEL[DEPT.id]} entran con su código de invitación (lo generás en tu panel, eligiendo el departamento, o lo genera la administración del departamento).`}</p></div>;
@@ -128,6 +131,7 @@ export function AdmAccesos() {
       <AreaAcc />
       {ME_ROLES.six && <OwnerAcc k="lspdt.legacc" t="Acceso a Legal" icon={<Scale />} area="Legal" />}
       {ME_ROLES.six && <OwnerAcc k="lspdt.consultaAcc" t="Acceso a Consulta (en prueba)" icon={<BookOpenCheck />} area="Consulta" />}
+      {(ME_ROLES.six || ME_ROLES.admin) && <ClasicAcc />}
       <Card>
         <CardHeader icon={<UserCheck />} title="Solicitudes de acceso" desc="Agentes por debajo de Sargento I que crearon su cuenta y esperan aprobación." />
         {!req ? <CardBody><p className="text-sm text-slate-400">Cargando…</p></CardBody> : <>
