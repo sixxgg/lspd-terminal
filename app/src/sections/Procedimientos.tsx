@@ -79,7 +79,7 @@ function Drogas() {
 /* ---------- mando del táctico en un 487: cómo se reparten las funciones desde que se llega (lo que se hace en el servidor) ---------- */
 const TAC: [string, string, string[]][] = [
   ["Mando del táctico", "La primera unidad que llega designa quién manda el táctico.", ["Prioridad: **SWAT** por sobre **METRO**, y METRO por sobre un **Oficial III** del LSPD.", "Si hay SWAT en el táctico, manda SWAT; si no, METRO."]],
-  ["Cod.8", "Ambulancia para los rehenes y los heridos.", ["Se pide en cuanto se sabe que hay **rehenes** o **heridos**."]],
+  ["Cod.8", "Se pide para gestionar a los heridos y el estado de salud de los rehenes.", ["Atender a los **heridos** del 487.", "Revisar y controlar el **estado de salud de los rehenes**."]],
   ["Negociador", "El mando elige a un integrante del táctico para negociar.", ["Lo que se negocie define cómo se prepara la huida."]],
   ["Huida: interceptores y helicópteros", "Si el vehículo de huida es rápido, se negocia por **interceptores**; también se tienen en cuenta los **helicópteros**.", ["**En cabeza:** un interceptor con licencia de **HSIU**.", "**En cola:** el segundo vehículo más rápido, que no sea de la HSIU."]],
   ["Cod.100", "Unidades en posición para interceptar en la ruta de huida.", ["Se reparten sobre los recorridos posibles antes de que salgan."]],
