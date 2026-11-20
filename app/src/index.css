@@ -473,3 +473,8 @@ html.clasic .dv-tab.on { border-bottom-color: #fff; }
 html.clasic .dv-tab.on svg { color: #fff; }
 html.clasic .shadow-lg, html.clasic .shadow-xl { box-shadow: none !important; }
 html.clasic .crt-host, html.clasic .backdrop { display: none !important; }
+
+/* Manuales (six): marcadores de los bloques vacíos */
+.man-ed:empty { min-height: 1.6em; }
+.man-ed:empty:before { content: attr(data-ph); color: rgb(148 163 184 / .75); pointer-events: none; }
+.man-ed[data-ph^="Escribí, o"]:empty:not(:focus):before { content: ""; }

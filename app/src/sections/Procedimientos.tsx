@@ -2,7 +2,7 @@
    Arriba, una guía rápida por cantidad para saber qué artículo va; abajo, cada artículo con cuándo se aplica y qué hacer, en pasos cortos.
    Tocar el artículo lo copia («29.12 Tenencia…»). Lo marcado con **…** va en negrita. */
 import { Fragment, useState } from "react";
-import { AlertTriangle, Banknote, Car, Check, Copy, Crosshair, MapPin, Pill, Users, Zap } from "lucide-react";
+import { AlertTriangle, Banknote, Car, ChevronRight, Check, Copy, Crosshair, MapPin, Pill, Users, Zap } from "lucide-react";
 import { DivNav } from "@/sections/div/DivTools";
 import { LS } from "@/lib/store";
 import { Card, CardHeader, SearchInput } from "@/components/ui";
@@ -81,21 +81,22 @@ function Drogas() {
    se elige arriba (Sur: LSPD · Norte: LSSD). */
 type Jur = "sur" | "norte";
 type Row = [string, string | ((j: Jur) => string)];
-type Fase = { n: string; t: string; d: string; icon: React.ReactNode; rows: Row[]; tone?: "warn" };
+type Fase = { n: string; t: string; d: string; icon: React.ReactNode; rows: Row[]; tone?: "warn"; chain?: string[] };
 const FASES: Fase[] = [
   { n: "1", t: "Jurisdicción y mando", d: "Lo primero: quién manda según dónde sea el 487.", icon: <MapPin />, rows: [
     ["Mando", j => j === "sur" ? "Lo lleva el **sur (LSPD)**. Prioridad: **SWAT** por sobre **METRO**, y METRO por sobre un **Oficial III**." : "Prioridad del **Sheriff (LSSD)**: manda su METRO, el **SEB**."],
     ["Si faltan unidades", j => j === "sur" ? "Se pide **6-ADAM** por radio interna al **LSSD** y a la **SAHP** para que acudan al 487." : "El LSSD nos puede pedir **6-ADAM** y acudimos al 487 como apoyo."],
   ] },
-  { n: "2", t: "Roles en el 487", d: "Se reparten durante el 487, antes de la huida.", icon: <Users />, rows: [
+  { n: "2", t: "Roles en el 487", d: "Se reparten durante el 487, en este orden.", icon: <Users />, chain: ["MANDO", "1.er negociador", "2.º negociador", "METRO", "SWAT", "SEB", "SOU", "SAHP"], rows: [
+    ["Negociadores", j => `Un **primer negociador** y un **segundo negociador**, por si el primero no rinde. Por lo general, de la unidad de negociación de la ${j === "sur" ? "**METRO**" : "**SEB**"} (según la jurisdicción).`],
+    ["Perímetro", "**METRO, SWAT, SEB, SOU y SAHP** hacen el perímetro y **cierran calles** para evitar inconvenientes. No lo hacen el MANDO ni los dos negociadores."],
     ["Cod.8", "Para gestionar a los **heridos** y el **estado de salud de los rehenes**."],
-    ["Negociadores", j => `Un **negociador** y un **segundo negociador**, por si el primero no rinde. Por lo general, de la unidad de negociación de la ${j === "sur" ? "**METRO**" : "**SEB**"} (según la jurisdicción).`],
-    ["SAHP", "Se elige **después del negociador**: coordina el **tráfico**."],
-    ["Perímetro", "**Todas las unidades** hacen perímetro, **salvo el MANDO del 487 y los dos negociadores**."],
     ["Aire", "Según lo que se negocie, el helicóptero **se retira unos minutos** (no hay un tiempo fijo) durante el 487 o durante el 254-V."],
   ] },
-  { n: "3", t: "Huida · 254-V", d: "Cómo sale cada unidad. Un 254-V no se cancela.", icon: <Car />, rows: [
-    ["Interceptores", "Si el vehículo de huida es rápido, se negocia por interceptores: **en cabeza**, uno con licencia de **HSIU**; **en cola**, el segundo más rápido que **no sea de la HSIU**."],
+  { n: "3", t: "Huida · 254-V", d: "Lo organiza la unidad de MANDO.", icon: <Car />, rows: [
+    ["Asignación", "El **MANDO** designa la **unidad de cabeza**, la **unidad de cola** y las **unidades de cod.100**."],
+    ["Cabeza y cola", "**En cabeza**, un interceptor con licencia de **HSIU**; **en cola**, el segundo vehículo más rápido, que **no sea de la HSIU**."],
+    ["Vehículo de huida", "Que sea rápido ya se contempla en la **negociación**: no se negocia por interceptores. Rara vez se retira la unidad de interceptores."],
     ["Cod.100", "Las unidades del **perímetro se suman al 254-V como cod.100**: van por **calles paralelas o aledañas**, **nunca a la par** del 254-V."],
   ] },
   { n: "4", t: "Cod.77 · bloqueo", d: "Cuando se informa por radio, o antes de llegar al vehículo donde se va a hacer.", icon: <AlertTriangle />, tone: "warn", rows: [
@@ -124,6 +125,8 @@ function Tactico() {
             <Card className={cn("min-w-0 flex-1 overflow-hidden p-0", f.tone === "warn" && "border-amber-500/40")}>
               <div className={cn("flex flex-wrap items-baseline gap-x-2 border-b px-4 py-2.5", f.tone === "warn" ? "border-amber-500/30 bg-amber-500/[.07]" : "border-slate-100 dark:border-slate-800")}>
                 <span className="font-mono text-xs font-bold text-slate-400">FASE {f.n}</span><p className="font-semibold">{f.t}</p><p className="text-xs text-slate-500">{f.d}</p></div>
+              {f.chain && <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-100 px-4 py-3 dark:border-slate-800">{f.chain.map((c, i) => (
+                <Fragment key={c}>{i > 0 && <ChevronRight className="size-3.5 text-slate-400" />}<span className={cn("rounded-lg px-2 py-1 text-xs font-semibold", i === 0 ? "bg-brand-600 text-white dark:bg-brand-500" : i < 3 ? "bg-brand-500/15 text-brand-700 dark:text-brand-300" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200")}>{c}</span></Fragment>))}</div>}
               <dl className="divide-y divide-slate-100 dark:divide-slate-800">{f.rows.map(([k, v]) => (
                 <div key={k} className="grid gap-1 px-4 py-2.5 sm:grid-cols-[11rem_1fr] sm:gap-4">
                   <dt className="text-[13px] font-semibold text-slate-900 dark:text-white">{k}</dt>

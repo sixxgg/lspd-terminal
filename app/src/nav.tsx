@@ -3,7 +3,7 @@ import { SATD, divVisible } from "@/lib/divisions";
 import type { LucideIcon } from "lucide-react";
 import {
   CalendarDays, Home, BookOpenCheck, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
-  Gavel, Pill, BadgeCheck, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, FolderOpen, Fingerprint, UserRound, Presentation, UserMinus, RadioTower, UsersRound, Images, HeartHandshake } from "lucide-react";
+  Gavel, Pill, BadgeCheck, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, FolderOpen, Fingerprint, UserRound, Presentation, UserMinus, RadioTower, UsersRound, Images, HeartHandshake, BookMarked } from "lucide-react";
 import { GUEST, LS, ME_ROLES } from "./lib/store";
 import { DEPT, onDept } from "./lib/dept";
 import { Helicopter } from "./components/icons";
@@ -57,6 +57,8 @@ const RAW_AREAS: Area[] = [
     { k: "perm", l: "Permisos y cuentas", d: "Excepciones de rango y cuentas de la terminal", icon: KeyRound, ready: true, min: 8 },
   ] },
   { k: "piz", l: "Pizarra", icon: Presentation, min: 0, beta: true, sec: [{ k: "piz", l: "Pizarra", d: "Lienzo compartido para planear operativos, mapas mentales y flujos", icon: Presentation, ready: true }] },
+  /* Manuales: solo six (los datos van en lspdt.six.man.*, privados en el servidor) */
+  { k: "man", l: "Manuales", icon: BookMarked, min: 0, sec: [{ k: "man", l: "Manuales", d: "Manuales escritos por bloques: editar, exportar a PDF y borrar", icon: BookMarked, ready: true }] },
   /* galería: la editan six, la administración y quienes habilite Administración › Galería (las fotos se ven en el Inicio) */
   { k: "gal", l: "Galería", icon: Images, min: 0, sec: [{ k: "gal", l: "Galería", d: "Fotos de Fivemanager para el carrusel del Inicio", icon: Images, ready: true }] },
   /* consulta del Manual del Novato: en prueba, solo six y quienes habilite en Administración › Accesos */
@@ -95,7 +97,7 @@ const LSPD_AREAS: Area[] = RAW_AREAS
   .sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
 /* LSSD y SAHP: las mismas secciones del LSPD (Inicio, Agentes, Calendario, Oficiales, Feedback, Legal, Pizarra, Galería, Radio y Administración),
    cada una con los datos de su departamento. Supervisores, Capitanía y Jefatura siguen en construcción. Mismas reglas de rango (escala equivalente, lib/domain.ts). */
-const SHARE = ["ini", "me", "age", "cal", "ofi", "fb", "leg", "piz", "gal"];
+const SHARE = ["ini", "me", "age", "cal", "ofi", "fb", "leg", "piz", "gal", "man"];
 const ADM_X = ["brand", "acc", "data", "gal", "ts"];
 const LSSD_DIV_SEC: Sec[] = [
   SATD_SEC,
@@ -168,7 +170,7 @@ const AREA_L: Record<string, number> = { sup: 6, cap: 8, jef: 10 };
 /* nivel efectivo (rango + acceso dado desde Administración): lo usan los expedientes */
 export const myLevel = (r?: string) => effL(r);
 const effL = (r?: string) => { const A = LS.json<Record<string, string[]>>("lspdt.areaAcc", {}); return Math.max(lvl(r), ...Object.entries(AREA_L).map(([k, l]) => (A[k]?.includes(PROF.me) ? l : 0))); };
-export const canArea = (a: Area, r?: string) => (isSoon(a) ? !!ME_ROLES.six || lvl(r) >= a.min : GUEST.on ? a.sec.some(s => guestSec(a.k, s.k)) : a.k === "gal" ? galOk() : a.k === "con" ? conOk() : a.k === "me" ? profOk() : a.k === "leg" ? legalOk() : a.admin ? !!ME_ROLES.admin || (!!ME_ROLES.dadm && DEPT.id !== "lspd") : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : effL(r) >= a.min);
+export const canArea = (a: Area, r?: string) => (a.k === "man" ? !!ME_ROLES.six : isSoon(a) ? !!ME_ROLES.six || lvl(r) >= a.min : GUEST.on ? a.sec.some(s => guestSec(a.k, s.k)) : a.k === "gal" ? galOk() : a.k === "con" ? conOk() : a.k === "me" ? profOk() : a.k === "leg" ? legalOk() : a.admin ? !!ME_ROLES.admin || (!!ME_ROLES.dadm && DEPT.id !== "lspd") : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : effL(r) >= a.min);
 /* áreas del menú (sin las ocultas) */
 export const menuAreas = (r?: string) => (syncAreas(), AREAS).filter(a => !a.hidden && canArea(a, r));
 /* secciones bloqueadas para ese rango (se muestran con candado) */
