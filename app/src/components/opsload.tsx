@@ -7,21 +7,22 @@ import { updLogo } from "@/lib/brand";
 import { DEPT, DEPTS } from "@/lib/dept";
 
 export const OPS_STEPS = ["Descargar el paquete de actualización", "Verificar la firma digital", "Instalar los módulos", "Migrar la configuración local", "Optimizar la terminal", "Reiniciar el sistema"];
+/* consejos en español neutro (sin voseo ni tuteo): se leen igual desde Argentina y desde España */
 const TIPS = [
-  "Código 4: situación bajo control. No hace falta más apoyo.",
-  "Antes de copiar un informe, tocá «Revisar»: rojo falta algo, amarillo pendiente, verde está bien.",
-  "Un 10-80 bien dado: unidad, vehículo, dirección de fuga y motivo.",
-  "Lo que guardás en la terminal lo ve todo el departamento al instante.",
-  "Si el artículo del robo ya trae el agravante, no se imputa aparte.",
-  "El homicidio doloso (119.1) va solo cuando hay CK de un jugador.",
+  "Código 4: situación bajo control, no se necesita más apoyo.",
+  "Antes de copiar un informe, usar «Revisar»: rojo, falta algo; amarillo, pendiente; verde, correcto.",
+  "10-80: citación por radio. El agente citado se presenta con el uniforme de Clase A.",
+  "Lo que se guarda en la terminal lo ve todo el departamento al instante.",
+  "Si el artículo del robo ya incluye el agravante, no se imputa por separado.",
+  "El homicidio doloso (119.1) solo se imputa cuando hay CK de un jugador.",
   "En una entrevista, primero se guarda y después se copia.",
-  "Las horas que pegás en Discord se ven en la zona horaria de cada uno.",
+  "Las horas que se pegan en Discord se ven en la zona horaria de cada uno.",
 ];
 
 /* textos de la pantalla: por defecto, la actualización; el inicio de sesión pasa los suyos */
 type OpsT = { kicker: string; title: string; sub: string; steps: string[]; live: string; head: string; end: string };
 export function OpsLoad({ v, pct, n, inside, resume, t }: { v: string; pct: number; n: number; inside: boolean; resume?: boolean; t?: OpsT }) {
-  const T: OpsT = t || { kicker: "OPERACIÓN", title: "Actualización", sub: `VERSIÓN ${v} · LOS SANTOS POLICE DEPARTMENT`, steps: OPS_STEPS, live: "OPERATIVO EN CURSO", head: "CENTRO DE DESPLIEGUE", end: "Aplicando los cambios" };
+  const T: OpsT = t || { kicker: "OPERACIÓN", title: "Actualización", sub: `VERSIÓN ${v} · ${DEPTS[DEPT.id].name.toUpperCase()}`, steps: OPS_STEPS, live: "OPERATIVO EN CURSO", head: "CENTRO DE DESPLIEGUE", end: "Aplicando los cambios" };
   const [tip, setTip] = useState(() => Math.floor(Math.random() * TIPS.length));
   useEffect(() => { const i = setInterval(() => setTip(t => (t + 1) % TIPS.length), 3200); return () => clearInterval(i); }, []);
   return (
@@ -69,8 +70,8 @@ export function LoginOps({ name, rank, agents, divs, onDone }: { name: string; r
     const k = (e: KeyboardEvent) => { if (e.key === "Escape" || e.key === "Enter") done(); }; addEventListener("keydown", k);
     return () => { clearInterval(iv); removeEventListener("keydown", k); }; }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div onClick={done} className="fixed inset-0 z-[96] transition-opacity duration-300" style={{ opacity: out ? 0 : 1 }} title="Tocá para entrar">
+    <div onClick={done} className="fixed inset-0 z-[96] transition-opacity duration-300" style={{ opacity: out ? 0 : 1 }} title="Clic o Enter para entrar">
       <OpsLoad v="" pct={pct} n={Math.min(steps.length - 1, Math.floor((pct / 100) * steps.length))} inside={false}
-        t={{ kicker: "INICIO DE SERVICIO", title: name.split(" ")[0], sub: `${rank.toUpperCase()} · ${name.toUpperCase()} · LOS SANTOS POLICE DEPARTMENT`, steps, live: "EN SERVICIO", head: "TERMINAL DE MANDO", end: "Entrando" }} />
+        t={{ kicker: "INICIO DE SERVICIO", title: name.split(" ")[0], sub: `${rank.toUpperCase()} · ${name.toUpperCase()} · ${DEPTS[DEPT.id].name.toUpperCase()}`, steps, live: "EN SERVICIO", head: "TERMINAL DE MANDO", end: "Entrando" }} />
     </div>);
 }

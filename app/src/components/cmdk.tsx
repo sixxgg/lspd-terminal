@@ -33,13 +33,13 @@ export function CommandK({ go, me }: { go: (a: string, s: string) => void; me: {
     for (const a of AREAS) { if (a.hidden || !canArea(a, me.r)) continue;
       for (const s of secsOf(a, me.r)) H.push({ id: `sec:${a.k}/${s.k}`, k: "sec", t: s.l, s: a.l + (s.d ? ` · ${s.d}` : ""), icon: s.icon, txt: `${s.l} ${s.sl || ""} ${a.l} ${s.d}`, go: () => { go(a.k, s.k); close(); } }); }
     /* subpestañas que no son secciones */
-    if (AREAS.some(a => a.k === "inf" && canArea(a, me.r))) ([["Procedimiento OIS con fallecido", "Informes · nuevo procedimiento y registrados", "new"], ["Guía /me y /do · OIS con fallecido", "Informes · revisar al agente, su ropa, el lugar y cada arma", "guia"]] as const)
-      .forEach(([t, d, tb]) => H.push({ id: `sub:ois-${tb}`, k: "sec", t, s: d, icon: FileText, txt: `${t} ${d} ois fallecido me do`, go: () => { JUMP.infSub = "ois"; JUMP.oisTab = tb; go("inf", "inf"); close(); } }));
+    if (AREAS.some(a => a.k === "ofi" && canArea(a, me.r))) ([["Procedimiento OIS con fallecido", "Informes · nuevo procedimiento y registrados", "new"], ["Guía /me y /do · OIS con fallecido", "Informes · revisar al agente, su ropa, el lugar y cada arma", "guia"]] as const)
+      .forEach(([t, d, tb]) => H.push({ id: `sub:ois-${tb}`, k: "sec", t, s: d, icon: FileText, txt: `${t} ${d} ois fallecido me do`, go: () => { JUMP.infSub = "ois"; JUMP.oisTab = tb; go("ofi", "inf"); close(); } }));
     const leyOk = AREAS.some(a => a.k === "leg" && canArea(a, me.r)), agOk = AREAS.some(a => a.k === "age" && canArea(a, me.r)), robOk = AREAS.some(a => a.k === "sup" && canArea(a, me.r));
     LS.json<(Inf & { no?: number })[]>("lspdt.informes", []).slice().sort((a, b) => (b.t || 0) - (a.t || 0)).forEach((r, i, L) => {
       const no = r.no || L.length - i, suj = (r.suj || []).map(x => x.n).filter(Boolean).join(", ");
       H.push({ id: `inf:${r.id}`, k: "inf", t: `Informe Nº ${no}${r.motivo ? ` · ${r.motivo}` : ""}`, s: [r.fecha, r.por, suj].filter(Boolean).join(" · "), icon: FileText,
-        txt: `${no} ${r.motivo} ${(r.tipos || []).join(" ")} ${suj} ${r.por} ${r.fecha} ${r.ui || ""} ${(r.hechos || "").slice(0, 300)}`, go: () => { JUMP.inf = r.id; go("inf", "inf"); close(); } }); });
+        txt: `${no} ${r.motivo} ${(r.tipos || []).join(" ")} ${suj} ${r.por} ${r.fecha} ${r.ui || ""} ${(r.hechos || "").slice(0, 300)}`, go: () => { JUMP.inf = r.id; go("ofi", "inf"); close(); } }); });
     getRoster().forEach(a => H.push({ id: `ag:${a.n}`, k: "ag", t: a.n, s: `${rankES(a.r)}${a.p ? ` · #${String(a.p).replace(/\D/g, "")}` : ""}${a.d ? ` · ${a.d}` : ""}`, ag: a.n, col: RANK_COLOR[a.r],
       txt: `${a.n} ${a.p || ""} ${rankES(a.r)} ${a.d || ""}`, go: () => { if (agOk) { JUMP.ag = a.n; go("age", "prof"); } else void navigator.clipboard?.writeText(a.n); close(); } }));
     try { calAll().filter(e => e.at > Date.now() - 864e5 * 30).forEach(e => H.push({ id: `cal:${e.id}`, k: "cal", t: e.n, s: `${e.ab || e.dn} · ${fullDT(e.at)}`, icon: CalendarDays, col: e.col,

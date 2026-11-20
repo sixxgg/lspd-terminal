@@ -1,5 +1,5 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { Check, ChevronRight, FolderOpen, Bell, ThumbsDown, ThumbsUp, Send, ArrowUpRight, Gavel, FileCheck2, BookMarked, Search, Plus, X, Pencil, Trash2, Save, RotateCcw, Lock, Info, Mail, Vote, History, Copy, FolderInput, ChevronDown } from "lucide-react";
+import { Check, ChevronRight, FolderOpen, Bell, ThumbsDown, ThumbsUp, Send, ArrowUpRight, Gavel, FileCheck2, BookMarked, Search, Plus, X, Pencil, Trash2, Save, RotateCcw, Lock, Info, Mail, Vote, History, Copy, FolderInput, ChevronDown, Scale } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Checkbox, Field, Input, Segmented, Select, Textarea, SearchInput } from "@/components/ui";
 import { AgentCombo, AgentPicker } from "@/components/agents";
 import { DiscordOutput } from "@/components/output";
@@ -78,6 +78,7 @@ export function Psb({ tab, go = () => {} }: { tab: string; go?: Go }) {
   const me = useMe(), [p, up] = usePX();
   if (!p._dv) { const d = psbDivs(me.n); setTimeout(() => up(x => { x._dv = true; if (d.length) x.dv = d[0]; }), 0); }
   if (tab === "cat") return <Catalog />;
+  if (tab === "der") return <Derechos3303 />;
   if (tab === "his") return <Historial go={go} />;
   const flow = ["not", "ele", "jus", "res"].includes(tab);
   return <div className="space-y-5">{flow && <CaseFlow tab={tab} go={go} />}{tab === "not" ? <Notif go={go} /> : <Forms tab={tab} go={go} />}</div>;
@@ -168,7 +169,7 @@ function Notif({ go }: { go: Go }) {
     const faltasTxt = !sel.length ? "[faltas]" : sel.length === 1 ? `la presunta falta ${sel[0].g} «${sel[0].n}»` : "las presuntas faltas " + joinY(sel.map(x => `«${x.n}» (${x.g})`));
     let hh = hecho || (sel.length ? `Se investiga ${faltasTxt}.` : "[Describí el hecho investigado]");
     if (hecho && sel.length) hh += `\n\n**${sel.length === 1 ? "Falta relacionada" : "Faltas relacionadas"}:** ${sel.map(x => `${x.n} (${x.g})`).join(" · ")}`;
-    let body = `## 📩 Notificación de investigación — ${caso}\n\n**De:** ${de || "—"}\n**Para:** ${para || "—"}\n\nHola,\n\nMe comunico con usted para informarle de que se ha abierto una investigación en la **${PSB_DIVS[p.dv]}**, con número de caso **${caso}**.\n\n### 🔎 Hecho investigado\n${hh}\n\nLa investigación se encuentra en etapa inicial y **no implica una conclusión sobre los hechos**. La calificación de la conducta, si correspondiera, se determinará al finalizar el procedimiento.\n\n### ⚖️ Sus derechos\n- Conocer los cargos que se le imputan, que se le detallarán por este medio si se formalizan.\n- Contar con tiempo razonable para preparar su defensa antes de ser entrevistad${o}.\n- Estar asistid${o} por un representante durante las entrevistas formales. Si desea contar con uno, indíquelo por este medio.\n\n### 📅 Próximos pasos\nPróximamente se le citará a una entrevista; se coordinará fecha y hora por este canal.\n\n> 🔒 Este procedimiento es **confidencial** y no debe comentarse fuera de los canales oficiales.\n\nSaludos.`;
+    let body = `## 📩 Notificación de investigación — ${caso}\n\n**De:** ${de || "—"}\n**Para:** ${para || "—"}\n\nHola,\n\nMe comunico con usted para informarle de que se ha abierto una investigación en la **${PSB_DIVS[p.dv]}**, con número de caso **${caso}**.\n\n### 🔎 Hecho investigado\n${hh}\n\nLa investigación se encuentra en etapa inicial y **no implica una conclusión sobre los hechos**. La calificación de la conducta, si correspondiera, se determinará al finalizar el procedimiento.\n\n### ⚖️ Sus derechos (Código Gubernamental de San Andreas, sección 3303)\n- Conocer los cargos que se le imputan, que se le detallarán por este medio si se formalizan, y contar con tiempo razonable para preparar su defensa.\n- Antes de la entrevista se le informará la naturaleza de la investigación y el rango, nombre y unidad de quienes la realicen (como máximo dos investigadores preguntando a la vez).\n- La entrevista será en un horario y con una duración razonables, con pausas para sus necesidades personales.\n- Puede grabar la entrevista con su propio dispositivo y acceder a la grabación oficial antes de cualquier otra actuación.\n- Puede estar asistid${o} por un representante de su elección durante toda la entrevista. Si desea contar con uno, indíquelo por este medio.\n\n### 📅 Próximos pasos\nPróximamente se le citará a una entrevista; se coordinará fecha y hora por este canal.\n\n> 🔒 Este procedimiento es **confidencial** y no debe comentarse fuera de los canales oficiales.\n\nSaludos.`;
     if (p.firma) body += `\n**${me.n}** · ${cargo} · ${PSB_DIVS_EN[p.dv]}`;
     return body;
   }, [p, a, sel, caso, de, para, me.n, cargo]);
@@ -520,5 +521,43 @@ function Historial({ go }: { go: Go }) {
           </div>}
         </Card>); })}
     </div>
+  );
+}
+
+/* ---------- Código Gubernamental de San Andreas · Sección 3303 (texto oficial cargado por six) ---------- */
+const S3303: [string, string, string[]?][] = [
+  ["(a) Horario", "La entrevista se hará a una hora razonable, preferiblemente mientras el agente esté de servicio, salvo que la gravedad del caso exija otra cosa. Si se hace fuera de servicio, ese tiempo se le compensará según los procedimientos del departamento."],
+  ["(b) Identificación", "Antes de empezar, se informará al agente del rango, nombre y unidad del investigador a cargo, de los investigadores que le entrevisten y de todas las personas presentes. Las preguntas las harán como máximo dos investigadores a la vez."],
+  ["(c) Motivo", "Antes de empezar, se informará al agente de la naturaleza de la investigación."],
+  ["(d) Duración", "La entrevista tendrá una duración razonable según la gravedad y la complejidad del caso. El agente podrá hacer pausas para atender sus necesidades personales."],
+  ["(e) Trato", "No se usará lenguaje ofensivo con el agente ni se le amenazará con sanciones. La única excepción es que, si se niega a responder, se le informará de que no contestar a preguntas relacionadas con la investigación puede tener consecuencias disciplinarias. No se le prometerá ninguna recompensa a cambio de responder. El departamento no expondrá al agente ante la prensa, ni dará su domicilio o fotografía a los medios, sin su consentimiento expreso."],
+  ["(f) Uso de las declaraciones", "Lo que el agente declare porque se le ha ordenado responder bajo amenaza de sanción no podrá usarse en un procedimiento civil posterior, con estas excepciones:", [
+    "Sí podrá usarse en el propio procedimiento disciplinario del departamento.",
+    "Sí podrá usarse en cualquier recurso o reclamación que presente el propio agente contra la sanción.",
+    "Sí podrá usarse para contradecir al agente si después declara algo distinto, previa revisión por un juez."]],
+  ["(g) Grabación", "La entrevista podrá grabarse completa. Si se graba, el agente tendrá acceso a la grabación antes de cualquier procedimiento o entrevista posterior. También tendrá derecho a copia de las notas y de los informes o quejas de los investigadores, salvo los que se consideren confidenciales. Los documentos confidenciales no podrán incluirse en su expediente personal. El agente podrá traer su propio dispositivo y grabar toda la entrevista."],
+  ["(h) Delitos", "Si antes o durante la entrevista se considera que el agente puede ser acusado de un delito, se le informará inmediatamente de sus derechos como investigado y de su derecho a asistencia letrada."],
+  ["(i) Representante", "Cuando la entrevista pueda acabar en una sanción, el agente podrá pedir un representante de su elección, que podrá estar presente durante toda la entrevista. El representante no podrá ser una persona investigada en el mismo caso. No estará obligado a revelar lo que el agente le cuente sobre asuntos no penales, ni podrá ser sancionado por negarse a hacerlo."],
+  ["(j) Asignaciones", "No se prestará ni se reasignará temporalmente a un agente a un destino o a unas funciones a los que normalmente no se enviaría a otro agente del departamento en circunstancias similares."],
+];
+function Derechos3303() {
+  const [q, setQ] = useState(""), s = norm(q.trim()), L = S3303.filter(([t, d, x]) => !s || norm(t + " " + d + " " + (x || []).join(" ")).includes(s));
+  return (
+    <Card>
+      <CardHeader icon={<Scale />} title="Sección 3303 · Derechos del agente en una investigación administrativa" desc="Código Gubernamental de San Andreas · Título 1, División 4 (Funcionarios y Empleados Públicos) · Capítulo 9.7: Agentes de Seguridad Pública (secciones 3300-3313)" />
+      <CardBody className="space-y-4">
+        <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">Cuando un agente de seguridad pública del Estado de San Andreas esté bajo investigación y vaya a ser entrevistado por su mando o por cualquier miembro de su departamento, y esa entrevista pueda dar lugar a una medida disciplinaria, la entrevista se hará en las condiciones que siguen. Se considera medida disciplinaria cualquier acción que pueda acabar en despido, degradación, suspensión, reducción de salario, amonestación por escrito o traslado como castigo.</p>
+        <SearchInput value={q} onChange={setQ} placeholder="Buscar en la sección 3303…" className="max-w-sm" />
+        <ol className="space-y-2.5">{L.map(([t, d, x]) => (
+          <li key={t} className="rounded-xl border border-slate-200 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900/60">
+            <p className="font-display text-[15px] font-semibold text-slate-900 dark:text-white">{t}</p>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{d}</p>
+            {x && <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300">{x.map(y => <li key={y}>{y}</li>)}</ol>}
+          </li>))}
+          {!L.length && <li className="text-sm text-slate-400">Nada coincide con la búsqueda.</li>}
+        </ol>
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">Esta sección no se aplica a conversaciones normales de servicio, instrucciones, consejos, llamadas de atención verbales informales u otros contactos rutinarios con un supervisor. Tampoco se aplica a investigaciones que traten únicamente de presuntos delitos.</p>
+      </CardBody>
+    </Card>
   );
 }

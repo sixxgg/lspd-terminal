@@ -36,35 +36,33 @@ export const SKINS: Record<string, Skin> = {
   sand: { l: "Arena", dark: false, sw: ["#f4efe6", "#5a3e1b", "#c08a2e"], bg: "#f4efe6", card: "#fffdf8", soft: "#f8f3ea", line: "#e4dac8", ink: "#3d2a12", mut: "#7a6a55", acc: "#c08a2e" },
   sky: { l: "Celeste", dark: false, sw: ["#eef6fb", "#0c4a6e", "#0ea5e9"], bg: "#eef6fb", card: "#ffffff", soft: "#f3f9fd", line: "#cfe3f0", ink: "#0c4a6e", mut: "#4b6b80", acc: "#0ea5e9" },
   dark: { l: "Oscuro", dark: true, sw: ["#060d1a", "#0e1a2d", "#e6c65a"], bg: "#060d1a", card: "#0e1a2d", soft: "#14233b", line: "#24385a", ink: "#e9eef7", mut: "#8fa1bd", acc: "#e6c65a" },
-  moon: { l: "Moonlight", dark: true, sw: ["#1a1b26", "#2f334d", "#c099ff"], bg: "#1a1b26", card: "#222436", soft: "#2a2d45", line: "#2f334d", ink: "#c8d3f5", mut: "#828bb8", acc: "#c099ff" },
-  midnight: { l: "Medianoche", dark: true, sw: ["#020617", "#0f172a", "#38bdf8"], bg: "#020617", card: "#0b1224", soft: "#111b33", line: "#1c2742", ink: "#e2e8f0", mut: "#8193b2", acc: "#38bdf8" },
   red: { l: "Rojo", dark: true, sw: ["#120708", "#5c141b", "#ef4444"], bg: "#120708", card: "#1d0c0e", soft: "#2a1215", line: "#3a1a1e", ink: "#f3e8e8", mut: "#b39a9c", acc: "#ef4444" },
-  wine: { l: "Vino", dark: true, sw: ["#14080d", "#6b1838", "#e8b4c8"], bg: "#14080d", card: "#200d16", soft: "#2c1220", line: "#3d1a2b", ink: "#f4e9ee", mut: "#b39aa6", acc: "#e8b4c8" },
   emerald: { l: "Esmeralda", dark: true, sw: ["#04120c", "#065f46", "#34d399"], bg: "#04120c", card: "#0a1d15", soft: "#0f2a1f", line: "#183a2b", ink: "#e6f4ee", mut: "#93b3a5", acc: "#34d399" },
   amethyst: { l: "Amatista", dark: true, sw: ["#0f0a1a", "#4c1d95", "#a78bfa"], bg: "#0f0a1a", card: "#191128", soft: "#221838", line: "#2f2148", ink: "#ede8f7", mut: "#a59bbd", acc: "#a78bfa" },
   ocean: { l: "Océano", dark: true, sw: ["#04141a", "#115e59", "#2dd4bf"], bg: "#04141a", card: "#0a1f27", soft: "#0f2a34", line: "#173a45", ink: "#e3f2f2", mut: "#8fb0b3", acc: "#2dd4bf" },
   graphite: { l: "Grafito", dark: true, sw: ["#111111", "#262626", "#e6c65a"], bg: "#0f0f10", card: "#1a1a1c", soft: "#222225", line: "#2c2c30", ink: "#ededed", mut: "#a3a3a3", acc: "#e6c65a" },
   dracula: { l: "Drácula", dark: true, sw: ["#282a36", "#44475a", "#ff79c6"], bg: "#21222c", card: "#282a36", soft: "#343746", line: "#44475a", ink: "#f8f8f2", mut: "#a4a8c4", acc: "#ff79c6" },
-  obsidian: { l: "Obsidiana", dark: true, sw: ["#050505", "#0e0e0f", "#f59e0b"], bg: "#050505", card: "#0e0e0f", soft: "#161618", line: "#232327", ink: "#f2f2f2", mut: "#9a9aa0", acc: "#f59e0b" },
-  navy: { l: "Azul marino", dark: true, sw: ["#07101f", "#0c1830", "#3b82f6"], bg: "#07101f", card: "#0c1830", soft: "#12213f", line: "#1d3157", ink: "#e6edf8", mut: "#8ea2c4", acc: "#3b82f6" },
   slate: { l: "Pizarra", dark: true, sw: ["#0d1117", "#161b22", "#58a6ff"], bg: "#0d1117", card: "#161b22", soft: "#1c2330", line: "#2b3341", ink: "#e6edf3", mut: "#8b949e", acc: "#58a6ff" },
   forest: { l: "Bosque", dark: true, sw: ["#07110a", "#0d1a11", "#4ade80"], bg: "#07110a", card: "#0d1a11", soft: "#132418", line: "#1e3524", ink: "#e5f2e8", mut: "#8fae97", acc: "#4ade80" },
-  copper: { l: "Cobre", dark: true, sw: ["#120c08", "#1c130d", "#f97316"], bg: "#120c08", card: "#1c130d", soft: "#261a12", line: "#3a2a1d", ink: "#f5ebe2", mut: "#b49c88", acc: "#f97316" },
-  crimson: { l: "Carmesí", dark: true, sw: ["#0d0507", "#170a0d", "#f43f5e"], bg: "#0d0507", card: "#170a0d", soft: "#210f13", line: "#33171d", ink: "#f6e8eb", mut: "#b8959c", acc: "#f43f5e" },
   tokyo: { l: "Tokyo Night", dark: true, sw: ["#16161e", "#1a1b26", "#7aa2f7"], bg: "#16161e", card: "#1a1b26", soft: "#24283b", line: "#2f3549", ink: "#c0caf5", mut: "#7f87b0", acc: "#7aa2f7" },
   mocha: { l: "Mocha", dark: true, sw: ["#11111b", "#1e1e2e", "#cba6f7"], bg: "#11111b", card: "#1e1e2e", soft: "#262637", line: "#313244", ink: "#cdd6f4", mut: "#9399b2", acc: "#cba6f7" },
   gruvbox: { l: "Gruvbox", dark: true, sw: ["#1d2021", "#282828", "#fabd2f"], bg: "#1d2021", card: "#282828", soft: "#32302f", line: "#3c3836", ink: "#ebdbb2", mut: "#a89984", acc: "#fabd2f" },
   solard: { l: "Solarized oscuro", dark: true, sw: ["#00212b", "#002b36", "#2aa198"], bg: "#00212b", card: "#002b36", soft: "#073642", line: "#0e4352", ink: "#eee8d5", mut: "#93a1a1", acc: "#2aa198" },
   paper: { l: "Papel", dark: false, sw: ["#f7f5f0", "#ffffff", "#2563eb"], bg: "#f7f5f0", card: "#ffffff", soft: "#f2efe8", line: "#e3ded3", ink: "#22201c", mut: "#6f6a60", acc: "#2563eb" },
   snow: { l: "Nieve", dark: false, sw: ["#f5f7fa", "#ffffff", "#4f46e5"], bg: "#f5f7fa", card: "#ffffff", soft: "#eef2f7", line: "#dde3ec", ink: "#111827", mut: "#5f6b7c", acc: "#4f46e5" },
-  pearl: { l: "Gris perla", dark: false, sw: ["#ececee", "#f8f8f9", "#334155"], bg: "#ececee", card: "#f8f8f9", soft: "#f1f1f3", line: "#d6d6db", ink: "#1c1c1f", mut: "#64646c", acc: "#334155" },
   mint: { l: "Menta", dark: false, sw: ["#eef8f3", "#ffffff", "#10b981"], bg: "#eef8f3", card: "#ffffff", soft: "#f2faf6", line: "#cfe8dc", ink: "#0f3a2a", mut: "#4e7565", acc: "#10b981" },
   lavender: { l: "Lavanda", dark: false, sw: ["#f4f1fb", "#ffffff", "#7c3aed"], bg: "#f4f1fb", card: "#ffffff", soft: "#f7f4fd", line: "#e1d9f3", ink: "#2a1f47", mut: "#6c6187", acc: "#7c3aed" },
-  peach: { l: "Durazno", dark: false, sw: ["#fbf2ec", "#ffffff", "#ea580c"], bg: "#fbf2ec", card: "#ffffff", soft: "#fdf6f1", line: "#efdccf", ink: "#3d2418", mut: "#86675a", acc: "#ea580c" },
   rose: { l: "Rosa", dark: false, sw: ["#fbf0f3", "#ffffff", "#e11d48"], bg: "#fbf0f3", card: "#ffffff", soft: "#fdf5f7", line: "#f0d6de", ink: "#3d1622", mut: "#8a5f6d", acc: "#e11d48" },
   latte: { l: "Latte", dark: false, sw: ["#eff1f5", "#ffffff", "#8839ef"], bg: "#eff1f5", card: "#ffffff", soft: "#e6e9ef", line: "#ccd0da", ink: "#4c4f69", mut: "#6c6f85", acc: "#8839ef" },
   solarl: { l: "Solarized claro", dark: false, sw: ["#fdf6e3", "#fffbf0", "#268bd2"], bg: "#fdf6e3", card: "#fffbf0", soft: "#eee8d5", line: "#e2dbc6", ink: "#073642", mut: "#657b83", acc: "#268bd2" },
   nord: { l: "Nord", dark: true, sw: ["#2e3440", "#3b4252", "#88c0d0"], bg: "#2a2f3a", card: "#2e3440", soft: "#3b4252", line: "#434c5e", ink: "#eceff4", mut: "#a3adbf", acc: "#88c0d0" },
+  onedark: { l: "One Dark", dark: true, sw: ["#21252b", "#282c34", "#61afef"], bg: "#21252b", card: "#282c34", soft: "#2f343e", line: "#3b4048", ink: "#e6e9ef", mut: "#9da5b4", acc: "#61afef" },
+  rosepine: { l: "Rosé Pine", dark: true, sw: ["#191724", "#1f1d2e", "#ebbcba"], bg: "#191724", card: "#1f1d2e", soft: "#26233a", line: "#403d52", ink: "#e0def4", mut: "#908caa", acc: "#ebbcba" },
+  kanagawa: { l: "Kanagawa", dark: true, sw: ["#1f1f28", "#2a2a37", "#7e9cd8"], bg: "#1f1f28", card: "#2a2a37", soft: "#363646", line: "#54546d", ink: "#dcd7ba", mut: "#a6a69c", acc: "#7e9cd8" },
+  everforest: { l: "Everforest", dark: true, sw: ["#2d353b", "#343f44", "#a7c080"], bg: "#2d353b", card: "#343f44", soft: "#3d484d", line: "#475258", ink: "#d3c6aa", mut: "#9da9a0", acc: "#a7c080" },
+  synthwave: { l: "Synthwave '84", dark: true, sw: ["#262335", "#2a2139", "#ff7edb"], bg: "#1e1a2b", card: "#262335", soft: "#2f2a45", line: "#463b63", ink: "#f4eefa", mut: "#b5a8d0", acc: "#ff7edb" },
+  github: { l: "GitHub claro", dark: false, sw: ["#f6f8fa", "#ffffff", "#0969da"], bg: "#f6f8fa", card: "#ffffff", soft: "#f6f8fa", line: "#d0d7de", ink: "#1f2328", mut: "#59636e", acc: "#0969da" },
+  dawn: { l: "Rosé Pine claro", dark: false, sw: ["#faf4ed", "#fffaf3", "#b4637a"], bg: "#faf4ed", card: "#fffaf3", soft: "#f2e9e1", line: "#dfdad9", ink: "#575279", mut: "#797593", acc: "#b4637a" },
   ...LSSD_SKINS, ...SAHP_SKINS,
 };
 /* departamento activo (lo fija lib/dept.ts): cada uno tiene su lista de temas y recuerda el suyo */
@@ -73,6 +71,8 @@ export const setSkinDept = (d: "lspd" | "lssd" | "sahp") => { if (d !== SKD) { S
 export const skinsOfDept = () => Object.entries(SKINS).filter(([, s]) => (s.dept || "lspd") === SKD);
 const themeKey = () => (SKD === "lspd" ? "lspdt.theme" : `lspdt.next.theme.${SKD}`);
 const DEPT_DEF_SKIN = { lspd: "nuevo", lssd: "s_sheriff", sahp: "h_patrol" } as const;
+/* temas que se sacaron (repetían a otro casi igual): quien los tenía pasa al más parecido */
+const OLD_SKIN: Record<string, string> = { midnight: "nuevo", navy: "dark", obsidian: "graphite", crimson: "red", moon: "tokyo", wine: "red", copper: "gruvbox", pearl: "snow", peach: "sand" };
 const okSkin = (k: string | null | undefined): k is string => !!k && !!SKINS[k] && (SKINS[k].dept || "lspd") === SKD;
 export const ACCENTS = ["#7c9cff", "#60a5fa", "#22d3ee", "#22c55e", "#facc15", "#f97316", "#ef4444", "#e879f9", "#e5e7eb", "#c9a227"];
 /* fuentes para títulos y menús (estilo táctico, como Rajdhani SemiBold); se cargan solo si se eligen */
@@ -112,7 +112,7 @@ function brandOf(own: string | null, spd: string | null) {
   return { brand: isBrand(own) ? own : isBrand(deptUi.brand) ? deptUi.brand : "rgb", brandOwn: isBrand(own), brandSpd: Math.max(1, Math.min(20, n)) };
 }
 function pref(): Pref {
-  const s = lsGet(themeKey()), old = lsGet("lspdt.next.theme"), dT = SKD === "lspd" ? deptUi.theme : deptUi["theme." + SKD];
+  const s0 = lsGet(themeKey()), s = (s0 && OLD_SKIN[s0]) || s0, old = lsGet("lspdt.next.theme"), dT0 = SKD === "lspd" ? deptUi.theme : deptUi["theme." + SKD], dT = (dT0 && OLD_SKIN[dT0]) || dT0;
   const skin = okSkin(s) ? s : okSkin(dT) ? dT : SKD === "lspd" && old === "light" ? "nuevoc" : DEPT_DEF_SKIN[SKD];
   const c = lsGet("lspdt.crt"), i = parseInt(lsGet("lspdt.crtI") || "");
   const cu = lsGet("lspdt.cursor");

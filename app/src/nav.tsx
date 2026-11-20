@@ -3,7 +3,7 @@ import { divVisible } from "@/lib/divisions";
 import type { LucideIcon } from "lucide-react";
 import {
   CalendarDays, Home, BookOpenCheck, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
-  Gavel, Pill, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, FolderOpen, Fingerprint, UserRound, Presentation, UserMinus, RadioTower, UsersRound, Images, HeartHandshake } from "lucide-react";
+  Gavel, Pill, BadgeCheck, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, FolderOpen, Fingerprint, UserRound, Presentation, UserMinus, RadioTower, UsersRound, Images, HeartHandshake } from "lucide-react";
 import { GUEST, LS, ME_ROLES } from "./lib/store";
 import { DEPT, onDept } from "./lib/dept";
 import { Helicopter } from "./components/icons";
@@ -19,7 +19,12 @@ const RAW_AREAS: Area[] = [
     { k: "nov", l: "Novedades", d: "Registro de cambios por versión y la primera versión de la terminal", icon: ScrollText, ready: true, hide: true }] },
   { k: "age", l: "Agentes", icon: Users, min: 6, req: "Sargento I", sec: [{ k: "prof", l: "Agentes", d: "Planilla del departamento por rango: Jefatura, Capitanía, Supervisores, Detectives y Patrulleros", icon: Users, ready: true }] },
   { k: "cal", l: "Calendario", icon: CalendarDays, min: 0, sec: [{ k: "cal", l: "Calendario", d: "Prácticas, instrucciones y eventos de las divisiones", icon: CalendarDays, ready: true }] },
-  { k: "inf", l: "Informes", icon: FileText, min: 0, sec: [{ k: "inf", l: "Informes policiales", d: "Redactar, registrar y buscar informes", icon: FileText, ready: true }] },
+  /* Oficiales: desde Oficial III (Informes, Códigos radiales y Procedimientos; el servidor controla lo mismo con los informes) */
+  { k: "ofi", l: "Oficiales", icon: BadgeCheck, min: 3, req: "Oficial III", sec: [
+    { k: "inf", l: "Informes policiales", sl: "Informes", d: "Redactar, registrar y buscar informes", icon: FileText, ready: true },
+    { k: "cod", l: "Códigos radiales", d: "Códigos de radio, 10-X, terminología, derechos y alfabeto NATO", icon: Radio, ready: true },
+    { k: "pro", l: "Procedimientos", d: "Actualización de sanciones por estupefacientes y dinero no justificado", icon: Pill, ready: true },
+  ] },
   /* oculta del menú: se entra desde el nombre del encabezado (por ahora solo six, BETA) */
   { k: "me", l: "Mi perfil", icon: UserRound, min: 0, hidden: true, sec: [{ k: "perfil", l: "Mi perfil", d: "Perfiles de la terminal (BETA)", icon: UserRound, ready: true }] },
   { k: "fb", l: "Feedback", icon: Heart, min: 0, sec: [{ k: "env", l: "Feedback", d: "Errores, ideas o mejoras: escribilo como quieras y sumá fotos si ayudan", icon: Heart, ready: true }] },
@@ -54,8 +59,6 @@ const RAW_AREAS: Area[] = [
   /* consulta del Manual del Novato: en prueba, solo six y quienes habilite en Administración › Accesos */
   { k: "con", l: "Consulta", icon: BookOpenCheck, min: 0, beta: true, sec: [{ k: "con", l: "Consulta", d: "Preguntas sobre el Manual del Novato, respondidas con el manual", icon: BookOpenCheck, ready: true }] },
   { k: "rad", l: "Radio", icon: RadioTower, min: 0, sec: [{ k: "rad", l: "Comunicados por radio", d: "10.03 con sujetos y vehículo de huida, por /rlspd o /rsapd", icon: RadioTower, ready: true }] },
-  { k: "cod", l: "Códigos", icon: Radio, min: 0, sec: [{ k: "cod", l: "Códigos radiales", d: "Códigos de radio, 10-X, terminología, derechos y alfabeto NATO", icon: Radio, ready: true },
-    { k: "pro", l: "Procedimientos", d: "Actualización de sanciones por estupefacientes y dinero no justificado", icon: Pill, min: 3, ready: true }] },
   { k: "jef", l: "Jefatura", icon: Star, min: 10, req: "Comandante", sec: [
     { k: "ros", l: "Estado del roster", d: "Composición del departamento", icon: BarChart3, ready: true },
     { k: "his", l: "Historial de votaciones", d: "Propuestas cerradas y su resultado", icon: History, ready: true },
@@ -87,9 +90,9 @@ const LSPD_AREAS: Area[] = RAW_AREAS
   .map(a => (a.k === "adm" ? { ...a, sec: a.sec.filter(x => x.k !== "fbt") } : a))
   .map(a => (a.k === "ini" ? a : { ...a, sec: a.sec.slice().sort(byLabel) }))
   .sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
-/* LSSD y SAHP: las mismas secciones del LSPD (Inicio, Agentes, Calendario, Informes, Feedback, Legal, Pizarra, Galería, Radio, Códigos y Administración),
+/* LSSD y SAHP: las mismas secciones del LSPD (Inicio, Agentes, Calendario, Oficiales, Feedback, Legal, Pizarra, Galería, Radio y Administración),
    cada una con los datos de su departamento. Supervisores, Capitanía y Jefatura siguen en construcción. Mismas reglas de rango (escala equivalente, lib/domain.ts). */
-const SHARE = ["ini", "me", "age", "cal", "inf", "fb", "leg", "piz", "gal", "rad", "cod"];
+const SHARE = ["ini", "me", "age", "cal", "ofi", "fb", "leg", "piz", "gal", "rad"];
 const ADM_X = ["brand", "acc", "data", "gal", "ts"];
 const LSSD_DIV_SEC: Sec[] = [
   { k: "dv_sseb", l: "Special Enforcement Bureau", d: "SEB · Unidad de Operaciones Especiales", icon: Crosshair, ready: true },
@@ -107,7 +110,7 @@ const SOON = (k: string, l: string, icon: LucideIcon, min: number, req: string):
 function xAreas(d: "lssd" | "sahp", g: { sup?: boolean; cap?: boolean; jef?: boolean } = {}): Area[] {
   const base = LSPD_AREAS.filter(a => SHARE.includes(a.k)).map(a => (a.k === "ini" ? { ...a, sec: a.sec.map(s => (s.k === "home" ? { ...s, d: d === "lssd" ? "Los Santos Sheriff's Department" : "San Andreas Highway Patrol" } : s)) }
     : a.k === "rad" ? { ...a, sec: a.sec.map(s => ({ ...s, d: `10.03 con sujetos y vehículo de huida, por /r${d} o /rsapd` })) }
-    : a.k === "cod" ? { ...a, sec: a.sec.filter(s => s.k !== "pro") } /* Procedimientos es del LSPD */ : a));
+    : a.k === "ofi" ? { ...a, sec: a.sec.filter(s => s.k !== "pro"), ...(d === "sahp" ? { min: 1, req: "Officer" } : { req: "Deputy Sheriff Bonus II" }) } /* Procedimientos es del LSPD; en la SAHP no hay Officer III */ : a));
   const div: Area = d === "lssd" ? { k: "div", l: "Divisiones", icon: Landmark, min: 0, sec: LSSD_DIV_SEC } : SOON("div", "Divisiones", Landmark, 0, "");
   const adm0 = LSPD_AREAS.find(a => a.k === "adm")!, adm = { ...adm0, sec: [...adm0.sec, ...RAW_AREAS.find(a => a.k === "adm")!.sec.filter(x => x.k === "fbt")].sort(byLabel) };
   /* Supervisores: por ahora solo Condecoraciones (las mismas del LSPD: se ven en Agentes y en el Inicio) */
@@ -153,6 +156,9 @@ const conOk = () => !!ME_ROLES.six || LS.json<string[]>("lspdt.consultaAcc", [])
 const galOk = () => !!ME_ROLES.six || !!ME_ROLES.admin || (DEPT.id !== "lspd" && !!ME_ROLES.jef) || LS.json<string[]>("lspdt.galEditors", []).includes(PROF.me); /* LSSD/SAHP: Jefatura maneja la portada */
 /* invitado: solo las secciones que abrió six (Novedades va siempre con el Inicio) */
 const guestSec = (a: string, s: string) => GUEST.secs.includes(`${a}/${s}`) || (a === "ini" && s === "nov");
+/* Informes y Códigos pasaron a Oficiales: los accesos guardados (última pantalla, enlaces) siguen andando */
+const MOVED: Record<string, string> = { inf: "ofi", cod: "ofi" };
+export const fixNav = <T extends { a: string; s: string }>(n: T): T => (MOVED[n.a] ? { ...n, a: MOVED[n.a] } : n);
 /* acceso dado desde Administración › Accesos: cuenta como Sargento I (Supervisores), Teniente (Capitanía) o Comandante (Jefatura) */
 const AREA_L: Record<string, number> = { sup: 6, cap: 8, jef: 10 };
 /* nivel efectivo (rango + acceso dado desde Administración): lo usan los expedientes */

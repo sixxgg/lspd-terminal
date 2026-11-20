@@ -5,6 +5,7 @@
    casillas al final. Abajo, historial de movimientos y comunicado para Discord firmado por Coordinación e Instructores.
    Gestionan la coordinación y los instructores (más six, Liam y Molina); el resto de la división lo ve. */
 import { useEffect, useMemo, useState } from "react";
+import { LPC_COLOR } from "@/lib/divisions";
 import { ArrowRight, ArrowUpCircle, Bookmark, Check, History, LogOut, Megaphone, Minus, MoreVertical, Plus, RefreshCw, Search, Settings2, Shield, Target, UserCheck, X } from "lucide-react";
 import { Button, Card, Input, Textarea } from "@/components/ui";
 import { Avatar, AgentCombo } from "@/components/agents";
@@ -26,9 +27,9 @@ const SEC: Record<Ser, { l: string; sub: string; acc: string; from: number; top0
 /* qué es cada casilla según su número */
 const slotRole = (s: Ser, n: number): [string, string] => s === "D"
   ? n < 10 ? ["Mando", "#a78bfa"] : n % 10 === 0 ? ["Team Leader · Pelotón D", "#f5a524"] : n % 10 === 5 ? ["Instructor SWAT", "#22c55e"] : ["Operador SWAT", "#e05a52"]
-  : n % 10 === 0 ? ["Líder de Pelotón C", "#38bdf8"] : ["METRO", "#3b8fd9"];
+  : n % 10 === 0 ? ["Líder de Pelotón C", LPC_COLOR] : ["METRO", "#3b8fd9"];
 const LEG: Record<Ser, [string, string][]> = { D: [["Mando (R01D–R09D)", "#a78bfa"], ["Team Leader Pelotón D (termina en 0)", "#f5a524"], ["Instructor SWAT (termina en 5)", "#22c55e"], ["Operador", "#e05a52"]],
-  C: [["Líder de Pelotón C (termina en 0)", "#38bdf8"], ["Operador / aspirante", "#3b8fd9"]] };
+  C: [["Líder de Pelotón C (termina en 0)", LPC_COLOR], ["Operador / aspirante", "#3b8fd9"]] };
 const fecha = (t: number) => { const d = new Date(t), p = (x: number) => String(x).padStart(2, "0"); return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`; };
 const parseN = (v: string) => { const m = v.trim().match(/^R?\s*(\d{1,3})\s*[CD]?$/i) || v.match(/(\d{1,3})/); return m ? +m[1] : 0; };
 

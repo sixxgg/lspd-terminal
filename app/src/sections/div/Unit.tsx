@@ -1,7 +1,7 @@
 import { DivAdmin, DivNav, Uniformidad, divTabs, type DivTab, type URole } from "./DivTools";
 import { Comunicados } from "./Comunicados";
-import { lazy, Suspense, useMemo, useState } from "react";
-import { CalendarDays, Megaphone, Shirt, Users, Check, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History, Dog, ClipboardCheck, MessageCircle, Trophy, Loader2, Crosshair, ClipboardList, IdCard, Target } from "lucide-react";
+import { lazy, Suspense, useMemo, useState, type ReactNode } from "react";
+import { CalendarDays, Scale, Megaphone, Shirt, Users, Check, X, ClipboardPen, ListChecks, GraduationCap, Search, Copy, Trash2, Save, RotateCcw, Bell, ArrowUpRight, Gavel, FileCheck2, BookMarked, Radio, Vote, History, Dog, ClipboardCheck, MessageCircle, Trophy, Loader2, Crosshair, IdCard } from "lucide-react";
 import { ExamStatus } from "@/components/mdexam";
 import { useExam } from "@/lib/mdexam";
 import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input, Segmented, Select } from "@/components/ui";
@@ -88,7 +88,19 @@ function asdXText(n: string, X: XRec) {
   return `**Oficial:** ${n}${a && a.p ? ` | ${a.p}` : ""}\n**Estado:** ${l.join(" · ") || "—"}${X._n ? `\n**Nota:** ${X._n}` : ""}`;
 }
 
-const PSB_TABS: [string, string, typeof Bell][] = [["not", "Notificación", Bell], ["ele", "Elevación de caso", ArrowUpRight], ["jus", "Aprobación SAJD", Gavel], ["res", "Resolución", FileCheck2], ["vot", "Votaciones", Vote], ["his", "Expedientes", History], ["cat", "Catálogo de faltas", BookMarked], ["cit", "Citación 10-80", Radio]];
+const PSB_TABS: [string, string, typeof Bell][] = [["not", "Notificación", Bell], ["ele", "Elevación de caso", ArrowUpRight], ["jus", "Aprobación SAJD", Gavel], ["res", "Resolución", FileCheck2], ["vot", "Votaciones", Vote], ["his", "Expedientes", History], ["cat", "Catálogo de faltas", BookMarked], ["der", "Derechos del agente (3303)", Scale], ["cit", "Citación 10-80", Radio]];
+
+/* pestañas de METRO que pasaron a Exámenes y Entrevistas (lo último abierto sigue funcionando) */
+const OLD_MD: Record<string, string> = { mdo: "mdx", mdg: "mdx", mdp: "mdx", mde: "mdx", mdi: "mdv" };
+/* subpestañas dentro de una pestaña de la división, de la A a la Z, recordando la última abierta */
+function SubTabs({ id, opts, render }: { id: string; opts: [string, string][]; render: (v: string) => ReactNode }) {
+  const L = opts.slice().sort((a, b) => a[1].localeCompare(b[1], "es", { numeric: true })), K = `lspdt.next.sub.${id}`;
+  const [v, setV] = useState(() => LS.get(K) || ""), cur = L.some(x => x[0] === v) ? v : L[0][0];
+  return <div className="space-y-4">
+    {L.length > 1 && <Segmented size="sm" value={cur} onChange={x => { setV(x); LS.set(K, x); }} options={L.map(([value, label]) => ({ value, label: value === "mdo" ? <span className="inline-flex items-center gap-1.5">{label}<ExamStatus /></span> : label }))} />}
+    {render(cur)}
+  </div>;
+}
 
 export function Unit({ k, dn }: { k: UnitKey; dn?: string }) {
   useStoreVersion();
@@ -97,19 +109,20 @@ export function Unit({ k, dn }: { k: UnitKey; dn?: string }) {
   const mdIns = k === "md" && (co || !!insRole("md", me.n)), mem = isUMem(k, me.n), ex = useExam(), exEn = !!ex?.en.includes(me.n);
   /* examen práctico de aspirantes: solo six, Liam Campbell y Evelyn Molina */
   const prac = k === "md" && (!!ME_ROLES.six || ["Liam Campbell", "Evelyn Molina"].includes(me.n));
+  const mdX = k !== "md" ? [] : ([(mem || co || exEn) && ["mdo", "Examen"], mdIns && ["mde", "Examen escrito"], prac && ["mdp", "Examen práctico"], co && ["mdg", "Gestión de exámenes"]].filter(Boolean) as [string, string][]);
   const tabs0: TB[] = [["ros", "Roster", Users], ...(k === "psb" ? PSB_TABS : u.reg ? [["reg", u.reg, ClipboardPen], ["log", `${u.regs} (${uLog(k).length})`, ListChecks]] as TB[] : []),
     ...(k === "asd" ? [["com", "Comunicados", Megaphone] as TB] : []), ...(k === "asd" && co ? [["exa", "Exámenes", GraduationCap] as TB] : []),
     ...(k === "md" && co ? [["arm", "Armas", Crosshair] as TB] : []), ...(k === "k9" ? [["fic", "Fichas", IdCard] as TB] : []),
-    ...(k === "md" && (mem || co || exEn) ? [["mdo", "Examen", ClipboardCheck] as TB] : []), ...(k === "md" && co ? [["mdg", "Gestión de exámenes", ClipboardList] as TB] : []),
-    ...(prac ? [["mdp", "Examen práctico", Target] as TB] : []), ...(k === "md" && (mem || co || prac) ? [["mdcs", "Callsign", Radio] as TB] : []),
-    ...(mdIns ? [["mde", "Examen escrito", ClipboardCheck], ["mdi", "Entrevista de instructor", MessageCircle], ["mdl", "Lista de elegibles", Trophy]] as TB[] : []),
+    /* METRO: Exámenes y Entrevistas agrupan lo suyo en subpestañas (cada una con su permiso de siempre) */
+    ...(mdX.length ? [["mdx", "Exámenes", ClipboardCheck] as TB] : []), ...(k === "md" && (mem || co || prac) ? [["mdcs", "Callsign", Radio] as TB] : []),
+    ...(mdIns ? [["mdv", "Entrevistas", MessageCircle], ["mdl", "Lista de elegibles", Trophy]] as TB[] : []),
     ["ins", "Instrucciones", GraduationCap], ["uni", "Uniformidad", Shirt], ["cal", "Calendario", CalendarDays]];
   const names = Object.keys(uMap(k)).filter(n => findAgent(n)).sort((a, b) => a.localeCompare(b, "es"));
   /* Roster siempre primero; el resto de la A a la Z */
   const tabs = [tabs0[0], ...tabs0.slice(1).sort((a, b) => a[1].localeCompare(b[1], "es", { numeric: true }))];
-  const [tab, setTab] = useState(() => LS.get(`lspdt.next.utab.${k}`) || "ros");
+  const [tab, setTab] = useState(() => { const v = LS.get(`lspdt.next.utab.${k}`) || "ros"; if (!OLD_MD[v]) return v; LS.set(`lspdt.next.sub.${OLD_MD[v]}`, v); return OLD_MD[v]; });
   /* pestañas que la coordinación dejó visibles para los miembros (+ Administración para la coordinación) */
-  const base: DivTab[] = tabs.map(([v, l, I]) => ({ value: v, label: v === "mdo" ? <span className="inline-flex items-center gap-1.5">{l}<ExamStatus /></span> : l, icon: <I />, txt: l })), opts = divTabs(k, base, co);
+  const base: DivTab[] = tabs.map(([v, l, I]) => ({ value: v, label: v === "mdx" && mdX.some(x => x[0] === "mdo") ? <span className="inline-flex items-center gap-1.5">{l}<ExamStatus /></span> : l, icon: <I />, txt: l })), opts = divTabs(k, base, co);
   const t = opts.some(x => x.value === tab) ? tab : opts[0]?.value || "ros";
   const go = (v: string) => { setTab(v); LS.set(`lspdt.next.utab.${k}`, v); };
   return (
@@ -117,14 +130,13 @@ export function Unit({ k, dn }: { k: UnitKey; dn?: string }) {
       <DivNav value={t} onChange={go} options={opts} />
       {t === "adm" ? <DivAdmin id={k} ab={u.ab} dn={dn} tabs={base} extra={<RoleEditor id={k} roles={unitRoles(k)} coFlag={false} locked={["coord", "subcoord", "co", "aco", "inst", "instp"]} />} /> : t === "uni" ? <Uniformidad id={k} ab={u.ab} dn={dn} canEdit={co} roles={u.R.map(r => [r[0], r[1], r[2]] as URole)} mine={uMap(k)[me.n] || []} /> : t === "ros" ? <Roster k={k} pal={pal.roles} />
         : t === "cal" ? <DivCal id={k} ab={u.ab} />
-        : t === "mdo" && k === "md" ? <Lazy><ExamTab /></Lazy>
-        : t === "mdg" && k === "md" && co ? <Lazy><ExamAdmin /></Lazy>
+        : t === "mdx" && mdX.length ? <SubTabs id="mdx" opts={mdX} render={v => <Lazy>{v === "mdo" ? <ExamTab /> : v === "mdg" ? <ExamAdmin /> : v === "mdp" ? <MetroPrac /> : <MetroExam tab="exa" />}</Lazy>} />
+        : t === "mdv" && mdIns ? <SubTabs id="mdv" opts={[["mdi", "Entrevista de instructor"], ["mdlp", "Entrevista para líder de pelotón"]]} render={v => <Lazy><MetroExam tab={v === "mdlp" ? "lp" : "ent"} /></Lazy>} />
         : t === "fic" && k === "k9" ? <Lazy><K9Fichas canEdit={mem || co} /></Lazy>
         : t === "arm" && k === "md" && co ? <Lazy><Armas /></Lazy>
         : t === "ins" ? <Instrucciones div={k} ab={u.ab} names={names} roleOf={n => insRole(k, n)} tipos={INS_TIPOS[k]} canEdit={mem} isCoord={co} />
         : t === "mdcs" && k === "md" ? <Lazy><MetroCalls can={co || mdIns || prac || !!ME_ROLES.admin} /></Lazy>
-        : t === "mdp" && prac ? <Lazy><MetroPrac /></Lazy>
-        : t === "mde" || t === "mdi" || t === "mdl" ? <Lazy><MetroExam tab={t === "mde" ? "exa" : t === "mdi" ? "ent" : "list"} /></Lazy>
+        : t === "mdl" && mdIns ? <Lazy><MetroExam tab="list" /></Lazy>
         : t === "reg" ? <RegForm k={k} onSaved={() => go("log")} /> : t === "log" ? <LogView k={k} /> : t === "exa" ? <Exams pal={pal.roles} /> : t === "com" ? <Comunicados div="asd" canEdit={co} />
         : t === "cit" ? <T1080 psbOnly /> : <Psb tab={t} go={go} />}
     </div>

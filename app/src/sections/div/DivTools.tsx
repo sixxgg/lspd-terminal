@@ -27,8 +27,10 @@ export function divTabs(id: string, tabs: DivTab[], coord: boolean): DivTab[] {
   return coord ? [...L, { value: "adm", label: <span className="text-red-600 dark:text-red-400">Administración</span>, icon: <ShieldAlert className="text-red-600 dark:text-red-400" /> }] : L;
 }
 /* barra de pestañas de la división: una sola fila (se desliza si no entra), con el color de la división y Administración aparte a la derecha */
+const tabTxt = (o: DivTab) => (typeof o.label === "string" ? o.label : o.txt || o.value);
 export function DivNav({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: DivTab[] }) {
-  const main = options.filter(o => o.value !== "adm"), adm = options.find(o => o.value === "adm");
+  /* siempre de la A a la Z (Administración aparte, a la derecha) */
+  const main = options.filter(o => o.value !== "adm").sort((a, b) => tabTxt(a).localeCompare(tabTxt(b), "es", { numeric: true, sensitivity: "base" })), adm = options.find(o => o.value === "adm");
   const tab = (o: DivTab, red = false) => (
     <button key={o.value} type="button" role="tab" aria-selected={o.value === value} onClick={() => onChange(o.value)} className={cn("dv-tab", red && "dv-tab-red", o.value === value && "on")}>
       {o.icon}<span>{red ? "Administración" : o.label}</span>

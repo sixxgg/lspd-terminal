@@ -92,12 +92,16 @@ export function useDivColors(d: string) {
 const mix = (a: number[], b: number[], f: number) => a.map((v, i) => v + (b[i] - v) * f), lumA = (a: number[]) => 0.3 * a[0] + 0.59 * a[1] + 0.11 * a[2];
 const lift = (a: number[]) => { let c = a; for (let i = 0; i < 8 && lumA(c) < 125; i++) c = mix(c, [255, 255, 255], 0.18); return c; };
 const toHex = (a: number[]) => "#" + a.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
+/* color del Líder de pelotón (roster, Callsign y distintivos) */
+export const LPC_COLOR = "#f472b6";
 export function unitPalette(k: UnitKey): { roles: Record<string, string>; acc: string } {
   const u = UNITS[k], p = divColors(u.d);
   const L = lift(hexRgb(p[1])), A = lift(hexRgb(p[0])), D = lift(mix(hexRgb(p[2]), hexRgb(p[0]), 0.55)), W = [255, 255, 255], G = [138, 143, 151], n = u.R.length;
   const P = [L, A, D, mix(A, W, 0.42), mix(D, W, 0.4), mix(L, G, 0.45), mix(A, G, 0.5)];
   const ov = !!roleOv(k), roles: Record<string, string> = {}; u.R.forEach((r, i) => { roles[r[0]] = ov ? r[2] : toHex(i === n - 1 && n > 2 ? G : P[Math.min(i, P.length - 1)]); });
   u.SUB?.forEach(r => { roles[r[0]] = r[2]; });
+  /* METRO: el Líder de pelotón (Team Leader) con un color propio, que no se confunda con los azules del resto */
+  if (k === "md" && !ov) roles.tl = LPC_COLOR;
   return { roles, acc: toHex(L) };
 }
 

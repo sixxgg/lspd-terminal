@@ -2,8 +2,9 @@
    D que termina en 5 = Instructor SWAT, C que termina en 0 = Líder de Pelotón C. Se muestran en Callsign, roster y examen. */
 import { csNums } from "@/lib/mdcalls";
 import { cn } from "@/lib/cn";
+import { LPC_COLOR } from "@/lib/divisions";
 
-const BADGE = { mando: ["Mando", "#a78bfa"], tld: ["TL Pelotón D", "#f5a524"], ins: ["Instructor SWAT", "#22c55e"], lpc: ["Líder Pelotón C", "#38bdf8"] } as const;
+const BADGE = { mando: ["Mando", "#a78bfa"], tld: ["TL Pelotón D", "#f5a524"], ins: ["Instructor SWAT", "#22c55e"], lpc: ["Líder Pelotón C", LPC_COLOR] } as const;
 function csBadges(s: string): (keyof typeof BADGE)[] {
   const out: (keyof typeof BADGE)[] = [];
   for (const n of csNums(s, "D")) out.push(n < 10 ? "mando" : n % 10 === 0 ? "tld" : n % 10 === 5 ? "ins" : (null as never));
