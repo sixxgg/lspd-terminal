@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BookOpenCheck, Scale, UserCheck, Crown, ShieldPlus, ImagePlus, Type, Save, Check, X, Upload, Download, FileSpreadsheet, RotateCcw, Shield, Database, Eye, KeyRound } from "lucide-react";
+import { BookOpenCheck, Copy, Scale, UserCheck, Crown, ShieldPlus, ImagePlus, Type, Save, Check, X, Upload, Download, FileSpreadsheet, RotateCcw, Shield, Database, Eye, KeyRound } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty, Field, Input, Segmented, Select } from "@/components/ui";
 import { prevStart } from "@/lib/preview";
 import { AgentCombo, Avatar } from "@/components/agents";
@@ -39,8 +39,43 @@ function OwnerAcc({ k, t, icon, area }: { k: string; t: string; icon: React.Reac
 /* ---------- solicitudes de acceso y administradores ---------- */
 /* LSSD y SAHP: los accesos que da six (Legal); las solicitudes y los administradores son del LSPD */
 export function AdmAccesosX() {
+  const dadm = !!ME_ROLES.dadm && !ME_ROLES.six;
   return <div className="space-y-5"><AreaAcc />{ME_ROLES.six && <OwnerAcc k="lspdt.legacc" t="Acceso a Legal" icon={<Scale />} area="Legal" />}
-    <p className="text-sm text-slate-500">Las cuentas {DEL[DEPT.id]} entran con su código de invitación (lo generás en tu panel, eligiendo el departamento). No hay solicitudes ni administradores aparte.</p></div>;
+    {(dadm || ME_ROLES.six) && <div className="grid gap-5 xl:grid-cols-2"><DeptInvites /><DeptAccounts /></div>}
+    <p className="text-sm text-slate-500">{dadm ? `Como administración ${DEL[DEPT.id]} manejás el acceso a las áreas, las invitaciones y ves las cuentas ${DEL[DEPT.id]}. Marca, roster y respaldo los maneja six.`
+      : `Las cuentas ${DEL[DEPT.id]} entran con su código de invitación (lo generás en tu panel, eligiendo el departamento, o lo genera la administración del departamento).`}</p></div>;
+}
+/* administración del departamento: códigos de invitación de su departamento (un solo uso, 72 h) */
+type Inv = { c: string; t: number; exp: number; u?: string; ut?: number; d?: string };
+function DeptInvites() {
+  const { toast } = useFeedback(), [L, setL] = useState<Inv[]>([]), [U, setU] = useState<Inv[]>([]), [busy, setBusy] = useState(false);
+  const load = () => void authApi({ a: "invites" }).then(r => { if (r.__s === 200) { setL((r.list as Inv[]).filter(x => (x.d || "lspd") === DEPT.id)); setU(((r.used || []) as Inv[]).filter(x => (x.d || "lspd") === DEPT.id)); } });
+  useEffect(load, []);
+  const cp = (c: string) => { void navigator.clipboard?.writeText(c).catch(() => {}); toast(`Copiado: ${c}`); };
+  const f = (t: number) => new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return <Card><CardHeader icon={<KeyRound />} title="Invitaciones" desc="Código para registrarse en la terminal. Un solo uso, vence a las 72 h." />
+    <CardBody className="space-y-2">
+      <Button className="w-full" disabled={busy} onClick={async () => { setBusy(true); const r = await authApi({ a: "invite", d: DEPT.id }); setBusy(false); if (r.__s !== 200) { toast(r.msg || "No se pudo generar", "err"); return; } cp(r.c); load(); }}>Generar invitación</Button>
+      {L.map(x => <div key={x.c} className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs dark:border-slate-700">
+        <b className="font-mono text-sm">{x.c}</b><span className="text-slate-500">vence {f(x.exp)}</span>
+        <button title="Copiar" onClick={() => cp(x.c)} className="ml-auto text-slate-400 hover:text-slate-800 dark:hover:text-white"><Copy className="size-3.5" /></button>
+        <button title="Revocar" onClick={async () => { const r = await authApi({ a: "uninvite", c: x.c }); if (r.__s !== 200) { toast(r.msg || "No se pudo revocar", "err"); return; } load(); }} className="text-slate-400 hover:text-red-500"><X className="size-3.5" /></button></div>)}
+      {!L.length && <p className="py-2 text-center text-xs text-slate-400">No hay invitaciones activas.</p>}
+      {U.length > 0 && <div className="pt-1"><p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Usadas</p>
+        {U.slice().reverse().map(x => <p key={x.c} className="text-xs text-slate-500"><span className="font-mono">{x.c}</span> → <b>{(x.u || "").replace(/^(lssd|sahp):/, "").split("/")[0]}</b>{x.ut ? ` · ${f(x.ut)}` : ""}</p>)}</div>}
+    </CardBody></Card>;
+}
+/* entradas: las cuentas del departamento, con su registro y su último ingreso (sin restablecer ni borrar) */
+function DeptAccounts() {
+  const [L, setL] = useState<{ n: string; c: number; last: number | null }[] | null>(null);
+  useEffect(() => { void authApi({ a: "deptaccs", d: DEPT.id }).then(r => setL(r.__s === 200 ? r.list : [])); }, []);
+  const f = (t: number | null) => (t ? new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—");
+  const who = (n: string) => { const [u, p] = n.replace(/^(lssd|sahp):/, "").split("/"); const a = getRoster().find(x => norm(x.n).replace(/[^a-z0-9]/g, "") === p); return { u, a }; };
+  return <Card><CardHeader icon={<UserCheck />} title="Cuentas y entradas" desc={`Quién tiene cuenta ${DEL[DEPT.id]} y cuándo entró por última vez.`} />
+    <CardBody className="max-h-[22rem] space-y-1 overflow-y-auto">{L === null ? <p className="py-4 text-center text-xs text-slate-400">Cargando…</p> : !L.length ? <p className="py-4 text-center text-xs text-slate-400">Todavía no hay cuentas.</p>
+      : L.map(x => { const { u, a } = who(x.n); return <div key={x.n} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50">
+        <Avatar n={a?.n || u} size={26} /><span className="min-w-0 flex-1"><b className="block truncate text-[13px]">{a?.n || u}</b><span className="block truncate text-[11px] text-slate-500">{u}{a ? ` · ${rankES(a.r)}` : ""}</span></span>
+        <span className="text-right text-[11px] text-slate-500">Último ingreso<br /><b className="font-mono text-slate-700 dark:text-slate-200">{f(x.last)}</b></span></div>; })}</CardBody></Card>;
 }
 /* acceso a Supervisores, Capitanía y Jefatura sin tener el rango: se elige la cuenta y listo (el servidor la trata como ese rango en esas áreas) */
 const AREAS_ACC = (): [string, string, string][] => (DEPT.id === "lspd" ? [["sup", "Supervisores", "Sargento I"], ["cap", "Capitanía", "Teniente"], ["jef", "Jefatura", "Comandante"]]

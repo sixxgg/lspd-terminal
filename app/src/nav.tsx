@@ -3,7 +3,7 @@ import { divVisible } from "@/lib/divisions";
 import type { LucideIcon } from "lucide-react";
 import {
   CalendarDays, Home, BookOpenCheck, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
-  Gavel, Pill, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, Fingerprint, UserRound, Presentation, UserMinus, RadioTower, UsersRound, Images } from "lucide-react";
+  Gavel, Pill, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, FolderOpen, Fingerprint, UserRound, Presentation, UserMinus, RadioTower, UsersRound, Images } from "lucide-react";
 import { GUEST, LS, ME_ROLES } from "./lib/store";
 import { DEPT, onDept } from "./lib/dept";
 import { Helicopter } from "./components/icons";
@@ -110,9 +110,21 @@ function xAreas(d: "lssd" | "sahp", g: { sup?: boolean; cap?: boolean; jef?: boo
   /* Supervisores: por ahora solo Condecoraciones (las mismas del LSPD: se ven en Agentes y en el Inicio) */
   const sup = LSPD_AREAS.find(x => x.k === "sup")!;
   const cap = LSPD_AREAS.find(x => x.k === "cap")!, jef = LSPD_AREAS.find(x => x.k === "jef")!;
+  /* LSSD: Supervisores como el LSPD (sin Condecoraciones, que son de Capitanía y Jefatura) + Expedientes y Feedback FTO (desde Master FTO);
+     Capitanía: Ascensos, Feedback, Condecoraciones y Expedientes; Jefatura (Area Commander/Comandante para arriba): lo suyo + Ascensos, Condecoraciones y Expedientes */
+  if (d === "lssd") {
+    const EXP: Sec = { k: "exp", l: "Expedientes", d: "Expedientes personales: feedbacks, anotaciones e historial de servicio de cada agente", icon: FolderOpen, ready: true };
+    const FTO: Sec = { k: "fto", l: "Feedback FTO", d: "Feedback de los Deputy Sheriff Master FTO a quienes están formando: va al expediente", icon: GraduationCap, ready: true, min: 4 };
+    const pick = (A: Area, ks: string[]) => A.sec.filter(x => ks.includes(x.k));
+    const supL: Area = { ...sup, min: 4, req: "Deputy Sheriff Master FTO", sec: [...sup.sec.filter(x => x.k !== "cond").map(x => ({ ...x, min: Math.max(x.min || 0, 7) })), { ...EXP, min: 7 }, FTO].sort(byLabel) };
+    const capL: Area = { ...cap, min: 8, req: "Lieutenant", sec: [...pick(sup, ["asc", "fbk", "cond"]), EXP].map(x => ({ ...x, min: undefined })).sort(byLabel) };
+    const jefL: Area = { ...jef, min: 10, req: "Area Commander (Comandante)", sec: [...jef.sec, ...pick(sup, ["asc", "cond"]), EXP].map(x => ({ ...x, min: undefined })).sort(byLabel) };
+    const admK = ME_ROLES.admin || ME_ROLES.six ? ADM_X : ["acc", "ts"]; /* la administración del departamento: accesos, invitaciones, cuentas y hora */
+    return [...base, div, supL, capL, jefL, { ...adm, sec: adm.sec.filter(s => admK.includes(s.k)) }].sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
+  }
   const L = [...base, div, g.sup ? { ...sup, req: "Sergeant" } : { ...sup, req: "Sergeant", sec: sup.sec.filter(x => x.k === "cond") },
     g.cap ? { ...cap, req: "Lieutenant" } : SOON("cap", "Capitanía", Briefcase, 8, "Lieutenant"),
-    g.jef ? { ...jef, req: d === "lssd" ? "Area Commander" : "Chief" } : SOON("jef", "Jefatura", Star, 10, d === "lssd" ? "Area Commander" : "Chief"), { ...adm, sec: adm.sec.filter(s => ADM_X.includes(s.k)) }];
+    g.jef ? { ...jef, req: "Chief" } : SOON("jef", "Jefatura", Star, 10, "Chief"), { ...adm, sec: adm.sec.filter(s => ADM_X.includes(s.k)) }];
   return L.sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
 }
 /* el menú cambia de departamento sin recargar: AREAS es la lista del departamento activo.
@@ -123,7 +135,7 @@ function syncAreas() {
   const d = DEPT.id;
   if (d === "lspd") { if (AK !== "lspd") { AK = "lspd"; AREAS.splice(0, AREAS.length, ...LSPD_AREAS); } return; }
   const A = LS.json<Record<string, string[]>>("lspdt.areaAcc", {}), g = Object.fromEntries(["sup", "cap", "jef"].map(k => [k, !!ME_ROLES.six || !!A[k]?.includes(PROF.me)]));
-  const key = d + JSON.stringify(g); if (key === AK) return; AK = key; AREAS.splice(0, AREAS.length, ...xAreas(d, g));
+  const key = d + JSON.stringify(g) + (ME_ROLES.dadm ? "a" : "") + (ME_ROLES.admin || ME_ROLES.six ? "A" : ""); if (key === AK) return; AK = key; AREAS.splice(0, AREAS.length, ...xAreas(d, g));
 }
 onDept(syncAreas);
 /* áreas que en el LSSD y la SAHP todavía están en construcción */
@@ -137,8 +149,10 @@ const galOk = () => !!ME_ROLES.six || !!ME_ROLES.admin || LS.json<string[]>("lsp
 const guestSec = (a: string, s: string) => GUEST.secs.includes(`${a}/${s}`) || (a === "ini" && s === "nov");
 /* acceso dado desde Administración › Accesos: cuenta como Sargento I (Supervisores), Teniente (Capitanía) o Comandante (Jefatura) */
 const AREA_L: Record<string, number> = { sup: 6, cap: 8, jef: 10 };
+/* nivel efectivo (rango + acceso dado desde Administración): lo usan los expedientes */
+export const myLevel = (r?: string) => effL(r);
 const effL = (r?: string) => { const A = LS.json<Record<string, string[]>>("lspdt.areaAcc", {}); return Math.max(lvl(r), ...Object.entries(AREA_L).map(([k, l]) => (A[k]?.includes(PROF.me) ? l : 0))); };
-export const canArea = (a: Area, r?: string) => (isSoon(a) ? !!ME_ROLES.six || lvl(r) >= a.min : GUEST.on ? a.sec.some(s => guestSec(a.k, s.k)) : a.k === "gal" ? galOk() : a.k === "con" ? conOk() : a.k === "me" ? profOk() : a.k === "leg" ? legalOk() : a.admin ? !!ME_ROLES.admin : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : effL(r) >= a.min);
+export const canArea = (a: Area, r?: string) => (isSoon(a) ? !!ME_ROLES.six || lvl(r) >= a.min : GUEST.on ? a.sec.some(s => guestSec(a.k, s.k)) : a.k === "gal" ? galOk() : a.k === "con" ? conOk() : a.k === "me" ? profOk() : a.k === "leg" ? legalOk() : a.admin ? !!ME_ROLES.admin || (!!ME_ROLES.dadm && DEPT.id !== "lspd") : a.k === "div" ? lvl(r) >= a.min && secsOf(a, r).length > 0 : effL(r) >= a.min);
 /* áreas del menú (sin las ocultas) */
 export const menuAreas = (r?: string) => (syncAreas(), AREAS).filter(a => !a.hidden && canArea(a, r));
 /* secciones bloqueadas para ese rango (se muestran con candado) */

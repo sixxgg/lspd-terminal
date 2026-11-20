@@ -41,7 +41,7 @@ export default wrap(async (req, res) => {
       const rows = (await q("select k, t, v like 'data:%' as img, case when v like 'data:%' or (t <= $2 and not (k = any($3))) then null else v end as v, (t <= $2 and not (k = any($3))) as hint from kv where t > $1 or k = any($3) order by t", [since - 50, since, need])).rows.filter(r => canRead(r.k, u));
       const ch = rows.map(r => r.hint && !r.img ? [r.k, null, +r.t, 1] : [r.k, r.img ? imgUrl(r.k, r.t) : shapeVal(r.k, r.v, u), +r.t]);
       const t = rows.length ? Math.max(since, ...rows.map(r => +r.t)) : since;
-      return send(res, 200, { ch, t, me: { admin: u.admin, owner: u.owner, six: isSix(u), anita: !!u.anita } });
+      return send(res, 200, { ch, t, me: { admin: u.admin, owner: u.owner, six: isSix(u), anita: !!u.anita, dadm: !!u.dadm } });
     }
     if (qs.hist) { // versiones guardadas de una clave (y de un registro dentro de ella, con id)
       const hk = String(qs.hist);

@@ -42,8 +42,8 @@ const GROUPS_LSPD: Record<string, { l: string; r: string[] }> = {
 };
 /* grupos del LSSD como en su planilla (mismas claves que el LSPD: las secciones filtran por ellas) */
 const GROUPS_LSSD: Record<string, { l: string; r: string[] }> = {
-  jef: { l: "Executive Staff", r: ["Sheriff", "Undersheriff", "Assistant Sheriff", "Division Chief"] },
-  cap: { l: "Command Staff", r: ["Area Commander", "Captain", "Lieutenant"] },
+  jef: { l: "Executive Staff", r: ["Sheriff", "Undersheriff", "Assistant Sheriff", "Division Chief", "Area Commander"] },
+  cap: { l: "Command Staff", r: ["Captain", "Lieutenant"] },
   sup: { l: "Supervisor Staff", r: ["Sergeant"] },
   det: { l: "Deputies", r: ["Deputy Sheriff Master FTO", "Deputy Sheriff Bonus II", "Deputy Sheriff Bonus I"] },
   ofi: { l: "Deputy Sheriff", r: ["Deputy Sheriff", "Deputy Sheriff Trainee"] },

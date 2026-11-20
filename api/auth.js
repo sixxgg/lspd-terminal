@@ -11,7 +11,7 @@ const digits = s => (/^#?(\d{1,5})$/.exec(String(s || "").trim()) || [])[1] || "
 const slim = list => list.map(a => ({ n: a.n, r: a.r, p: a.p }));
 /* invitaciones: códigos aleatorios de un solo uso (vencen a las 72 h); solo las generan los dueños desde su panel (six o Anita) */
 const INV_TTL = 72 * 3600e3, INV_MAX = 20;
-const canInvite = u => isSix(u) || !!u.anita;
+const canInvite = u => isSix(u) || !!u.anita || !!u.dadm;
 /* el prefijo dice para qué departamento sirve: LSPD-, LSSD- o SAHP- */
 const DEPT_INV = { lspd: "LSPD", lssd: "LSSD", sahp: "SAHP" };
 const invCode = (d = "lspd") => { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", b = randomBytes(10); let c = ""; for (let i = 0; i < 10; i++) c += A[b[i] % A.length]; return `${DEPT_INV[d] || "LSPD"}-${c.slice(0, 5)}-${c.slice(5)}`; };
@@ -189,13 +189,20 @@ async function post(req, res) {
     return send(res, 200, { e: r.email, c: +r.created, last: +r.last, no: all.findIndex(x => x.k === an) + 1, rec: (await metaList("rec:" + an)).length });
   }
   if (a === "recgen") return send(res, 200, { rec: await newRec(an) });
-  if (me.dept && a !== "passwd") return send(res, 403, { msg: "No disponible para tu departamento todavía" });
+  /* administración del departamento: ve las cuentas de su departamento (registro y último ingreso), sin restablecer ni borrar */
+  if (a === "deptaccs") {
+    if (!me.dadm && !isSix(me)) return send(res, 403, { msg: "Solo la administración del departamento." });
+    const d = me.dept || (["lssd", "sahp"].includes(b.d) ? b.d : "lssd");
+    const rows = (await q("select name,created,last from accounts where name like $1 order by last desc nulls last", [d + ":%"])).rows;
+    return send(res, 200, { list: rows.map(r => ({ n: r.name, c: +r.created, last: r.last ? +r.last : null })) });
+  }
+  if (me.dept && a !== "passwd" && !(me.dadm && ["invites", "invite", "uninvite"].includes(a))) return send(res, 403, { msg: "No disponible para tu departamento todavía" });
   if (["invites", "invite", "uninvite"].includes(a) && !canInvite(me)) return send(res, 403, { msg: "Las invitaciones las generan solo los dueños de la terminal." });
   if (a === "invites") return send(res, 200, { list: (await invList()).filter(x => x.by === me.n), used: (await metaObjs("invites")).filter(x => x.by === me.n && x.u).slice(-20), max: INV_MAX });
   if (a === "invite") {
     const all = await metaObjs("invites"), mine = (await invList()).filter(x => x.by === me.n);
     if (mine.length >= INV_MAX) return send(res, 429, { msg: `Ya tenés ${INV_MAX} invitaciones activas. Revocá alguna o esperá a que se usen.` });
-    const d = DEPT_INV[b.d] ? b.d : "lspd", x = { c: invCode(d), d, by: me.n, t: Date.now(), exp: Date.now() + INV_TTL };
+    const d = me.dadm && me.dept ? me.dept : DEPT_INV[b.d] ? b.d : "lspd", x = { c: invCode(d), d, by: me.n, t: Date.now(), exp: Date.now() + INV_TTL };
     await setMeta("invites", [...all.filter(i => i && (i.exp > Date.now() || i.u)), x].slice(-300)); return send(res, 200, x);
   }
   if (a === "uninvite") {

@@ -45,7 +45,13 @@ const Procedimientos = lz(() => import("./sections/Procedimientos"), "Procedimie
 const Equipamiento = lz(() => import("./sections/cap/Equipamiento"), "Equipamiento");
 
 
+const Expedientes = lz(() => import("./sections/Expedientes"), "Expedientes");
+const FtoFeedback = lz(() => import("./sections/Expedientes"), "FtoFeedback");
+
 export const VIEWS: Record<string, () => ReactNode> = {
+  /* LSSD: expedientes, feedback FTO y las herramientas que Capitanía y Jefatura comparten con Supervisores */
+  "sup/exp": () => <Expedientes />, "cap/exp": () => <Expedientes />, "jef/exp": () => <Expedientes />, "sup/fto": () => <FtoFeedback />,
+  "cap/asc": () => <Ascensos />, "jef/asc": () => <Ascensos />, "cap/fbk": () => <Feedback />, "cap/cond": () => <Condecoraciones />, "jef/cond": () => <Condecoraciones />,
   "sup/asc": () => <Ascensos />, "sup/t1080": () => <T1080 />, "rad/rad": () => <Radio />, "cod/pro": () => <Procedimientos />, "gal/gal": () => <Galeria />, "con/con": () => <Consulta />, "sup/reu": () => <Reuniones />, "sup/alt": () => <Alerta />, "sup/bod": () => <Bodycam />, "sup/cond": () => <Condecoraciones />, "cap/exa": () => <Sargentos tab="exa" />, "cap/ent": () => <Sargentos tab="ent" />, "cap/list": () => <Sargentos tab="list" />, "piz/piz": () => <Pizarra />, "cod/cod": () => <Codigos />, "sup/ent": () => <Entrevistas />, "sup/vot": () => <Votaciones />, "sup/fbk": () => <Feedback />, "cap/vot": () => <Votaciones />, "sup/pat": () => <PatrullasHub />, "sup/rob": () => <RobosSup />, "sup/prof": () => <Agentes />, "age/prof": () => <Agentes />, "ini/nov": () => <Novedades />, "adm/ts": () => <Timestamps />, "inf/inf": () => <Informes />, "leg/ley": () => <Legal />, "fb/env": () => <FeedbackApp />, "sup/hue": () => <Huellas />, "cap/equ": () => <Equipamiento />, "cap/perm": () => <Permisos />, "jef/ros": () => <EstadoRoster />, "jef/his": () => <HistorialVotaciones />,
   "cal/cal": () => <Calendario />, "me/perfil": () => <Perfil />, "adm/acc": () => (DEPT.id === "lspd" ? <AdmAccesos /> : <AdmAccesosX />), "adm/brand": () => <AdmMarca />, "adm/data": () => (DEPT.id === "lspd" ? <AdmDatos /> : <AdmDatosX />), "adm/logs": () => <AdmLogs />, "adm/gal": () => <AdmGaleria />,
 };
