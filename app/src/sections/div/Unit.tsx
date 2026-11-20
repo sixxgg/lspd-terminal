@@ -109,7 +109,7 @@ export function Unit({ k, dn }: { k: UnitKey; dn?: string }) {
   const mdIns = k === "md" && (co || !!insRole("md", me.n)), mem = isUMem(k, me.n), ex = useExam(), exEn = !!ex?.en.includes(me.n);
   /* examen práctico de aspirantes: solo six, Liam Campbell y Evelyn Molina */
   const prac = k === "md" && (!!ME_ROLES.six || ["Liam Campbell", "Evelyn Molina"].includes(me.n));
-  const mdX = k !== "md" ? [] : ([(mem || co || exEn) && ["mdo", "Examen"], mdIns && ["mde", "Examen escrito"], prac && ["mdp", "Examen práctico"], co && ["mdg", "Gestión de exámenes"]].filter(Boolean) as [string, string][]);
+  const mdX = k !== "md" ? [] : ([(mem || co || exEn) && ["mdo", "Examen online"], mdIns && ["mde", "Examen escrito"], prac && ["mdp", "Examen práctico"], co && ["mdg", "Gestión de exámenes"]].filter(Boolean) as [string, string][]);
   const tabs0: TB[] = [["ros", "Roster", Users], ...(k === "psb" ? PSB_TABS : u.reg ? [["reg", u.reg, ClipboardPen], ["log", `${u.regs} (${uLog(k).length})`, ListChecks]] as TB[] : []),
     ...(k === "asd" ? [["com", "Comunicados", Megaphone] as TB] : []), ...(k === "asd" && co ? [["exa", "Exámenes", GraduationCap] as TB] : []),
     ...(k === "md" && co ? [["arm", "Armas", Crosshair] as TB] : []), ...(k === "k9" ? [["fic", "Fichas", IdCard] as TB] : []),

@@ -1,9 +1,9 @@
-/* METRO · examen escrito en línea.
-   - ExamTab (miembros y anotados): estado Listo / No disponible, vista previa borrosa y botón para iniciar.
+/* METRO · examen online (lo rinden los anotados en la terminal).
+   - ExamTab (miembros y anotados): estado Abierto / Programado / Cerrado, cómo es el examen y botón para iniciar.
    - ExamAdmin (coordinación): activar o desactivar, duración, hora programada, convocatoria, anotados a mano, resultados,
      banco de preguntas (con la opción correcta, que queda solo en el servidor) y borrar intentos de prueba. */
 import { useEffect, useState } from "react";
-import { ClipboardCheck, Eye, FlaskConical, Lock, Pencil, Plus, RefreshCw, Save, Trash2, X } from "lucide-react";
+import { ClipboardCheck, Eye, FlaskConical, Lock, Pencil, Plus, RefreshCw, Save, ShieldAlert, Timer, Trash2, X } from "lucide-react";
 import { Button, Card, Field, Input, Select, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { ExamStatus } from "@/components/mdexam";
@@ -28,7 +28,7 @@ export function ExamTab() {
         <div className="flex flex-wrap items-center gap-4 bg-[linear-gradient(135deg,#0b1a33,#08101d)] px-5 py-5 text-white">
           <span className="grid size-12 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15"><ClipboardCheck className="size-6 text-sky-300" /></span>
           <div className="min-w-0 flex-1"><p className="font-mono text-[10px] font-bold uppercase tracking-[.24em] text-sky-300/80">Metropolitan Division</p>
-            <p className="text-xl font-bold">Examen escrito de instructores</p>
+            <p className="text-xl font-bold">Examen online de instructores</p>
             <p className="text-xs text-white/60">{S.n} preguntas de opción múltiple · {S.cfg.dur} minutos{S.cfg.at ? ` · ${fmtAt(S.cfg.at)}` : ""}</p></div>
           <ExamStatus big />
         </div>
@@ -37,16 +37,14 @@ export function ExamTab() {
             : !can ? "No figurás entre los postulantes de esta convocatoria." : a?.st === "run" ? "Tenés el examen en curso." : !open ? (S.cfg.on && S.cfg.at ? `Se habilita el ${fmtAt(S.cfg.at)}. Te avisamos arriba de la pantalla.` : "La coordinación todavía no activó el examen.")
             : S.me.co && !S.ready ? "No está activo: si entrás, queda como prueba de la coordinación." : "Cuando lo inicies arranca el reloj y no se detiene."}</p>
           <Button icon={open && can && !done ? <ClipboardCheck /> : <Lock />} disabled={!can || done || !open} onClick={openExam}
-            className={cn(!(can && !done && open) && "!bg-red-500/15 !text-red-500")}>{a?.st === "run" ? "Volver al examen" : "Iniciar examen"}</Button>
+            className={cn(!(can && !done && open) && "!bg-slate-500/15 !text-slate-500 dark:!text-slate-400")}>{a?.st === "run" ? "Volver al examen" : "Iniciar examen"}</Button>
         </div>
       </Card>
-      {/* vista previa borrosa: no son las preguntas reales */}
-      <Card className="relative overflow-hidden p-5">
-        <div aria-hidden className="pointer-events-none select-none space-y-4 blur-[6px]">{Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className="space-y-2"><div className="h-3 w-40 rounded bg-sky-500/30" /><div className="h-4 w-11/12 rounded bg-slate-300 dark:bg-slate-700" />
-            {[0, 1, 2].map(j => <div key={j} className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 dark:border-slate-800"><span className="size-6 rounded-md bg-slate-200 dark:bg-slate-700" /><span className="h-3 rounded bg-slate-200 dark:bg-slate-700" style={{ width: `${55 + ((i + j) * 13) % 35}%` }} /></div>)}</div>))}</div>
-        <div className="absolute inset-0 grid place-items-center bg-white/30 dark:bg-slate-950/40"><span className="inline-flex items-center gap-2 rounded-xl bg-slate-900/90 px-4 py-2 text-sm font-semibold text-white shadow-xl"><Lock className="size-4" />Las preguntas se ven al iniciar el examen</span></div>
-      </Card>
+      {/* cómo es el examen (las preguntas se ven recién al iniciarlo) */}
+      <div className="grid gap-3 sm:grid-cols-3">{([[ClipboardCheck, `${S.n} preguntas`, "De opción múltiple, una sola respuesta correcta."], [Timer, `${S.cfg.dur} minutos`, "El reloj arranca al iniciar y no se detiene."],
+        [ShieldAlert, "3 strikes y queda desaprobado", "Salir de la pestaña, sacar capturas o abrir las herramientas del navegador suma un strike."]] as const).map(([I, t, d]) => (
+        <Card key={t} className="flex items-start gap-3 p-4"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-500/12 text-brand-600 dark:text-brand-300"><I className="size-4" /></span>
+          <div><p className="text-sm font-semibold">{t}</p><p className="mt-0.5 text-xs leading-relaxed text-slate-500">{d}</p></div></Card>))}</div>
     </div>);
 }
 

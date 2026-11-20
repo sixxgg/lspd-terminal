@@ -317,31 +317,40 @@ button.fx-code:hover { border-color: color-mix(in srgb, var(--c) 80%, transparen
 .fx-rank-h > span:last-child { background: linear-gradient(90deg, color-mix(in srgb, var(--c) 45%, transparent), transparent); }
 .dark .fx-chip-on { box-shadow: 0 0 16px -4px rgb(var(--b-500) / .8); }
 
-/* ---------- barra de pestañas de las divisiones: píldoras en una o varias filas (todas a la vista, sin deslizar), con el color de la división ---------- */
-.dv-nav { --a: var(--ha, rgb(var(--b-500))); display: flex; align-items: flex-start; gap: .375rem; padding: .375rem; border-radius: .9rem;
-  border: 1px solid rgba(148,163,184,.22); background: rgba(255,255,255,.7); }
-.dark .dv-nav { border-color: rgba(148,163,184,.14); background: rgba(15,23,42,.55); }
-.dv-nav-row { display: flex; flex: 1; min-width: 0; flex-wrap: wrap; gap: .25rem; }
-.dv-nav-adm { display: flex; flex-shrink: 0; padding-left: .375rem; border-left: 1px solid rgba(148,163,184,.2); }
-.dv-tab { position: relative; display: inline-flex; align-items: center; gap: .5rem; white-space: nowrap; border-radius: .6rem; padding: .45rem .75rem;
-  border: 1px solid transparent; font-size: 13.5px; font-weight: 500; line-height: 1.25rem; color: rgb(71 85 105); transition: color .15s, background .15s, border-color .15s; }
+/* ---------- barra de pestañas de las divisiones: minimalista, una sola fila, «ícono Título | ícono Título» ---------- */
+.dv-nav { --a: var(--ha, rgb(var(--b-500))); display: flex; align-items: center; gap: .25rem; padding: .15rem 0; border-bottom: 1px solid rgba(148,163,184,.18); }
+.dark .dv-nav { border-bottom-color: rgba(148,163,184,.12); }
+.dv-nav-row { display: flex; flex: 1; min-width: 0; align-items: center; overflow-x: auto; }
+.dv-nav-adm { display: flex; flex-shrink: 0; padding-left: .5rem; margin-left: .25rem; border-left: 1px solid rgba(148,163,184,.25); }
+.dv-tab { position: relative; display: inline-flex; flex-shrink: 0; align-items: center; gap: .45rem; white-space: nowrap; padding: .6rem .85rem; margin-bottom: -1px;
+  border-bottom: 2px solid transparent; font-size: 13.5px; font-weight: 500; line-height: 1.25rem; color: rgb(100 116 139); transition: color .15s, border-color .15s; }
 .dark .dv-tab { color: rgb(148 163 184); }
-.dv-tab svg { width: 15px; height: 15px; flex-shrink: 0; opacity: .75; }
-.dv-tab:hover { color: rgb(15 23 42); background: rgba(148,163,184,.12); }
-.dark .dv-tab:hover { color: #fff; background: rgba(255,255,255,.05); }
-.dv-tab.on { color: rgb(15 23 42); font-weight: 600; background: #fff; border-color: color-mix(in srgb, var(--a) 35%, rgba(148,163,184,.3)); box-shadow: 0 1px 2px rgba(15,23,42,.08); }
-.dark .dv-tab.on { color: #fff; background: color-mix(in srgb, var(--a) 14%, rgb(30 41 59)); border-color: color-mix(in srgb, var(--a) 40%, transparent); box-shadow: 0 4px 14px -8px color-mix(in srgb, var(--a) 70%, transparent); }
+/* separador «|» entre pestañas */
+.dv-nav-row .dv-tab + .dv-tab::before { content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 1.05rem; transform: translateY(-50%); background: rgba(148,163,184,.3); }
+.dark .dv-nav-row .dv-tab + .dv-tab::before { background: rgba(148,163,184,.22); }
+.dv-tab svg { width: 15px; height: 15px; flex-shrink: 0; opacity: .7; }
+.dv-tab:hover { color: rgb(15 23 42); }
+.dark .dv-tab:hover { color: #fff; }
+.dv-tab.on { color: rgb(15 23 42); font-weight: 600; border-bottom-color: var(--a); }
+.dark .dv-tab.on { color: #fff; }
 .dv-tab.on svg { opacity: 1; color: var(--a); }
-.dv-tab:focus-visible { outline: 2px solid var(--a); outline-offset: 1px; }
+.dv-tab:focus-visible { outline: 2px solid var(--a); outline-offset: -2px; border-radius: .4rem; }
 .dv-tab-red, .dark .dv-tab-red { --a: #ef4444; color: #dc2626; } .dark .dv-tab-red { color: #f87171; }
-.dv-tab-red:hover, .dark .dv-tab-red:hover { color: #ef4444; background: rgba(239,68,68,.08); }
-.dv-tab-red.on, .dark .dv-tab-red.on { color: #fff; background: rgba(239,68,68,.18); border-color: rgba(239,68,68,.4); }
+.dv-tab-red:hover, .dark .dv-tab-red:hover { color: #ef4444; }
+.dv-tab-red.on, .dark .dv-tab-red.on { color: #ef4444; border-bottom-color: #ef4444; }
 .dv-tab-red svg { color: currentColor; }
-/* subpestañas (segunda fila, como «Examen · Escrito · Práctico»): más livianas, sin caja */
-.dv-nav.sub { padding: 0; border: 0; background: transparent; }
-.dv-nav.sub .dv-tab { padding: .35rem .7rem; font-size: 13px; border-color: rgba(148,163,184,.22); }
-.dark .dv-nav.sub .dv-tab { border-color: rgba(148,163,184,.16); }
-.dv-nav.sub .dv-tab.on { border-color: color-mix(in srgb, var(--a) 45%, transparent); }
+/* si no entran en una fila: se achican de a poco */
+.dv-nav.fit-1 .dv-tab { padding-left: .62rem; padding-right: .62rem; }
+.dv-nav.fit-2 .dv-tab { padding-left: .5rem; padding-right: .5rem; font-size: 12.75px; gap: .35rem; }
+.dv-nav.fit-3 .dv-tab { padding-left: .42rem; padding-right: .42rem; font-size: 12.5px; }
+.dv-nav.fit-3 .dv-nav-row .dv-tab:not(.on) svg { display: none; }
+.dv-nav.fit-4 .dv-tab { font-size: 12px; padding-left: .38rem; padding-right: .38rem; }
+.dv-nav.fit-4 .dv-nav-row { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+/* subpestañas (segunda fila, como «Examen | Escrito | Práctico»): sin línea de base, más chicas */
+.dv-nav.sub { border-bottom: 0; }
+.dv-nav.sub .dv-tab { padding-top: .35rem; padding-bottom: .35rem; font-size: 13px; border-bottom-width: 0; }
+.dv-nav.sub .dv-tab.on { color: var(--a); }
+.dark .dv-nav.sub .dv-tab.on { color: color-mix(in srgb, var(--a) 70%, #fff); }
 @media (max-width: 640px) { .dv-nav-adm .dv-tab span { display: none; } }
 
 /* ---------- BETA ---------- */
@@ -459,9 +468,8 @@ html.clasic .dv-hero { border-color: rgb(var(--n-700)) !important; box-shadow: n
 html.clasic .dv-hero-bg, html.clasic .dv-hero-sweep, html.clasic .dv-hero .bg-grid, html.clasic .dv-hero-emb::before { display: none; }
 html.clasic .dv-hero-k { color: rgb(var(--n-300)); letter-spacing: .04em; }
 html.clasic .dv-hero-t { text-transform: none; text-shadow: none; letter-spacing: -.02em; }
-html.clasic .dv-nav { border-color: rgb(var(--n-700)); background: rgb(var(--n-900)); box-shadow: none; }
-html.clasic .dv-tab.on { background: rgb(var(--n-800)); border-color: rgb(var(--n-700)); box-shadow: none; }
+html.clasic .dv-nav { border-bottom-color: rgb(var(--n-700)); }
+html.clasic .dv-tab.on { border-bottom-color: #fff; }
 html.clasic .dv-tab.on svg { color: #fff; }
-html.clasic .dv-nav.sub { background: transparent; }
 html.clasic .shadow-lg, html.clasic .shadow-xl { box-shadow: none !important; }
 html.clasic .crt-host, html.clasic .backdrop { display: none !important; }

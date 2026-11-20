@@ -2,7 +2,7 @@
    · Uniformidad: atuendos con nombre y código para copiar (lspdt.unif.<div>)
    · Administración (solo coordinación / subcoordinación): qué pestañas ven los miembros (lspdt.divacc.<div>) y links temporales
    · Links temporales de solo lectura (api/share) y su vista pública (?ver=<token>) */
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Check, Copy, Eye, EyeOff, Link2, Lock, Pencil, Plus, Shirt, ShieldAlert, Trash2, UserCog } from "lucide-react";
 import { Button, Card, Empty, Field, Input, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
@@ -26,7 +26,8 @@ export function divTabs(id: string, tabs: DivTab[], coord: boolean): DivTab[] {
   const L = coord ? tabs.map(t => hide.has(t.value) ? { ...t, label: <span className="inline-flex items-center gap-1">{t.label}<EyeOff className="!size-3 opacity-60" /></span> } : t) : tabs.filter(t => !hide.has(t.value));
   return coord ? [...L, { value: "adm", label: <span className="text-red-600 dark:text-red-400">Administración</span>, icon: <ShieldAlert className="text-red-600 dark:text-red-400" /> }] : L;
 }
-/* barra de pestañas de la división: todas a la vista (pasan a otra fila si no entran), con el color de la división y Administración aparte a la derecha */
+/* barra de pestañas de la división: minimalista, en UNA sola fila, «ícono Título | ícono Título», con Administración aparte a la derecha.
+   Si no entran, se achican de a poco (espaciado, letra y, al final, los íconos de las no activas); solo en pantallas muy angostas se desliza. */
 const tabTxt = (o: DivTab) => (typeof o.label === "string" ? o.label : o.txt || o.value);
 export function DivNav({ value, onChange, options, sub }: { value: string; onChange: (v: string) => void; options: DivTab[]; sub?: boolean }) {
   /* siempre de la A a la Z (Administración aparte, a la derecha) */
@@ -35,9 +36,14 @@ export function DivNav({ value, onChange, options, sub }: { value: string; onCha
     <button key={o.value} type="button" role="tab" aria-selected={o.value === value} onClick={() => onChange(o.value)} className={cn("dv-tab", red && "dv-tab-red", o.value === value && "on")}>
       {o.icon}<span>{red ? "Administración" : o.label}</span>
     </button>);
+  const row = useRef<HTMLDivElement>(null), [fit, setFit] = useState(0);
+  useLayoutEffect(() => { setFit(0); }, [options.length]);
+  useLayoutEffect(() => { const el = row.current; if (el && el.scrollWidth > el.clientWidth + 1 && fit < 4) setFit(fit + 1); }, [fit, options.length]);
+  useEffect(() => { const el = row.current; if (!el) return; let w = el.clientWidth;
+    const ro = new ResizeObserver(() => { if (Math.abs(el.clientWidth - w) > 8) { w = el.clientWidth; setFit(0); } }); ro.observe(el); return () => ro.disconnect(); }, []);
   return (
-    <div className={cn("dv-nav", sub && "sub")} role="tablist">
-      <div className="dv-nav-row">{main.map(o => tab(o))}</div>
+    <div className={cn("dv-nav", sub && "sub", fit && `fit-${fit}`)} role="tablist">
+      <div ref={row} className="dv-nav-row scrollbar-none">{main.map(o => tab(o))}</div>
       {adm && <div className="dv-nav-adm">{tab(adm, true)}</div>}
     </div>);
 }

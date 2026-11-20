@@ -232,11 +232,11 @@ function Center({ icon, t, d, tone, children }: { icon: React.ReactNode; t: stri
     <p className="mt-5 text-2xl font-bold">{t}</p><p className="mt-2 text-sm leading-relaxed text-white/60">{d}</p><div className="mt-7 flex justify-center">{children}</div></div></div>;
 }
 
-/* estado del examen: verde (listo), ámbar (programado) o rojo con candado (no disponible) */
+/* estado del examen: verde (abierto), ámbar (programado) o gris con candado (cerrado, que es lo normal fuera de la fecha) */
 export function ExamStatus({ big }: { big?: boolean }) {
   const S = useExam(); if (!S) return null;
-  const soon = S.cfg.on && !S.ready, [c, t] = S.ready ? ["#22c55e", "Listo"] : soon ? ["#f59e0b", "Programado"] : ["#ef4444", "No disponible"];
-  return <span className={cn("inline-flex items-center gap-1 rounded-md font-bold", big ? "px-2.5 py-1 text-xs" : "px-1.5 py-px text-[10px]")} style={{ color: c, background: c + "1f", boxShadow: `0 0 10px -3px ${c}` }}>
+  const soon = S.cfg.on && !S.ready, [c, t] = S.ready ? ["#22c55e", "Abierto"] : soon ? ["#f59e0b", "Programado"] : ["#94a3b8", "Cerrado"];
+  return <span className={cn("inline-flex items-center gap-1 rounded-md font-bold", big ? "px-2.5 py-1 text-xs" : "px-1.5 py-px text-[10px]")} style={{ color: c, background: c + "1f", boxShadow: S.ready ? `0 0 10px -3px ${c}` : undefined }}>
     {S.ready ? <CheckCircle2 className={big ? "size-3.5" : "!size-3"} /> : <Lock className={big ? "size-3.5" : "!size-3"} />}{t}</span>;
 }
 

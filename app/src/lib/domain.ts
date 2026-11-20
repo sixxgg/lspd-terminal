@@ -166,7 +166,9 @@ const DIVISIONES_LSPD = ["Patrulla", "Detective Bureau", "Metropolitan Division"
   "Recruitment and Training Division", "Professional Standards Bureau", "Administration Services Bureau"];
 export const divAb = (d: string) => DIV_INFO[d] || [d.split(/\s+/).map(w => w[0]).join("").slice(0, 4).toUpperCase(), "#334155"];
 const DIV_LOGO: Record<string, string> = { "Recruitment and Training Division": "rtd", "Underwater Dive Unit": "udu", "Metropolitan Division": "metro", "Major Crimes Division": "mcd", "High Tech Crime Unit": "htcu", "Gang and Narcotics Division": "gnd", "Air Support Division": "asd" };
-export const divEmblem = (d: string) => srcOf(LS.get("lspdt.divlogo." + d) || "") || (DEPT.id === "lspd" ? (DIV_LOGO[d] ? `/div/${DIV_LOGO[d]}.webp?v=3` : "") : DIV_INFO_LSSD[d] && DEPT.id === "lssd" ? `/next/sdiv/${slugOf(d)}.${SDIV_PNG.has(d) ? "webp?v=2" : "svg?v=1"}` : "");
+/* logo de la San Andreas Training Division: uno solo para los tres departamentos (lo sube six o la administración) */
+export const SATD_LOGO = "lspdt.satd.logo";
+export const divEmblem = (d: string) => d === "San Andreas Training Division" ? srcOf(LS.get(SATD_LOGO) || "") : srcOf(LS.get("lspdt.divlogo." + d) || "") || (DEPT.id === "lspd" ? (DIV_LOGO[d] ? `/div/${DIV_LOGO[d]}.webp?v=3` : "") : DIV_INFO_LSSD[d] && DEPT.id === "lssd" ? `/next/sdiv/${slugOf(d)}.${SDIV_PNG.has(d) ? "webp?v=2" : "svg?v=1"}` : "");
 /* LSSD: escudos oficiales (los que mandó el departamento); el resto, el dibujo de siempre */
 const SDIV_PNG = new Set(["Training Bureau", "Aero Bureau", "Special Enforcement Bureau", "Sheriff Information Bureau", "Canine Service Detail", "Detective Division", "High Speed Interception Unit", "Social Reintegration Division"]);
 const slugOf = (d: string) => d.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");

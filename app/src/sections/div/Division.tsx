@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from "react";
-import { BadgeCheck, Construction, GraduationCap, Lock, Users } from "lucide-react";
+import { BadgeCheck, Construction, GraduationCap, ImagePlus, Lock, Users } from "lucide-react";
 import { GEN, gMap } from "@/lib/units";
-import { Card } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 import { DivLogo } from "@/sections/sup/Agentes";
 import { DIV_DESC, DIV_DONE, SATD, divOpen, heroColors, subsOf, useDivColors } from "@/lib/divisions";
-import { divAb, rankES } from "@/lib/domain";
+import { SATD_LOGO, divAb, divEmblem, rankES } from "@/lib/domain";
 import { useMe } from "@/lib/me";
-import { LS, useStoreVersion } from "@/lib/store";
+import { LS, ME_ROLES, useStoreVersion } from "@/lib/store";
+import { ImagePicker } from "@/components/imagepick";
 import { Rtd } from "./Rtd";
 import { Unit } from "./Unit";
 import { GenDiv } from "./Gen";
@@ -89,11 +90,18 @@ export function Division({ d }: { d: string }) {
 
 /* San Andreas Training Division: academia conjunta (todavía sin información) */
 function SatdSoon() {
+  useStoreVersion();
+  const [pick, setPick] = useState(false), logo = divEmblem(SATD), can = !!ME_ROLES.six || !!ME_ROLES.admin;
   return (
     <Card className="relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_80%_at_50%_0%,rgb(var(--b-500)/.14),transparent)]" />
+      {can && <div className="absolute right-3 top-3 z-10 flex gap-1">
+        <Button size="sm" variant="outline" icon={<ImagePlus />} onClick={() => setPick(true)}>{logo ? "Cambiar logo" : "Subir logo"}</Button>
+        {logo && <Button size="sm" variant="ghost" onClick={() => LS.del(SATD_LOGO)}>Quitar</Button>}</div>}
+      <ImagePicker open={pick} title="Logo · San Andreas Training Division" k={SATD_LOGO} max={400} alpha onClose={() => setPick(false)} onFile={u => LS.set(SATD_LOGO, u)} onUrl={() => { /* el link queda guardado por el selector */ }} />
       <div className="relative flex flex-col items-center px-6 py-20 text-center">
-        <span className="grid size-16 place-items-center rounded-2xl bg-brand-500/15 text-brand-600 ring-1 ring-inset ring-brand-500/30 dark:text-brand-300"><GraduationCap className="size-8" /></span>
+        {logo ? <div className="size-32"><DivLogo d={SATD} /></div>
+          : <span className="grid size-16 place-items-center rounded-2xl bg-brand-500/15 text-brand-600 ring-1 ring-inset ring-brand-500/30 dark:text-brand-300"><GraduationCap className="size-8" /></span>}
         <p className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-300"><Construction className="size-3.5" />Próximamente</p>
         <h2 className="mt-3 font-display text-3xl font-bold">San Andreas Training Division</h2>
         <p className="mt-2 max-w-lg text-sm text-slate-500 dark:text-slate-400">La academia conjunta del Los Santos Police Department, el Los Santos Sheriff's Department y la San Andreas Highway Patrol. Formación común para los tres departamentos.</p>

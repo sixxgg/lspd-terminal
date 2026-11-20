@@ -4,7 +4,7 @@
    Edición en equipo: cada uno trabaja sobre un borrador (sus cambios encima de lo guardado) y guarda con «Guardar». Se ve en vivo quién
    está editando y qué; si dos tocan la misma nota, al guardar se pregunta si reemplazar o quedarse con lo del otro. */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Archive, Bookmark, CalendarClock, Clock, Check, CircleSlash, PauseCircle, StickyNote, FileText, Plus, RefreshCw, RotateCcw, Save, Send, UserCheck, Trash2, Trophy, UserPlus, Users, Wand2, X } from "lucide-react";
+import { Archive, Bookmark, CalendarClock, Clock, Check, CircleSlash, PauseCircle, StickyNote, FileText, Plus, RefreshCw, RotateCcw, Save, Send, UserCheck, Trash2, Trophy, UserPlus, Users, Wand2, X, Pencil } from "lucide-react";
 import { Button, Card, Input, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { Avatar, AgentCombo } from "@/components/agents";
@@ -89,8 +89,9 @@ function apply(T: Ty, L: Conv[], mine: Record<string, V>): Conv[] {
     for (const k of ks) { const m = k.match(/^([^|]+)\|([^|]+)\|n$/); if (m && m[1] === cid && !ids.has(m[2]) && mine[k] !== DEL) { const p = `${cid}|${m[2]}|`; R.push(rowOf(T, m[2], f => mine[p + f])); } }
     return R;
   };
-  for (const c of L) out.push({ id: c.id, n: String(c.id + "|_" in mine ? mine[c.id + "|_"] : c.n), rows: rowsOf(c.id, c.rows), ...(c.arch ? { arch: true } : {}) });
-  for (const k of ks) { const m = k.match(/^([^|]+)\|_$/); if (m && !L.some(c => c.id === m[1])) out.push({ id: m[1], n: String(mine[k]), rows: rowsOf(m[1], []) }); }
+  /* una convocatoria borrada (su nombre marcado como DEL) ya no aparece ni se guarda */
+  for (const c of L) if (mine[c.id + "|_"] !== DEL) out.push({ id: c.id, n: String(c.id + "|_" in mine ? mine[c.id + "|_"] : c.n), rows: rowsOf(c.id, c.rows), ...(c.arch ? { arch: true } : {}) });
+  for (const k of ks) { const m = k.match(/^([^|]+)\|_$/); if (m && !L.some(c => c.id === m[1]) && mine[k] !== DEL) out.push({ id: m[1], n: String(mine[k]), rows: rowsOf(m[1], []) }); }
   return out;
 }
 const same = (a: V, b: V) => (a === DEL ? undefined : a ?? "") === (b === DEL ? undefined : b ?? "") || (a === DEL && b === undefined) || (b === DEL && a === undefined);
@@ -160,6 +161,15 @@ function Prac({ T }: { T: Ty }) {
   const addRow = (n: string, cs = "", cid0 = c.id) => { const id = uid(), p = `${cid0}|${id}|`; return { [p + "n"]: n, [p + "cs"]: cs, ...Object.fromEntries(Array.from({ length: T.clases }, (_, i) => [p + "c" + (i + 1), ""])) }; };
   const delRow = (r: Row) => { if (savedC?.rows.some(x => x.id === r.id)) return edit(key(r.id, "n"), DEL); const mine = { ...dr.mine }, base = { ...dr.base }; for (const k of Object.keys(mine)) if (k.startsWith(`${c.id}|${r.id}|`)) { delete mine[k]; delete base[k]; } putDr({ mine, base }); };
   const addN = (n0: string) => { const n = n0.trim(); if (!n) return; if (c.rows.some(r => norm(r.n) === norm(n))) return toast(`${n} ya está en la convocatoria`, "err"); editMany(addRow(n)); toast(`${n} agregado`); };
+  /* renombrar y borrar la convocatoria elegida (las de archivo no se tocan; tiene que quedar al menos una). Queda como cambio para guardar */
+  const [ren, setRen] = useState<string | null>(null);
+  const renConv = () => { const n = (ren || "").trim(); if (!n) return toast("Escribí el nombre", "err"); edit(c.id + "|_", n); setRen(null); };
+  const delConv = async () => {
+    if (ro) return toast("Esa convocatoria es de archivo: no se puede borrar", "err");
+    if (view.filter(x => !x.arch).length < 2) return toast("Tiene que quedar al menos una convocatoria", "err");
+    if (!(await confirm(`¿Borrar ${c.n}?${c.rows.length ? ` Se borran también sus ${c.rows.length} aspirante${c.rows.length > 1 ? "s" : ""} y notas.` : ""} Queda como cambio: se aplica al guardar.`, { danger: true }))) return;
+    edit(c.id + "|_", DEL); setCid(""); toast(`${c.n} borrada · guardá para confirmar`);
+  };
   const addConv = () => { const n = Math.max(-1, ...view.map(x => +x.id.replace(/\D/g, "") || 0)) + 1, id = "C" + n; edit(id + "|_", "Convocatoria " + n); setCid(id); };
   const discard = async () => { if (await confirm("¿Descartar tus cambios sin guardar?", { danger: true })) { putDr({ mine: {}, base: {} }); live.current.k = []; live.current.dirty = true; } };
 
@@ -262,6 +272,10 @@ function Prac({ T }: { T: Ty }) {
       {/* convocatorias + en línea */}
       <div className="flex flex-wrap items-center gap-2">
         {view.map(x => <button key={x.id} onClick={() => setCid(x.id)} className={cn("rounded-xl border px-3 py-1.5 text-[13px] font-semibold transition", x.id === c.id ? "border-brand-500/60 bg-brand-500/10 text-brand-700 dark:text-brand-300" : "border-slate-200 text-slate-500 hover:text-slate-800 dark:border-slate-700 dark:hover:text-white")}>{x.n}{x.arch && <span className="ml-1.5 rounded bg-slate-200 px-1 text-[10px] font-bold uppercase text-slate-500 dark:bg-slate-700 dark:text-slate-300">archivo</span>}{!stored.some(s => s.id === x.id) && <span className="ml-1 text-amber-500">•</span>}</button>)}
+        {!ro && (ren === null ? <span className="flex gap-0.5"><button title={`Renombrar ${c.n}`} aria-label={`Renombrar ${c.n}`} onClick={() => setRen(c.n)} className="grid size-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"><Pencil className="size-4" /></button>
+          <button title={`Borrar ${c.n}`} aria-label={`Borrar ${c.n}`} onClick={() => void delConv()} className="grid size-8 place-items-center rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><Trash2 className="size-4" /></button></span>
+          : <span className="flex items-center gap-1.5"><Input autoFocus className="h-8 w-52 text-sm" value={ren} onChange={e => setRen(e.target.value)} onKeyDown={e => { if (e.key === "Enter") renConv(); if (e.key === "Escape") setRen(null); }} aria-label="Nombre de la convocatoria" />
+            <Button size="sm" onClick={renConv}>Listo</Button><Button size="sm" variant="ghost" onClick={() => setRen(null)}>Cancelar</Button></span>)}
         <button onClick={addConv} title="Nueva convocatoria" className="grid size-8 place-items-center rounded-xl border border-dashed border-slate-300 text-slate-400 hover:text-brand-600 dark:border-slate-700"><Plus className="size-4" /></button>
         <div className="ml-auto flex flex-wrap items-center gap-3 text-xs text-slate-500">
           {others.length > 0 && <span className="inline-flex items-center gap-1.5"><Users className="size-3.5" /><span className="flex -space-x-1.5">{others.map(o => <span key={o.n} title={`${o.n}${(o.v?.k || []).length ? ` · editando ${(o.v?.k || []).length} campo${(o.v?.k || []).length === 1 ? "" : "s"}` : " · mirando"}`} className={cn("rounded-full ring-2", (o.v?.k || []).length ? "ring-amber-400" : "ring-white dark:ring-slate-900")}><Avatar n={o.n} size={22} /></span>)}</span>

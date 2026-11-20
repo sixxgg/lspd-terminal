@@ -61,7 +61,7 @@ const BLOQ_LP: [string, number, string[]][] = [
   ["Liderazgo y responsabilidad", 2, ["¿Qué significa para ti liderar un pelotón de 10 operadores de la Metropolitan Division? ¿Qué responsabilidades asumes ante tu equipo y ante la coordinación?",
     "Un operador de tu pelotón no cumple una orden directa en plena intervención. ¿Cómo actúas en ese momento y cómo lo gestionas después del servicio?"]],
   ["Mando de un 487 (robo mayor)", 3, ["Asumes el mando de un 487 con tu pelotón. Explica cómo lo organizas: reparto de unidades, perímetro, colocación de los vehículos, comunicaciones por radio y coordinación con el apoyo aéreo.",
-    "Los sospechosos del 487 huyen y empieza una persecución. ¿Cómo repartes las funciones entre tus unidades y con qué criterios decides si se continúa o se cancela?"]],
+    "Los sospechosos del 487 huyen en vehículo y se inicia el 254-V. ¿Cómo repartes las funciones entre tus unidades (principal, secundaria, cortes y apoyo aéreo) y cómo mantienes el control del pelotón hasta detenerlos?"]],
   ["Mando de un 207 (secuestro / rehenes)", 3, ["Asumes el mando inicial de un 207 hasta que llegan el SWAT o el negociador. ¿Cuáles son tus prioridades, qué órdenes das al pelotón y qué información transmites al mando?",
     "Durante la negociación de un 207, un operador te propone entrar ya porque «lo tiene claro». ¿Qué decides y por qué? ¿En qué casos autorizarías una entrada?"]],
   ["Toma de decisiones", 2, ["Recibes por radio una orden de un superior que no está en la escena y que contradice lo que estás viendo sobre el terreno. ¿Cómo decides y cómo lo comunicas?",
@@ -74,7 +74,7 @@ type IvT = "ent" | "lp";
 type IvCfg = { title: string; em: string; bloq: [string, number, string[]][]; crit: number[]; fil: [string, string][]; ck: string; conv0: Conv[]; ls: string };
 const IV: Record<IvT, IvCfg> = {
   ent: { title: "Entrevista · Instructor Academia Metro", em: "🎓", bloq: BLOQ, crit: [14, 15], fil: FIL, ck: K_CONV, conv0: CONV0, ls: "lspdt.next.mdconv" },
-  lp: { title: "Entrevista · Líder de Pelotón C", em: "🎖️", bloq: BLOQ_LP, crit: [3, 5], fil: FIL_LP, ck: "lspdt.mdx.lpconv", conv0: [{ id: "C1", n: "Plazas R30C y R40C", t: 0, post: [] }], ls: "lspdt.next.mdlpconv" },
+  lp: { title: "Entrevista · Líder de Pelotón C", em: "🎖️", bloq: BLOQ_LP, crit: [3, 5], fil: FIL_LP, ck: "lspdt.mdx.lpconv", conv0: [{ id: "C1", n: "Convocatoria 1", t: 0, post: [] }], ls: "lspdt.next.mdlpconv" },
 };
 const ivOf = (e: Ev): IvT => (e.tipo === "lp" ? "lp" : "ent");
 const QS_OF: Record<IvT, { b: string; w: number; q: string; n: number }[]> = {
@@ -98,21 +98,22 @@ const BANK0: Q[] = [
   ["Armamento y tiro", "¿Cuáles son las normas fundamentales de seguridad en el manejo de armas de fuego que todo instructor debe conocer y transmitir?", "Tratar toda arma como cargada, no apuntar a nada que no se quiera disparar, dedo fuera del gatillo hasta decidir disparar, conocer el blanco y lo que hay detrás."],
   ["Armamento y tiro", "¿En qué circunstancias está justificado que un agente use su arma de fuego?", "Solo ante un peligro inminente para la vida o la integridad propia o de terceros, sin alternativa menos lesiva."],
   ["Armamento y tiro", "¿Cómo debe actuar un agente ante una interrupción o un fallo de su arma durante un enfrentamiento?", "Avisa al equipo, busca cobertura, resuelve la interrupción (o pasa al arma secundaria) y vuelve a la línea cuando está operativo."],
-  ["Conducción y persecución", "¿Qué factores debe evaluar el responsable de una persecución para decidir si la continúa o la cancela?", "Riesgo para civiles y agentes, tráfico y zona, gravedad del delito, velocidad y estado de la vía, y si hay apoyo aéreo para seguirlo sin riesgo."],
+  ["Conducción y persecución", "Durante un 254-V, ¿qué debe tener en cuenta el responsable para mantener la persecución de forma segura hasta la detención?", "Un 254-V no se cancela: se sostiene con radio clara (ubicación, dirección y vehículo), reparto de unidades, apoyo aéreo para no perderlo y cortes o PIT autorizados en el momento justo, cuidando a civiles y agentes."],
   ["Conducción y persecución", "¿Cómo se reparten las funciones entre las unidades que participan en una persecución y qué responsabilidad tiene cada una?", "Unidad principal (persigue y cuenta por radio), secundaria (apoya y releva) y el resto se posiciona para cortar o hacer PIT si se autoriza."],
   ["Instrucción y liderazgo", "¿Qué estructura debería seguir una clase práctica de 30 minutos para que los conocimientos se transmitan correctamente?", "Objetivo y explicación breve, demostración, práctica guiada, práctica individual con corrección y cierre con repaso y dudas."],
   ["Instrucción y liderazgo", "¿Cómo debe corregir un instructor a un aspirante delante del grupo, manteniendo su autoridad sin exponerlo ni humillarlo?", "Corrección breve y concreta sobre la acción, sin juicios personales; lo demás en privado al terminar."],
   ["Instrucción y liderazgo", "¿Cómo debe proceder un instructor cuando detecta que otro miembro del equipo enseña contenidos contrarios al reglamento interno?", "No lo desautoriza delante del grupo: se lo comenta en privado y, si persiste, lo eleva a la coordinación."],
 ].map(([a, q, r], i) => ({ id: "m" + i, a, q, r }));
 /* banco guardado con la redacción anterior: se actualiza la pregunta (la respuesta esperada y lo editado a mano no se tocan) */
-const BANK_OLD: Record<string, string> = { m0: "¿Cuáles son los pasos de una entrada táctica a un inmueble?", m1: "¿Qué es un perímetro interior y uno exterior y para qué sirve cada uno?", m2: "¿Qué se informa por radio al llegar a una escena de alto riesgo?", m3: "¿Qué reglas básicas de seguridad con armas debe repetir un instructor?", m4: "¿Cuándo está justificado el uso del arma de fuego?", m5: "¿Qué hace un tirador cuando se le traba el arma en un enfrentamiento?", m6: "¿Qué factores evalúa el mando para mantener o cancelar una persecución?", m7: "¿Cuál es el orden de las unidades en una persecución y qué hace cada una?", m8: "¿Cómo se estructura una clase práctica de 30 minutos?", m9: "¿Cómo se corrige a un aspirante delante del grupo sin perder autoridad ni humillarlo?", m10: "¿Qué hace un instructor si ve a otro enseñando algo contrario al reglamento?" };
+const BANK_OLD: Record<string, string> = { m0: "¿Cuáles son los pasos de una entrada táctica a un inmueble?", m1: "¿Qué es un perímetro interior y uno exterior y para qué sirve cada uno?", m2: "¿Qué se informa por radio al llegar a una escena de alto riesgo?", m3: "¿Qué reglas básicas de seguridad con armas debe repetir un instructor?", m4: "¿Cuándo está justificado el uso del arma de fuego?", m5: "¿Qué hace un tirador cuando se le traba el arma en un enfrentamiento?", m6: "¿Qué factores evalúa el mando para mantener o cancelar una persecución?", m6b: "¿Qué factores debe evaluar el responsable de una persecución para decidir si la continúa o la cancela?", m7: "¿Cuál es el orden de las unidades en una persecución y qué hace cada una?", m8: "¿Cómo se estructura una clase práctica de 30 minutos?", m9: "¿Cómo se corrige a un aspirante delante del grupo sin perder autoridad ni humillarlo?", m10: "¿Qué hace un instructor si ve a otro enseñando algo contrario al reglamento?" };
 const gv = (g: Grade | number) => (g === "ok" ? 1 : g === "mid" ? 0.5 : 0);
 
 export function MetroExam({ tab }: { tab: "exa" | "ent" | "lp" | "list" }) {
   useStoreVersion();
   const [evs, setEvs] = useJSON<Ev[]>(K_EV, []);
   const save = (e: Ev) => setEvs([...evs.filter(x => x.id !== e.id), e]), del = (id: string) => setEvs(evs.filter(x => x.id !== id));
-  return tab === "ent" || tab === "lp" ? <Ent key={tab} t={tab} evs={evs} onSave={save} onDel={del} /> : tab === "exa" ? <Exa evs={evs} onSave={save} onDel={del} /> : <List evs={evs} />;
+  const purge = (f: (e: Ev) => boolean) => setEvs(evs.filter(e => !f(e)));
+  return tab === "ent" || tab === "lp" ? <Ent key={tab} t={tab} evs={evs} onSave={save} onDel={del} onPurge={purge} /> : tab === "exa" ? <Exa evs={evs} onSave={save} onDel={del} /> : <List evs={evs} />;
 }
 
 const cands = () => { const m = uMap("md"); const L = getRoster().filter(a => lvl(a.r) > 0).map(a => a.n); return [...Object.keys(m).filter(n => L.includes(n)), ...L.filter(n => !m[n])]; };
@@ -136,7 +137,7 @@ function Hist({ evs, tipo, conv, onOpen, onDel }: { evs: Ev[]; tipo: Ev["tipo"];
       </div>))}</div></Card>;
 }
 
-function Ent({ t, evs, onSave, onDel }: { t: IvT; evs: Ev[]; onSave: (e: Ev) => void; onDel: (id: string) => void }) {
+function Ent({ t, evs, onSave, onDel, onPurge }: { t: IvT; evs: Ev[]; onSave: (e: Ev) => void; onDel: (id: string) => void; onPurge: (f: (e: Ev) => boolean) => void }) {
   const me = useMe(), { toast, confirm } = useFeedback(), C = IV[t], QS = QS_OF[t];
   const [convs, setConvs] = useJSON<Conv[]>(C.ck, C.conv0), [cv, setCv] = useState(() => { try { return localStorage.getItem(C.ls) || "C1"; } catch { return "C1"; } });
   const conv = convs.find(c => c.id === cv) || convs[0] || C.conv0[0];
@@ -155,7 +156,7 @@ function Ent({ t, evs, onSave, onDel }: { t: IvT; evs: Ev[]; onSave: (e: Ev) => 
         Cada pregunta del 1 al 5 · media de cada bloque × su peso · máximo <b>60</b> · <b>48–60</b> apto · <b>36–47</b> apto con seguimiento · menos de 36 no apto
         <span className="ml-auto flex gap-1.5"><WBadge w={1} /><WBadge w={2} /><WBadge w={3} /></span></Card>
       {t === "lp" && <PlazasComm />}
-      <Convocatorias tipo={t} evs={evs} convs={convs} setConvs={setConvs} conv={conv} pick={id => { setCv(id); try { localStorage.setItem(C.ls, id); } catch { /* */ } }}
+      <Convocatorias tipo={t} evs={evs} convs={convs} setConvs={setConvs} conv={conv} onPurge={onPurge} conv0={C.conv0} pick={id => { setCv(id); try { localStorage.setItem(C.ls, id); } catch { /* */ } }}
         onStart={n => setCur(blank(n))} onView={setView} />
       <div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold">{e.id ? `Editando la entrevista de ${e.cand}` : "Nueva entrevista"} <span className="font-normal text-slate-500">· {conv.id} · {conv.n}</span></p>
         <Button size="sm" variant="outline" className="ml-auto" icon={<RotateCcw />} onClick={() => void reset()}>Reiniciar</Button></div>
@@ -205,7 +206,9 @@ function Ent({ t, evs, onSave, onDel }: { t: IvT; evs: Ev[]; onSave: (e: Ev) => 
 function Exa({ evs, onSave, onDel }: { evs: Ev[]; onSave: (e: Ev) => void; onDel: (id: string) => void }) {
   const me = useMe(), { toast } = useFeedback();
   const [bank, setBank] = useJSON<Q[]>(K_BANK, BANK0), [ed, setEd] = useState(false);
-  useEffect(() => { if (bank.some(q => BANK_OLD[q.id] === q.q)) setBank(bank.map(q => (BANK_OLD[q.id] === q.q ? { ...q, q: BANK0.find(b => b.id === q.id)!.q } : q))); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  /* preguntas con la redacción vieja: se actualizan (la del 254-V también trae su respuesta nueva: un 254-V no se cancela) */
+  useEffect(() => { const old = (q: Q) => BANK_OLD[q.id] === q.q || BANK_OLD[q.id + "b"] === q.q;
+    if (bank.some(old)) setBank(bank.map(q => { if (!old(q)) return q; const n = BANK0.find(b => b.id === q.id)!; return q.id === "m6" ? { ...q, q: n.q, r: n.r } : { ...q, q: n.q }; })); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const blank = (): Ev => ({ id: "", tipo: "exa", cand: "", rango: "", fecha: hoyISO(), notas: {}, obs: {}, pts: 0, apto: "", by: me.n, ts: 0 });
   const [cur, setCur] = useState<Ev | null>(null), [view, setView] = useState<Ev | null>(null), e = cur || blank(), set = (p: Partial<Ev>) => setCur({ ...e, ...p });
   const got = bank.reduce((a, q) => a + gv(e.notas[q.id] || ""), 0), pct = bank.length ? got / bank.length : 0, nota = pct * 10, done = bank.every(q => e.notas[q.id]), apto = pct >= 0.7;
@@ -240,8 +243,17 @@ function Exa({ evs, onSave, onDel }: { evs: Ev[]; onSave: (e: Ev) => void; onDel
   );
 }
 /* convocatoria (C1, C2…): postulantes con su estado; desde acá se entrevista o se ven las respuestas */
-function Convocatorias({ tipo, evs, convs, setConvs, conv, pick, onStart, onView }: { tipo: IvT; evs: Ev[]; convs: Conv[]; setConvs: (c: Conv[]) => void; conv: Conv; pick: (id: string) => void; onStart: (n: string) => void; onView: (e: Ev) => void }) {
-  const { confirm } = useFeedback(), [add, setAdd] = useState("");
+function Convocatorias({ tipo, evs, convs, setConvs, conv, pick, onStart, onView, onPurge, conv0 }: { tipo: IvT; evs: Ev[]; convs: Conv[]; setConvs: (c: Conv[]) => void; conv: Conv; pick: (id: string) => void; onStart: (n: string) => void; onView: (e: Ev) => void; onPurge: (f: (e: Ev) => boolean) => void; conv0: Conv[] }) {
+  const { confirm, toast } = useFeedback(), [add, setAdd] = useState(""), [ren, setRen] = useState<string | null>(null);
+  /* renombrar y borrar la convocatoria elegida (borrar también quita sus entrevistas; si era la única, queda una nueva vacía) */
+  const rename = () => { const n = (ren || "").trim(); if (!n) { toast("Escribí el nombre", "err"); return; } setConvs(convs.map(c => (c.id === conv.id ? { ...c, n } : c))); setRen(null); toast("Convocatoria renombrada"); };
+  const drop = async () => {
+    const k = evs.filter(e => e.tipo === tipo && convOf(e) === conv.id).length;
+    if (!(await confirm(`¿Borrar ${conv.id} · ${conv.n}?${k ? ` Se borran también sus ${k} entrevista${k > 1 ? "s" : ""}.` : ""} No se puede deshacer.`, { danger: true }))) return;
+    if (k) onPurge(e => e.tipo === tipo && convOf(e) === conv.id);
+    const rest = convs.filter(c => c.id !== conv.id), L = rest.length ? rest : conv0.map(c => ({ ...c, t: Date.now(), post: [] }));
+    setConvs(L); pick(L[0].id); toast(`${conv.id} borrada`);
+  };
   const ents = evs.filter(e => e.tipo === tipo && convOf(e) === conv.id), names = [...new Set([...conv.post, ...ents.map(e => e.cand)])];
   const lastEnt = (n: string) => ents.filter(e => e.cand === n).sort((a, b) => b.ts - a.ts)[0];
   const rows = names.map(n => ({ n, e: lastEnt(n) })).sort((a, b) => (a.e ? 1 : 0) - (b.e ? 1 : 0) || (b.e?.pts || 0) - (a.e?.pts || 0) || a.n.localeCompare(b.n));
@@ -252,6 +264,10 @@ function Convocatorias({ tipo, evs, convs, setConvs, conv, pick, onStart, onView
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
         {convs.map(c => <button key={c.id} onClick={() => pick(c.id)} aria-pressed={c.id === conv.id} className={cn("rounded-full border px-3 py-1 text-xs font-bold transition", c.id === conv.id ? "border-brand-500 bg-brand-600 text-white" : "border-slate-200 text-slate-500 hover:text-slate-800 dark:border-slate-700 dark:hover:text-slate-200")}>{c.id} <span className="font-semibold opacity-75">· {c.n}</span></button>)}
         <Button size="sm" variant="ghost" icon={<Plus />} onClick={nueva}>Nueva convocatoria</Button>
+        {ren === null ? <span className="flex gap-0.5"><button title={`Renombrar ${conv.id}`} aria-label={`Renombrar ${conv.id}`} onClick={() => setRen(conv.n)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"><Pencil className="size-4" /></button>
+          <button title={`Borrar ${conv.id}`} aria-label={`Borrar ${conv.id}`} onClick={() => void drop()} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><Trash2 className="size-4" /></button></span>
+          : <span className="flex items-center gap-1.5"><Input autoFocus className="h-8 w-56 text-sm" value={ren} onChange={e => setRen(e.target.value)} onKeyDown={e => { if (e.key === "Enter") rename(); if (e.key === "Escape") setRen(null); }} aria-label="Nombre de la convocatoria" />
+            <Button size="sm" icon={<Check />} onClick={rename}>Guardar</Button><Button size="sm" variant="ghost" onClick={() => setRen(null)}>Cancelar</Button></span>}
         <span className="ml-auto text-xs text-slate-500">{ents.length ? `${new Set(ents.map(e => e.cand)).size} entrevistados` : "Sin entrevistas"} · {rows.length - new Set(ents.map(e => e.cand)).size} pendientes</span>
       </div>
       <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -334,32 +350,56 @@ function List({ evs }: { evs: Ev[] }) {
   );
 }
 
-/* ---------- comunicado: apertura de plazas de Líder de Pelotón C (R30C y R40C) ---------- */
+/* ---------- comunicado: apertura de plazas de Líder de Pelotón (se elige qué plazas, el puesto y el relevo; queda guardado para toda la coordinación) ---------- */
+type PlzCfg = { pz: string[]; puesto: string; rel: boolean; ag: string; cs: string; anos: number; lim: string };
+const PLZ0: PlzCfg = { pz: ["R30C", "R40C"], puesto: "Líder de Pelotón C", rel: true, ag: "Ryan Westbrook", cs: "R30C", anos: 10, lim: "" };
+const yN = (L: string[]) => (L.length < 2 ? L.join("") : `${L.slice(0, -1).join(", ")} y ${L[L.length - 1]}`);
 function PlazasComm() {
-  const [open, setOpen] = useState(false), [lim, setLim] = useState(""), [cfg] = useJSON<CsCfg>(K_CFG, CS_CFG0);
-  const txt = metroComm({ cfg, title: "Apertura de plazas · Líder de Pelotón C",
-    intro: "La Coordinación de la Metropolitan Division abre el proceso de selección para cubrir dos plazas de **Líder de Pelotón C**: los indicativos **R30C** y **R40C**.",
+  const [open, setOpen] = useState(false), [cfg] = useJSON<CsCfg>(K_CFG, CS_CFG0), [c0, setC] = useJSON<PlzCfg>("lspdt.mdx.lpcomm", PLZ0), [nv, setNv] = useState("");
+  const c = { ...PLZ0, ...c0 }, up = (p: Partial<PlzCfg>) => setC({ ...c, ...p }), a = c.ag ? findAgent(c.ag) : null;
+  const addPz = () => { const v = nv.trim().toUpperCase().replace(/\s+/g, ""); if (!v || c.pz.includes(v)) { setNv(""); return; } up({ pz: [...c.pz, v] }); setNv(""); };
+  const pzB = c.pz.map(x => `**${x}**`), plural = c.pz.length !== 1;
+  const relSec: [string, string[]][] = c.rel && c.ag ? [[`Relevo en ${c.cs || c.pz[0] || "la plaza"}`, [`Después de **${c.anos} año${c.anos === 1 ? "" : "s"}** al frente del indicativo **${c.cs}**, ${a ? `el **${rankES(a.r)} ${a.n}**` : `**${c.ag}**`} deja la plaza.`,
+        `La Coordinación le agradece ${c.anos >= 10 ? "una década" : "todos estos años"} de servicio, compromiso y liderazgo al frente del pelotón. Su legado sigue en cada operador que formó.`]]] : [];
+  const txt = metroComm({ cfg, title: `Apertura de plazas · ${c.puesto}`,
+    intro: `La Coordinación de la Metropolitan Division abre el proceso de selección para cubrir ${plural ? `${c.pz.length} plazas` : "una plaza"} de **${c.puesto}**: ${plural ? "los indicativos" : "el indicativo"} ${yN(pzB)}.`,
     secs: [
-      ["Relevo en R30C", ["Después de **10 años** al frente del indicativo **R30C**, el **Sargento II Ryan Westbrook** deja la plaza de Líder de Pelotón.",
-        "La Coordinación le agradece una década de servicio, compromiso y liderazgo al frente del Pelotón C. Su legado sigue en cada operador que formó."]],
-      ["Plazas disponibles", ["**R30C** · Líder de Pelotón C", "**R40C** · Líder de Pelotón C"]],
+      ...relSec,
+      ["Plazas disponibles", c.pz.map(x => `**${x}** · ${c.puesto}`)],
       ["Funciones", ["Dirigir un pelotón de hasta 10 operadores durante el servicio y en los operativos.",
         "Asumir el mando de los **487** (robo mayor) y de los **207** (secuestro / rehenes) hasta el relevo del mando o del SWAT.",
         "Organizar el perímetro, el reparto de unidades y las comunicaciones por radio.",
         "Velar por la disciplina, el entrenamiento y la moral del pelotón, e informar a la Coordinación."]],
       ["Requisitos", ["Ser operador en activo de la Metropolitan Division.", "No tener sanciones disciplinarias graves recientes.",
-        "Tener disponibilidad para liderar el pelotón en los horarios de mayor actividad.", "Superar la **entrevista para Líder de Pelotón** ante la Coordinación y los Instructores."]],
+        "Tener disponibilidad para liderar el pelotón en los horarios de mayor actividad.", `Superar la **entrevista para ${c.puesto}** ante la Coordinación y los Instructores.`]],
       ["Cómo postularse", [`Para presentar la candidatura, reaccionar a este comunicado con ${VERIF_EM}`,
-        ...(lim ? [`Las candidaturas se reciben hasta el **${dmy(lim)}**.`] : []), "La Coordinación contactará a cada postulante para fijar la fecha de su entrevista."]],
+        ...(c.lim ? [`Las candidaturas se reciben hasta el **${dmy(c.lim)}**.`] : []), "La Coordinación contactará a cada postulante para fijar la fecha de su entrevista."]],
     ],
     cierre: "*Liderar un pelotón no es un rango: es una responsabilidad con quienes vienen detrás. Los primeros en entrar, los últimos en irse.*" });
   return (
     <Card className="overflow-hidden">
       <button onClick={() => setOpen(o => !o)} aria-expanded={open} className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold">
-        <Megaphone className="size-4 text-brand-500" />Comunicado · apertura de plazas R30C y R40C
-        <span className="ml-auto text-xs font-normal text-slate-500">{open ? "Ocultar" : "Ver y copiar"}</span></button>
-      {open && <div className="space-y-3 border-t border-slate-100 p-4 dark:border-slate-800">
-        <Field label="Fecha límite (opcional)" className="max-w-[12rem]"><Input type="date" value={lim} onChange={e => setLim(e.target.value)} /></Field>
+        <Megaphone className="size-4 text-brand-500" />Comunicado · apertura de plazas{c.pz.length ? ` ${yN(c.pz)}` : ""}
+        <span className="ml-auto text-xs font-normal text-slate-500">{open ? "Ocultar" : "Editar y copiar"}</span></button>
+      {open && <div className="space-y-4 border-t border-slate-100 p-4 dark:border-slate-800">
+        <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
+          <Field label="Plazas" hint="(Enter para sumar)"><div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-xl border border-slate-200 px-2 py-1.5 dark:border-slate-700">
+            {c.pz.map(x => <span key={x} className="inline-flex items-center gap-1 rounded-lg bg-brand-500/15 px-2 py-0.5 font-mono text-[12.5px] font-bold text-brand-700 dark:text-brand-200">{x}
+              <button aria-label={`Quitar ${x}`} onClick={() => up({ pz: c.pz.filter(y => y !== x), cs: c.cs === x ? "" : c.cs })} className="text-slate-400 hover:text-red-500"><X className="size-3.5" /></button></span>)}
+            <input value={nv} onChange={e => setNv(e.target.value)} onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addPz(); } }} onBlur={addPz} placeholder="R50C…" aria-label="Agregar plaza"
+              className="min-w-[6rem] flex-1 bg-transparent font-mono text-sm uppercase outline-none placeholder:normal-case placeholder:text-slate-400" /></div></Field>
+          <Field label="Fecha límite (opcional)"><Input type="date" value={c.lim} onChange={e => up({ lim: e.target.value })} /></Field>
+          <Field label="Puesto" className="sm:col-span-2"><Input value={c.puesto} onChange={e => up({ puesto: e.target.value })} placeholder="Líder de Pelotón C" /></Field>
+        </div>
+        <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+          <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={c.rel} onChange={e => up({ rel: e.target.checked })} />Incluir el relevo de quien deja la plaza</label>
+          {c.rel && <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_9rem_7rem]">
+            <Field label="Agente"><AgentCombo value={c.ag} onChange={n => up({ ag: n })} free placeholder="Quién deja la plaza…" /></Field>
+            <Field label="Plaza que deja"><Select value={c.cs} onChange={e => up({ cs: e.target.value })}><option value="">—</option>{[...new Set([...c.pz, c.cs].filter(Boolean))].map(x => <option key={x}>{x}</option>)}</Select></Field>
+            <Field label="Años"><Input type="number" min={1} max={50} value={c.anos} onChange={e => up({ anos: Math.max(1, +e.target.value || 1) })} /></Field>
+          </div>}
+        </div>
+        <div className="flex justify-end"><Button size="sm" variant="ghost" icon={<RotateCcw />} onClick={() => setC(PLZ0)}>Volver al original</Button></div>
         <DiscordOutput title="Comunicado" text={txt} sticky={false} />
       </div>}
     </Card>);
