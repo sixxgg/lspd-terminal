@@ -3,7 +3,7 @@
    Master FTO va aparte (…exp.<agente>.fto) y los feedbacks de incidentes (Supervisores/Capitanía) se suman solos, de solo lectura.
    Quién abre cada expediente (lo controla también el servidor, lib/core.js › expOk):
    · Deputies: Sargento para arriba · Sargentos y Tenientes: Capitanes y Jefatura · Capitanes: Jefatura · Jefatura: Jefatura.
-   · Nadie abre el suyo. Jefatura (Comandante para arriba) ve y edita todos. */
+   · Nadie abre el suyo, salvo Jefatura (Comandante para arriba), que ve y edita todos. */
 import { useMemo, useState } from "react";
 import { ClipboardList, FolderLock, FolderOpen, GraduationCap, Lock, MessageSquareWarning, Pencil, Plus, Search, ShieldCheck, ThumbsDown, ThumbsUp, Trash2, X, Eye } from "lucide-react";
 import { Button, Card, Input, Textarea } from "@/components/ui";
@@ -30,14 +30,14 @@ const hoy = () => new Date().toISOString().slice(0, 10);
 const dmy = (iso: string) => (iso ? iso.split("-").reverse().join("/") : "");
 /* misma regla que el servidor */
 const need = (t: number) => (t <= 6 ? 7 : t < 9 ? 9 : 10);
-export const canExp = (me: { n: string; r: string }, a: { n: string; r: string }) => !!ME_ROLES.six || (me.n !== a.n && (myLevel(me.r) >= 10 || myLevel(me.r) >= need(lvl(a.r))));
+export const canExp = (me: { n: string; r: string }, a: { n: string; r: string }) => !!ME_ROLES.six || myLevel(me.r) >= 10 || (me.n !== a.n && myLevel(me.r) >= need(lvl(a.r)));
 const BAND = (l: number) => (l >= 10 ? "Executive Staff · Jefatura" : l >= 8 ? "Command Staff · Capitanía" : l >= 7 ? "Supervisor Staff" : "Deputies");
 
 export function Expedientes() {
   useStoreVersion();
   const me = useMe(), [q, setQ] = useState(""), [sel, setSel] = useState("");
   const all = getRoster().filter(a => a.n);
-  const ok = all.filter(a => canExp(me, a)), locked = all.length - ok.length - (all.some(a => a.n === me.n) ? 1 : 0);
+  const ok = all.filter(a => canExp(me, a)), locked = all.length - ok.length - (all.some(a => a.n === me.n) && !ok.some(a => a.n === me.n) ? 1 : 0);
   const vis = ok.filter(a => !q.trim() || `${a.n} ${a.r} ${a.p || ""}`.toLowerCase().includes(q.trim().toLowerCase())).sort((a, b) => lvl(b.r) - lvl(a.r) || a.n.localeCompare(b.n, "es"));
   const groups = [...new Set(vis.map(a => BAND(lvl(a.r))))].map(g => [g, vis.filter(a => BAND(lvl(a.r)) === g)] as const);
   const cur = ok.find(a => a.n === sel);
@@ -57,7 +57,7 @@ export function Expedientes() {
         {locked > 0 && <p className="flex items-center gap-1.5 border-t border-slate-100 px-3 py-2 text-[11px] text-slate-400 dark:border-slate-800"><FolderLock className="size-3.5" />{locked} expediente{locked === 1 ? "" : "s"} reservado{locked === 1 ? "" : "s"} a rangos superiores</p>}
       </Card>
       {cur ? <Expediente key={cur.n} a={cur} /> : <Card className="grid min-h-[24rem] place-items-center p-8 text-center text-sm text-slate-400"><div><FolderOpen className="mx-auto mb-2 size-8 opacity-60" />Elegí un agente para abrir su expediente.
-        <p className="mx-auto mt-3 max-w-md text-xs">Deputies: Sargento para arriba · Sargentos y Tenientes: Capitanes y Jefatura · Capitanes: Jefatura · Jefatura: Jefatura. Nadie abre su propio expediente.</p></div></Card>}
+        <p className="mx-auto mt-3 max-w-md text-xs">Deputies: Sargento para arriba · Sargentos y Tenientes: Capitanes y Jefatura · Capitanes: Jefatura · Jefatura: Jefatura. Nadie abre su propio expediente, salvo Jefatura.</p></div></Card>}
     </div>);
 }
 
