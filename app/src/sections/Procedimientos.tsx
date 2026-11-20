@@ -1,8 +1,10 @@
-/* Oficiales › Procedimientos (LSPD, desde Oficial III): estupefacientes y dinero no justificado.
+/* Oficiales › Procedimientos (LSPD, desde Oficial III): estupefacientes y dinero no justificado, y el mando del táctico en un 487.
    Arriba, una guía rápida por cantidad para saber qué artículo va; abajo, cada artículo con cuándo se aplica y qué hacer, en pasos cortos.
    Tocar el artículo lo copia («29.12 Tenencia…»). Lo marcado con **…** va en negrita. */
 import { Fragment, useState } from "react";
-import { Banknote, Check, Copy, Pill, Zap } from "lucide-react";
+import { AlertTriangle, Banknote, Check, Copy, Crosshair, Pill, Zap } from "lucide-react";
+import { DivNav } from "@/sections/div/DivTools";
+import { LS } from "@/lib/store";
 import { Card, CardHeader, SearchInput } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
 import { norm } from "@/lib/domain";
@@ -36,7 +38,7 @@ const GUIA: [string, string, string?][] = [
 const md = (s: string) => s.split(/\*\*(.+?)\*\*/g).map((x, i) => (i % 2 ? <b key={i} className="font-semibold text-slate-900 dark:text-white">{x}</b> : <Fragment key={i}>{x}</Fragment>));
 const hit = (r: Art, q: string) => !q || norm(`${r.a} ${r.t} ${r.c} ${r.h.join(" ")}`.replace(/\*\*/g, "")).includes(q);
 
-export function Procedimientos() {
+function Drogas() {
   const { toast } = useFeedback(), [ok, setOk] = useState(""), [q, setQ] = useState(""), s = norm(q.trim());
   const copy = async (r: Art) => { try { await navigator.clipboard.writeText(`${r.a} ${r.t}`); setOk(r.a); toast(`Art. ${r.a} copiado`); window.setTimeout(() => setOk(""), 1300); } catch { /* */ } };
   const all = [...DROGAS, ...DINERO], go = (a: string) => document.getElementById("proc-" + a)?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -71,5 +73,44 @@ export function Procedimientos() {
         {col("Dinero en efectivo", "Origen no justificado y divisas", <Banknote />, DINERO, true)}
       </div>
       {none && <p className="py-8 text-center text-sm text-slate-400">Nada coincide con «{q}».</p>}
+    </div>);
+}
+
+/* ---------- mando del táctico en un 487: cómo se reparten las funciones desde que se llega (lo que se hace en el servidor) ---------- */
+const TAC: [string, string, string[]][] = [
+  ["Mando del táctico", "La primera unidad que llega designa quién manda el táctico.", ["Prioridad: **SWAT** por sobre **METRO**, y METRO por sobre un **Oficial III** del LSPD.", "Si hay SWAT en el táctico, manda SWAT; si no, METRO."]],
+  ["Cod.8", "Ambulancia para los rehenes y los heridos.", ["Se pide en cuanto se sabe que hay **rehenes** o **heridos**."]],
+  ["Negociador", "El mando elige a un integrante del táctico para negociar.", ["Lo que se negocie define cómo se prepara la huida."]],
+  ["Huida: interceptores y helicópteros", "Si el vehículo de huida es rápido, se negocia por **interceptores**; también se tienen en cuenta los **helicópteros**.", ["**En cabeza:** un interceptor con licencia de **HSIU**.", "**En cola:** el segundo vehículo más rápido, que no sea de la HSIU."]],
+  ["Cod.100", "Unidades en posición para interceptar en la ruta de huida.", ["Se reparten sobre los recorridos posibles antes de que salgan."]],
+  ["Perímetro", "Unidades dedicadas a cerrar y controlar la zona.", ["Separadas de las que van a la persecución."]],
+  ["SAHP", "Se coordina con la San Andreas Highway Patrol.", ["Es el departamento que se encarga del **tráfico**."]],
+];
+function Tactico() {
+  return (
+    <div className="space-y-4">
+      <Card className="p-0"><CardHeader icon={<Crosshair />} title="Mando del táctico en un 487" desc="Las funciones se reparten durante el 487, antes de la huida: quién manda, quién negocia y cómo sale cada unidad." />
+        <ol className="grid gap-px overflow-hidden border-t border-slate-100 bg-slate-100 sm:grid-cols-2 xl:grid-cols-3 dark:border-slate-800 dark:bg-slate-800">{TAC.map(([t, d, L], i) => (
+          <li key={t} className={cn("bg-white p-4 dark:bg-slate-900", i === TAC.length - 1 && "sm:col-span-2 xl:col-span-3")}>
+            <p className="flex items-center gap-2 text-[14px] font-semibold"><span className="grid size-6 shrink-0 place-items-center rounded-lg bg-brand-500/15 font-mono text-xs font-bold text-brand-700 dark:text-brand-300">{i + 1}</span>{t}</p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">{md(d)}</p>
+            <ul className="mt-1.5 space-y-1">{L.map(x => <li key={x} className="flex gap-2 text-[13px] leading-relaxed text-slate-600 dark:text-slate-300"><span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-brand-500" /><span className="min-w-0 flex-1">{md(x)}</span></li>)}</ul>
+          </li>))}</ol>
+      </Card>
+      <Card className="flex items-start gap-3 border-amber-500/30 bg-amber-500/[.06] p-4">
+        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-500" />
+        <div className="text-[13px] leading-relaxed text-slate-600 dark:text-slate-300"><p className="font-semibold text-slate-900 dark:text-white">Clave Robert (fuerza letal)</p>
+          <p>{md("Art. 22: **prohibido activarla para pinchar las ruedas de un fugitivo en zonas urbanas o pobladas**; solo en **vías secundarias, autopistas o zonas despobladas**. Disparar con intención de abatir a quien huye de espaldas sin peligro inminente para terceros o compañeros es motivo de causa judicial.")}</p></div>
+      </Card>
+    </div>);
+}
+
+const SUBS = [{ value: "dro", label: "Estupefacientes y dinero", txt: "Estupefacientes y dinero", icon: <Pill /> }, { value: "tac", label: "Mando del táctico (487)", txt: "Mando del táctico (487)", icon: <Crosshair /> }];
+export function Procedimientos() {
+  const [t, setT] = useState(() => (LS.get("lspdt.next.proc") === "tac" ? "tac" : "dro"));
+  return (
+    <div className="space-y-4">
+      <DivNav sub value={t} onChange={v => { setT(v); LS.set("lspdt.next.proc", v); }} options={SUBS} />
+      {t === "tac" ? <Tactico /> : <Drogas />}
     </div>);
 }

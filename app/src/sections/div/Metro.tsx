@@ -60,8 +60,8 @@ const FIL: [string, string][] = [["san", "Sanciones graves recientes sin aprendi
 const BLOQ_LP: [string, number, string[]][] = [
   ["Liderazgo y responsabilidad", 2, ["¿Qué significa para ti liderar un pelotón de 10 operadores de la Metropolitan Division? ¿Qué responsabilidades asumes ante tu equipo y ante la coordinación?",
     "Un operador de tu pelotón no cumple una orden directa en plena intervención. ¿Cómo actúas en ese momento y cómo lo gestionas después del servicio?"]],
-  ["Mando de un 487 (robo mayor)", 3, ["Asumes el mando de un 487 con tu pelotón. Explica cómo lo organizas: reparto de unidades, perímetro, colocación de los vehículos, comunicaciones por radio y coordinación con el apoyo aéreo.",
-    "Los sospechosos del 487 huyen en vehículo y se inicia el 254-V. ¿Cómo repartes las funciones entre tus unidades (principal, secundaria, cortes y apoyo aéreo) y cómo mantienes el control del pelotón hasta detenerlos?"]],
+  ["Mando de un 487 (robo mayor)", 3, ["Llegas el primero a un 487. ¿Cómo designas el mando del táctico, a quién pones a negociar y cómo dejas organizada la huida: interceptores (HSIU en cabeza, el segundo más rápido en cola), helicópteros, unidades en cod.100, perímetro y aviso a la SAHP?",
+    "En pleno 487 se reporta un cod.77: los atracadores tienen un bloqueo montado. ¿Activas la Clave Robert o no? Explica cómo gestionas la situación: qué información pides, cómo reorganizas el táctico y el pelotón, quién autoriza la fuerza letal y qué límites respetas (por ejemplo, el Art. 22: pinchar ruedas solo en vías secundarias o autopista)."]],
   ["Mando de un 207 (secuestro / rehenes)", 3, ["Asumes el mando inicial de un 207 hasta que llegan el SWAT o el negociador. ¿Cuáles son tus prioridades, qué órdenes das al pelotón y qué información transmites al mando?",
     "Durante la negociación de un 207, un operador te propone entrar ya porque «lo tiene claro». ¿Qué decides y por qué? ¿En qué casos autorizarías una entrada?"]],
   ["Toma de decisiones", 2, ["Recibes por radio una orden de un superior que no está en la escena y que contradice lo que estás viendo sobre el terreno. ¿Cómo decides y cómo lo comunicas?",
