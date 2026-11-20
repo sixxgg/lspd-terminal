@@ -265,7 +265,7 @@ function Elegibles({ evals: _ }: { evals: Eval[] }) {
           <th className="px-3 py-3">Candidato</th><th>Rango</th><th className="text-right">Examen /10</th><th className="text-right">Media entr. /5</th><th className="text-right">Entrevista /10</th><th className="text-right">Años</th><th className="text-right">Bonif.</th><th className="text-right">Final /22</th><th className="text-right">Sobre 100</th><th className="px-3">Obs</th><th /></tr></thead>
         <tbody>{c.rows.map(r => { const s = score(r); return (
           <tr key={r.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
-            <td className="px-3 py-1.5"><Input list="sg-el" className="h-8 min-w-[11rem] text-sm font-semibold" value={r.cand} onChange={e => { const a = findAgent(e.target.value); upd(r.id, { cand: e.target.value, ...(a ? { rango: rankES(a.r) } : {}) }); }} /></td>
+            <td className="min-w-[14rem] px-3 py-1.5"><AgentCombo free sm names={names} value={r.cand} onChange={v => { const a = findAgent(v); upd(r.id, { cand: v, ...(a ? { rango: rankES(a.r) } : {}) }); }} /></td>
             <td>{findAgent(r.cand) && r.rango ? <span className="whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{r.rango}</span> : <Input className="h-8 w-32 text-sm" value={r.rango} placeholder="Rango" onChange={e => upd(r.id, { rango: e.target.value })} />}</td>
             <td className="text-right"><Input className={cell} inputMode="decimal" defaultValue={f2(r.exa)} onBlur={e => upd(r.id, { exa: num(e.target.value) })} /></td>
             <td className="text-right"><Input className={cell} inputMode="decimal" defaultValue={f2(r.media)} onBlur={e => upd(r.id, { media: num(e.target.value) })} /></td>
@@ -277,7 +277,6 @@ function Elegibles({ evals: _ }: { evals: Eval[] }) {
             <td className="px-3"><button onClick={() => setObs(r)} title={r.obs || "Agregar observación"} className={cn("max-w-[14rem] truncate text-left text-xs", r.obs ? "text-slate-600 dark:text-slate-300" : "text-slate-400")}>{r.obs || "+ obs"}</button></td>
             <td className="pr-2"><button aria-label="Quitar" onClick={async () => { if (await confirm(`¿Quitar a ${r.cand || "esta fila"} de ${c.n}?`, { danger: true })) save(c.rows.filter(x => x.id !== r.id)); }} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><Trash2 className="size-4" /></button></td>
           </tr>); })}</tbody></table>
-        <datalist id="sg-el">{names.map(n => <option key={n} value={n} />)}</datalist>
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 p-3 dark:border-slate-800">
           <Button size="sm" variant="outline" icon={<Plus />} onClick={() => save([...c.rows, r_("", "", undefined, undefined, 0)])}>Agregar candidato</Button>
           {c.rows.length === 0 && convs.length > 1 && <Button size="sm" variant="ghost" icon={<Trash2 />} onClick={async () => { if (await confirm(`¿Borrar la convocatoria ${c.n}?`, { danger: true })) { setConvs(convs.filter(x => x.id !== c.id)); setSel(""); } }}>Borrar convocatoria</Button>}

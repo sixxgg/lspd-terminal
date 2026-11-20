@@ -7,7 +7,7 @@
 import { useMemo, useState } from "react";
 import { ClipboardList, FolderLock, FolderOpen, GraduationCap, Lock, MessageSquareWarning, Pencil, Plus, Search, ShieldCheck, ThumbsDown, ThumbsUp, Trash2, X, Eye } from "lucide-react";
 import { Button, Card, Input, Textarea } from "@/components/ui";
-import { Avatar, RankBadge } from "@/components/agents";
+import { Avatar, RankBadge, AgentCombo } from "@/components/agents";
 import { useFeedback } from "@/components/feedback";
 import { LS, ME_ROLES, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
@@ -134,8 +134,7 @@ export function FtoFeedback() {
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <Card className="space-y-3 p-4">
         <div className="flex items-center gap-2"><GraduationCap className="size-5 text-teal-500" /><h3 className="text-[15px] font-semibold">Feedback FTO</h3><span className="text-xs text-slate-500">Va al expediente del agente</span></div>
-        <select value={ag} onChange={e => setAg(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
-          <option value="">Elegí al agente…</option>{L.map(a => <option key={a.n} value={a.n}>{a.n} · {rankES(a.r)}</option>)}</select>
+        <AgentCombo names={L.map(a => a.n)} value={ag} onChange={setAg} placeholder="Buscar al agente que estás formando" />
         <div className="flex flex-wrap gap-1.5">{([["obs", "Seguimiento", "#14b8a6"], ["pos", "Positivo", "#22c55e"], ["neg", "A mejorar", "#ef4444"]] as const).map(([k, l, c]) => (
           <button key={k} onClick={() => setTipo(k)} className={cn("rounded-xl border px-3 py-1.5 text-[13px] font-semibold", tipo !== k && "border-slate-200 text-slate-500 dark:border-slate-700")} style={tipo === k ? { borderColor: c, background: c + "1a", color: c } : undefined}>{l}</button>))}
           <Input type="date" value={f} onChange={e => setFecha(e.target.value)} className="ml-auto w-40" /></div>

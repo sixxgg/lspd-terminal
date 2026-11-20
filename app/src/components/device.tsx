@@ -56,7 +56,7 @@ export function Device({ children, brand }: { children: ReactNode; brand?: Recor
   const p = usePref(); useStoreVersion();
   const net = getNet();
   const bg = bgOf("lspdt.bg.tablet", DEPT.id, brand);
-  const crt = <div className="crt-host" aria-hidden="true"><div className="crt" /></div>;
+  const crt = <div className="crt-host" aria-hidden="true"><div className="crt"><div className="crt-n" /></div></div>;
   if (!p.frame) return <>{children}{crt}</>;
   return (
     <>

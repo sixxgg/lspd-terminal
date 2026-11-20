@@ -168,7 +168,7 @@ export function Entrevistas() {
         {!L.length ? <Empty icon={<Search />} title="Nadie coincide con el filtro" /> : ranks.map(r => {
           const gl = L.filter(a => a.r === r), isOpen = !!s || !closed.has(r), gd = gl.filter(x => g(x.n).st === "si").length, rc = RANK_COLOR[r] || "#94a3b8", ins = insigniaUrl(r);
           return (
-            <section key={r} className="border-b border-slate-100 last:border-b-0 dark:border-slate-800">
+            <section key={r} className="cv-auto border-b border-slate-100 last:border-b-0 dark:border-slate-800">
               <button onClick={() => setClosed(c => { const n = new Set(c); if (n.has(r)) n.delete(r); else n.add(r); return n; })} className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:brightness-110"
                 style={{ background: `linear-gradient(90deg, ${rc}26, ${rc}08 55%, transparent)` }}>
                 <span className="grid w-7 place-items-center">{ins ? <img src={ins} alt="" className="h-5 w-auto drop-shadow" /> : <Shield className="size-5" style={{ color: rc }} />}</span>

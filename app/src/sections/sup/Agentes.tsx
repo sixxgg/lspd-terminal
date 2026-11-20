@@ -108,7 +108,7 @@ export function Agentes() {
       <p className="text-xs text-slate-400">Planilla del departamento · {list.length} de {R.length} agentes</p>
       {!list.length ? <Card><Empty icon={<Users />} title="Sin agentes para ese filtro" /></Card>
         : view === "grid" ? Object.entries(GROUPS).map(([k, gr]) => { const l = list.filter(a => gr.r.includes(a.r)); return l.length ? (
-          <section key={k}>
+          <section key={k} className="cv-auto">
             <h3 className="mb-3 mt-2 flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300">{gr.l}<span className="rounded-md bg-slate-100 px-1.5 text-xs text-slate-500 dark:bg-slate-800">{l.length}</span></h3>
             <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {l.map(a => { const p = profFull(a.n, P), md = mainDiv(p); return (

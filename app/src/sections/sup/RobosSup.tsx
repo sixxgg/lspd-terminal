@@ -60,7 +60,7 @@ export function RobosSup() {
             style={on ? { background: c || "rgb(var(--b-600))" } : undefined}>{k && !on && <span className="size-2 rounded-full" style={{ background: c }} />}{k ? CATS[k].l : "Todos"}<span className="tabular-nums opacity-70">{n}</span></button>); })}</div>
       </div>
       {!L.length ? <Card><Empty icon={<Search />} title="Nada coincide" /></Card> : KEYS.filter(k => L.some(x => x.cat === k)).map(k => { const C = CATS[k], G = L.filter(x => x.cat === k); return (
-        <Card key={k} className="overflow-hidden">
+        <Card key={k} className="cv-auto overflow-hidden">
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-2.5 dark:border-slate-800" style={{ background: `linear-gradient(90deg, ${C.c}18, transparent 60%)` }}>
             <span className="size-2.5 rounded-full" style={{ background: C.c }} /><b className="text-sm">{C.l}</b>{C.code && <span className="rounded border border-slate-300 px-1 font-mono text-[10px] text-slate-500 dark:border-slate-600">Cód. {C.code}</span>}
             <span className="text-xs text-slate-500">· {C.d}</span><span className="ml-auto text-xs font-semibold text-slate-500">{G.length}</span></div>

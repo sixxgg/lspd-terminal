@@ -1,11 +1,12 @@
 import { scrollTopApp } from "@/lib/appearance";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { FileText, Search, Plus, X, Users, UserRound, Shield, Package, ScrollText, Save, FilePlus2, Info, Star, Car, ListChecks, Radio, Check, GripVertical, ArrowDownUp, ShieldAlert } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Field, Input, Segmented, Select, Textarea } from "@/components/ui";
 import { DiscordOutput, useCopy } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
+import { AgentCombo } from "@/components/agents";
 import { Col, Split } from "@/components/layout";
-import { LUGARES, getRoster, norm, rankES, uid , myKey } from "@/lib/domain";
+import { LUGARES, norm, uid, myKey } from "@/lib/domain";
 import { GUEST, LS, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { legalFavKey } from "./Legal";
@@ -53,8 +54,9 @@ export function Informes() {
 
 /* lo que se fue cargando en informes anteriores, para autocompletar */
 function usePrev(me: string) {
-  const [L] = useJSON<InfX[]>("lspdt.informes", []);
-  return useMemo(() => {
+  /* se recalcula solo cuando cambian los informes guardados (no con cada tecla) */
+  useStoreVersion(); const raw = LS.get("lspdt.informes");
+  return useMemo(() => { const L = LS.json<InfX[]>("lspdt.informes", []);
     const S = L.slice().sort((a, b) => (b.t || 0) - (a.t || 0)), suj = new Map<string, string>(), veh = new Map<string, Partial<Veh>>(), unit = new Map<string, { u: string; r: string }>(), lug = new Map<string, number>(), ev = new Map<string, number>();
     for (const r of S) {
       (r.suj || []).forEach(x => { if (x.n && x.id && !suj.has(norm(x.n))) suj.set(norm(x.n), x.id); });
@@ -65,7 +67,7 @@ function usePrev(me: string) {
     }
     const top = (m: Map<string, number>, n: number) => [...m].sort((a, b) => b[1] - a[1]).slice(0, n).map(x => x[0]);
     return { suj, sujN: S.flatMap(r => (r.suj || []).filter(x => x.n)).filter((x, i, a) => a.findIndex(y => norm(y.n) === norm(x.n)) === i).slice(0, 400), veh, unit, lug: top(lug, 120), ev: top(ev, 200), mine: unit.get(me) };
-  }, [L, me]);
+  }, [raw, me]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 const LBL: Record<string, string> = { fecha: "fecha", hora: "hora", ui: "ubicaciones", ux: "ubicaciones", uf: "ubicaciones", tipos: "tipo de incidente", est: "estado del incidente", motivo: "motivo", hechos: "relato", unid: "unidades", suj: "sujetos y cargos", fz: "uso de la fuerza", fzd: "uso de la fuerza", ev: "evidencia", veh: "vehículos", extra: "procesamiento", off: "secciones" };
 
@@ -85,7 +87,7 @@ function InfForm({ init, base, onSaved }: { init: Inf | null; base: Inf | null; 
   const up = (fn: (x: Inf) => void) => setA(a => { const x = structuredClone(a); fn(x); return x; });
   const set = <K extends keyof Inf>(k: K) => (e: { target: { value: string } }) => up(x => { (x[k] as unknown as string) = e.target.value; });
   const P = getPenal(), text = useMemo(() => infText(A, me.n, P), [A, me.n, P]), errs = infErrs(A), parts = dcParts(text);
-  const R = getRoster(), copy = useCopy();
+  const copy = useCopy();
   const [favIds] = useJSON<string[]>(legalFavKey(me.n), []);
   const favArts = useMemo(() => favIds.map(a => penalOf(a, P)).filter((x): x is Art => !!x).sort((a, b) => artCmp(a, b)), [favIds, P]);
   const tot = useMemo(() => { const t = { n: 0, m: 0, p: 0 }; A.suj.forEach(s => s.cg.forEach(c => { const x = penalOf(c.a, P); t.n++; t.m += x?.m || 0; t.p += x?.p || 0; })); return t; }, [A.suj, P]);
@@ -123,11 +125,7 @@ function InfForm({ init, base, onSaved }: { init: Inf | null; base: Inf | null; 
   const tipos = [...INF_TIPOS as string[], ...A.tipos.filter(x => !(INF_TIPOS as string[]).includes(x))].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
   return (
     <Split>
-      <datalist id="rosterDL">{R.map(a => <option key={a.n} value={a.n}>{rankES(a.r)}{a.p ? " · #" + a.p : ""}</option>)}</datalist>
-      <datalist id="unitDL">{UNITS.map(u => <option key={u} value={u} />)}</datalist>
-      <datalist id="lugDL">{[...prev.lug, ...LUGARES.slice(0, 600).filter(x => !prev.lug.includes(x))].map(x => <option key={x} value={x} />)}</datalist>
-      <datalist id="sujDL">{prev.sujN.map(x => <option key={x.n} value={x.n}>{x.id ? `ID ${x.id}` : ""}</option>)}</datalist>
-      <datalist id="evDL">{prev.ev.map(x => <option key={x} value={x} />)}</datalist>
+      <Lists prev={prev} />
       <Col>
         <Card className="flex flex-wrap items-center gap-2 p-3">
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500"><ListChecks className="size-4 text-brand-500" />Secciones del informe</span>
@@ -179,7 +177,7 @@ function InfForm({ init, base, onSaved }: { init: Inf | null; base: Inf | null; 
                 <ChargeSearch P={P} onPick={a => up(x => { if (!x.suj[si].cg.some(c => c.a === a)) x.suj[si].cg.push({ a, m: "" }); })} />
                 <div className="grid gap-2 border-t border-dashed border-slate-200 pt-2 dark:border-slate-800 sm:grid-cols-[auto_1fr]">
                   <span className="self-center text-xs font-semibold text-slate-500">Agente que lo procesa</span>
-                  <Input list="rosterDL" value={s.p || ""} onChange={e => up(x => { x.suj[si].p = e.target.value; })} placeholder={me.n} className="h-9 text-sm" />
+                  <AgentCombo free sm value={s.p || ""} onChange={v => up(x => { x.suj[si].p = v; })} placeholder={me.n} />
                 </div>
                 <div className="space-y-2">
                   <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500"><Package className="size-3.5" />Artículos incautados{s.n ? ` a ${s.n}` : ""}</p>
@@ -211,7 +209,7 @@ function InfForm({ init, base, onSaved }: { init: Inf | null; base: Inf | null; 
                   onDragEnd={() => { setDrag(null); setOver(null); }}
                   onKeyDown={e => { if (e.key === "ArrowUp" && i > 0) { e.preventDefault(); moveU(i, i - 1); } if (e.key === "ArrowDown" && i < A.unid.length - 1) { e.preventDefault(); moveU(i, i + 1); } }}
                   className="grid w-6 shrink-0 cursor-grab place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing dark:hover:bg-slate-800"><GripVertical className="size-4" /></button>
-                <Input list="rosterDL" value={u.n} onChange={e => up(x => { x.unid[i].n = e.target.value; const m = prev.unit.get(e.target.value); if (m && !x.unid[i].u) x.unid[i].u = m.u; })} placeholder="Agente (opcional si ponés la unidad)" />
+                <AgentCombo free className="min-w-0 flex-1" value={u.n} onChange={v => up(x => { x.unid[i].n = v; const m = prev.unit.get(v); if (m && !x.unid[i].u) x.unid[i].u = m.u; })} placeholder="Agente (opcional si ponés la unidad)" />
                 <div className="relative w-44 shrink-0"><Radio className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
                   <Input list="unitDL" value={u.u || ""} onChange={e => up(x => { x.unid[i].u = e.target.value.toUpperCase(); })} placeholder="Unidad" className="pl-8 font-mono text-sm uppercase" /></div>
                 <Select value={u.r} onChange={e => up(x => { x.unid[i].r = e.target.value; })} className="max-w-[16rem] text-sm">{[...ROLES, ...(ROLES.includes(u.r) ? [] : [u.r])].map(r => <option key={r}>{r}</option>)}</Select>
@@ -314,3 +312,16 @@ function ChargeSearch({ P, onPick }: { P: Art[]; onPick: (a: string) => void }) 
     </div>
   );
 }
+
+/* listas de autocompletado (600+ lugares, unidades, sujetos y evidencias): memorizadas para no rearmarlas con cada tecla,
+   y se agregan después de la primera pintada para que el informe abra al instante */
+const Lists = memo(function Lists({ prev }: { prev: { lug: string[]; sujN: { n: string; id?: string }[]; ev: string[] } }) {
+  const [on, setOn] = useState(false);
+  useEffect(() => { const w = window as Window & { requestIdleCallback?: (f: () => void) => number }; if (w.requestIdleCallback) w.requestIdleCallback(() => setOn(true)); else setTimeout(() => setOn(true), 200); }, []);
+  if (!on) return null;
+  return <>
+    <datalist id="unitDL">{UNITS.map(u => <option key={u} value={u} />)}</datalist>
+    <datalist id="lugDL">{[...prev.lug, ...LUGARES.slice(0, 600).filter(x => !prev.lug.includes(x))].map(x => <option key={x} value={x} />)}</datalist>
+    <datalist id="sujDL">{prev.sujN.map(x => <option key={x.n} value={x.n}>{x.id ? `ID ${x.id}` : ""}</option>)}</datalist>
+    <datalist id="evDL">{prev.ev.map(x => <option key={x} value={x} />)}</datalist></>;
+});

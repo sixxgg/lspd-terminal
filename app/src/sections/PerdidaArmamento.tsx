@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { UserRound, Crosshair, MapPin, Users, PenLine, Plus, Trash2, FilePlus2, Save, Pencil, ChevronDown, ShieldAlert, Inbox } from "lucide-react";
 import { Badge, Button, Card, CardBody, CardHeader, Checkbox, Chip, Empty, Field, Input, Segmented, Textarea, SearchInput } from "@/components/ui";
-import { AgentPicker, Avatar, RankBadge } from "@/components/agents";
+import { AgentPicker, Avatar, RankBadge, AgentCombo } from "@/components/agents";
 import { CopyMenu, DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
-import { DIVISIONES, LUGARES, getRoster, findAgent, fmtDate, hoyDMY, isDMY, lvl, maskDMY, maskHM, norm, profOf, rankES, uid , myKey } from "@/lib/domain";
+import { DIVISIONES, LUGARES, findAgent, fmtDate, hoyDMY, isDMY, lvl, maskDMY, maskHM, norm, profOf, rankES, uid , myKey } from "@/lib/domain";
 import { LS, useJSON } from "@/lib/store";
 import { infNew } from "@/lib/penal";
 import type { InfX } from "./InfViewer";
@@ -101,7 +101,7 @@ export function PerdidaArmamento({ me }: { me: { n: string; r: string } }) {
                 ) : <AgentPicker value={A.ag} onChange={n => { const p = profOf(n); setA(x => ({ ...x, ag: n, dv: x.dv || p.main || p.div?.[0] || "Patrulla" })); }} max={240} />}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="División / Unidad"><Input list="pa-dv" value={A.dv} onChange={e => set("dv", e.target.value)} placeholder="Patrulla, Metropolitan Division…" /></Field>
-                  <Field label="Supervisor directo"><Input list="pa-roster" value={A.sup} onChange={e => set("sup", e.target.value)} placeholder="Nombre del supervisor" /></Field>
+                  <Field label="Supervisor directo"><AgentCombo free value={A.sup} onChange={v => set("sup", v)} placeholder="Buscar supervisor" /></Field>
                 </div>
               </CardBody>
             </Card>
@@ -147,11 +147,9 @@ export function PerdidaArmamento({ me }: { me: { n: string; r: string } }) {
               <CardHeader icon={<Users />} title="Testigos / unidades presentes" action={<Button variant="outline" size="sm" icon={<Plus />} onClick={() => set("tes", [...A.tes, { n: "", r: "" }])}>Añadir</Button>} />
               <CardBody>
                 {A.tes.map((t, i) => {
-                  const x = findAgent(t.n);
                   return (
                     <div key={i} className="grid gap-2 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto]">
-                      <div className="relative"><Input list="pa-roster" value={t.n} onChange={e => set("tes", A.tes.map((y, j) => (j === i ? { ...y, n: e.target.value } : y)))} placeholder="Nombre" />
-                        {x?.p && <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-mono text-xs text-slate-400">#{x.p}</span>}</div>
+                      <AgentCombo free value={t.n} onChange={v => set("tes", A.tes.map((y, j) => (j === i ? { ...y, n: v } : y)))} placeholder="Buscar testigo (o escribí el nombre)" />
                       <Input value={t.r} onChange={e => set("tes", A.tes.map((y, j) => (j === i ? { ...y, r: e.target.value } : y)))} placeholder="Rol (compañero de unidad, testigo civil…)" />
                       <Button variant="ghost" size="icon" aria-label="Quitar testigo" onClick={() => set("tes", A.tes.length > 1 ? A.tes.filter((_, j) => j !== i) : [{ n: "", r: "" }])}><Trash2 /></Button>
                     </div>
@@ -172,14 +170,10 @@ export function PerdidaArmamento({ me }: { me: { n: string; r: string } }) {
       )}
       <datalist id="pa-dv">{DIVISIONES.map(d => <option key={d} value={d} />)}</datalist>
       <datalist id="pa-lug">{LUGARES.map(d => <option key={d} value={d} />)}</datalist>
-      <RosterList id="pa-roster" />
     </div>
   );
 }
 
-function RosterList({ id }: { id: string }) {
-  return <datalist id={id}>{getRoster().filter(a => lvl(a.r) > 0).map(a => a.n).sort().map(n => <option key={n} value={n} />)}</datalist>;
-}
 
 function Registro({ list, me, onEdit, onDelete }: { list: PerdArm[]; me: { n: string; r: string }; onEdit: (r: PerdArm) => void; onDelete: (id: string) => void }) {
   const [q, setQ] = useState(""), [open, setOpen] = useState<string | null>(null);

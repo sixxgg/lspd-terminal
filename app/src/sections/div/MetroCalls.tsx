@@ -5,14 +5,13 @@
    casillas al final. Abajo, historial de movimientos y comunicado para Discord firmado por Coordinación e Instructores.
    Gestionan la coordinación y los instructores (más six, Liam y Molina); el resto de la división lo ve. */
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ArrowUpCircle, Bookmark, Check, History, LogOut, Megaphone, Minus, MoreVertical, Plus, RefreshCw, Search, Settings2, Shield, Target, UserCheck, UserPlus, X } from "lucide-react";
+import { ArrowRight, ArrowUpCircle, Bookmark, Check, History, LogOut, Megaphone, Minus, MoreVertical, Plus, RefreshCw, Search, Settings2, Shield, Target, UserCheck, X } from "lucide-react";
 import { Button, Card, Input, Textarea } from "@/components/ui";
-import { Avatar } from "@/components/agents";
+import { Avatar, AgentCombo } from "@/components/agents";
 import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { LS, syncWait, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { getRoster } from "@/lib/domain";
 import { UNITS, insRole, rosterCall, uMap, uTop } from "@/lib/units";
 import { CS_CFG0, K_CFG, K_LOG, K_RES, MOVE_L, emOf, metroComm, csNums, csTok, isReserva, logOf, moveMember, resOf, setCall, setReserva, withTok, type CsCfg, type CsLog, type CsTipo, type Move } from "@/lib/mdcalls";
 import { cn } from "@/lib/cn";
@@ -38,7 +37,7 @@ export function MetroCalls({ can }: { can: boolean }) {
   const me = useMe(), { toast, confirm } = useFeedback(), M = uMap("md"), R = UNITS.md.R;
   const [ser, setSer] = useState<Ser>(() => (localStorage.getItem("lspdt.next.csSer") === "C" ? "C" : "D"));
   const go = (s: Ser) => { setSer(s); setSel(""); try { localStorage.setItem("lspdt.next.csSer", s); } catch { /* */ } };
-  const [q, setQ] = useState(""), [sel, setSel] = useState(""), [hq, setHq] = useState(""), [hn, setHn] = useState(40), [nuevo, setNuevo] = useState(""), [extra, setExtra] = useState<string[]>([]);
+  const [q, setQ] = useState(""), [sel, setSel] = useState(""), [hq, setHq] = useState(""), [hn, setHn] = useState(40), [extra, setExtra] = useState<string[]>([]);
   const [cfg, setCfg] = useJSON<CsCfg & { dTop?: number; cTop?: number }>(K_CFG, CS_CFG0), [cfgOpen, setCfgOpen] = useState(false);
   const log = logOf(), res = useMemo(() => resOf(), [ver]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -87,9 +86,9 @@ export function MetroCalls({ can }: { can: boolean }) {
     : [["Miembros", inSec.filter(p => !p.asp).sort(byNum)], ["Aspirantes y reservas", inSec.filter(p => p.asp).sort(byNum)]];
   const selP = people.find(p => p.n === sel);
   const stats = (s: Ser) => ({ used: occ[s].size, dup: [...occ[s].values()].filter(v => v.length > 1).length });
-  const addPerson = () => { const n = nuevo.trim(); if (!n) return; const ex = people.find(p => p.n.toLowerCase() === n.toLowerCase());
+  const addPerson = (n0: string) => { const n = n0.trim(); if (!n) return; const ex = people.find(p => p.n.toLowerCase() === n.toLowerCase());
     if (ex) { setSel(ex.n); if (ser === "D" && !extra.includes(ex.n)) setExtra([...extra, ex.n]); } else { if (ser === "C") LS.setJSON(K_RES, { ...res, [n]: "" }); setExtra([...extra, n]); setSel(n); }
-    setNuevo(""); toast(`Elegí una casilla libre del mapa para ${n}`); };
+    toast(`Elegí una casilla libre del mapa para ${n}`); };
 
   /* ---------- comunicado ---------- */
   const pend = log.filter(l => !l.pub);
@@ -148,9 +147,7 @@ export function MetroCalls({ can }: { can: boolean }) {
               </div>); })}</div></div>)}
           {!inSec.length && <p className="px-4 py-10 text-center text-sm text-slate-400">Nadie coincide.</p>}
           {can && <div className="flex gap-2 border-t border-slate-100 p-3 dark:border-slate-800">
-            <Input list="cs-ag" value={nuevo} onChange={e => setNuevo(e.target.value)} onKeyDown={e => e.key === "Enter" && addPerson()} placeholder={ser === "D" ? "Agregar agente al SWAT" : "Reservar para alguien (aspirante o futuro)"} />
-            <datalist id="cs-ag">{getRoster().map(a => <option key={a.n} value={a.n} />)}</datalist>
-            <Button variant="outline" icon={<UserPlus />} onClick={addPerson} disabled={!nuevo.trim()}>Agregar</Button></div>}
+            <AgentCombo free clearable={false} value="" onChange={addPerson} className="flex-1" placeholder={ser === "D" ? "Agregar agente al SWAT: buscá o escribí el nombre" : "Reservar para alguien: buscá o escribí el nombre"} /></div>}
         </Card>
 
         {/* mapa */}

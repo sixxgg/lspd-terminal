@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, CalendarClock, Copy, FilePlus2, Megaphone, Pencil, 
 import { Button, Card, Empty, Field, Input, Select, Textarea } from "@/components/ui";
 import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
+import { AgentCombo } from "@/components/agents";
 import { useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { findAgent, getRoster, unixOf } from "@/lib/domain";
@@ -249,7 +250,7 @@ function Editor({ div, init, onSave, onCancel }: { div: CommDiv; init: Comm; onS
       case "date": return <Input type="date" value={v} onChange={e => up(fd.k, e.target.value)} />;
       case "time": return <Input type="time" value={v} onChange={e => up(fd.k, e.target.value)} />;
       case "blocks": return <BlocksEd value={v} onChange={x => up(fd.k, x)} />;
-      case "agent": return <Input list="cm-names" value={v} placeholder={fd.ph || "Ej: Sgto. I Clarkson"} onChange={e => up(fd.k, e.target.value)} />;
+      case "agent": return <AgentCombo free names={names} value={v} placeholder={fd.ph || "Buscar agente"} onChange={x => up(fd.k, x)} />;
       case "role": return <Select value={v} onChange={e => up(fd.k, e.target.value)}>{I.roles.map(([id, l]) => <option key={id} value={id}>{l}</option>)}<option value="">Sin mención</option></Select>;
       default: return <Input value={v} placeholder={fd.ph} onChange={e => up(fd.k, e.target.value)} />;
     } };
@@ -263,7 +264,7 @@ function Editor({ div, init, onSave, onCancel }: { div: CommDiv; init: Comm; onS
             <button onClick={onCancel} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Cancelar"><X className="size-4" /></button></div></div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Título en el registro"><Input value={t} onChange={e => setT(e.target.value)} placeholder={f?.v.titulo || "Ej: Instrucción de buceo"} /></Field>
-          <Field label="Registrado por"><Input list="cm-names" value={by} onChange={e => setBy(e.target.value)} /></Field>
+          <Field label="Registrado por"><AgentCombo free names={names} value={by} onChange={setBy} /></Field>
         </div>
         {f && tp && !manual ? <>
           <Field label="Plantilla"><Select value={f.tpl} onChange={e => setF(newForm(div, e.target.value, me.n))}>{TPLS.map(x => <option key={x.k} value={x.k}>{x.l} — {x.d}</option>)}</Select></Field>
@@ -274,7 +275,6 @@ function Editor({ div, init, onSave, onCancel }: { div: CommDiv; init: Comm; onS
           </div>
         </> : <Field label="Texto en formato Discord" hint="Completá lo que está [entre corchetes]">
           <Textarea rows={18} className="font-mono text-[13px]" value={body} onChange={e => setBody(e.target.value)} /></Field>}
-        <datalist id="cm-names">{names.map(n => <option key={n} value={n} />)}</datalist>
         <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
           {f && manual && <Button variant="ghost" icon={<RefreshCw />} className="mr-auto" onClick={() => setBody(build(div, f))}>Regenerar desde la plantilla</Button>}
           <Button variant="ghost" onClick={onCancel}>Cancelar</Button>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FloatBox } from "./float";
-import { Search, Users, Check, X } from "lucide-react";
+import { Search, Users, Check, X, UserPlus } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { fotoOf, getRoster, imgOpt, initials, insigniaUrl, lvl, norm, rankES, RANK_COLOR, profOf } from "@/lib/domain";
 import { useStoreVersion, type Agent } from "@/lib/store";
@@ -31,10 +31,11 @@ export function RankBadge({ r }: { r: string }) {
 }
 
 /* Buscador de agentes: escribís y aparecen los que coinciden (nombre, placa o rango), ordenados de la A a la Z.
-   Con ↑ ↓ y Enter se elige sin mouse. Si hay uno elegido se muestra como ficha, con ✕ para cambiarlo. */
-export function AgentCombo({ value, onChange, names, filter, placeholder = "Buscar agente por nombre, placa o rango…", sub, chosen = [], empty = "Sin resultados", clearable = true, className }: {
+   Con ↑ ↓ y Enter se elige sin mouse. Si hay uno elegido se muestra como ficha, con ✕ para cambiarlo.
+   free: también acepta un nombre que no está en el roster (otro departamento, alguien que ya se fue) · sm: más bajo, para tablas y formularios densos */
+export function AgentCombo({ value, onChange, names, filter, placeholder = "Buscar agente por nombre, placa o rango…", sub, chosen = [], empty = "Sin resultados", clearable = true, className, free, sm }: {
   value: string; onChange: (n: string) => void; names?: string[]; filter?: (a: Agent) => boolean; placeholder?: string;
-  sub?: (n: string) => string; chosen?: string[]; empty?: string; clearable?: boolean; className?: string;
+  sub?: (n: string) => string; chosen?: string[]; empty?: string; clearable?: boolean; className?: string; free?: boolean; sm?: boolean;
 }) {
   useStoreVersion();
   const [q, setQ] = useState(""), [open, setOpen] = useState(false), [hi, setHi] = useState(0), [edit, setEdit] = useState(false);
@@ -54,10 +55,11 @@ export function AgentCombo({ value, onChange, names, filter, placeholder = "Busc
   return (
     <div ref={box} className={cn("relative", className)}>
       {showChip ? (
-        <div className="flex h-11 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-2.5 dark:border-slate-700 dark:bg-slate-900/70">
+        <div className={cn("flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-2.5 dark:border-slate-700 dark:bg-slate-900/70", sm ? "h-9" : "h-11")}>
           <button type="button" onClick={() => { setEdit(true); setOpen(true); setTimeout(() => inp.current?.focus(), 0); }} className="flex min-w-0 flex-1 items-center gap-2.5 text-left" title="Cambiar">
-            <Avatar n={value} size={28} /><span className="truncate text-sm font-semibold">{value}</span>
-            {cur?.r && <RankBadge r={cur.r} />}{cur?.p && <span className="font-mono text-xs text-slate-400">#{cur.p}</span>}
+            <Avatar n={value} size={sm ? 22 : 28} /><span className="max-w-[70%] shrink-0 truncate text-sm font-semibold">{value}</span>
+            {/* el rango y la placa ceden lugar al nombre cuando el campo es angosto */}
+            {cur?.r && <span className="flex min-w-0 overflow-hidden"><RankBadge r={cur.r} /></span>}{cur?.p && <span className="shrink-0 font-mono text-xs text-slate-400">#{cur.p}</span>}
             {sub && sub(value) && <span className="truncate text-xs text-slate-400">· {sub(value)}</span>}
           </button>
           {clearable && <button type="button" aria-label="Quitar" onClick={() => onChange("")} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"><X className="size-4" /></button>}
@@ -68,14 +70,16 @@ export function AgentCombo({ value, onChange, names, filter, placeholder = "Busc
           <input ref={inp} value={q} onChange={e => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} placeholder={placeholder} role="combobox" aria-expanded={open} aria-autocomplete="list"
             onKeyDown={e => { if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); setHi(h => Math.min(list.length - 1, h + 1)); }
               else if (e.key === "ArrowUp") { e.preventDefault(); setHi(h => Math.max(0, h - 1)); }
-              else if (e.key === "Enter") { e.preventDefault(); if (list[hi]) pick(list[hi].n); }
+              else if (e.key === "Enter") { e.preventDefault(); if (list[hi]) pick(list[hi].n); else if (free && q.trim()) pick(q.trim()); }
               else if (e.key === "Escape") { setOpen(false); setEdit(false); } }}
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none ring-brand-500/20 placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 dark:border-slate-700 dark:bg-slate-900/70" />
+            className={cn(sm ? "h-9" : "h-11", "w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none ring-brand-500/20 placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 dark:border-slate-700 dark:bg-slate-900/70")} />
         </div>
       )}
       {open && !showChip && (
         <FloatBox ref={listRef} anchor={box} role="listbox" className="p-1">
-          {!list.length && <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-400"><Users className="size-4" />{empty}</div>}
+          {free && q.trim() && !list.some(a => norm(a.n) === norm(q.trim())) && <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => pick(q.trim())}
+            className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm", !list.length && "bg-brand-50 dark:bg-brand-500/15")}><UserPlus className="size-4 shrink-0 text-slate-400" /><span className="min-w-0 flex-1 truncate">Usar «<b>{q.trim()}</b>» <span className="text-xs text-slate-400">· no está en el roster</span></span></button>}
+          {!list.length && !free && <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-400"><Users className="size-4" />{empty}</div>}
           {list.slice(0, 80).map((a, i) => { const on = a.n === value || chosen.includes(a.n); return (
             <button key={a.n} type="button" role="option" aria-selected={i === hi} data-i={i} onMouseEnter={() => setHi(i)} onMouseDown={e => e.preventDefault()} onClick={() => pick(a.n)}
               className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm", i === hi ? "bg-brand-50 dark:bg-brand-500/15" : "", on && "text-brand-700 dark:text-brand-200")}>

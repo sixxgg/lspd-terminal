@@ -128,7 +128,8 @@ html.neon.dark header.sticky { box-shadow: 0 1px 0 rgb(var(--b-500) / .2), 0 10p
 /* ===== efecto CRT (televisor viejo), leve para que se lea bien ===== */
 .crt{position:absolute;inset:0;z-index:120;pointer-events:none;border-radius:inherit;overflow:hidden;
   background:repeating-linear-gradient(180deg,rgba(0,0,0,.11) 0 1px,transparent 1px 3px),radial-gradient(ellipse at center,transparent 62%,rgba(0,0,0,.32) 100%);
-  opacity:var(--ci,.7);animation:crtFlick 5s infinite;contain:strict}
+  opacity:var(--ci,.7);animation:crtFlick 5s infinite;contain:strict;will-change:opacity}
+.crt-n{position:absolute;inset:-200px;display:none;pointer-events:none;will-change:transform}
 .crt::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,0,60,.022),rgba(0,255,140,.01) 50%,rgba(0,80,255,.022));
   box-shadow:inset 0 0 80px rgba(0,0,0,.28),inset 0 0 6px rgba(var(--acc-rgb,124,156,255),.12)}
 .crt::after{content:"";position:absolute;left:0;right:0;top:0;height:14%;background:linear-gradient(180deg,transparent,rgba(255,255,255,.03) 50%,transparent);
@@ -139,7 +140,7 @@ html.neon.dark header.sticky { box-shadow: 0 1px 0 rgb(var(--b-500) / .2), 0 10p
 /* Liviano: líneas muy finas, sin animaciones ni capas extra */
 body.crt-lite .crt{background:repeating-linear-gradient(180deg,rgba(0,0,0,.07) 0 1px,transparent 1px 3px);animation:none}
 body.crt-lite .crt::before,body.crt-lite .crt::after{display:none}
-@media (prefers-reduced-motion:reduce){.crt,.crt::after{animation:none!important}}
+@media (prefers-reduced-motion:reduce){.crt,.crt::after,.crt-n{animation:none!important}}
 body.nocrt .crt{display:none}
 /* variantes */
 body.crt-clasico .crt{background:repeating-linear-gradient(180deg,rgba(0,0,0,.22) 0 1px,transparent 1px 2px),radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.55) 100%)}
@@ -148,22 +149,26 @@ body.crt-fosforo .crt{background:repeating-linear-gradient(180deg,rgba(0,0,0,.16
 body.crt-fosforo .crt::before{background:rgba(40,255,120,.16);mix-blend-mode:color;box-shadow:inset 0 0 90px rgba(0,40,10,.5)}
 body.crt-ambar .crt{background:repeating-linear-gradient(180deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px),radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.4) 100%)}
 body.crt-ambar .crt::before{background:rgba(255,170,0,.18);mix-blend-mode:color;box-shadow:inset 0 0 90px rgba(40,20,0,.5)}
-body.crt-vhs .crt{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.09'/%3E%3C/svg%3E"),repeating-linear-gradient(180deg,rgba(0,0,0,.12) 0 1px,transparent 1px 3px);animation:vhsN .35s steps(3) infinite}
+body.crt-vhs .crt{background:repeating-linear-gradient(180deg,rgba(0,0,0,.12) 0 1px,transparent 1px 3px);animation:none}
+body.crt-vhs .crt-n{display:block;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.09'/%3E%3C/svg%3E");animation:vhsT .35s steps(3) infinite}
 body.crt-vhs .crt::before{background:linear-gradient(90deg,rgba(255,0,80,.05),transparent 20%,transparent 80%,rgba(0,140,255,.06))}
 body.crt-vhs .crt::after{height:6%;background:linear-gradient(180deg,transparent,rgba(255,255,255,.07),transparent);animation-duration:3.5s}
 body.crt-retro .crt{background:radial-gradient(circle,rgba(0,0,0,.18) 0 .6px,transparent 1px) 0 0/3px 3px,repeating-linear-gradient(180deg,rgba(0,0,0,.14) 0 1px,transparent 1px 3px),radial-gradient(ellipse at center,transparent 48%,rgba(0,0,0,.7) 100%)}
 body.crt-retro .crt::before{border-radius:38px/30px;box-shadow:inset 0 0 0 3px rgba(0,0,0,.6),inset 0 0 160px rgba(0,0,0,.75),inset 0 0 18px rgba(124,156,255,.15)}
-body.crt-vhsplay .crt{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E"),repeating-linear-gradient(180deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px),radial-gradient(ellipse at center,transparent 60%,rgba(0,0,0,.45) 100%);animation:vhsN .25s steps(3) infinite,vhsJit 2.6s steps(1) infinite}
+body.crt-vhsplay .crt{background:repeating-linear-gradient(180deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px),radial-gradient(ellipse at center,transparent 60%,rgba(0,0,0,.45) 100%);animation:vhsJit 2.6s steps(1) infinite}
+body.crt-vhsplay .crt-n{display:block;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");animation:vhsT .25s steps(3) infinite}
 body.crt-vhsplay .crt::before{background:linear-gradient(90deg,rgba(255,0,80,.08),transparent 15%,transparent 85%,rgba(0,140,255,.09))}
 body.crt-vhsplay .crt::after{height:9%;background:linear-gradient(180deg,transparent,rgba(255,255,255,.12) 40%,rgba(0,0,0,.25) 60%,transparent);animation-duration:2.2s}
 @keyframes vhsJit{0%,100%{transform:none}93%{transform:translateX(2px)}95%{transform:translateX(-3px)}97%{transform:translateX(1px)}}
-body.crt-interf .crt{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='turbulence' baseFrequency='.02 1.6' numOctaves='1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.14'/%3E%3C/svg%3E"),repeating-linear-gradient(180deg,rgba(0,0,0,.14) 0 1px,transparent 1px 3px);animation:interfU 1.4s linear infinite}
+body.crt-interf .crt{background:repeating-linear-gradient(180deg,rgba(0,0,0,.14) 0 1px,transparent 1px 3px);animation:none}
+body.crt-interf .crt-n{display:block;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='turbulence' baseFrequency='.02 1.6' numOctaves='1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.14'/%3E%3C/svg%3E");animation:interfT 1.4s linear infinite}
 body.crt-interf .crt::after{height:22%;background:linear-gradient(180deg,transparent,rgba(255,255,255,.06),transparent);animation-duration:3s}
-@keyframes interfU{to{background-position:0 -180px,0 0}}
+@keyframes interfT{to{transform:translate3d(0,-180px,0)}}
 body.crt-glitch .crt{background:repeating-linear-gradient(180deg,rgba(0,0,0,.12) 0 1px,transparent 1px 3px)}
 body.crt-glitch .crt::after{top:40%;height:7%;transform:none;background:linear-gradient(90deg,rgba(255,0,90,.22),rgba(0,255,200,.18) 30%,transparent 31%,transparent 60%,rgba(80,120,255,.22) 61%,transparent 80%);opacity:0;animation:glitchB 4.5s steps(1) infinite}
 @keyframes glitchB{0%,88%,100%{opacity:0;transform:none}89%{opacity:1;transform:translate(-8px,-120%)}91%{opacity:1;transform:translate(10px,180%)}93%{opacity:1;transform:translate(-4px,420%)}95%{opacity:0}}
-@keyframes vhsN{0%{background-position:0 0,0 0}33%{background-position:-40px 20px,0 0}66%{background-position:30px -30px,0 0}}
+/* el ruido se mueve con transform en su propia capa (la GPU), no con background-position, que repintaba toda la pantalla varias veces por segundo */
+@keyframes vhsT{0%{transform:translate3d(0,0,0)}33%{transform:translate3d(-40px,20px,0)}66%{transform:translate3d(30px,-30px,0)}}
 @media (prefers-reduced-motion:reduce){.crt,.crt::after{animation:none}}
 
 /* ===== banner de las divisiones ===== */
@@ -422,3 +427,6 @@ html:not([data-head="none"]) header nav .nav-dk-l { font-family: var(--fh, inher
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .rise { animation: none; } }
 
+
+/* bloques largos (grupos de agentes, entrevistas, robos): el navegador no calcula ni pinta lo que está fuera de pantalla */
+.cv-auto{content-visibility:auto;contain-intrinsic-size:auto 640px}

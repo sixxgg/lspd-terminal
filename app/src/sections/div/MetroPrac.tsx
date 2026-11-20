@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Archive, Bookmark, CalendarClock, Clock, Check, CircleSlash, PauseCircle, StickyNote, FileText, Plus, RefreshCw, RotateCcw, Save, Send, UserCheck, Trash2, Trophy, UserPlus, Users, Wand2, X } from "lucide-react";
 import { Button, Card, Input, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
-import { Avatar } from "@/components/agents";
+import { Avatar, AgentCombo } from "@/components/agents";
 import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { getRoster, uid } from "@/lib/domain";
@@ -139,7 +139,7 @@ function Prac({ T }: { T: Ty }) {
   const [dr, setDr] = useState<{ mine: Record<string, V>; base: Record<string, V> }>(() => { try { const d = JSON.parse(localStorage.getItem(DRAFT) || "null"); if (d?.mine) return d; } catch { /* */ } return { mine: {}, base: {} }; });
   const putDr = (d: typeof dr) => { setDr(d); try { localStorage.setItem(DRAFT, JSON.stringify(d)); } catch { /* */ } };
   const S0 = useMemo(() => flat(T, stored), [stored]), view = useMemo(() => apply(T, stored, dr.mine), [stored, dr.mine]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [cid, setCid] = useState(""), [nuevo, setNuevo] = useState(""), [pick, setPick] = useState(""), [desg, setDesg] = useState(false), [saving, setSaving] = useState(false);
+  const [cid, setCid] = useState(""), [pick, setPick] = useState(""), [desg, setDesg] = useState(false), [saving, setSaving] = useState(false);
   const agNames = useMemo(() => getRoster().map(a => a.n), [ver]); // eslint-disable-line react-hooks/exhaustive-deps
   const [exR, setExR] = useState(""), [conf, setConf] = useState<{ k: string; theirs: V; mine: V }[] | null>(null);
   const c = view.find(x => x.id === cid) || view[view.length - 1], savedC = stored.find(x => x.id === c.id), ro = archIds0(stored, SEED).has(c.id);
@@ -159,7 +159,7 @@ function Prac({ T }: { T: Ty }) {
   const key = (rid: string, f: string) => `${c.id}|${rid}|${f}`;
   const addRow = (n: string, cs = "", cid0 = c.id) => { const id = uid(), p = `${cid0}|${id}|`; return { [p + "n"]: n, [p + "cs"]: cs, ...Object.fromEntries(Array.from({ length: T.clases }, (_, i) => [p + "c" + (i + 1), ""])) }; };
   const delRow = (r: Row) => { if (savedC?.rows.some(x => x.id === r.id)) return edit(key(r.id, "n"), DEL); const mine = { ...dr.mine }, base = { ...dr.base }; for (const k of Object.keys(mine)) if (k.startsWith(`${c.id}|${r.id}|`)) { delete mine[k]; delete base[k]; } putDr({ mine, base }); };
-  const add = () => { const n = nuevo.trim(); if (!n) return; if (c.rows.some(r => norm(r.n) === norm(n))) return toast(`${n} ya está en la convocatoria`, "err"); editMany(addRow(n)); setNuevo(""); };
+  const addN = (n0: string) => { const n = n0.trim(); if (!n) return; if (c.rows.some(r => norm(r.n) === norm(n))) return toast(`${n} ya está en la convocatoria`, "err"); editMany(addRow(n)); toast(`${n} agregado`); };
   const addConv = () => { const n = Math.max(-1, ...view.map(x => +x.id.replace(/\D/g, "") || 0)) + 1, id = "C" + n; edit(id + "|_", "Convocatoria " + n); setCid(id); };
   const discard = async () => { if (await confirm("¿Descartar tus cambios sin guardar?", { danger: true })) { putDr({ mine: {}, base: {} }); live.current.k = []; live.current.dirty = true; } };
 
@@ -317,9 +317,7 @@ function Prac({ T }: { T: Ty }) {
         </table>
       </Card>
       <div className="flex flex-wrap items-center gap-2">
-        {!ro && <><Input list="prac-ag" value={nuevo} onChange={e => setNuevo(e.target.value)} onKeyDown={e => e.key === "Enter" && add()} placeholder={T.cs ? "Agregar aspirante (nombre del roster)" : "Agregar agente evaluado"} className="max-w-xs" />
-        <datalist id="prac-ag">{agNames.map(n => <option key={n} value={n} />)}</datalist>
-        <Button variant="outline" icon={<Plus />} onClick={add} disabled={!nuevo.trim()}>Agregar</Button></>}
+        {!ro && <AgentCombo free names={agNames} clearable={false} value="" onChange={addN} placeholder={T.cs ? "Agregar aspirante: buscá o escribí el nombre" : "Agregar agente evaluado"} className="w-full max-w-sm" />}
         <span className="ml-auto flex flex-wrap items-center gap-2 text-[11px] text-slate-500">{T.bonus && <span>Global = promedio + bonus ·</span>}{AS.map(([k, l, I, on]) => <span key={k} className="inline-flex items-center gap-1"><span className={cn("grid size-4 place-items-center rounded", on)}><I className="size-2.5" strokeWidth={3} /></span>{l}</span>)}
           <span className="ml-1 inline-flex items-center gap-1">Nota <b>0</b><span className="h-1.5 w-14 rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-emerald-500" /><b>10</b></span></span>
       </div>
