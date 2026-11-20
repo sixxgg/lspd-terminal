@@ -1,7 +1,8 @@
 /* METRO · exámenes para aspirantes a instructor de la academia: entrevista con hoja de puntuación (1–5, pesos por bloque, máx. 60),
-   examen escrito (banco editable, nota /10, corte 70 %) y lista de elegibles (examen ×4 + entrevista = /100). */
+   examen escrito (banco editable, nota /10, corte 70 %) y lista de elegibles (examen ×4 + entrevista = /100).
+   Entrevista para Líder de Pelotón C (R30C, R40C…): 10 preguntas con el mismo sistema, centradas en el mando de un 487 o un 207. */
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Check, ClipboardCheck, Eye, MessageCircle, RotateCcw, Minus, Pencil, Plus, Save, Star, Trash2, Trophy, X } from "lucide-react";
+import { AlertTriangle, Check, ClipboardCheck, Eye, Megaphone, MessageCircle, RotateCcw, Minus, Pencil, Plus, Save, Star, Trash2, Trophy, X } from "lucide-react";
 import { Button, Card, Field, Input, Select, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { DiscordOutput } from "@/components/output";
@@ -11,10 +12,11 @@ import { dmy, findAgent, getRoster, hoyISO, lvl, rankES, uid } from "@/lib/domai
 import { useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { uMap } from "@/lib/units";
+import { CS_CFG0, K_CFG, VERIF_EM, metroComm, type CsCfg } from "@/lib/mdcalls";
 import { cn } from "@/lib/cn";
 
 type Grade = "" | "ok" | "mid" | "no";
-type Ev = { id: string; tipo: "exa" | "ent"; cand: string; rango: string; fecha: string; notas: Record<string, Grade | number>; obs: Record<string, string>;
+type Ev = { id: string; tipo: "exa" | "ent" | "lp"; cand: string; rango: string; fecha: string; notas: Record<string, Grade | number>; obs: Record<string, string>;
   pts: number; apto: string; by: string; ts: number; fil?: Record<string, boolean>; fort?: string; mej?: string; dec?: string; conv?: string };
 /* convocatorias de la academia: cada una con sus postulantes (las evaluaciones viejas quedan en la C1) */
 type Conv = { id: string; n: string; t: number; post: string[] };
@@ -51,15 +53,39 @@ const BLOQ: [string, number, string[]][] = [
 const W_ST: Record<number, { c: string; l: string }> = { 1: { c: "#64748b", l: "vale x1" }, 2: { c: "#f59e0b", l: "vale el doble · x2" }, 3: { c: "#ef4444", l: "vale el triple · x3" } };
 function WBadge({ w, big }: { w: number; big?: boolean }) { const S = W_ST[w];
   return <span className={cn("inline-flex items-center gap-1 rounded-md border font-bold tracking-normal", big ? "px-2 py-0.5 text-xs" : "px-1.5 text-[10px]")} style={{ color: S.c, borderColor: S.c + "66", background: S.c + "1a" }}>{"★".repeat(w)}<span>{big ? S.l : "x" + w}</span></span>; }
-const QS = BLOQ.flatMap(([b, w, l]) => l.map(q => ({ b, w, q }))).map((x, i) => ({ ...x, n: i + 1 }));
+const QS_I = BLOQ.flatMap(([b, w, l]) => l.map(q => ({ b, w, q }))).map((x, i) => ({ ...x, n: i + 1 }));
 const FIL: [string, string][] = [["san", "Sanciones graves recientes sin aprendizaje demostrado"], ["disp", "Disponibilidad insuficiente para dar clase"]];
+
+/* ---------- entrevista para Líder de Pelotón C: 10 preguntas, máx. 60. Pesa más el mando de un 487 (robo mayor) y de un 207 (secuestro / rehenes) ---------- */
+const BLOQ_LP: [string, number, string[]][] = [
+  ["Liderazgo y responsabilidad", 2, ["¿Qué significa para ti liderar un pelotón de 10 operadores de la Metropolitan Division? ¿Qué responsabilidades asumes ante tu equipo y ante la coordinación?",
+    "Un operador de tu pelotón no cumple una orden directa en plena intervención. ¿Cómo actúas en ese momento y cómo lo gestionas después del servicio?"]],
+  ["Mando de un 487 (robo mayor)", 3, ["Asumes el mando de un 487 con tu pelotón. Explica cómo lo organizas: reparto de unidades, perímetro, colocación de los vehículos, comunicaciones por radio y coordinación con el apoyo aéreo.",
+    "Los sospechosos del 487 huyen y empieza una persecución. ¿Cómo repartes las funciones entre tus unidades y con qué criterios decides si se continúa o se cancela?"]],
+  ["Mando de un 207 (secuestro / rehenes)", 3, ["Asumes el mando inicial de un 207 hasta que llegan el SWAT o el negociador. ¿Cuáles son tus prioridades, qué órdenes das al pelotón y qué información transmites al mando?",
+    "Durante la negociación de un 207, un operador te propone entrar ya porque «lo tiene claro». ¿Qué decides y por qué? ¿En qué casos autorizarías una entrada?"]],
+  ["Toma de decisiones", 2, ["Recibes por radio una orden de un superior que no está en la escena y que contradice lo que estás viendo sobre el terreno. ¿Cómo decides y cómo lo comunicas?",
+    "Un operativo sale mal (un agente herido o la fuga de los sospechosos). ¿Cómo haces el debriefing con tu pelotón y qué haces con los errores detectados?"]],
+  ["Gestión del pelotón", 1, ["¿Cómo mantienes la disciplina, la moral y el nivel de entrenamiento de 10 operadores con experiencia y personalidades distintas?"]],
+  ["Cierre", 1, ["¿Por qué deberíamos confiarte una plaza de Líder de Pelotón (R30C o R40C) y qué aportarías al Pelotón C?"]],
+];
+const FIL_LP: [string, string][] = [["san", "Sanciones graves recientes sin aprendizaje demostrado"], ["disp", "Disponibilidad insuficiente para liderar el pelotón"], ["mando", "No asume el mando ni toma decisiones bajo presión"]];
+type IvT = "ent" | "lp";
+type IvCfg = { title: string; em: string; bloq: [string, number, string[]][]; crit: number[]; fil: [string, string][]; ck: string; conv0: Conv[]; ls: string };
+const IV: Record<IvT, IvCfg> = {
+  ent: { title: "Entrevista · Instructor Academia Metro", em: "🎓", bloq: BLOQ, crit: [14, 15], fil: FIL, ck: K_CONV, conv0: CONV0, ls: "lspdt.next.mdconv" },
+  lp: { title: "Entrevista · Líder de Pelotón C", em: "🎖️", bloq: BLOQ_LP, crit: [3, 5], fil: FIL_LP, ck: "lspdt.mdx.lpconv", conv0: [{ id: "C1", n: "Plazas R30C y R40C", t: 0, post: [] }], ls: "lspdt.next.mdlpconv" },
+};
+const ivOf = (e: Ev): IvT => (e.tipo === "lp" ? "lp" : "ent");
+const QS_OF: Record<IvT, { b: string; w: number; q: string; n: number }[]> = {
+  ent: QS_I, lp: BLOQ_LP.flatMap(([b, w, l]) => l.map(q => ({ b, w, q }))).map((x, i) => ({ ...x, n: i + 1 })) };
 const RES = (p: number) => (p >= 48 ? "Apto" : p >= 36 ? "Apto con seguimiento" : "No apto");
 const RES_C: Record<string, string> = { "Apto": "text-emerald-500", "Apto con seguimiento": "text-amber-500", "No apto": "text-red-500" };
 function entScore(e: Ev) {
-  const v = (n: number) => Number(e.notas["q" + n]) || 0;
-  const bl = BLOQ.map(([b, w, l]) => { const ns = QS.filter(q => q.b === b).map(q => v(q.n)), m = ns.reduce((a, x) => a + x, 0) / l.length; return { b, w, m, s: m * w }; });
-  const pts = bl.reduce((a, x) => a + x.s, 0), done = QS.every(q => v(q.n) > 0);
-  const elim = [v(14) > 0 && v(14) < 3 && "Pregunta 14 con menos de 3", v(15) > 0 && v(15) < 3 && "Pregunta 15 con menos de 3", ...FIL.filter(([k]) => e.fil?.[k]).map(([, l]) => l)].filter(Boolean) as string[];
+  const t = ivOf(e), C = IV[t], Q = QS_OF[t], v = (n: number) => Number(e.notas["q" + n]) || 0;
+  const bl = C.bloq.map(([b, w, l]) => { const ns = Q.filter(q => q.b === b).map(q => v(q.n)), m = ns.reduce((a, x) => a + x, 0) / l.length; return { b, w, m, s: m * w }; });
+  const pts = bl.reduce((a, x) => a + x.s, 0), done = Q.every(q => v(q.n) > 0);
+  const elim = [...C.crit.map(n => v(n) > 0 && v(n) < 3 && `Pregunta ${n} con menos de 3`), ...C.fil.filter(([k]) => e.fil?.[k]).map(([, l]) => l)].filter(Boolean) as string[];
   return { bl, pts, done, elim, res: elim.length ? "No apto" : RES(pts) };
 }
 
@@ -82,11 +108,11 @@ const BANK0: Q[] = [
 const BANK_OLD: Record<string, string> = { m0: "¿Cuáles son los pasos de una entrada táctica a un inmueble?", m1: "¿Qué es un perímetro interior y uno exterior y para qué sirve cada uno?", m2: "¿Qué se informa por radio al llegar a una escena de alto riesgo?", m3: "¿Qué reglas básicas de seguridad con armas debe repetir un instructor?", m4: "¿Cuándo está justificado el uso del arma de fuego?", m5: "¿Qué hace un tirador cuando se le traba el arma en un enfrentamiento?", m6: "¿Qué factores evalúa el mando para mantener o cancelar una persecución?", m7: "¿Cuál es el orden de las unidades en una persecución y qué hace cada una?", m8: "¿Cómo se estructura una clase práctica de 30 minutos?", m9: "¿Cómo se corrige a un aspirante delante del grupo sin perder autoridad ni humillarlo?", m10: "¿Qué hace un instructor si ve a otro enseñando algo contrario al reglamento?" };
 const gv = (g: Grade | number) => (g === "ok" ? 1 : g === "mid" ? 0.5 : 0);
 
-export function MetroExam({ tab }: { tab: "exa" | "ent" | "list" }) {
+export function MetroExam({ tab }: { tab: "exa" | "ent" | "lp" | "list" }) {
   useStoreVersion();
   const [evs, setEvs] = useJSON<Ev[]>(K_EV, []);
   const save = (e: Ev) => setEvs([...evs.filter(x => x.id !== e.id), e]), del = (id: string) => setEvs(evs.filter(x => x.id !== id));
-  return tab === "ent" ? <Ent evs={evs} onSave={save} onDel={del} /> : tab === "exa" ? <Exa evs={evs} onSave={save} onDel={del} /> : <List evs={evs} />;
+  return tab === "ent" || tab === "lp" ? <Ent key={tab} t={tab} evs={evs} onSave={save} onDel={del} /> : tab === "exa" ? <Exa evs={evs} onSave={save} onDel={del} /> : <List evs={evs} />;
 }
 
 const cands = () => { const m = uMap("md"); const L = getRoster().filter(a => lvl(a.r) > 0).map(a => a.n); return [...Object.keys(m).filter(n => L.includes(n)), ...L.filter(n => !m[n])]; };
@@ -105,20 +131,20 @@ function Hist({ evs, tipo, conv, onOpen, onDel }: { evs: Ev[]; tipo: Ev["tipo"];
     <div className="divide-y divide-slate-100 dark:divide-slate-800">{L.map(e => (
       <div key={e.id} className="flex items-center gap-3 px-4 py-2.5">
         <span className={cn("rounded-md px-2 py-0.5 text-[11px] font-bold", e.apto.startsWith("Apto") ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300" : "bg-red-500/10 text-red-600 dark:text-red-300")}>{e.apto.toUpperCase()}</span>
-        <button onClick={() => onOpen(e)} className="min-w-0 flex-1 truncate text-left text-sm"><b>{e.cand}</b> <span className="text-slate-500">· {dmy(e.fecha)} · {tipo === "ent" ? `${f1(e.pts)}/60` : `nota ${f1(e.pts, 2)}/10`} · {e.by}</span></button>
+        <button onClick={() => onOpen(e)} className="min-w-0 flex-1 truncate text-left text-sm"><b>{e.cand}</b> <span className="text-slate-500">· {dmy(e.fecha)} · {tipo !== "exa" ? `${f1(e.pts)}/60` : `nota ${f1(e.pts, 2)}/10`} · {e.by}</span></button>
         <button aria-label="Eliminar" onClick={async () => { if (await confirm(`¿Eliminar la evaluación de ${e.cand}?`, { danger: true })) onDel(e.id); }} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><Trash2 className="size-4" /></button>
       </div>))}</div></Card>;
 }
 
-function Ent({ evs, onSave, onDel }: { evs: Ev[]; onSave: (e: Ev) => void; onDel: (id: string) => void }) {
-  const me = useMe(), { toast, confirm } = useFeedback();
-  const [convs, setConvs] = useJSON<Conv[]>(K_CONV, CONV0), [cv, setCv] = useState(() => { try { return localStorage.getItem("lspdt.next.mdconv") || "C1"; } catch { return "C1"; } });
-  const conv = convs.find(c => c.id === cv) || convs[0] || CONV0[0];
-  const blank = (cand = ""): Ev => ({ id: "", tipo: "ent", cand, rango: findAgent(cand) ? rankES(findAgent(cand)!.r) : "", fecha: hoyISO(), notas: {}, obs: {}, pts: 0, apto: "", by: me.n, ts: 0, fil: {}, fort: "", mej: "", dec: "", conv: conv.id });
+function Ent({ t, evs, onSave, onDel }: { t: IvT; evs: Ev[]; onSave: (e: Ev) => void; onDel: (id: string) => void }) {
+  const me = useMe(), { toast, confirm } = useFeedback(), C = IV[t], QS = QS_OF[t];
+  const [convs, setConvs] = useJSON<Conv[]>(C.ck, C.conv0), [cv, setCv] = useState(() => { try { return localStorage.getItem(C.ls) || "C1"; } catch { return "C1"; } });
+  const conv = convs.find(c => c.id === cv) || convs[0] || C.conv0[0];
+  const blank = (cand = ""): Ev => ({ id: "", tipo: t, cand, rango: findAgent(cand) ? rankES(findAgent(cand)!.r) : "", fecha: hoyISO(), notas: {}, obs: {}, pts: 0, apto: "", by: me.n, ts: 0, fil: {}, fort: "", mej: "", dec: "", conv: conv.id });
   const [cur, setCur] = useState<Ev | null>(null), [view, setView] = useState<Ev | null>(null), e = cur || blank(), set = (p: Partial<Ev>) => setCur({ ...e, ...p });
   const reset = async () => { if (cur && (Object.keys(e.notas).length || e.cand) && !(await confirm("¿Reiniciar la entrevista? Se borra lo cargado en el formulario (lo ya registrado no se toca)."))) return; setCur(null); window.scrollTo?.({ top: 0 }); };
   const S = entScore(e), dec = e.dec || S.res;
-  const txt = [`## 🎓 Entrevista · Instructor Academia Metro`, `**Candidato:** ${e.cand || "—"} (${e.rango || "—"}) · **Entrevistador:** ${me.n} · **Fecha:** ${dmy(e.fecha)}`, "",
+  const txt = [`## ${C.em} ${C.title}`, `**Candidato:** ${e.cand || "—"} (${e.rango || "—"}) · **Entrevistador:** ${me.n} · **Fecha:** ${dmy(e.fecha)}`, "",
     ...S.bl.map(b => `**${b.b}** (x${b.w}): media ${f1(b.m, 2)} → ${f1(b.s, 2)} pts`), "",
     `**Puntuación:** ${f1(S.pts)}/60`, ...(S.elim.length ? [`⚠️ **Filtros eliminatorios:** ${S.elim.join(" · ")}`] : []),
     ...(e.fort ? [`**Fortalezas:** ${e.fort}`] : []), ...(e.mej ? [`**A mejorar:** ${e.mej}`] : []),
@@ -128,15 +154,16 @@ function Ent({ evs, onSave, onDel }: { evs: Ev[]; onSave: (e: Ev) => void; onDel
       <Card className="flex flex-wrap items-center gap-2 p-3 text-sm text-slate-500"><MessageCircle className="size-4 text-brand-500" />
         Cada pregunta del 1 al 5 · media de cada bloque × su peso · máximo <b>60</b> · <b>48–60</b> apto · <b>36–47</b> apto con seguimiento · menos de 36 no apto
         <span className="ml-auto flex gap-1.5"><WBadge w={1} /><WBadge w={2} /><WBadge w={3} /></span></Card>
-      <Convocatorias evs={evs} convs={convs} setConvs={setConvs} conv={conv} pick={id => { setCv(id); try { localStorage.setItem("lspdt.next.mdconv", id); } catch { /* */ } }}
+      {t === "lp" && <PlazasComm />}
+      <Convocatorias tipo={t} evs={evs} convs={convs} setConvs={setConvs} conv={conv} pick={id => { setCv(id); try { localStorage.setItem(C.ls, id); } catch { /* */ } }}
         onStart={n => setCur(blank(n))} onView={setView} />
       <div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold">{e.id ? `Editando la entrevista de ${e.cand}` : "Nueva entrevista"} <span className="font-normal text-slate-500">· {conv.id} · {conv.n}</span></p>
         <Button size="sm" variant="outline" className="ml-auto" icon={<RotateCcw />} onClick={() => void reset()}>Reiniciar</Button></div>
       <Head e={e} set={set} />
-      {BLOQ.map(([b, w]) => { const bl = S.bl.find(x => x.b === b)!; return (
+      {C.bloq.map(([b, w]) => { const bl = S.bl.find(x => x.b === b)!; return (
         <section key={b} className="space-y-2 rounded-2xl" style={w > 1 ? { boxShadow: `inset 3px 0 0 ${W_ST[w].c}`, paddingLeft: 10 } : undefined}>
           <p className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">{b}<WBadge w={w} big /><span className="ml-auto normal-case tracking-normal">media {f1(bl.m, 2)} × {w} = <b className="text-slate-700 dark:text-slate-200">{f1(bl.s, 2)} pts</b> <span className="text-slate-400">(máx. {5 * w})</span></span></p>
-          {QS.filter(q => q.b === b).map(q => { const v = Number(e.notas["q" + q.n]) || 0, crit = q.n === 14 || q.n === 15; return (
+          {QS.filter(q => q.b === b).map(q => { const v = Number(e.notas["q" + q.n]) || 0, crit = C.crit.includes(q.n); return (
             <Card key={q.n} className={cn("space-y-3 p-4", v && "border-l-4", v && (v >= 4 ? "border-l-emerald-500" : v === 3 ? "border-l-amber-400" : "border-l-red-500"))}>
               <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
                 <b className="w-[4.25rem] shrink-0 pt-0.5 font-mono text-slate-400">{q.n}</b>
@@ -151,7 +178,7 @@ function Ent({ evs, onSave, onDel }: { evs: Ev[]; onSave: (e: Ev) => void; onDel
         </section>); })}
       <Card className="space-y-3 p-4">
         <p className="flex items-center gap-2 text-sm font-semibold"><AlertTriangle className="size-4 text-red-500" />Filtros eliminatorios <span className="font-normal text-slate-500">(aunque la puntuación sea alta)</span></p>
-        {FIL.map(([k, l]) => <label key={k} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!e.fil?.[k]} onChange={x => set({ fil: { ...e.fil, [k]: x.target.checked } })} />{l}</label>)}
+        {C.fil.map(([k, l]) => <label key={k} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!e.fil?.[k]} onChange={x => set({ fil: { ...e.fil, [k]: x.target.checked } })} />{l}</label>)}
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Fortalezas"><Textarea rows={2} value={e.fort || ""} onChange={x => set({ fort: x.target.value })} /></Field>
           <Field label="A mejorar"><Textarea rows={2} value={e.mej || ""} onChange={x => set({ mej: x.target.value })} /></Field>
@@ -169,7 +196,7 @@ function Ent({ evs, onSave, onDel }: { evs: Ev[]; onSave: (e: Ev) => void; onDel
           setCur(null); toast(`Entrevista de ${r.cand} registrada en ${conv.id}`); }}>Registrar entrevista</Button>
       </div>
       <DiscordOutput title="Hoja de puntuación" text={txt} sticky={false} />
-      <Hist evs={evs} tipo="ent" conv={conv.id} onOpen={setView} onDel={onDel} />
+      <Hist evs={evs} tipo={t} conv={conv.id} onOpen={setView} onDel={onDel} />
       {view && <EvView e={view} onClose={() => setView(null)} onEdit={() => { setCur(view); setView(null); window.scrollTo?.({ top: 0 }); }} />}
     </div>
   );
@@ -213,9 +240,9 @@ function Exa({ evs, onSave, onDel }: { evs: Ev[]; onSave: (e: Ev) => void; onDel
   );
 }
 /* convocatoria (C1, C2…): postulantes con su estado; desde acá se entrevista o se ven las respuestas */
-function Convocatorias({ evs, convs, setConvs, conv, pick, onStart, onView }: { evs: Ev[]; convs: Conv[]; setConvs: (c: Conv[]) => void; conv: Conv; pick: (id: string) => void; onStart: (n: string) => void; onView: (e: Ev) => void }) {
+function Convocatorias({ tipo, evs, convs, setConvs, conv, pick, onStart, onView }: { tipo: IvT; evs: Ev[]; convs: Conv[]; setConvs: (c: Conv[]) => void; conv: Conv; pick: (id: string) => void; onStart: (n: string) => void; onView: (e: Ev) => void }) {
   const { confirm } = useFeedback(), [add, setAdd] = useState("");
-  const ents = evs.filter(e => e.tipo === "ent" && convOf(e) === conv.id), names = [...new Set([...conv.post, ...ents.map(e => e.cand)])];
+  const ents = evs.filter(e => e.tipo === tipo && convOf(e) === conv.id), names = [...new Set([...conv.post, ...ents.map(e => e.cand)])];
   const lastEnt = (n: string) => ents.filter(e => e.cand === n).sort((a, b) => b.ts - a.ts)[0];
   const rows = names.map(n => ({ n, e: lastEnt(n) })).sort((a, b) => (a.e ? 1 : 0) - (b.e ? 1 : 0) || (b.e?.pts || 0) - (a.e?.pts || 0) || a.n.localeCompare(b.n));
   const put = (post: string[]) => setConvs(convs.map(c => (c.id === conv.id ? { ...c, post } : c)));
@@ -247,14 +274,14 @@ function Convocatorias({ evs, convs, setConvs, conv, pick, onStart, onView }: { 
 
 /* respuestas de una evaluación ya hecha (solo lectura): no pisa el formulario; «Editar» la carga si hace falta */
 function EvView({ e, bank, onClose, onEdit }: { e: Ev; bank?: Q[]; onClose: () => void; onEdit: () => void }) {
-  const ent = e.tipo === "ent", S = ent ? entScore(e) : null;
+  const ent = e.tipo !== "exa", S = ent ? entScore(e) : null, C = IV[ivOf(e)], QS = QS_OF[ivOf(e)];
   return (
-    <Modal open onClose={onClose} size="lg" icon={ent ? <MessageCircle /> : <ClipboardCheck />} title={`${ent ? "Entrevista" : "Examen escrito"} · ${e.cand}`}
+    <Modal open onClose={onClose} size="lg" icon={ent ? <MessageCircle /> : <ClipboardCheck />} title={`${ent ? (e.tipo === "lp" ? "Entrevista para Líder de Pelotón" : "Entrevista de instructor") : "Examen escrito"} · ${e.cand}`}
       desc={`${e.rango || "—"} · ${dmy(e.fecha)} · ${ent ? `${convOf(e)} · ` : ""}evaluó ${e.by}`}
       footer={<><Button variant="ghost" onClick={onClose}>Cerrar</Button><Button variant="outline" icon={<Pencil />} onClick={onEdit}>Editar</Button></>}>
       <div className="grid grid-cols-3 gap-2">{(ent ? [["Puntuación", `${f1(e.pts)}/60`], ["Sugerido", S!.res], ["Decisión", e.apto]] : [["Nota", `${f1(e.pts, 2)}/10`], ["Resultado", e.apto], ["Fecha", dmy(e.fecha)]]).map(([l, v]) => (
         <div key={l} className="rounded-xl bg-slate-50 p-3 text-center dark:bg-slate-800/50"><p className="text-[10.5px] font-semibold uppercase tracking-wide text-slate-400">{l}</p><p className={cn("font-semibold", RES_C[v] || "")}>{v}</p></div>))}</div>
-      {ent ? <>{BLOQ.map(([b, w]) => <div key={b} className="space-y-1.5"><p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">{b}<WBadge w={w} /></p>
+      {ent ? <>{C.bloq.map(([b, w]) => <div key={b} className="space-y-1.5"><p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">{b}<WBadge w={w} /></p>
         {QS.filter(q => q.b === b).map(q => { const v = Number(e.notas["q" + q.n]) || 0, o = e.obs["q" + q.n]; return (
           <div key={q.n} className="rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-800"><div className="flex items-start gap-2"><b className="w-6 shrink-0 text-right text-slate-400">{q.n}</b><p className="flex-1 text-sm">{q.q}</p>
             <span className="flex shrink-0">{[1, 2, 3, 4, 5].map(s => <Star key={s} className={cn("size-4", s <= v ? "fill-amber-400 text-amber-400" : "text-slate-300 dark:text-slate-600")} />)}</span></div>
@@ -305,4 +332,35 @@ function List({ evs }: { evs: Ev[] }) {
       <DiscordOutput title="Lista de elegibles" text={txt} sticky={false} />
     </div>
   );
+}
+
+/* ---------- comunicado: apertura de plazas de Líder de Pelotón C (R30C y R40C) ---------- */
+function PlazasComm() {
+  const [open, setOpen] = useState(false), [lim, setLim] = useState(""), [cfg] = useJSON<CsCfg>(K_CFG, CS_CFG0);
+  const txt = metroComm({ cfg, title: "Apertura de plazas · Líder de Pelotón C",
+    intro: "La Coordinación de la Metropolitan Division abre el proceso de selección para cubrir dos plazas de **Líder de Pelotón C**: los indicativos **R30C** y **R40C**.",
+    secs: [
+      ["Relevo en R30C", ["Después de **10 años** al frente del indicativo **R30C**, el **Sargento II Ryan Westbrook** deja la plaza de Líder de Pelotón.",
+        "La Coordinación le agradece una década de servicio, compromiso y liderazgo al frente del Pelotón C. Su legado sigue en cada operador que formó."]],
+      ["Plazas disponibles", ["**R30C** · Líder de Pelotón C", "**R40C** · Líder de Pelotón C"]],
+      ["Funciones", ["Dirigir un pelotón de hasta 10 operadores durante el servicio y en los operativos.",
+        "Asumir el mando de los **487** (robo mayor) y de los **207** (secuestro / rehenes) hasta el relevo del mando o del SWAT.",
+        "Organizar el perímetro, el reparto de unidades y las comunicaciones por radio.",
+        "Velar por la disciplina, el entrenamiento y la moral del pelotón, e informar a la Coordinación."]],
+      ["Requisitos", ["Ser operador en activo de la Metropolitan Division.", "No tener sanciones disciplinarias graves recientes.",
+        "Tener disponibilidad para liderar el pelotón en los horarios de mayor actividad.", "Superar la **entrevista para Líder de Pelotón** ante la Coordinación y los Instructores."]],
+      ["Cómo postularse", [`Para presentar la candidatura, reaccionar a este comunicado con ${VERIF_EM}`,
+        ...(lim ? [`Las candidaturas se reciben hasta el **${dmy(lim)}**.`] : []), "La Coordinación contactará a cada postulante para fijar la fecha de su entrevista."]],
+    ],
+    cierre: "*Liderar un pelotón no es un rango: es una responsabilidad con quienes vienen detrás. Los primeros en entrar, los últimos en irse.*" });
+  return (
+    <Card className="overflow-hidden">
+      <button onClick={() => setOpen(o => !o)} aria-expanded={open} className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold">
+        <Megaphone className="size-4 text-brand-500" />Comunicado · apertura de plazas R30C y R40C
+        <span className="ml-auto text-xs font-normal text-slate-500">{open ? "Ocultar" : "Ver y copiar"}</span></button>
+      {open && <div className="space-y-3 border-t border-slate-100 p-4 dark:border-slate-800">
+        <Field label="Fecha límite (opcional)" className="max-w-[12rem]"><Input type="date" value={lim} onChange={e => setLim(e.target.value)} /></Field>
+        <DiscordOutput title="Comunicado" text={txt} sticky={false} />
+      </div>}
+    </Card>);
 }

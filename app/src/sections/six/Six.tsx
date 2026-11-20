@@ -183,7 +183,7 @@ type GLnk = { t: string; exp: number; views: number; title: string; last: number
 const GDUR: [number, string][] = [[24, "1 día"], [72, "3 días"], [168, "7 días"], [720, "30 días"]];
 function Invitados() {
   const { toast, confirm } = useFeedback(), [L, setL] = useState<GLnk[] | null>(null), [n, setN] = useState(""), [h, setH] = useState(168), [busy, setBusy] = useState(false), [last, setLast] = useState("");
-  const [sel, setSel] = useState<string[]>(["ini/home", "cal/cal", "cod/cod", "leg/ley"]);
+  const [sel, setSel] = useState<string[]>(["ini/home", "cal/cal", "ofi/cod", "leg/ley"]);
   const url = (t: string) => `${location.origin}/next/?inv=${t}`;
   const load = () => void api("/api/share", { list: "lspdt.guest" }).then(r => setL(r.__s === 200 ? r.list : []));
   useEffect(load, []);

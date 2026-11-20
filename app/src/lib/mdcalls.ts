@@ -10,7 +10,8 @@ export type CsTipo = "miembro" | "reserva";
 export type CsLog = { id: string; t: number; by: string; n: string; de: string; a: string; tipo: CsTipo; pub?: boolean; mot?: string };
 export type CsCfg = { em: string; rol: string };
 /* comunicados de la METRO: emblema, roles a mencionar y formato (como los comunicados reales de la división) */
-const METRO_EM = "<:Metro:1316164549975736452>", VERIF_EM = "<a:verifiedwhite:1349401777522344018>";
+const METRO_EM = "<:Metro:1316164549975736452>";
+export const VERIF_EM = "<a:verifiedwhite:1349401777522344018>";
 const METRO_ROLES = "1493377759714742308 1493377759714742309";
 export const CS_CFG0: CsCfg = { em: METRO_EM, rol: METRO_ROLES };
 export const emOf = (c: Partial<CsCfg>) => (c.em || "").trim() || METRO_EM;

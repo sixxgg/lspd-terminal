@@ -19,7 +19,7 @@ const PublicBoard = lz(() => import("./sections/Pizarra"), "PublicBoard");
 const QS = new URLSearchParams(location.search), SHARE = QS.get("pizarra"), VER = QS.get("ver"), ROB = QS.get("robos"), INV = QS.get("inv");
 const RobosShare = lz(() => import("./sections/six/RobosShare"), "RobosShare");
 const PublicSection = lz(() => import("./sections/div/DivTools"), "PublicSection");
-import { AREAS, canArea, isSoon, secsOf } from "./nav";
+import { AREAS, canArea, fixNav, isSoon, secsOf } from "./nav";
 import { api, authApi } from "./lib/api";
 import { BootScreen } from "./components/boot";
 import { ForcePw } from "./layout/ForcePw";
@@ -54,7 +54,7 @@ export default function App() {
 /* invitado: carga los datos del link y muestra la terminal con el menú recortado; nada se guarda */
 function GuestMain({ tok }: { tok: string }) {
   const [st, setSt] = useState<"load" | "ok" | "bad">("load"), [msg, setMsg] = useState("");
-  const [nav, setNav] = useState({ a: "ini", s: "home" });
+  const [nav0, setNav] = useState({ a: "ini", s: "home" }), nav = fixNav(nav0);
   const { toast } = useFeedback();
   useStoreVersion();
   useEffect(() => { storeHooks(toast, () => {}); }, [toast]);
@@ -94,8 +94,9 @@ function Main() {
   const [boot, setBoot] = useState<Boot | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   /* al recargar vuelve a donde estabas; el panel de six/Anita solo se recuerda en esta pestaña (al abrir la terminal de cero arranca en el inicio) */
-  const [nav, setNav] = useState(() => { try { const p = sessionStorage.getItem("lspdt.panel"); if (p === "six" || p === "anita") return { a: p, s: "re" };
+  const [nav0, setNav] = useState(() => { try { const p = sessionStorage.getItem("lspdt.panel"); if (p === "six" || p === "anita") return { a: p, s: "re" };
     const n = JSON.parse(localStorage.getItem(navKey()) || "") as { a: string; s: string }; return n.a === "six" || n.a === "anita" ? { a: "ini", s: "home" } : n; } catch { return { a: "ini", s: "home" }; } });
+  const nav = fixNav(nav0);
   /* departamento (LSPD / LSSD): al cambiar se redibuja todo y vuelve a la última pantalla de ese departamento */
   const [, setDv] = useState(0);
   useEffect(() => onDept(() => { setDv(x => x + 1); try { setNav(JSON.parse(localStorage.getItem(navKey()) || "") as { a: string; s: string }); } catch { setNav({ a: "ini", s: "home" }); } }), []);
