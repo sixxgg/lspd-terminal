@@ -1,4 +1,4 @@
-/* Oficiales › Procedimientos (LSPD, desde Oficial III): estupefacientes y dinero no justificado, y el mando del táctico en un 487.
+/* Oficiales › Procedimientos (LSPD, desde Oficial II): estupefacientes y dinero no justificado, y el mando del táctico en un 487.
    Arriba, una guía rápida por cantidad para saber qué artículo va; abajo, cada artículo con cuándo se aplica y qué hacer, en pasos cortos.
    Tocar el artículo lo copia («29.12 Tenencia…»). Lo marcado con **…** va en negrita. */
 import { Fragment, useState } from "react";

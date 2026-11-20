@@ -21,8 +21,8 @@ const RAW_AREAS: Area[] = [
     { k: "nov", l: "Novedades", d: "Registro de cambios por versión y la primera versión de la terminal", icon: ScrollText, ready: true, hide: true }] },
   { k: "age", l: "Agentes", icon: Users, min: 6, req: "Sargento I", sec: [{ k: "prof", l: "Agentes", d: "Planilla del departamento por rango: Jefatura, Capitanía, Supervisores, Detectives y Patrulleros", icon: Users, ready: true }] },
   { k: "cal", l: "Calendario", icon: CalendarDays, min: 0, sec: [{ k: "cal", l: "Calendario", d: "Prácticas, instrucciones y eventos de las divisiones", icon: CalendarDays, ready: true }] },
-  /* Oficiales: desde Oficial III (Informes, Códigos radiales y Procedimientos; el servidor controla lo mismo con los informes) */
-  { k: "ofi", l: "Oficiales", icon: BadgeCheck, min: 3, req: "Oficial III", sec: [
+  /* Oficiales: desde Oficial II (Informes, Códigos radiales y Procedimientos; el servidor controla lo mismo con los informes) */
+  { k: "ofi", l: "Oficiales", icon: BadgeCheck, min: 2, req: "Oficial II", sec: [
     { k: "inf", l: "Informes policiales", sl: "Informes", d: "Redactar, registrar y buscar informes", icon: FileText, ready: true },
     { k: "cod", l: "Códigos radiales", d: "Códigos de radio, 10-X, terminología, derechos y alfabeto NATO", icon: Radio, ready: true },
     { k: "pro", l: "Procedimientos", d: "Estupefacientes y dinero no justificado, y el mando del táctico en un 487", icon: Pill, ready: true },
@@ -115,7 +115,7 @@ const SOON = (k: string, l: string, icon: LucideIcon, min: number, req: string):
 /* g: áreas que se abren completas (iguales al LSPD, con los datos del departamento) para las cuentas con acceso dado desde Administración */
 function xAreas(d: "lssd" | "sahp", g: { sup?: boolean; cap?: boolean; jef?: boolean } = {}): Area[] {
   const base = LSPD_AREAS.filter(a => SHARE.includes(a.k)).map(a => (a.k === "ini" ? { ...a, sec: a.sec.map(s => (s.k === "home" ? { ...s, d: d === "lssd" ? "Los Santos Sheriff's Department" : "San Andreas Highway Patrol" } : s)) }
-    : a.k === "ofi" ? { ...a, sec: a.sec.filter(s => s.k !== "pro").map(s => (s.k === "rad" ? { ...s, d: `10.03 con sujetos y vehículo de huida, por /r${d} o /rsapd` } : s)), ...(d === "sahp" ? { min: 1, req: "Officer" } : { req: "Deputy Sheriff Bonus II" }) } /* Procedimientos es del LSPD; en la SAHP no hay Officer III */ : a));
+    : a.k === "ofi" ? { ...a, sec: a.sec.filter(s => s.k !== "pro").map(s => (s.k === "rad" ? { ...s, d: `10.03 con sujetos y vehículo de huida, por /r${d} o /rsapd` } : s)), ...(d === "sahp" ? { min: 1, req: "Officer" } : { req: "Deputy Sheriff Bonus I" }) } /* Procedimientos es del LSPD; en la SAHP no hay Officer III */ : a));
   /* LSSD: sus divisiones; SAHP: por ahora solo la academia conjunta (San Andreas Training Division) */
   const div: Area = { k: "div", l: "Divisiones", icon: Landmark, min: 0, sec: (d === "lssd" ? LSSD_DIV_SEC : [SATD_SEC]).slice().sort(byLabel) };
   const adm0 = LSPD_AREAS.find(a => a.k === "adm")!, adm = { ...adm0, sec: [...adm0.sec, ...RAW_AREAS.find(a => a.k === "adm")!.sec.filter(x => x.k === "fbt")].sort(byLabel) };
