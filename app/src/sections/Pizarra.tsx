@@ -3,20 +3,22 @@
    Moverse: arrastrar el fondo, la rueda o dos dedos; zoom con Ctrl + rueda, pellizco o los botones. Enlace temporal en vivo para ver sin cuenta.
    Datos: lspdt.board.<ámbito>.<id> y el índice lspdt.boards.<ámbito> (ámbito: gen o una división). */
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPE } from "react";
-import { AlignCenter, AlignLeft, ArrowUpRight, Bold, Circle, Copy, Diamond, Download, Frame, Hand, ImagePlus, Italic, LayoutTemplate, Link2, Loader2, Maximize, Minus, MousePointer2, PenLine, Plus, Presentation, Redo2, Square, StickyNote, Trash2, Type, Underline, Undo2, X, Pencil, Eraser, Lock, Unlock, Star, Flag } from "lucide-react";
+import { Check, Share2, AlignCenter, AlignLeft, ArrowUpRight, Bold, Circle, Copy, Diamond, Download, Frame, Hand, ImagePlus, Italic, LayoutTemplate, Link2, Loader2, Maximize, Minus, MousePointer2, PenLine, Plus, Presentation, Redo2, Square, StickyNote, Trash2, Type, Underline, Undo2, X, Pencil, Eraser, Lock, Unlock, Star, Flag } from "lucide-react";
 import { Button, Card, Empty, Input, Select } from "@/components/ui";
+import { Modal } from "@/components/modal";
 import { useFeedback } from "@/components/feedback";
 import { LS, ME_ROLES, syncNow, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { readImg } from "@/lib/patrol";
-import { lvl, uid } from "@/lib/domain";
+import { findAgent, lvl, uid } from "@/lib/domain";
+import { DEPT, DEPTS, type DeptId } from "@/lib/dept";
 import { isRTD, isUMem } from "@/lib/units";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
 
 type K = "note" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "conn" | "pen" | "img" | "banner";
 type It = { id: string; k: K; x: number; y: number; w: number; h: number; c: string; tx?: string; fs?: number; a?: string; b?: string; pts?: number[]; src?: string; sw?: number; ds?: Dash; lk?: boolean; bo?: boolean; it?: boolean; un?: boolean; al?: "l" | "c" };
-type Meta = { id: string; t: string; by: string; upd: number; sh?: { t: string; exp: number; by: string }[] };
+type Meta = { id: string; t: string; by: string; upd: number; sh?: { t: string; exp: number; by: string }[]; dp?: DeptId; deps?: DeptId[] }; /* dp: departamento dueño; deps: departamentos que la ven */
 type Tool = "sel" | "hand" | "note" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "banner" | "conn" | "pen" | "erase";
 /* contorno: continuo, a trazos, de puntos o trazo y punto (como los ejes de un plano) */
 type Dash = "s" | "d" | "o" | "dd";
@@ -51,7 +53,13 @@ const font = (i: It) => `${i.it ? "italic " : ""}${i.bo || i.k === "frame" || i.
 /* «Mandos»: pizarras destacadas, solo Detectives y de Sargento II para arriba (el servidor ni siquiera se las manda al resto) */
 const altoOk = (r?: string) => /^Detective/.test(r || "") || lvl(r) >= 7;
 const canSee = (sc: string, me: string, r?: string) => (sc !== "psb" || isUMem("psb", me)) && (sc !== "alto" || altoOk(r));
-const canEd = (sc: string, me: string, r?: string) => sc === "alto" ? altoOk(r) : !!ME_ROLES.admin || sc === "gen" || (sc === "rtd" ? isRTD(me) : sc === "udu" ? isUMem("md", me) : isUMem(sc as "md", me));
+const canEd0 = (sc: string, me: string, r?: string) => sc === "alto" ? altoOk(r) : !!ME_ROLES.admin || sc === "gen" || (sc === "rtd" ? isRTD(me) : sc === "udu" ? isUMem("md", me) : isUMem(sc as "md", me));
+/* cada departamento ve sus pizarras y las que otro compartió con él; solo el departamento dueño las edita (lo controla también el servidor) */
+const dpOf = (m: Meta): DeptId => m.dp || (findAgent(m.by) ? DEPT.id : "lspd");
+const own = (m: Meta) => !!ME_ROLES.six || dpOf(m) === DEPT.id;
+const canEd = (sc: string, me: string, r?: string, m?: Meta) => canEd0(sc, me, r) && (!m || own(m));
+/* borrar: quien la creó, la supervisión del departamento dueño y six */
+const canDel = (m: Meta, me: string, r?: string) => !!ME_ROLES.six || m.by === me || (own(m) && (lvl(r) >= (DEPT.id === "lspd" ? 6 : 7) || (DEPT.id === "lspd" && !!ME_ROLES.admin)));
 
 /* ---------- plantillas ---------- */
 const N = (x: number, y: number, tx: string, c = NOTE_C[0], w = 180, h = 140): It => ({ id: uid(), k: "note", x, y, w, h, c, tx, fs: 16 });
@@ -132,7 +140,7 @@ export function PizarraArea() {
   /* si quedó con el marco vacío de la primera versión, se completa con el contenido del tablero de Miro */
   useEffect(() => { if (!altoOk(me.r)) return;
     const idx = LS.json<Meta[] | null>(idxK("alto"), null);
-    if (idx == null) { const m: Meta = { id: uid(), t: INFRA_T, by: me.n, upd: Date.now() }; LS.setJSON(bK("alto", m.id), { items: infraItems() }); LS.setJSON(idxK("alto"), [m]); return; }
+    if (idx == null) { const m: Meta = { id: uid(), t: INFRA_T, by: me.n, upd: Date.now(), dp: DEPT.id, deps: [DEPT.id] }; LS.setJSON(bK("alto", m.id), { items: infraItems() }); LS.setJSON(idxK("alto"), [m]); return; }
     const m = idx.find(b => b.t === INFRA_T); if (!m) return;
     const its = LS.json<{ items?: It[] }>(bK("alto", m.id), {}).items || [];
     if (its.length <= 1 && its.every(i => i.k === "frame")) { LS.setJSON(bK("alto", m.id), { items: infraItems() }); LS.setJSON(idxK("alto"), idx.map(b => (b.id === m.id ? { ...b, upd: Date.now() } : b))); } }, [me.n, me.r]);
@@ -140,8 +148,10 @@ export function PizarraArea() {
   const cur = all.find(b => `${b.sc}:${b.id}` === sel);
   const pick = (v: string) => { setSel(v); LS.set("lspdt.next.piz", v); };
   const setIdx = (sc: string, fn: (L: Meta[]) => Meta[]) => LS.setJSON(idxK(sc), fn(LS.json<Meta[]>(idxK(sc), [])));
-  const create = () => { const m: Meta = { id: uid(), t: "Pizarra nueva", by: me.n, upd: Date.now() }; LS.setJSON(bK(nsc, m.id), { items: [] }); setIdx(nsc, L => [...L, m]); pick(`${nsc}:${m.id}`); };
-  if (cur) return <Board key={sel} k={bK(cur.sc, cur.id)} meta={cur} scope={cur.scl} canEdit={canEd(cur.sc, me.n, me.r)} onBack={() => pick("")}
+  /* primero el índice (dice de qué departamento es) y después el contenido, así el servidor ya sabe a quién mandárselo */
+  const create = () => { const m: Meta = { id: uid(), t: "Pizarra nueva", by: me.n, upd: Date.now(), dp: DEPT.id, deps: [DEPT.id] }; setIdx(nsc, L => [...L, m]); window.setTimeout(() => { if (!LS.raw(bK(nsc, m.id))) LS.setJSON(bK(nsc, m.id), { items: [] }); }, 1500); pick(`${nsc}:${m.id}`); };
+  const [shr, setShr] = useState<(Meta & { sc: string }) | null>(null);
+  if (cur) return <Board key={sel} k={bK(cur.sc, cur.id)} meta={cur} scope={own(cur) ? cur.scl : `${cur.scl} · ${DEPTS[dpOf(cur)].short} (solo lectura)`} canEdit={canEd(cur.sc, me.n, me.r, cur)} onBack={() => pick("")}
     onMeta={p => setIdx(cur.sc, L => L.map(b => (b.id === cur.id ? { ...b, ...p(b) } : b)))} />;
   const L = all.filter(b => (f === "all" ? b.sc !== "alto" : b.sc === f)).sort((a, b) => b.upd - a.upd);
   const TOP = f === "all" || f === "alto" ? all.filter(b => b.sc === "alto").sort((a, b) => b.upd - a.upd) : [];
@@ -156,8 +166,9 @@ export function PizarraArea() {
             : <button onClick={() => pick(v)} className="block w-full text-left">
               <b className="flex items-center gap-1.5 truncate text-slate-50"><Lock className="size-3.5 shrink-0 text-amber-400" />{b.t}</b><small className="text-xs text-slate-400">{b.by} · {new Date(b.upd).toLocaleDateString()}</small></button>}
           <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition group-hover:opacity-100">
-            <button aria-label="Renombrar" onClick={() => setRen(v)} className="rounded p-1 text-slate-400 hover:text-amber-300"><Pencil className="size-3.5" /></button>
-            {(b.by === me.n || ME_ROLES.admin) && <button aria-label="Eliminar" onClick={async () => { if (await confirm(`¿Eliminar la pizarra «${b.t}»?`, { danger: true })) { LS.del(bK(b.sc, b.id)); setIdx(b.sc, X => X.filter(x => x.id !== b.id)); toast("Pizarra eliminada"); } }} className="rounded p-1 text-slate-400 hover:text-red-500"><Trash2 className="size-3.5" /></button>}</div>
+            {own(b) && <button aria-label="Renombrar" onClick={() => setRen(v)} className="rounded p-1 text-slate-400 hover:text-amber-300"><Pencil className="size-3.5" /></button>}
+            {own(b) && <button aria-label="Compartir con otros departamentos" title="Compartir con otros departamentos" onClick={() => setShr(b)} className="rounded p-1 text-slate-400 hover:text-amber-300"><Share2 className="size-3.5" /></button>}
+            {canDel(b, me.n, me.r) && <button aria-label="Eliminar" onClick={async () => { if (await confirm(`¿Eliminar la pizarra «${b.t}»?`, { danger: true })) { LS.del(bK(b.sc, b.id)); setIdx(b.sc, X => X.filter(x => x.id !== b.id)); toast("Pizarra eliminada"); } }} className="rounded p-1 text-slate-400 hover:text-red-500"><Trash2 className="size-3.5" /></button>}</div>
         </div>); })}</div>
     </div>}
     <Card className="overflow-hidden">
@@ -168,18 +179,38 @@ export function PizarraArea() {
           <Button size="sm" icon={<Plus />} onClick={create}>Nueva pizarra</Button></div>
       </div>
       {!L.length ? (f === "alto" ? null : <Empty icon={<Presentation />} title="Todavía no hay pizarras" desc="Creá una y elegí una plantilla para arrancar." />)
-        : <div className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{L.map(b => { const ed = canEd(b.sc, me.n, me.r), v = `${b.sc}:${b.id}`; return (
+        : <div className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{L.map(b => { const ed = canEd(b.sc, me.n, me.r, b), v = `${b.sc}:${b.id}`, ext = (b.deps || []).filter(d => d !== dpOf(b)); return (
           <div key={v} className="group relative rounded-xl border border-slate-700 px-3.5 py-3 transition hover:border-brand-400" style={{ background: BG, backgroundImage: `radial-gradient(circle, ${DOT} 1px, transparent 1px)`, backgroundSize: "16px 16px" }}>
             {ren === v ? <Input autoFocus defaultValue={b.t} onBlur={e => { const t = e.target.value.trim(); if (t) setIdx(b.sc, X => X.map(x => (x.id === b.id ? { ...x, t } : x))); setRen(""); }} onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
               : <button onClick={() => pick(v)} className="block w-full text-left">
-                <b className="flex items-center gap-2 truncate text-slate-100"><span className="shrink-0 rounded bg-white/10 px-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300">{b.scl}</span><span className="truncate">{b.t}</span></b><small className="text-xs text-slate-400">{b.by} · {new Date(b.upd).toLocaleDateString()}</small></button>}
+                <b className="flex items-center gap-2 truncate text-slate-100"><span className="shrink-0 rounded bg-white/10 px-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300">{b.scl}</span><span className="truncate">{b.t}</span></b><small className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">{b.by} · {new Date(b.upd).toLocaleDateString()}
+                  {!own(b) && <span className="rounded bg-amber-400/20 px-1.5 text-[10px] font-bold text-amber-300">{DEPTS[dpOf(b)].short} · solo lectura</span>}
+                  {own(b) && ext.length > 0 && <span className="rounded bg-sky-400/15 px-1.5 text-[10px] font-bold text-sky-300">Compartida con {ext.map(d => DEPTS[d].short).join(" y ")}</span>}</small></button>}
             {ed && <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition group-hover:opacity-100">
               <button aria-label="Renombrar" onClick={() => setRen(v)} className="rounded p-1 text-slate-400 hover:text-brand-400"><Pencil className="size-3.5" /></button>
-              {(b.by === me.n || ME_ROLES.admin) && <button aria-label="Eliminar" onClick={async () => { if (await confirm(`¿Eliminar la pizarra «${b.t}»?`, { danger: true })) { LS.del(bK(b.sc, b.id)); setIdx(b.sc, X => X.filter(x => x.id !== b.id)); toast("Pizarra eliminada"); } }} className="rounded p-1 text-slate-400 hover:text-red-500"><Trash2 className="size-3.5" /></button>}</div>}
+              <button aria-label="Compartir con otros departamentos" title="Compartir con otros departamentos" onClick={() => setShr(b)} className="rounded p-1 text-slate-400 hover:text-brand-400"><Share2 className="size-3.5" /></button>
+              {canDel(b, me.n, me.r) && <button aria-label="Eliminar" onClick={async () => { if (await confirm(`¿Eliminar la pizarra «${b.t}»?`, { danger: true })) { LS.del(bK(b.sc, b.id)); setIdx(b.sc, X => X.filter(x => x.id !== b.id)); toast("Pizarra eliminada"); } }} className="rounded p-1 text-slate-400 hover:text-red-500"><Trash2 className="size-3.5" /></button>}</div>}
           </div>); })}</div>}
     </Card>
+    {shr && <ShareDeps m={shr} onClose={() => setShr(null)} onSave={deps => { const sc = shr.sc, id = shr.id; setIdx(sc, X => X.map(x => (x.id === id ? { ...x, dp: dpOf(x), deps } : x)));
+      /* el contenido se vuelve a guardar para que les llegue a los departamentos recién invitados */
+      window.setTimeout(() => { const c = LS.json<Record<string, unknown>>(bK(sc, id), { items: [] }); LS.setJSON(bK(sc, id), { ...c, _s: Date.now() }); }, 1500);
+      setShr(null); toast(deps.length > 1 ? "Pizarra compartida" : "Ahora solo la ve tu departamento"); }} />}
     </div>
   );
+}
+/* con qué departamentos se comparte (ven la pizarra, pero no la editan ni la borran) */
+function ShareDeps({ m, onClose, onSave }: { m: Meta; onClose: () => void; onSave: (deps: DeptId[]) => void }) {
+  const dp = dpOf(m), [D, setD] = useState<DeptId[]>(() => [...new Set([dp, ...(m.deps || [])])]);
+  return (
+    <Modal open onClose={onClose} size="sm" icon={<Share2 />} title="Departamentos que la ven" desc={`«${m.t}» es del ${DEPTS[dp].short}. Los invitados la ven, pero no la modifican ni la borran.`}
+      footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={() => onSave(D)}>Guardar</Button></>}>
+      <div className="grid gap-2">{(["lspd", "lssd", "sahp"] as DeptId[]).map(d => { const on = D.includes(d); return (
+        <button key={d} type="button" disabled={d === dp} onClick={() => setD(on ? D.filter(x => x !== d) : [...D, d])} className={cn("flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition", on ? "border-brand-500 bg-brand-500/10" : "border-slate-200 dark:border-slate-700")}>
+          <span className={cn("grid size-5 place-items-center rounded-md border-2", on ? "border-brand-500 bg-brand-500 text-white" : "border-slate-300 dark:border-slate-600")}>{on && <Check className="size-3.5" />}</span>
+          <span className="flex-1"><b className="text-sm">{DEPTS[d].short}</b><small className="block text-xs text-slate-500">{DEPTS[d].name}</small></span>
+          {d === dp && <span className="text-[11px] font-semibold text-slate-400">Dueño</span>}</button>); })}</div>
+    </Modal>);
 }
 
 /* ---------- vista pública en vivo (enlace temporal, sin cuenta) ---------- */

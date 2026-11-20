@@ -8,7 +8,7 @@ import { send, body, query, wrap, requireUser, isSix } from "../lib/core.js";
 const MK = "fm:key", API = "https://api.fivemanage.com/api/v3/file";
 const key = async () => (await q("select v from meta where k=$1", [MK])).rows[0]?.v || process.env.FIVEMANAGE_API_KEY || "";
 async function canGal(u) {
-  if (isSix(u) || u.admin) return true;
+  if (isSix(u) || u.admin || (u.dept && (u.l || 0) >= 10)) return true; /* Jefatura del LSSD y la SAHP: portada del Inicio */
   try { return JSON.parse((await q("select v from kv where k='lspdt.galEditors'")).rows[0]?.v || "[]").includes(u.n); } catch { return false; }
 }
 

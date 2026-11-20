@@ -1,7 +1,7 @@
 /* Enlace temporal de solo lectura para una pizarra o una sección de división (uniformidad): el que tiene sesión lo crea (POST) o lo revoca (POST {del}); cualquiera con el enlace lo ve (GET ?t=), sin iniciar sesión, hasta que vence. */
 import { randomBytes } from "node:crypto";
 import { q } from "../lib/db.js";
-import { send, body, query, wrap, requireUser, canRead, isSix, defRoster } from "../lib/core.js";
+import { send, body, query, wrap, requireUser, canRead, loadBoards, isSix, defRoster } from "../lib/core.js";
 import { SEL, imgUrl } from "../lib/store.js";
 import { cleanSecs, guestKey } from "../lib/guest.js";
 import { audit } from "../lib/audit.js";
@@ -42,6 +42,7 @@ export default wrap(async (req, res) => {
     return send(res, 200, { v: r ? r.v : null, t: kt, title: s.title || "Pizarra", kind: s.kind || "board", div: s.div, ab: s.ab, img, by: s.by, exp: s.exp, live: L, now: Date.now() });
   }
   const u = await requireUser(req, res); if (!u) return;
+  await loadBoards();
   const b = await body(req);
   if (b.del) { if (!TOK.test(String(b.del))) return send(res, 400, { msg: "Enlace inválido" }); const s = await read(b.del);
     if (s && s.by !== u.n && !u.admin) return send(res, 403, { msg: "Solo quien lo creó puede revocarlo" });

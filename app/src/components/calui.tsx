@@ -9,10 +9,12 @@ import { srcOf } from "@/lib/domain";
 import { richOf } from "@/lib/richtext";
 import { PUB_KEY, banKey, calCan, calKey, calOwn, calPubCan, type CalEv, calAck, calSetAck, calText, fmtWhen, hasTime, isToday, type CalItem } from "@/lib/calendar";
 import { useMe } from "@/lib/me";
+import { EV_TIPOS } from "@/lib/events";
 import { cn } from "@/lib/cn";
 
 export const banSrc = (e: { id: string; ban?: boolean }) => (e.ban ? srcOf(LS.get(banKey(e.id)) || "") : "");
-const TIPO_C: Record<string, string> = { "Práctica": "#22c55e", "Instrucción": "#38bdf8", "Evento": "#f472b6", "Reunión": "#a78bfa", "Operativo": "#f97316", "Otro": "#94a3b8" };
+const TIPO_C: Record<string, string> = { "Práctica": "#22c55e", "Instrucción": "#38bdf8", "Evento": "#f472b6", "Reunión": "#a78bfa", "Operativo": "#f97316", "Otro": "#94a3b8",
+  ...Object.fromEntries(EV_TIPOS.map(([, l, c]) => [l, c])) };
 export const tipoC = (t: string) => TIPO_C[t] || "#94a3b8";
 
 /* banner del evento (o un fondo con la fecha grande si no tiene) */

@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { q, tx } from "../lib/db.js";
 import { audit, auditList, auditRoster, diffSum, keepVersion, versions, HIST_SKIP, ROSTER_OUT } from "../lib/audit.js";
-import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept } from "../lib/core.js";
+import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept, isXList, xCheck, loadBoards, isBoardKey } from "../lib/core.js";
 
 async function downloadImg(url) {
   const fail = m => Object.assign(new Error(m), { status: 400 });
@@ -38,14 +38,16 @@ export default wrap(async (req, res) => {
       /* margen de 50 por si un guardado más viejo terminó después; pero el valor solo viaja si es nuevo (t > since) o si el navegador
          lo pide (need: claves del margen que no tenía). Antes cada consulta (cada 5 s, por persona) volvía a traer lo del margen entero. */
       const need = String(qs.need || "").split(",").filter(Boolean).slice(0, 60);
-      const rows = (await q("select k, t, v like 'data:%' as img, case when v like 'data:%' or (t <= $2 and not (k = any($3))) then null else v end as v, (t <= $2 and not (k = any($3))) as hint from kv where t > $1 or k = any($3) order by t", [since - 50, since, need])).rows.filter(r => canRead(r.k, u));
+      const rows0 = (await q("select k, t, v like 'data:%' as img, case when v like 'data:%' or (t <= $2 and not (k = any($3))) then null else v end as v, (t <= $2 and not (k = any($3))) as hint from kv where t > $1 or k = any($3) order by t", [since - 50, since, need])).rows;
+      if (rows0.some(r => isBoardKey(r.k))) await loadBoards();
+      const rows = rows0.filter(r => canRead(r.k, u));
       const ch = rows.map(r => r.hint && !r.img ? [r.k, null, +r.t, 1] : [r.k, r.img ? imgUrl(r.k, r.t) : shapeVal(r.k, r.v, u), +r.t]);
       const t = rows.length ? Math.max(since, ...rows.map(r => +r.t)) : since;
-      return send(res, 200, { ch, t, me: { admin: u.admin, owner: u.owner, six: isSix(u), anita: !!u.anita, dadm: !!u.dadm } });
+      return send(res, 200, { ch, t, me: { admin: u.admin, owner: u.owner, six: isSix(u), anita: !!u.anita, dadm: !!u.dadm, jef: u.dept && (u.l || 0) >= 10 ? u.n : "" } });
     }
     if (qs.hist) { // versiones guardadas de una clave (y de un registro dentro de ella, con id)
       const hk = String(qs.hist);
-      if (!canRead(hk, u)) return send(res, 403, { msg: "Sin acceso" });
+      if (!canRead(hk, u) || (isXList(hk) && !isSix(u))) return send(res, 403, { msg: "Sin acceso" });
       return send(res, 200, { list: await versions(hk, qs.id ? String(qs.id) : "") });
     }
     if (qs.logs === "roster") { // bajas del roster: administración
@@ -72,10 +74,27 @@ export default wrap(async (req, res) => {
   if (b.a === "sync") return send(res, 200, await fullData(u, b.have && typeof b.have === "object" ? b.have : {}));
   /* contraseña restablecida: hasta que la cambie no puede guardar nada */
   try { if (JSON.parse((await q("select v from meta where k='mustpw'")).rows[0]?.v || "[]").includes(u.n)) return send(res, 403, { error: "perm", msg: "Primero cambiá tu contraseña" }); } catch { /* */ }
+  if (isBoardKey(bk)) await loadBoards();
   let why = canWrite(u, k);
   /* galería: six, administración y quienes estén habilitados en Administración › Galería */
   if (!why && bk === "lspdt.galeria" && !isSix(u) && !u.admin) { let E = []; try { E = JSON.parse((await q("select v from kv where k=$1", [k.replace(/galeria$/, "galEditors")])).rows[0]?.v || "[]"); } catch { /* */ }
-    if (!E.includes(u.n)) why = "Solo six y quienes estén habilitados pueden editar la galería"; }
+    if (!E.includes(u.n) && !(u.dept && (u.l || 0) >= 10)) why = "Solo six, Jefatura y quienes estén habilitados pueden editar la galería"; }
+  /* listas con visibilidad por registro: cada uno crea, cambia y borra solo lo que le corresponde */
+  if (!why && isXList(k) && typeof b.v === "string") {
+    const curV = (await q("select v from kv where k=$1", [k])).rows[0]?.v ?? null;
+    let cal = false;
+    if (bk === "lspdt.xcal") { const d = u.dept || "lspd", ak = d === "lspd" ? "lspdt.calevAcc" : `lspdt.${d}.calevAcc`;
+      let A = []; try { A = JSON.parse((await q("select v from kv where k=$1", [ak])).rows[0]?.v || "[]"); } catch { /* */ }
+      cal = (u.l || 0) >= 10 || (!u.dept && !!u.admin) || (Array.isArray(A) && A.includes(u.n)); }
+    why = xCheck(k, u, curV, b.v, typeof b.base === "string" ? b.base : null, { cal });
+  }
+  /* divisiones del LSSD y la SAHP: solo Jefatura nombra o retira Coordinadores y Subcoordinadores, y decide qué puede hacer cada subcoordinador */
+  if (!why && u.dept && (u.l || 0) < 10 && !isSix(u) && typeof b.v === "string" && /^lspdt\.(groster|divacc)\.[a-z0-9-]+$/.test(bk) && keyDept(k) === u.dept) {
+    const js = v => { try { return JSON.parse(v || "null"); } catch { return null; } }, cur = js((await q("select v from kv where k=$1", [k])).rows[0]?.v) || {}, nv = js(b.v) || {};
+    if (bk.startsWith("lspdt.groster.")) { const CO = ["coord", "subcoord"];
+      for (const n of new Set([...Object.keys(cur), ...Object.keys(nv)])) if (cur[n] !== nv[n] && (CO.includes(cur[n]) || CO.includes(nv[n]))) { why = "Solo Jefatura nombra o retira Coordinadores y Subcoordinadores"; break; } }
+    else if (JSON.stringify(cur.sub || []) !== JSON.stringify(nv.sub || [])) why = "Solo Jefatura decide qué puede hacer el subcoordinador";
+  }
   /* OIS remitido a la FID: cualquiera que pueda cargar OIS abre (o actualiza) el caso en la PSB, sin tocar el resto de los expedientes */
   if (b.oisFid && typeof b.oisFid === "object") {
     if (canWrite(u, "lspdt.ois")) return send(res, 403, { msg: "No podés cargar procedimientos OIS" });
@@ -147,6 +166,6 @@ export default wrap(async (req, res) => {
   if (k === "lspdt.roster" && !del && !out.same && out.exists) await auditRoster(u.n, out.old, out.v, clientIp(req));
   if (bk === "lspdt.roster" || k === "lspdt.ui" || /^lspdt\.(asd|k9|psb|md)Roster$|^lspdt\.(groster|groles|divacc)\./.test(bk)) invalidate(); // cambió el rango o las divisiones de alguien
   const r = { t: out.t };
-  if (out.v !== mine || b.url || b.from) r.v = out.v && out.v.startsWith("data:") ? imgUrl(k, out.t) : out.v; // devuelve el resultado solo si cambió por la fusión
+  if (out.v !== mine || b.url || b.from) r.v = out.v && out.v.startsWith("data:") ? imgUrl(k, out.t) : shapeVal(k, out.v, u); // devuelve el resultado solo si cambió por la fusión (sin lo que no le corresponde ver)
   return send(res, 200, r);
 });

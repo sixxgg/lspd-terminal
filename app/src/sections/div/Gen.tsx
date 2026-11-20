@@ -6,7 +6,7 @@ import { MessageCircle, ArrowDown, ArrowUp, BadgeCheck, BookOpen, CalendarDays, 
   Info, Megaphone, Palette, Pencil, Phone, Plus, RotateCcw, Shirt, Trash2, UserCog, Users } from "lucide-react";
 import { Button, Card, Checkbox, Empty, Field, Input, SearchInput, Select, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
-import { AgentCombo, Avatar } from "@/components/agents";
+import { AgentCombo, Avatar, RankBadge } from "@/components/agents";
 import { useFeedback } from "@/components/feedback";
 import { useCopyMsg } from "@/components/output";
 import { findAgent, hoyISO, rankES, uid } from "@/lib/domain";
@@ -14,6 +14,7 @@ import { LS, ME_ROLES, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { GEN, rosterCo, gCall, gMap, gRoleOf, gRoles, gSave, gSaveCall, isGCo, isGMem, saveRoles, type GRole } from "@/lib/units";
 import { cn } from "@/lib/cn";
+import { DEPT } from "@/lib/dept";
 import { DivAdmin, DivNav, Uniformidad, divTabs, type DivTab, type URole } from "./DivTools";
 import { RosterBoard } from "./Roster";
 import { Comunicados } from "./Comunicados";
@@ -241,6 +242,17 @@ export function GenDiv({ d }: { d: string }) {
     <div className="space-y-4">
       {opts.length > 1 && <DivNav value={t} onChange={go} options={opts} />}
       {only && <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500"><BadgeCheck className="size-4 text-teal-400" />Coordinación: {Object.entries(gMap(id)).filter(([, r]) => gRoleOf(id, r).co).map(([n]) => n).join(" · ") || "—"}</div>}
+      {DEPT.id === "lssd" && !c.parent && t !== "ros" && <Mandos id={id} />}
       {body}
     </div>);
+}
+
+/* LSSD: quién coordina la división y cuántos son (arriba de cada pestaña) */
+function Mandos({ id }: { id: string }) {
+  const M = gMap(id), by = (k: string) => Object.entries(M).filter(([, r]) => r === k).map(([n]) => n), n = Object.keys(M).length;
+  const Ch = ({ l, L }: { l: string; L: string[] }) => <span className="inline-flex flex-wrap items-center gap-1.5"><b className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{l}</b>
+    {L.length ? L.map(x => { const a = findAgent(x); return <span key={x} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 py-0.5 pl-0.5 pr-2 text-[12px] font-semibold dark:border-slate-700"><Avatar n={x} size={20} />{x}{a && <RankBadge r={a.r} />}</span>; })
+      : <span className="text-[12px] text-slate-400">Sin designar</span>}</span>;
+  return <Card className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3"><Ch l="Coordinador" L={by("coord")} /><Ch l="Subcoordinador" L={by("subcoord")} />
+    <span className="ml-auto text-[12px] text-slate-500"><Users className="mr-1 inline size-3.5" />{n} {n === 1 ? "integrante" : "integrantes"}</span></Card>;
 }

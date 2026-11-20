@@ -16,11 +16,15 @@ import { cn } from "@/lib/cn";
 
 /* j = justificación (se carga después de la citación). asisA = asistencia por agente cuando se citó a varios; pres = quiénes estuvieron en el 10-80 */
 type Just = { mot: string; motx?: string; asis: string; asisA?: Record<string, string>; f: string; hechos: string; med: string; obs?: string; pres?: string[]; por: string; t: number };
-type Ag = { n: string; r: string; p?: string };
+type Ag = { n: string; r: string; p?: string; r0?: string }; /* r0: rango con el que se lo citó, si cambió antes de cerrar */
 /* ag/r/p = primer citado (compatibilidad); ags = todos los citados; cit = quiénes citaron; tags = etiquetas para filtrar */
-export type Cit1080 = { id: string; no: number; t: number; ag: string; r: string; p?: string; ags?: Ag[]; esc: string; lugar: string; por: string; pr?: string; cit?: string[]; tags?: string[]; j?: Just };
+export type Cit1080 = { id: string; no: number; t: number; ag: string; r: string; r0?: string; p?: string; ags?: Ag[]; esc: string; lugar: string; por: string; pr?: string; cit?: string[]; tags?: string[]; j?: Just };
 export const keyOf = (psb?: boolean) => (psb ? "lspdt.psbCit" : "lspdt.t1080");
-const agsOf = (c: Cit1080): Ag[] => (c.ags?.length ? c.ags : [{ n: c.ag, r: c.r, p: c.p }]);
+const agsRaw = (c: Cit1080): Ag[] => (c.ags?.length ? c.ags : [{ n: c.ag, r: c.r, p: c.p }]);
+/* mientras está abierto se usa el rango actual del roster (si lo ascendieron o descendieron, sale el nuevo);
+   al cerrarlo (justificación guardada) el rango queda fijo y ya no cambia: los cerrados no se tocan para atrás */
+const curAg = (a: Ag): Ag => { const r = findAgent(a.n)?.r; return r && r !== a.r ? { ...a, r, r0: a.r0 || a.r } : a; };
+const agsOf = (c: Cit1080): Ag[] => (c.j ? agsRaw(c) : agsRaw(c).map(curAg));
 const citOf = (c: Cit1080) => (c.cit?.length ? c.cit : [c.por]);
 export const joinY = (a: string[]) => (a.length < 2 ? a.join("") : `${a.slice(0, -1).join(", ")} y ${a[a.length - 1]}`);
 const plate = (p?: string) => String(p || "").replace(/\D/g, "");
@@ -155,7 +159,7 @@ export function Historial1080({ psbOnly }: { psbOnly?: boolean }) {
             <span className="flex min-w-0 items-center gap-3">
               <span className="flex shrink-0 -space-x-2">{A.slice(0, 3).map(a => <span key={a.n} className="rounded-full ring-2 ring-white dark:ring-[rgb(var(--card))]"><Avatar n={a.n} size={34} /></span>)}</span>
               <span className="min-w-0">
-                {A.length === 1 ? <><b className="block text-[13.5px] leading-tight">{A[0].n}</b><span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500"><RankBadge r={A[0].r} />{plate(A[0].p) && `#${plate(A[0].p)}`}</span></>
+                {A.length === 1 ? <><b className="block text-[13.5px] leading-tight">{A[0].n}</b><span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500"><RankBadge r={A[0].r} />{A[0].r0 && <span title="Rango con el que se lo citó">(citado como {rankES(A[0].r0)})</span>}{plate(A[0].p) && `#${plate(A[0].p)}`}</span></>
                   : <><b className="block text-[13.5px] leading-tight">{A.length} agentes citados</b><span className="mt-0.5 block text-[11.5px] leading-snug text-slate-500">{joinY(A.map(a => a.n))}</span></>}
                 {!!c.tags?.length && <span className="mt-1 flex flex-wrap gap-1">{c.tags.map(t => <TagPill key={t} t={t} sm onClick={() => setTg(t)} />)}</span>}
               </span></span>
@@ -171,7 +175,8 @@ export function Historial1080({ psbOnly }: { psbOnly?: boolean }) {
               {(mine || sgt2) && <button aria-label={`Borrar 10-80 Nº ${c.no}`} onClick={() => void del(c)} className="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-red-500/10 hover:text-red-500"><Trash2 className="size-4" /></button>}
             </span>
           </li>); })}</ul></Card>)}
-      {sel && <JustModal key={sel.id} c={sel} onClose={() => setSel(null)} onSave={(j, tags) => { setL(L.map(x => (x.id === sel.id ? { ...x, j, tags } : x))); toast("Justificación guardada · ya la podés copiar"); setSel(null); }} />}
+      {sel && <JustModal key={sel.id} c={sel} onClose={() => setSel(null)} onSave={(j, tags) => { setL(L.map(x => { if (x.id !== sel.id) return x; if (x.j) return { ...x, j, tags };
+        const A = agsRaw(x).map(curAg); return { ...x, j, tags, ags: A, r: A[0].r, ...(A[0].r0 ? { r0: A[0].r0 } : {}) }; })); toast("Justificación guardada · ya la podés copiar"); setSel(null); }} />}
     </div>);
 }
 

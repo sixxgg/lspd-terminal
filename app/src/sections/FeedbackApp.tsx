@@ -10,6 +10,7 @@ import { safeHtml } from "@/lib/richtext";
 import { FB_ST, FbList, fbSt, useMyFeedback, type FbSt } from "@/components/fbnotif";
 import { cn } from "@/lib/cn";
 import { uiText } from "@/lib/templates";
+import { DEPT } from "@/lib/dept";
 
 const FB_CATS = [
   { k: "error", l: "Error", d: "Algo no anda o se ve mal", I: Bug, c: "#ef4444", ph: "¿Qué pasó? ¿Dónde estabas y qué tocaste? Si podés, pegá una captura con Ctrl+V." },
@@ -41,7 +42,7 @@ export function FeedbackApp() {
         <div className="relative flex flex-wrap items-center gap-x-8 gap-y-3">
           <div className="min-w-0 flex-1"><p className="font-mono text-[10px] font-bold uppercase tracking-[.26em] text-pink-300/90">{uiText("sys")} · Feedback</p>
             <h2 className="mt-0.5 text-xl font-bold tracking-tight">Ayudanos a mejorar la terminal</h2></div>
-          <ol className="flex flex-wrap items-center gap-1.5 text-[11.5px] font-semibold text-white/70">{["Lo enviás", "six lo revisa", "Se trabaja", "Te avisa la campanita"].map((t, i) => (
+          <ol className="flex flex-wrap items-center gap-1.5 text-[11.5px] font-semibold text-white/70">{["Lo enviás", DEPT.id === "lssd" ? "Lo revisa CristianGV367" : DEPT.id === "sahp" ? "Lo revisa la administración" : "six lo revisa", "Se trabaja", "Te avisa la campanita"].map((t, i) => (
             <li key={t} className="flex items-center gap-1.5">{i > 0 && <span className="h-px w-4 bg-white/25" />}<span className="grid size-5 place-items-center rounded-full bg-white/10 font-mono text-[10px] text-pink-200">{i + 1}</span>{t}</li>))}</ol>
         </div>
       </div>
@@ -69,7 +70,7 @@ export function FeedbackApp() {
               <span className={cn("mt-1 text-[10.5px] font-semibold uppercase tracking-wide", on ? "opacity-80" : "text-slate-500")}>{x.l}</span></button>); })}</div>
           <div className="max-h-[60vh] overflow-y-auto border-t border-slate-100 p-3 dark:border-slate-800">
             {shown.length ? <FbList list={shown} /> : <div className="flex flex-col items-center gap-2 py-8 text-center"><span className="grid size-10 place-items-center rounded-full bg-pink-500/10 text-pink-500"><Heart className="size-5" /></span>
-              <p className="text-sm font-semibold">{f === "all" ? "Todavía no enviaste nada" : "Nada en este estado"}</p><p className="max-w-[16rem] text-xs text-slate-500">Cuando mandes un feedback aparece acá con su estado y la respuesta de six.</p></div>}
+              <p className="text-sm font-semibold">{f === "all" ? "Todavía no enviaste nada" : "Nada en este estado"}</p><p className="max-w-[16rem] text-xs text-slate-500">Cuando mandes un feedback aparece acá con su estado y la respuesta de {DEPT.id === "lssd" ? "CristianGV367" : DEPT.id === "sahp" ? "la administración" : "six"}.</p></div>}
           </div>
         </Card>
       </div>

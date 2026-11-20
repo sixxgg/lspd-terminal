@@ -3,19 +3,20 @@
    · Administración (solo coordinación / subcoordinación): qué pestañas ven los miembros (lspdt.divacc.<div>) y links temporales
    · Links temporales de solo lectura (api/share) y su vista pública (?ver=<token>) */
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, Copy, Eye, EyeOff, Link2, Lock, Pencil, Plus, Shirt, ShieldAlert, Trash2 } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, Link2, Lock, Pencil, Plus, Shirt, ShieldAlert, Trash2, UserCog } from "lucide-react";
 import { Button, Card, Empty, Field, Input, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { api } from "@/lib/api";
 import { useCopyMsg } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
-import { LS, useJSON } from "@/lib/store";
+import { LS, ME_ROLES, useJSON } from "@/lib/store";
+import { DEPT } from "@/lib/dept";
 import { useMe } from "@/lib/me";
 import { divEmblem, uid } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 
 type Unif = { id: string; n: string; g?: "h" | "m"; r?: string; rl?: string; rc?: string; code: string; nota?: string; by?: string; t?: number };
-type Acc = { hide?: string[] };
+type Acc = { hide?: string[]; sub?: string[] }; /* sub: pestañas que el subcoordinador no edita (LSSD/SAHP, lo decide Jefatura) */
 export type DivTab = { value: string; label: ReactNode; icon?: ReactNode; txt?: string };
 
 const accKey = (id: string) => `lspdt.divacc.${id}`;
@@ -190,7 +191,9 @@ export function PublicSection({ tok }: { tok: string }) {
 }
 
 export function DivAdmin({ id, ab, dn, tabs, extra }: { id: string; ab: string; dn?: string; tabs: DivTab[]; extra?: ReactNode }) {
-  const { toast } = useFeedback(), [A, setA] = useJSON<Acc>(accKey(id), {}), hide = new Set(A.hide || []);
+  const { toast, confirm } = useFeedback(), [A, setA] = useJSON<Acc>(accKey(id), {}), hide = new Set(A.hide || []), sub = new Set(A.sub || []), jef = !!ME_ROLES.jef || !!ME_ROLES.six;
+  const [off, setOff] = useJSON<string[]>("lspdt.divoff", []), arch = !!dn && off.includes(dn);
+  const flipSub = (v: string, txt: string) => { const h = new Set(sub); if (h.has(v)) h.delete(v); else h.add(v); setA({ ...A, sub: [...h] }); toast(h.has(v) ? `El subcoordinador ya no edita «${txt}»` : `El subcoordinador puede editar «${txt}»`); };
   const flip = (v: string, txt: string) => { const h = new Set(hide); if (h.has(v)) h.delete(v); else h.add(v); setA({ ...A, hide: [...h] }); toast(h.has(v) ? `«${txt}» ahora es solo para la coordinación` : `«${txt}» visible para toda la ${ab}`); };
   return (
     <Card className="overflow-hidden border-red-500/30 p-0">
@@ -207,6 +210,17 @@ export function DivAdmin({ id, ab, dn, tabs, extra }: { id: string; ab: string; 
               {off ? <><EyeOff className="size-3.5" />Solo coordinación</> : <><Eye className="size-3.5" />Todos los miembros</>}</button>
           </div>); })}</div>
       </div>
+      {DEPT.id !== "lspd" && <div className="border-t border-red-500/20 p-5">
+        <p className="mb-1 flex items-center gap-2 text-sm font-semibold"><UserCog className="size-4 text-slate-400" />Funciones del subcoordinador</p>
+        <p className="mb-3 text-xs text-slate-500">{jef ? "Jefatura decide qué apartados puede editar el subcoordinador. Nombrar o retirar coordinadores y subcoordinadores es solo de Jefatura." : "Las define Jefatura. Nombrar o retirar coordinadores y subcoordinadores es solo de Jefatura."}</p>
+        <div className="flex flex-wrap gap-1.5">{tabs.filter(t => t.value !== "adm").map(t => { const txt = t.txt || String(t.label), no = sub.has(t.value); return (
+          <button key={t.value} disabled={!jef} onClick={() => flipSub(t.value, txt)} className={cn("inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition disabled:cursor-default [&_svg]:size-3.5",
+            no ? "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-300" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300")}>{t.icon}{txt}{no ? " · no" : " · sí"}</button>); })}</div>
+        {jef && dn && <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+          <span className="min-w-0 flex-1 text-xs text-slate-500">{arch ? "La división está archivada: no aparece en el menú (solo Jefatura la ve). Sus datos siguen guardados." : "Archivar la saca del menú de todos (salvo Jefatura) sin borrar sus datos."}</span>
+          <Button size="sm" variant={arch ? "outline" : "ghost"} className={arch ? "" : "text-red-600 dark:text-red-400"} onClick={async () => { if (!arch && !(await confirm(`¿Archivar ${dn}? Deja de aparecer en el menú hasta que la restaures.`, { danger: true, ok: "Archivar" }))) return;
+            setOff(arch ? off.filter(x => x !== dn) : [...off, dn]); toast(arch ? "División restaurada" : "División archivada"); }}>{arch ? "Restaurar división" : "Archivar división"}</Button></div>}
+      </div>}
       <div className="border-t border-red-500/20 p-5"><p className="mb-1 text-sm font-semibold">Links temporales · Uniformidad</p>
         <p className="mb-3 text-xs text-slate-500">Para que alguien sin cuenta vea la uniformidad un tiempo limitado. Podés ver cuántas veces se abrió y revocarlo cuando quieras.</p>
         <ShareLinks k={`lspdt.unif.${id}`} title={`Uniformidad · ${ab}`} div={dn} ab={ab} /></div>

@@ -17,7 +17,7 @@ import { AREAS, secsOf } from "@/nav";
 import { APP_VERSION, latest } from "./Novedades";
 import { DEPT } from "@/lib/dept";
 import { cn } from "@/lib/cn";
-import { fotoStyle, GAL_KEY, type Foto } from "@/lib/gal";
+import { fotoSrc, fotoStyle, GAL_KEY, ordered, type Foto } from "@/lib/gal";
 
 /* escalera de rangos del departamento activo (de menor a mayor) */
 const ladder = () => Object.values(GROUPS).flatMap(g => g.r).reverse();
@@ -32,8 +32,8 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
   const ribbons = ((prof.cond || []) as unknown as Award[]).map(a => decorOf(a.k)).filter(Boolean) as Decor[];
   const col = RANK_COLOR[me.r] || "rgb(var(--b-500))", ins = insigniaUrl(me.r);
   const track = ladder().filter(r => (isDet(me.r) ? isDet(r) || LEVEL[r] < 4.5 : !isDet(r))), at = track.indexOf(me.r), next = at >= 0 ? track[at + 1] : undefined;
-  const evs = useMemo(() => calAll().filter(e => e.at >= Date.now() - 36e5 && calMine(e, me.n)).sort((a, b) => a.at - b.at).slice(0, 5), [me.n]); // eslint-disable-line react-hooks/exhaustive-deps
-  const rel = latest({ n: me.n, r: me.r, dept: DEPT.id }), [G] = useJSON<Foto[]>(GAL_KEY, []), fotos = G.filter(f => f.on);
+  const evs = useMemo(() => calAll().filter(e => e.at >= Date.now() - 36e5 && e.st !== "canc" && calMine(e, me.n)).sort((a, b) => a.at - b.at).slice(0, 5), [me.n]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rel = latest({ n: me.n, r: me.r, dept: DEPT.id }), [G] = useJSON<Foto[]>(GAL_KEY, []), fotos = ordered(G.filter(f => f.on));
   const fecha = new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
   return (
     <div className="space-y-6">
@@ -144,12 +144,13 @@ function Hero({ fotos, children }: { fotos: Foto[]; children: React.ReactNode })
       <div className="relative h-[38vh] min-h-[260px] max-h-[440px] w-full">
         {n ? fotos.map((f, k) => (
           <div key={f.id} className={cn("absolute inset-0 select-none transition-opacity duration-[1400ms]", k === i ? "opacity-100" : "pointer-events-none opacity-0")}>
-            <img src={f.url} alt="" decoding="async" loading={k === i || k === (i + 1) % n ? "eager" : "lazy"} className="size-full object-cover transition-transform duration-[7000ms] ease-out" style={fotoStyle(f, k === i ? 1.08 : 1)} draggable={false} />
+            <img src={fotoSrc(f)} alt="" decoding="async" loading={k === i || k === (i + 1) % n ? "eager" : "lazy"} className="size-full object-cover transition-transform duration-[7000ms] ease-out" style={fotoStyle(f, k === i ? 1.08 : 1)} draggable={false} />
           </div>))
           : <div className="absolute inset-0" style={{ background: "radial-gradient(120% 90% at 20% 10%, rgb(var(--b-500) / .55), transparent 60%), linear-gradient(135deg, rgb(var(--b-800)), #05070c)" }} />}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 px-[9%] pb-24 sm:pb-28">{children}
-          {fotos[i]?.cap && <p className="mt-2 max-w-2xl text-[14px] text-white/80 drop-shadow">{fotos[i].cap}</p>}</div>
+          {fotos[i]?.cap && <p className="mt-2 max-w-2xl font-display text-[17px] font-semibold text-white/90 drop-shadow">{fotos[i].cap}</p>}
+          {fotos[i]?.d && <p className="mt-0.5 max-w-2xl text-[13.5px] text-white/75 drop-shadow">{fotos[i].d}</p>}</div>
         {n > 1 && <>
           <span className="absolute right-[10%] top-5 rounded-full bg-black/40 px-2.5 py-1 font-mono text-[11px] text-white/85 backdrop-blur">{i + 1} / {n}</span>
           <button type="button" aria-label="Foto anterior" onClick={() => go(i - 1)} className="absolute left-[4.5%] top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/30 text-white opacity-0 backdrop-blur transition hover:bg-black/60 group-hover:opacity-100"><ChevronLeft className="size-5" /></button>

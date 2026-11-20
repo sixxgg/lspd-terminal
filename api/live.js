@@ -1,7 +1,7 @@
 /* Presencia en vivo de la pizarra: cada uno manda su cursor y lo que está moviendo (cada ~120 ms mientras hay actividad, cada 2 s si no)
    y recibe lo de los demás, más la última versión guardada de la pizarra para traerla al instante. */
 import { q } from "../lib/db.js";
-import { send, body, wrap, requireUser, canRead } from "../lib/core.js";
+import { send, body, wrap, requireUser, canRead, loadBoards } from "../lib/core.js";
 
 export const BOARD = /^lspdt\.board\.[a-z0-9]+\.[a-z0-9]+$|^lspdt\.mdx\.(prac|exam)$/;
 export async function liveOf(b, not = "") {
@@ -12,6 +12,7 @@ export async function liveOf(b, not = "") {
 export default wrap(async (req, res) => {
   if (req.method !== "POST") return send(res, 405, { error: "method" });
   const u = await requireUser(req, res); if (!u) return;
+  await loadBoards();
   const b = await body(req);
   if (typeof b.b !== "string" || !BOARD.test(b.b)) return send(res, 400, { msg: "Clave inválida" });
   if (!canRead(b.b, u)) return send(res, 403, { msg: "Solo los miembros de la división" });

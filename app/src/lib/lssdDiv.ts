@@ -89,4 +89,8 @@ export const LSSD_INFO: Record<string, LssdInfo> = {
       { h: "Flota de interceptores", l: ["Bravado Buffalo Hellfire: preparado para intervenciones a alta velocidad; disponible para todos los miembros del departamento con la licencia correspondiente.", "Vapid Dominator: interceptor exclusivo de los miembros de la HSIU.",
         "Bravado Gauntlet Hellfire: interceptor exclusivo de los miembros de la HSIU.", "Declasse Vigero: interceptor exclusivo de los miembros de la HSIU."] },
     ] },
+  "Social Reintegration Division": { of: OSSO, cmd: [],
+    d: "Reinserción social en el Condado de Los Santos: acompañamiento, prevención y programas comunitarios.",
+    B: [{ h: "¿Qué es la Social Reintegration Division?", p: ["Es la división del Los Santos Sheriff's Department que trabaja en la reinserción social de las personas en el Condado de Los Santos: acompañamiento después de una condena, prevención de la reincidencia y programas con la comunidad.",
+      "La información de la división (procedimientos, documentación y funcionamiento interno) la completa su coordinación desde esta misma pestaña."] }] },
 };

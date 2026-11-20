@@ -8,14 +8,14 @@ import { LOGROS, TIER, goodTier } from "@/components/logros";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, CalendarClock, CalendarPlus, CheckCheck, Eye, Heart, Trophy, UserPlus, MessageSquare, Shield, Sparkles, TrendingDown, TrendingUp, UsersRound, Vote, X, type LucideIcon } from "lucide-react";
 import { FB_ST, fbSt, fbX, useMyFeedback, useTick } from "@/components/fbnotif";
-import { LS, useStoreVersion } from "@/lib/store";
+import { LS, ME_ROLES, useStoreVersion } from "@/lib/store";
 import { uMap } from "@/lib/units";
 import { emailOf } from "@/lib/domain";
 import { ago, dmy, lvl, rankES } from "@/lib/domain";
 import { JUMP, jumpNow } from "@/lib/jump";
 import { APP_VERSION, hasNews } from "@/sections/Novedades";
 import { cn } from "@/lib/cn";
-import { logoOf } from "@/lib/dept";
+import { DEPT, logoOf } from "@/lib/dept";
 import { closeExpired, type Prop } from "@/lib/votes";
 import { calAck, calAll, calMine, fmtWhen, isToday, reuLabel, reuList, reuVisible } from "@/lib/calendar";
 
@@ -55,6 +55,9 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
         : { id: `psb:n:${c.id}`, t: c.ts, I: Shield, c: "#818cf8", title: `Expediente nuevo ${c.cf}`, body: `${c.ag || "Agente sin cargar"} · abierto por ${c.by}`, go: ["div", "dv_psb"] });
       const r = c.docs.filter(d => d.t === "res").sort((a, b) => b.ts - a.ts)[0];
       if (r && r.by !== me.n) L.push({ id: `psb:r:${c.id}:${r.ts}`, t: r.ts, I: Shield, c: "#22c55e", title: `${c.cf} resuelto`, body: `${c.ag || ""} · resolución de ${r.by}`, go: ["div", "dv_psb"] }); }
+    /* LSSD: feedbacks nuevos que me toca revisar (la administración del departamento o quien figure como responsable) */
+    if (DEPT.id !== "lspd") for (const r of LS.ro<{ id: string; t: number; ag: string; por: string; mot: string; st: string; rev: string }[]>("lspdt.fbl", []))
+      if (r && r.por !== me.n && (r.st === "pend") && (r.rev === me.n || !!ME_ROLES.dadm)) L.push({ id: "fbl:" + r.id, t: r.t, I: MessageSquare, c: "#f59e0b", title: `Feedback para revisar: ${r.ag}`, body: `${r.mot} · de ${r.por}`, go: [lvl(me.r) >= 10 ? "jef" : lvl(me.r) >= 8 ? "cap" : "sup", "fbk"] });
     /* comentarios que otros dejaron en mi perfil */
     for (const c of LS.ro<{ id: string; by: string; t: number; x: string }[]>(`lspdt.ucom.${emailOf(me.n).split("@")[0]}`, [])) if (c.by !== me.n)
       L.push({ id: "com:" + c.id, t: c.t, I: MessageSquare, c: "#38bdf8", title: `${nickOf(c.by)} comentó en tu perfil`, body: c.x, go: ["me", "perfil"] });

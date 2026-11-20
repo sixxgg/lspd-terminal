@@ -1,7 +1,9 @@
 /* Calendario del departamento: cabecera con el mes y sus números, filtros por vista y división, grilla del mes con los
    eventos como píldoras (hora + nombre) y, al costado, la agenda agrupada por día (o el día elegido) con el próximo destacado. */
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, Eye, Globe2, Star, UserRound } from "lucide-react";
+import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, Eye, Globe2, Plus, ShieldCheck, Star, UserRound } from "lucide-react";
+import { EvAccess, EvDetail, EvForm } from "./cal/Eventos";
+import { evCan, isoOf, type Ev } from "@/lib/events";
 import { Card, Empty } from "@/components/ui";
 import { EvModal, banSrc, tipoC } from "@/components/calui";
 import { calAck, calAll, calClash, calMarkSeen, calMine, dayKey, fmtWhen, hasTime, isToday, type CalItem } from "@/lib/calendar";
@@ -21,7 +23,10 @@ export function Calendario() {
   const me = useMe(), [, bump] = useState(0);
   useEffect(() => { calMarkSeen(me.n); const f = () => bump(x => x + 1); window.addEventListener("lspdt:cal", f); return () => window.removeEventListener("lspdt:cal", f); }, [me.n]);
   const [ver, setVer] = useState<"mine" | "all" | "ano">("mine"), [div, setDiv] = useState(""), [m, setM] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
-  const [cur, setCur] = useState<CalItem | null>(null), [day, setDay] = useState("");
+  const [cur0, setCur] = useState<CalItem | null>(null), [day, setDay] = useState("");
+  const [form, setForm] = useState<{ e?: Ev; f?: string } | null>(null), [acc, setAcc] = useState(false), canEv = evCan();
+  const cur = cur0 && cur0.src !== "ev" ? cur0 : null, evIt = cur0 && cur0.src === "ev" ? cur0 : null;
+  const dayIso = day ? (([y, mo, d]) => isoOf(new Date(y, mo, d)))(day.split("-").map(Number)) : ""; /* dayKey: año-mes(0..11)-día */
   const ack = calAck(me.n);
   /* six ve los tres departamentos juntos (con su marca) para notar lo que se superpone */
   const [dp, setDp] = useState(""), multi = !!ME_ROLES.six;
@@ -52,6 +57,8 @@ export function Calendario() {
               <h2 className="font-display text-3xl font-bold capitalize leading-none">{m.toLocaleDateString("es-AR", { month: "long" })}</h2></div>
             <div className="flex gap-2">{stat(inMonth.length, "este mes")}{stat(by.get(today)?.length || 0, "hoy")}{stat(L.filter(e => ack[e.id]?.a).length, "anotados")}</div>
             <button onClick={() => { const d = new Date(); setM(new Date(d.getFullYear(), d.getMonth(), 1)); setDay(today); }} className="rounded-xl bg-white px-3.5 py-2 text-[12.5px] font-bold text-brand-700 shadow transition hover:bg-white/90">Hoy</button>
+            {canEv && <button onClick={() => setForm({ f: dayIso || undefined })} className="inline-flex items-center gap-1.5 rounded-xl bg-black/25 px-3.5 py-2 text-[12.5px] font-bold text-white ring-1 ring-white/30 transition hover:bg-black/35"><Plus className="size-4" />Nuevo evento</button>}
+            {(!!ME_ROLES.jef || !!ME_ROLES.six) && <button onClick={() => setAcc(true)} aria-label="Quién carga eventos" title="Quién carga eventos" className="grid size-9 place-items-center rounded-xl bg-white/10 transition hover:bg-white/20"><ShieldCheck className="size-4" /></button>}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
@@ -82,7 +89,7 @@ export function Calendario() {
                   {ev.length > 0 && <span className="flex gap-0.5">{ev.slice(0, 4).map(e => <i key={e.id} className="size-1.5 rounded-full" style={{ background: e.col }} />)}</span>}
                 </span>
                 {ev.slice(0, 2).map(e => <span key={e.id} title={`${multi && e.dp ? DEPTS[e.dp].short + " · " : ""}${e.ab} · ${e.n}`} className="flex min-w-0 items-center gap-1 overflow-hidden rounded-r-md py-[3px] pl-1.5 pr-1 text-[10.5px] font-semibold leading-none" style={{ background: e.col + "22", color: e.col, borderLeft: `2.5px solid ${e.col}` }}>
-                  {hhmm(e) && <span className="shrink-0 tabular-nums opacity-80">{hhmm(e)}</span>}<span className="truncate text-slate-700 dark:text-slate-200">{e.n}</span></span>)}
+                  {hhmm(e) && <span className="shrink-0 tabular-nums opacity-80">{hhmm(e)}</span>}<span className={cn("truncate text-slate-700 dark:text-slate-200", e.st === "canc" && "line-through opacity-60")}>{e.n}</span></span>)}
                 {ev.length > 2 && <span className="px-1 text-[10px] font-bold text-slate-400">+{ev.length - 2} más</span>}
               </button>); })}
           </div>
@@ -94,7 +101,8 @@ export function Calendario() {
             <CalendarDays className="size-4 text-brand-600 dark:text-brand-300" />
             <h3 className="font-display text-[15px] font-bold">{day ? dayLbl(+(cells.find(c => dayKey(+c) === day) || Date.now())) : "Agenda"}</h3>
             <span className="rounded-full bg-slate-100 px-2 text-[11px] font-bold tabular-nums text-slate-500 dark:bg-slate-800">{list.length}</span>
-            {day && <button className="ml-auto text-[11.5px] font-semibold text-brand-600 hover:underline dark:text-brand-300" onClick={() => setDay("")}>Ver lo próximo</button>}
+            {day && canEv && <button className="ml-auto inline-flex items-center gap-1 text-[11.5px] font-semibold text-brand-600 hover:underline dark:text-brand-300" onClick={() => setForm({ f: dayIso })}><Plus className="size-3.5" />Evento este día</button>}
+            {day && <button className={cn("text-[11.5px] font-semibold text-brand-600 hover:underline dark:text-brand-300", !canEv && "ml-auto")} onClick={() => setDay("")}>Ver lo próximo</button>}
           </div>
           {!list.length ? <Empty icon={<CalendarDays />} title={day ? "Nada ese día" : "Sin eventos próximos"} desc={ver === "mine" ? "Probá con «Todo lo que veo»." : "Las divisiones los cargan desde su pestaña Calendario."} />
             : <div className="space-y-4 p-3">
@@ -106,6 +114,9 @@ export function Calendario() {
         </Card>
       </div>
       <EvModal e={cur} onClose={() => setCur(null)} />
+      {evIt && <EvDetail it={evIt} onClose={() => setCur(null)} onEdit={e => { setCur(null); setForm({ e }); }} />}
+      {form && <EvForm init={form.e} date={form.f} onClose={() => setForm(null)} />}
+      {acc && <EvAccess onClose={() => setAcc(false)} />}
     </div>);
 }
 const DPC: Record<string, string> = { lspd: "#3b82f6", lssd: "#16a34a", sahp: "#d4a64a" };
@@ -117,7 +128,8 @@ function Row({ e, star, onClick, dept, clash }: { e: CalItem; star: boolean; onC
       <span className="w-1 shrink-0 rounded-l-xl" style={{ background: e.col }} />
       <span className="flex w-12 shrink-0 flex-col items-center justify-center py-2 text-center"><Clock className="mb-0.5 size-3 text-slate-400" /><b className="text-[12.5px] tabular-nums">{hhmm(e) || "Día"}</b></span>
       <span className="min-w-0 flex-1 py-2 pr-3">
-        <span className="flex items-center gap-1.5"><b className="truncate text-[13.5px] group-hover:text-brand-700 dark:group-hover:text-brand-300">{e.n}</b>{star && <Star className="size-3 shrink-0 fill-amber-400 text-amber-400" />}{e.pub && <Globe2 className="size-3 shrink-0 text-slate-400" />}</span>
+        <span className="flex items-center gap-1.5"><b className={cn("truncate text-[13.5px] group-hover:text-brand-700 dark:group-hover:text-brand-300", e.st === "canc" && "line-through opacity-60")}>{e.n}</b>
+          {e.st === "canc" && <span className="shrink-0 rounded bg-red-500/15 px-1.5 text-[10px] font-bold uppercase text-red-600 dark:text-red-400">Cancelado</span>}{e.st === "fin" && <span className="shrink-0 rounded bg-slate-500/15 px-1.5 text-[10px] font-bold uppercase text-slate-500">Finalizado</span>}{star && <Star className="size-3 shrink-0 fill-amber-400 text-amber-400" />}{e.pub && <Globe2 className="size-3 shrink-0 text-slate-400" />}</span>
         <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px]">{dept && <DpTag d={e.dp} />}<span className="rounded px-1.5 py-px font-bold text-white" style={{ background: e.col }}>{e.ab}</span><span className="font-semibold" style={{ color: tipoC(e.tipo) }}>{e.tipo}</span>{e.cre && <span className="truncate text-slate-500">· {e.cre}</span>}</span>
         {clash && clash.length > 0 && <span className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400"><AlertTriangle className="size-3" />Se superpone con {clash.map(d => DEPTS[d as DeptId].short).join(" y ")}</span>}
       </span>

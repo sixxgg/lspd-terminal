@@ -4,14 +4,15 @@
    Lo personal (leído, anotado, recordatorio) vive en este navegador. */
 import { UNITS, genFor, gMap, isGCo, isGMem, isUCoord, rtdMem, uMap, type UnitKey } from "./units";
 import { LS, ME_ROLES, dk } from "./store";
-import { DEPT, type DeptId } from "./dept";
+import { DEPT, DEPTS, type DeptId } from "./dept";
+import { atOf, evForMe, evList, occurrences, tipoOf, type Ev } from "./events";
 import { divAb, findAgent, lvl } from "./domain";
 import { PROF } from "./nick";
 import { htmlToDc } from "./richtext";
 
 export const CAL_TIPOS = ["Práctica", "Instrucción", "Evento", "Reunión", "Operativo", "Otro"] as const;
 export type CalEv = { id: string; t: number; by: string; n: string; tipo: string; at: number; cre: string; desc?: string; ban?: boolean; d: string; pub?: boolean };
-export type CalItem = CalEv & { src: "cal" | "ins" | "pub" | "reu"; dn: string; ab: string; col: string; imp?: string[]; dp?: DeptId };
+export type CalItem = CalEv & { src: "cal" | "ins" | "pub" | "reu" | "ev"; dn: string; ab: string; col: string; imp?: string[]; dp?: DeptId; ev?: Ev; of?: string; st?: string };
 
 /* divisiones con calendario de cada departamento: id → nombre completo */
 const calDivsOf = (d: string): [string, string][] => d === "lspd"
@@ -54,6 +55,13 @@ export function calAll(): CalItem[] {
       desc: `${REU_T[r.tpl] || "Reunión"} colaborativa en Supervisores › Reuniones.${r.secs?.length ? `<br>Temas: ${r.secs.slice(0, 12).map(x => x.replace(/[<>&]/g, "")).join(" · ")}` : ""}`,
       dn: REU_T[r.tpl] || "Supervisión", ab: "SUP", col: REU_C[r.tpl] || "#ec4899", dp });
   }
+  /* eventos del departamento (y los compartidos por otro): una entrada por cada vez que ocurre */
+  const from = Date.now() - 400 * 864e5, to = Date.now() + 400 * 864e5;
+  for (const e of evList()) { if (!ME_ROLES.six && e.dp !== cur && !e.deps?.includes(cur)) continue;
+    const [, tl, tc] = tipoOf(e.tipo), dv = e.div ? divAb(e.div) : null;
+    for (const f of occurrences(e, from, to)) { const canc = e.st === "canc" || !!e.canc?.includes(f), fin = e.st === "fin" || (!canc && atOf(f, e.hf || e.hi) < Date.now() - 36e5 && !!e.rep);
+      out.push({ id: `ev:${e.id}:${f}`, t: e.t, by: e.by, n: e.n, tipo: tl, at: atOf(f, e.hi), cre: e.resp || e.by, desc: e.desc, d: "ev", src: "ev", dn: e.div || `${DEPTS[e.dp].short} · ${tl}`,
+        ab: dv ? dv[0] : DEPTS[e.dp].short, col: tc, dp: e.dp, ev: e, of: f, st: canc ? "canc" : fin ? "fin" : e.st, pub: (e.deps || []).some(x => x !== e.dp) }); } }
   return out.sort((a, b) => a.at - b.at);
 }
 /* eventos de otro departamento a menos de 3 horas (para ver qué se superpone) */
@@ -68,12 +76,12 @@ export const reuLabel = (tpl: string) => REU_T[tpl] || "Reunión";
 const shortAb = (id: string, ab: string) => ({ md: "METRO", asd: "A.S.D", k9: "K-9", psb: "PSB", rtd: "RTD" } as Record<string, string>)[id] || ab;
 
 /* ¿me toca? eventos de mis divisiones, instrucciones donde figuro y lo abierto a todos */
-export const calMine = (e: CalItem, n: string) => e.src === "pub" || e.src === "reu" || (e.src === "ins" ? !!e.imp?.includes(n) : calMem(e.d, n));
+export const calMine = (e: CalItem, n: string) => e.src === "pub" || e.src === "reu" || (e.src === "ev" ? !!e.ev && evForMe(e.ev, n) : e.src === "ins" ? !!e.imp?.includes(n) : calMem(e.d, n));
 
 /* fechas */
 export const dayKey = (t: number) => { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
 export const isToday = (t: number) => dayKey(t) === dayKey(Date.now());
-export const hasTime = (e: CalItem) => { const d = new Date(e.at); return (e.src !== "ins" && e.src !== "reu") || d.getHours() + d.getMinutes() > 0; };
+export const hasTime = (e: CalItem) => { const d = new Date(e.at); return e.src === "ev" ? !!e.ev?.hi : (e.src !== "ins" && e.src !== "reu") || d.getHours() + d.getMinutes() > 0; };
 export const fmtWhen = (e: CalItem, o: { day?: boolean } = {}) => {
   const d = new Date(e.at), day = d.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
   const h = hasTime(e) ? d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) + " h" : "";

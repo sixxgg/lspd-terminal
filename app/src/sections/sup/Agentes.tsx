@@ -8,12 +8,13 @@ import { Button, Card, Empty, Field, Input, Select, Segmented, Textarea, SearchI
 import { RankBadge } from "@/components/agents";
 import { Ribbon, RibbonRack } from "@/components/ribbon";
 import { createPortal } from "react-dom";
-import { DECOR, decorOf, type Award as AwardT, type Decor } from "@/lib/decor";
+import { allDecor, decorOf, type Award as AwardT, type Decor } from "@/lib/decor";
 import { Modal } from "@/components/modal";
 import { ImagePicker } from "@/components/imagepick";
 import { useFeedback } from "@/components/feedback";
 import { dmy, ALL_DIVS, DIVS, GROUPS, LEVEL, divAb, divEmblem, emailOf, findAgent, fotoOf, genderOf, getRoster, imgOpt, initials, insigniaUrl, lvl, norm, rankES, srcOf, uid, type Agent } from "@/lib/domain";
-import { ACC_LAST, LS, useStoreVersion } from "@/lib/store";
+import { ACC_LAST, LS, ME_ROLES, useStoreVersion } from "@/lib/store";
+import { GEN, gMap, gRoles, gSave, rosterCo } from "@/lib/units";
 import { useMe } from "@/lib/me";
 import { allProfiles, profFull, updateAgent, updateProf, type Profile } from "@/lib/profiles";
 import { missOf, vName, vehOf, type PHist } from "@/lib/patrol";
@@ -163,6 +164,12 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
     return () => { document.removeEventListener("keydown", k); document.body.style.overflow = o; };
   }, [onClose, pick]);
   const done = (fn: (p: Profile) => void, msg?: string) => { updateProf(n, fn); if (msg) toast(msg); };
+  /* LSSD/SAHP: la ficha y el roster de cada división quedan iguales (alta, baja y cargo) */
+  const [cargo, setCargo] = useState<Record<string, string>>({});
+  const syncRosters = () => { if (DEPT.id === "lspd") return;
+    for (const [dd, c] of Object.entries(GEN)) { if (!rosterCo(c.id, me.n)) continue; const m = gMap(c.id), on = divSel.includes(dd), want = on ? cargo[dd] || m[n] || "miembro" : "";
+      if ((m[n] || "") === want) continue; const nm = { ...m }; if (want) nm[n] = want; else delete nm[n]; gSave(c.id, nm); }
+    setCargo({}); };
   const divs = p.div.slice().sort((x, y) => ALL_DIVS.indexOf(x) - ALL_DIVS.indexOf(y));
   const tl = useMemo(() => {
     const t: { d: Date | null; c: string; b: string; s: string }[] = [], same = (x: Date | null, y: Date | null) => !!x && !!y && x.toDateString() === y.toDateString();
@@ -283,9 +290,12 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
                 {editDiv ? <>
                   <div className="grid gap-x-4 gap-y-1 rounded-xl border border-slate-200 p-3 text-sm sm:grid-cols-2 dark:border-slate-800">
                     {DIVS.flatMap(([dd, subs]) => [[dd, false] as const, ...(subs || []).map(x => [x, true] as const)]).map(([dd, sub]) => (
-                      <label key={dd} className={cn("flex cursor-pointer items-center gap-2 py-0.5", sub && "pl-5 text-xs text-slate-500")}><input type="checkbox" className="accent-brand-600" checked={divSel.includes(dd)} onChange={e => setDivSel(e.target.checked ? [...divSel, dd] : divSel.filter(x => x !== dd))} />{dd}</label>))}
+                      <div key={dd} className={cn("flex items-center gap-2 py-0.5", sub && "pl-5 text-xs text-slate-500")}><label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2"><input type="checkbox" className="accent-brand-600" disabled={DEPT.id !== "lspd" && !!GEN[dd] && !rosterCo(GEN[dd].id, me.n)} checked={divSel.includes(dd)} onChange={e => setDivSel(e.target.checked ? [...divSel, dd] : divSel.filter(x => x !== dd))} /><span className="truncate">{dd}</span></label>
+                        {DEPT.id !== "lspd" && GEN[dd] && divSel.includes(dd) && <select aria-label={`Cargo en ${dd}`} disabled={!rosterCo(GEN[dd].id, me.n)} value={cargo[dd] || gMap(GEN[dd].id)[n] || "miembro"} onChange={e => setCargo({ ...cargo, [dd]: e.target.value })}
+                          className="h-7 rounded-lg border border-slate-200 bg-white px-1.5 text-[11.5px] dark:border-slate-700 dark:bg-slate-900">{gRoles(GEN[dd].id).map(r => <option key={r.k} value={r.k} disabled={!!r.co && !ME_ROLES.jef && !ME_ROLES.six}>{r.l}</option>)}</select>}</div>))}
                   </div>
-                  <div className="mt-3 flex justify-end"><Button size="sm" icon={<Check />} onClick={() => { done(x => { x.div = ALL_DIVS.filter(dd => divSel.includes(dd)); if (x.main && !x.div.includes(x.main)) x.main = ""; }, "Divisiones guardadas"); setEditDiv(false); }}>Guardar divisiones</Button></div>
+                  {DEPT.id !== "lspd" && <p className="mt-2 text-[11px] text-slate-500">Se sincroniza con el roster de cada división. Coordinador y Subcoordinador los designa Jefatura; el resto lo maneja la coordinación de cada división.</p>}
+                  <div className="mt-3 flex justify-end"><Button size="sm" icon={<Check />} onClick={() => { syncRosters(); done(x => { x.div = ALL_DIVS.filter(dd => divSel.includes(dd)); if (x.main && !x.div.includes(x.main)) x.main = ""; }, "Divisiones guardadas"); setEditDiv(false); }}>Guardar divisiones</Button></div>
                 </> : divs.length ? <div className="grid gap-2 sm:grid-cols-2">
                   {divs.map(dd => (
                     <div key={dd} className={cn("group flex items-center gap-3 rounded-xl border px-3 py-2", dd === md ? "border-amber-300/70 bg-gradient-to-r from-amber-50 to-transparent dark:border-amber-500/30 dark:from-amber-500/10" : "border-slate-200 dark:border-slate-800")}>
@@ -360,7 +370,7 @@ function Awards({ n, cond, rack, done }: { n: string; cond: AwardT[]; rack: Deco
   const me = useMe();
   const [open, setOpen] = useState(!cond.length), [t, setT] = useState<Decor["tab"] | "otra">("med"), [q, setQ] = useState(""), [k, setK] = useState(""), [txt, setTxt] = useState(""), [f, setF] = useState(() => new Date().toISOString().slice(0, 10)), [m, setM] = useState("");
   const has = new Set(cond.map(c => c.k)), s = norm(q.trim());
-  const opts = t === "otra" ? [] : DECOR.filter(d => d.tab === t && (!s || norm(d.t + " " + d.g + " " + d.c).includes(s)));
+  const opts = t === "otra" ? [] : allDecor().filter(d => d.tab === t && (!s || norm(d.t + " " + d.g + " " + d.c).includes(s)));
   const groups = [...new Set(opts.map(d => d.g))];
   const sel = decorOf(k);
   const give = () => { const title = t === "otra" ? txt.trim() : sel?.t; if (!title) return;

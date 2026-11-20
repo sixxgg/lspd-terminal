@@ -146,7 +146,7 @@ const DIVS_LSPD: [string, string[]?][] = [["Detective Bureau", ["High Tech Crime
 const DIVS_LSSD: [string, string[]?][] = [["Special Enforcement Bureau", ["Special Weapons Team", "Sniper Detail", "Explosives Detail", "Hazardous Materials Detail", "Subsurface Operations Detail"]],
   ["Aero Bureau"], ["Canine Service Detail"], ["Crisis Negotiation Unit"],
   ["Detective Division", ["Homicide Bureau", "Major Crimes Bureau", "Narcotics Bureau", "Special Victims Bureau", "Fraud and Cyber Crimes Bureau", "Gang Enforcement Team", "Operation Safe Streets Detail", "Gang Surveillance Unit"]],
-  ["Training Bureau"], ["Sheriff Information Bureau"], ["High Speed Interception Unit"]];
+  ["Training Bureau"], ["Sheriff Information Bureau"], ["High Speed Interception Unit"], ["Social Reintegration Division"]];
 /* divisiones del departamento activo (cambian con el departamento, sin recargar) */
 export const DIVS: [string, string[]?][] = [...DIVS_LSPD];
 export const ALL_DIVS: string[] = DIVS.flatMap(d => [d[0], ...(d[1] || [])]);
@@ -160,13 +160,15 @@ const DIV_INFO_LSSD: Record<string, [string, string]> = { "Special Enforcement B
   "Canine Service Detail": ["K-9", "#1f8f4a"], "Crisis Negotiation Unit": ["CNU", "#9333ea"], "Detective Division": ["DD", "#7c3aed"], "Homicide Bureau": ["HB", "#991b1b"], "Major Crimes Bureau": ["MCB", "#d4a937"],
   "Narcotics Bureau": ["NB", "#3f8f3a"], "Special Victims Bureau": ["SVB", "#be185d"], "Fraud and Cyber Crimes Bureau": ["FCCB", "#b8975a"], "Gang Enforcement Team": ["GET", "#57534e"],
   "Operation Safe Streets Detail": ["OSS", "#0f766e"], "Gang Surveillance Unit": ["GSU", "#334155"], "Training Bureau": ["TB", "#b45309"], "Sheriff Information Bureau": ["SIB", "#2563eb"],
-  "High Speed Interception Unit": ["HSIU", "#dc2626"] };
+  "High Speed Interception Unit": ["HSIU", "#d4a017"], "Social Reintegration Division": ["SRD", "#1e3a8a"] };
 const DIV_INFO_LSPD = { ...DIV_INFO };
 const DIVISIONES_LSPD = ["Patrulla", "Detective Bureau", "Metropolitan Division", "Air Support Division", "K-9 Division", "High Speed Interception Unit",
   "Recruitment and Training Division", "Professional Standards Bureau", "Administration Services Bureau"];
 export const divAb = (d: string) => DIV_INFO[d] || [d.split(/\s+/).map(w => w[0]).join("").slice(0, 4).toUpperCase(), "#334155"];
 const DIV_LOGO: Record<string, string> = { "Recruitment and Training Division": "rtd", "Underwater Dive Unit": "udu", "Metropolitan Division": "metro", "Major Crimes Division": "mcd", "High Tech Crime Unit": "htcu", "Gang and Narcotics Division": "gnd", "Air Support Division": "asd" };
-export const divEmblem = (d: string) => srcOf(LS.get("lspdt.divlogo." + d) || "") || (DEPT.id === "lspd" ? (DIV_LOGO[d] ? `/div/${DIV_LOGO[d]}.webp?v=3` : "") : DIV_INFO_LSSD[d] && DEPT.id === "lssd" ? `/next/sdiv/${slugOf(d)}.svg?v=1` : "");
+export const divEmblem = (d: string) => srcOf(LS.get("lspdt.divlogo." + d) || "") || (DEPT.id === "lspd" ? (DIV_LOGO[d] ? `/div/${DIV_LOGO[d]}.webp?v=3` : "") : DIV_INFO_LSSD[d] && DEPT.id === "lssd" ? `/next/sdiv/${slugOf(d)}.${SDIV_PNG.has(d) ? "webp?v=2" : "svg?v=1"}` : "");
+/* LSSD: escudos oficiales (los que mandó el departamento); el resto, el dibujo de siempre */
+const SDIV_PNG = new Set(["Training Bureau", "Aero Bureau", "Special Enforcement Bureau", "Sheriff Information Bureau", "Canine Service Detail", "Detective Division", "High Speed Interception Unit", "Social Reintegration Division"]);
 const slugOf = (d: string) => d.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 export const isoToDMY = (s?: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return m ? `${m[3]}/${m[2]}/${m[1]}` : ""; };
 /* AAAA-MM-DD → DD/MM/AAAA */

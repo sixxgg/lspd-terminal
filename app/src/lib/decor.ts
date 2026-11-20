@@ -1,9 +1,10 @@
+import { LS } from "./store";
 /* Condecoraciones del departamento: catálogo (medallas, franjas de servicio y condecoraciones por departamento y división)
    y cintas dibujadas con CSS (barato: un solo fondo con gradientes, sin imágenes). */
 
 export type Tab = "cond" | "med" | "fra";
 export type Dev = "star" | "starw" | "oo" | "heart" | "check";
-export type Decor = { k: string; t: string; c: string; tab: Tab; g: string; sec: "Departamentos" | "Divisiones"; s: [string, number][]; dev?: Dev; n?: number; d?: string; h?: string };
+export type Decor = { k: string; t: string; c: string; tab: Tab; g: string; sec: "Departamentos" | "Divisiones"; s: [string, number][]; dev?: Dev; n?: number; d?: string; h?: string; img?: boolean; x?: boolean };
 
 const C: Record<string, string> = {
   B: "#1d4ed8", W: "#f1f5f9", Y: "#f5c518", R: "#dc2626", G: "#1f7a3e", P: "#6b2fb3", K: "#18181b", O: "#566b2b", N: "#1e3a8a", Gr: "#a8adb5",
@@ -175,19 +176,39 @@ const TXT: Record<string, [string, string]> = {
   "Cinta de Mentor": ["Premia formar oficiales que se quedan, no solo cantidad.", "10+ cadetes graduados por ti que siguen activos (mínimo 30 días post-graduación)."],
 };
 DECOR.forEach(d => { const x = TXT[d.t]; if (x) { d.d = x[0]; d.h = x[1]; } });
-const DECOR_BY = new Map(DECOR.map(d => [d.k, d]));
-export const decorOf = (k?: string) => (k ? DECOR_BY.get(k) : undefined);
+
+/* ---------- catálogo compartido (LSPD, LSSD y SAHP) ----------
+   lspdt.decorx: altas y cambios que hacen Capitanía y Jefatura de cualquier departamento; la misma clave para los tres,
+   así una condecoración nueva o editada aparece sola en todos. Las de fábrica se conservan (un cambio las pisa por clave). */
+export type DecorX = { k: string; t: string; c: string; tab: Tab; g: string; sec: Decor["sec"]; s: [string, number][]; dev?: Dev; d?: string; h?: string; img?: boolean; by?: string; at?: number };
+export const DECORX_KEY = "lspdt.decorx";
+export const decorImgKey = (k: string) => `lspdt.decorx.${k}`;
+export const decorSlug = slug;
+let memo = { raw: "\0", all: DECOR, by: new Map(DECOR.map(d => [d.k, d])) };
+function build() {
+  const raw = LS.raw(DECORX_KEY) || "";
+  if (raw === memo.raw) return memo;
+  let X: DecorX[] = []; try { const a = JSON.parse(raw || "[]"); if (Array.isArray(a)) X = a.filter(x => x && x.k && x.t); } catch { /* */ }
+  const by = new Map(DECOR.map(d => [d.k, d] as [string, Decor]));
+  for (const x of X) { const base = by.get(x.k); by.set(x.k, { ...(base || {}), ...x, s: Array.isArray(x.s) && x.s.length ? x.s : base?.s || [["#64748b", 1]], x: true } as Decor); }
+  memo = { raw, all: [...by.values()], by }; return memo;
+}
+/* catálogo completo (de fábrica + compartido), cacheado por el texto guardado */
+export const allDecor = () => build().all;
+export const decorOf = (k?: string) => (k ? build().by.get(k) : undefined);
+/* misma condecoración con otro nombre o clave: evita duplicados */
+export const decorDup = (t: string, k?: string) => { const sl = slug(t); return allDecor().find(d => d.k !== k && (d.k === sl || slug(d.t) === sl)); };
 
 /* fondo de la cinta: franjas + textura de hilo + brillo, todo en un solo background */
 const cache = new Map<string, string>();
 export function ribbonBg(d: Decor) {
-  const hit = cache.get(d.k); if (hit) return hit;
+  const ck = d.k + JSON.stringify(d.s) + (d.dev || ""), hit = cache.get(ck); if (hit) return hit;
   let stripes: string;
   if (d.dev === "check") stripes = "repeating-conic-gradient(#111 0 25%,#f5f5f5 0 50%) 0 0/12px 12px";
   else { const tot = d.s.reduce((a, [, w]) => a + w, 0); let x = 0;
     stripes = "linear-gradient(90deg," + d.s.map(([c, w]) => { const a = (x / tot) * 100; x += w; return `${c} ${a.toFixed(2)}% ${((x / tot) * 100).toFixed(2)}%`; }).join(",") + ")"; }
   const v = `linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 45%,rgba(0,0,0,.22)),repeating-linear-gradient(90deg,rgba(0,0,0,.1) 0 1px,transparent 1px 3px),${stripes}`;
-  cache.set(d.k, v); return v;
+  cache.set(ck, v); return v;
 }
 
 export type Award = { id: string; t: string; f?: string; k?: string; m?: string; by?: string };

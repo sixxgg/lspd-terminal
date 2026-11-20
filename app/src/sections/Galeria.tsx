@@ -3,7 +3,7 @@
    La editan six, la administración y quienes estén habilitados en Administración › Galería (lspdt.galEditors).
    Se guarda en lspdt.galeria; la lista de Fivemanager la trae el servidor (la clave nunca llega al navegador). */
 import { useEffect, useState } from "react";
-import { Check, ChevronLeft, Crop, Move, RotateCcw, ZoomIn, ChevronRight, ChevronUp, ChevronDown, CloudDownload, ExternalLink, Eye, EyeOff, Images, Loader2, Pause, Play, Plus, Trash2 } from "lucide-react";
+import { Check, Star, Upload, ChevronLeft, Crop, Move, RotateCcw, ZoomIn, ChevronRight, ChevronUp, ChevronDown, CloudDownload, ExternalLink, Eye, EyeOff, Images, Loader2, Pause, Play, Plus, Trash2 } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Empty } from "@/components/ui";
 import { Lightbox, Modal } from "@/components/modal";
 import { api } from "@/lib/api";
@@ -12,7 +12,9 @@ import { useFeedback } from "@/components/feedback";
 import { uid } from "@/lib/domain";
 import { useJSON } from "@/lib/store";
 import { cn } from "@/lib/cn";
-import { fotoStyle, GAL_KEY, type Foto } from "@/lib/gal";
+import { fotoSrc, fotoStyle, GAL_KEY, ordered, type Foto } from "@/lib/gal";
+import { ImagePicker } from "@/components/imagepick";
+import { DEPT } from "@/lib/dept";
 
 const KEY = GAL_KEY, OLD = "lspdt.six.galeria", FM = "https://app.fivemanage.com/";
 /* links de imagen válidos (Fivemanager u otro https con imagen) */
@@ -24,7 +26,7 @@ export function Galeria() {
   /* la galería de antes era privada de six: se pasa una vez a la compartida */
   useEffect(() => { const o = LS.json<Foto[]>(OLD, []); if (o.length && !L.length) { setL(o); LS.del(OLD); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const addUrls = (urls: string[]) => { const have = new Set(L.map(f => f.url)), nu = urls.filter(u => !have.has(u)); if (nu.length) setL([...L, ...nu.map((url, i) => ({ id: uid(), url, on: true, at: Date.now() + i }))]); return nu.length; };
-  const S = L.filter(f => f.on);
+  const S = ordered(L.filter(f => f.on)), [up0, setUp0] = useState(""); /* up0: id de la foto que se está subiendo */
   const add = () => { const urls = [...new Set(txt.match(URL_RE) || [])].filter(isImg), have = new Set(L.map(f => f.url)), nu = urls.filter(u => !have.has(u));
     if (!urls.length) { toast("No encontré links de imagen. Copiá el link directo de cada foto en Fivemanager.", "err"); return; }
     addUrls(nu); setTxt(""); toast(nu.length ? `${nu.length} foto${nu.length > 1 ? "s" : ""} agregada${nu.length > 1 ? "s" : ""}` : "Esas fotos ya estaban"); };
@@ -36,6 +38,7 @@ export function Galeria() {
       <Card>
         <CardHeader icon={<Plus />} title="Agregar fotos" desc="Elegilas directo de tu cuenta de Fivemanager, o pegá links de imágenes."
           action={<div className="flex gap-2"><a href={FM} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[12px] font-semibold text-slate-600 transition hover:border-brand-400 hover:text-brand-600 dark:border-slate-700 dark:text-slate-300"><ExternalLink className="size-3.5" />Fivemanager</a>
+            {DEPT.id !== "lspd" && <Button size="sm" variant="outline" icon={<Upload />} onClick={() => setUp0(uid())}>Subir foto</Button>}
             <Button size="sm" icon={<CloudDownload />} onClick={() => setPick(true)}>Elegir de Fivemanager</Button></div>} />
         <CardBody>
           <textarea value={txt} onChange={e => setTxt(e.target.value)} rows={3} placeholder="https://r2.fivemanager.com/…/foto.png" className="w-full rounded-xl border border-slate-200 bg-transparent p-3 font-mono text-[12.5px] outline-none focus:border-brand-500 dark:border-slate-700"
@@ -48,24 +51,29 @@ export function Galeria() {
         <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{L.map((f, i) => (
           <div key={f.id} className={cn("overflow-hidden rounded-2xl border transition", f.on ? "border-brand-500/50" : "border-slate-200 opacity-60 dark:border-slate-800")}>
             <button type="button" onClick={() => f.on && setBox(S.findIndex(x => x.id === f.id))} className="block aspect-video w-full bg-slate-900">
-              <img src={f.url} alt="" loading="lazy" decoding="async" className="size-full object-cover" style={fotoStyle(f)} /></button>
+              <img src={fotoSrc(f)} alt="" loading="lazy" decoding="async" className="size-full object-cover" style={fotoStyle(f)} /></button>
             <div className="space-y-2 p-2.5">
-              <input value={f.cap || ""} onChange={e => up(f.id, { cap: e.target.value })} placeholder="Texto (opcional)" maxLength={90} className="h-8 w-full rounded-lg border border-slate-200 bg-transparent px-2 text-[12.5px] outline-none focus:border-brand-500 dark:border-slate-700" />
+              <input value={f.cap || ""} onChange={e => up(f.id, { cap: e.target.value })} placeholder="Título (opcional)" maxLength={90} className="h-8 w-full rounded-lg border border-slate-200 bg-transparent px-2 text-[12.5px] font-semibold outline-none focus:border-brand-500 dark:border-slate-700" />
+              <input value={f.d || ""} onChange={e => up(f.id, { d: e.target.value })} placeholder="Descripción (opcional)" maxLength={160} className="h-8 w-full rounded-lg border border-slate-200 bg-transparent px-2 text-[12px] outline-none focus:border-brand-500 dark:border-slate-700" />
               <div className="flex items-center gap-1">
                 <button type="button" onClick={() => up(f.id, { on: !f.on })} className={cn("inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11.5px] font-semibold", f.on ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800")}>
                   {f.on ? <><Eye className="size-3.5" />En el carrusel</> : <><EyeOff className="size-3.5" />Oculta</>}</button>
+                <button type="button" title={f.pri ? "Es la imagen principal" : "Marcar como imagen principal (va primera)"} onClick={() => setL(L.map(x => ({ ...x, pri: x.id === f.id ? !f.pri : false })))} className={cn("inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11.5px] font-semibold", f.pri ? "bg-amber-400/15 text-amber-600 dark:text-amber-300" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800")}><Star className={cn("size-3.5", f.pri && "fill-amber-400")} />{f.pri ? "Principal" : ""}</button>
                 <button type="button" onClick={() => setAdj(f)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11.5px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-brand-600 dark:hover:bg-slate-800"><Crop className="size-3.5" />Encuadre</button>
                 <span className="flex-1" />
                 <button type="button" aria-label="Antes" disabled={!i} onClick={() => mv(i, -1)} className="rounded p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-200"><ChevronUp className="size-4" /></button>
                 <button type="button" aria-label="Después" disabled={i === L.length - 1} onClick={() => mv(i, 1)} className="rounded p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-200"><ChevronDown className="size-4" /></button>
-                <button type="button" aria-label="Quitar" onClick={async () => { if (await confirm("¿Quitar esta foto de la galería? (en Fivemanager sigue estando)", { danger: true, ok: "Quitar" })) setL(L.filter(x => x.id !== f.id)); }} className="rounded p-1 text-slate-400 hover:text-red-500"><Trash2 className="size-4" /></button>
+                <button type="button" aria-label="Quitar" onClick={async () => { if (await confirm("¿Quitar esta foto de la galería? (en Fivemanager sigue estando)", { danger: true, ok: "Quitar" })) { setL(L.filter(x => x.id !== f.id)); if (f.ik) LS.del(f.ik); } }} className="rounded p-1 text-slate-400 hover:text-red-500"><Trash2 className="size-4" /></button>
               </div>
             </div>
           </div>))}</div>
       </Card>}
+      <ImagePicker open={!!up0} title="Subir foto a la portada" k={`lspdt.portada.${up0}`} max={1920} wide onClose={() => setUp0("")}
+        onFile={d => { const id = up0, ik = `lspdt.portada.${id}`; LS.set(ik, d); setL([...L, { id, url: "", ik, on: true, at: Date.now() }]); toast("Foto subida a la portada"); }}
+        onUrl={() => { const id = up0, ik = `lspdt.portada.${id}`; setL([...L, { id, url: "", ik, on: true, at: Date.now() }]); toast("Foto agregada a la portada"); }} />
       {adj && <Encuadre f={adj} onClose={() => setAdj(null)} onSave={p => { up(adj.id, p); setAdj(null); toast("Encuadre guardado · así se ve en el Inicio"); }} />}
       {pick && <FmPicker have={new Set(L.map(f => f.url))} onClose={() => setPick(false)} onAdd={u => { const n = addUrls(u); toast(n ? `${n} foto${n > 1 ? "s" : ""} agregada${n > 1 ? "s" : ""}` : "Esas fotos ya estaban"); setPick(false); }} />}
-      {box >= 0 && S[box] && <Lightbox list={S.map(f => f.url)} i={box} cap={S[box].cap} onClose={() => setBox(-1)} onNav={setBox} />}
+      {box >= 0 && S[box] && <Lightbox list={S.map(fotoSrc)} i={box} cap={S[box].cap} onClose={() => setBox(-1)} onNav={setBox} />}
     </div>);
 }
 
@@ -80,7 +88,7 @@ function Slider({ fotos, onOpen }: { fotos: Foto[]; onOpen: (i: number) => void 
       <div className="relative aspect-[21/9] max-h-[68vh] w-full">
         {fotos.map((f, k) => (
           <button key={f.id} type="button" onClick={() => onOpen(k)} aria-label="Ver en grande" className={cn("absolute inset-0 transition-opacity duration-1000", k === i ? "opacity-100" : "pointer-events-none opacity-0")}>
-            <img src={f.url} alt="" decoding="async" loading={Math.abs(k - i) <= 1 ? "eager" : "lazy"} className="size-full object-cover transition-transform duration-[6000ms] ease-out" style={fotoStyle(f, k === i ? 1.06 : 1)} />
+            <img src={fotoSrc(f)} alt="" decoding="async" loading={Math.abs(k - i) <= 1 ? "eager" : "lazy"} className="size-full object-cover transition-transform duration-[6000ms] ease-out" style={fotoStyle(f, k === i ? 1.06 : 1)} />
           </button>))}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
         {fotos[i]?.cap && <p className="pointer-events-none absolute bottom-6 left-6 right-24 font-display text-2xl font-bold text-white drop-shadow-lg sm:text-3xl">{fotos[i].cap}</p>}
@@ -138,7 +146,7 @@ function Encuadre({ f, onClose, onSave }: { f: Foto; onClose: () => void; onSave
         <div className={cn("hero-mask relative aspect-[9/2] w-full touch-none select-none overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-black/10", drag ? "cursor-grabbing" : "cursor-grab")}
           onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); setDrag({ px: e.clientX, py: e.clientY, x, y }); }} onPointerMove={move} onPointerUp={() => setDrag(null)} onPointerCancel={() => setDrag(null)}
           onWheel={e => setZ(v => Math.round(Math.max(1, Math.min(2.5, v - e.deltaY * 0.001)) * 100) / 100)}>
-          <img src={f.url} alt="" draggable={false} className="pointer-events-none size-full object-cover" style={fotoStyle(prev)} />
+          <img src={fotoSrc(f)} alt="" draggable={false} className="pointer-events-none size-full object-cover" style={fotoStyle(prev)} />
           {/* lo mismo que se superpone en el Inicio */}
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
           <div className="pointer-events-none absolute bottom-[30%] left-[9%]"><p className="text-[9px] font-semibold uppercase tracking-[.22em] text-white/70">Lunes, 16 de noviembre</p>

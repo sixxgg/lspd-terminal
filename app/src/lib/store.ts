@@ -30,7 +30,7 @@ export const getNet = () => net;
 /* departamentos: las secciones usan siempre las claves del LSPD (lspdt.*); en el LSSD y la SAHP se leen y escriben en lspdt.<depto>.*.
    Lo compartido (marca, Legal, Pizarra, robos, lo privado de six) es igual para los tres. Lo mismo decide el servidor (lib/core.js, SHARED_KEY). */
 /* las imágenes (logos, fondos, íconos) son de cada departamento; los perfiles, uno solo para los tres */
-const SHARED = /^lspdt\.(ui|lib|six|anita|penal|legacc|boards?|miro|robos|uprof|ucom|uvis|ufolt?|uverif|lssd|sahp)(\.|$)/;
+const SHARED = /^lspdt\.(ui|lib|six|anita|penal|legacc|boards?|miro|robos|uprof|ucom|uvis|ufolt?|uverif|xcal|decorx|lssd|sahp)(\.|$)/;
 let KD = "";
 export function setKeyDept(d: string) { const n = d === "lspd" ? "" : d; if (n === KD) return; KD = n; RO.clear(); bump(); }
 /* la clave real en la base para el departamento activo (y la de otro departamento, para las vistas que juntan los tres) */
@@ -163,8 +163,8 @@ export type DirE = { n: string; d: "lspd" | "lssd" | "sahp"; r: string };
 export const ACC: { names: string[]; dir: DirE[]; xr: DirE[] } = { names: [], dir: [], xr: [] }; /* xr: integrantes del LSSD y la SAHP (sin cuenta todavía) */
 /* vista previa («Ver como»): sin permisos especiales y sin guardar nada en el servidor */
 export const PREV = { on: false, must: false };
-const noRoles = () => { if (PREV.on) Object.assign(ME_ROLES, { admin: false, owner: false, six: false, anita: false, dadm: false }); };
-export const ME_ROLES: { admin?: boolean; owner?: boolean; six?: boolean; anita?: boolean; dadm?: boolean } = {};
+const noRoles = () => { if (PREV.on) Object.assign(ME_ROLES, { admin: false, owner: false, six: false, anita: false, dadm: false, jef: "" }); };
+export const ME_ROLES: { admin?: boolean; owner?: boolean; six?: boolean; anita?: boolean; dadm?: boolean; jef?: string } = {}; /* jef: el nombre propio si es Jefatura del LSSD o la SAHP */
 export type Me = { n: string; r: string; admin: boolean; owner: boolean; six?: boolean; anita?: boolean; must?: boolean; dept?: "lssd" | "sahp"; p?: string };
 export let DEF_ROSTER: Agent[] = [];
 export type Agent = { n: string; p?: string; r: string; e?: string; s?: string; i?: string; d?: string; a?: string; c?: string };
@@ -176,7 +176,7 @@ export function loadStore(d: { store: Dict; kt?: Record<string, number>; t?: num
   for (const k of Object.keys(BASE)) delete BASE[k];
   Object.assign(CACHE, d.store); Object.assign(BASE, d.store); Object.assign(KT, d.kt || {});
   SYNC_T = d.t || 0; DEF_ROSTER = d.defRoster || DEF_ROSTER; ONLINE = true; OWN = guest || !d.me?.n ? "" : `${d.me.n}|${d.me.dept || "lspd"}`;
-  Object.assign(ME_ROLES, { admin: !!d.me?.admin, owner: !!d.me?.owner, six: !!d.me?.six, anita: !!d.me?.anita, dadm: !!(d.me as { dadm?: boolean } | undefined)?.dadm }); noRoles();
+  Object.assign(ME_ROLES, { admin: !!d.me?.admin, owner: !!d.me?.owner, six: !!d.me?.six, anita: !!d.me?.anita, dadm: !!(d.me as { dadm?: boolean } | undefined)?.dadm, jef: (d.me as { jef?: string } | undefined)?.jef || "" }); noRoles();
   bump(); if (guest) return; schedule();
   document.addEventListener("visibilitychange", () => { if (!document.hidden) void poll(); });
   addEventListener("online", () => { void poll(); void Sync.run(); });

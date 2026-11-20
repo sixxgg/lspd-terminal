@@ -2,7 +2,7 @@
 import { DEPT } from "./dept";
 import { LS } from "./store";
 import { DET, genderOf, getRoster, type Agent } from "./domain";
-import { rosterCall, rosterDivs } from "./units";
+import { GEN, gMap, rosterCall, rosterDivs } from "./units";
 
 export type Mov = { tipo: string; de?: string; a?: string; via?: string; t: number; por: { n: string; r: string } };
 export type Nota = { m: string; t: number; a?: string; r?: string; [k: string]: unknown };
@@ -16,7 +16,8 @@ const PROF_SEED: Record<string, { cs?: string; fr?: number; div?: string[] }> = 
 };
 export const allProfiles = () => LS.ro<Record<string, Profile>>("lspdt.profiles", {});
 /* el perfil se completa con los rosters: divisiones (METRO, SWAT, A.S.D, K-9, PSB, RTD…) e indicativo de radio */
-const withRoster = (n: string, p: Profile): Profile => { const rd = rosterDivs(n); if (rd.some(d => !p.div.includes(d))) p.div = [...p.div, ...rd.filter(d => !p.div.includes(d))]; if (!p.cs) p.cs = rosterCall(n); return p; };
+const withRoster = (n: string, p: Profile): Profile => { const rd = rosterDivs(n);
+  if (DEPT.id !== "lspd") p.div = p.div.filter(d => !GEN[d] || !!gMap(GEN[d].id)[n]); /* LSSD/SAHP: el roster de cada división manda */ if (rd.some(d => !p.div.includes(d))) p.div = [...p.div, ...rd.filter(d => !p.div.includes(d))]; if (!p.cs) p.cs = rosterCall(n); return p; };
 export function profFull(n: string, all = allProfiles()): Profile {
   const p = all[n]; if (p) return withRoster(n, Object.assign({ cond: [], lic: {}, div: [], notas: [], movs: [] }, p, { div: [...((p.div as string[]) || [])] }) as Profile);
   const s = (DEPT.id === "lspd" && PROF_SEED[n]) || {}, a = getRoster().find(x => x.n === n); /* lo cargado de fábrica es del LSPD */

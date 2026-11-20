@@ -91,11 +91,14 @@ const GEN_LSSD: Record<string, GenCfg> = Object.fromEntries([
   G("sdd", DD, ["inf", "doc", "tar"]), G("shb", "Homicide Bureau", [], DD), G("smcb", "Major Crimes Bureau", [], DD), G("snb", "Narcotics Bureau", [], DD), G("ssvb", "Special Victims Bureau", [], DD),
   G("sfcc", "Fraud and Cyber Crimes Bureau", [], DD), G("sget", "Gang Enforcement Team", [], DD), G("sossd", "Operation Safe Streets Detail", [], DD), G("sgsu", "Gang Surveillance Unit", [], DD),
   G("stb", "Training Bureau", ["inf", "ins", "doc"]), G("ssib", "Sheriff Information Bureau", ["inf", "ipu", "iev", "doc"]), G("shsiu", "High Speed Interception Unit", ["inf", "tom", "ins"], undefined, "x-high-speed-interception-unit-lssd"),
+  G("ssrd", "Social Reintegration Division", ["inf", "ins", "doc"]),
 ]);
 /* divisiones genéricas de cada departamento (el calendario junta los tres para six) */
 export const genFor = (d: string): Record<string, GenCfg> => (d === "lssd" ? GEN_LSSD : d === "sahp" ? {} : GEN_LSPD);
 onDept(() => { for (const k of Object.keys(GEN)) delete GEN[k]; Object.assign(GEN, DEPT.id === "lssd" ? GEN_LSSD : DEPT.id === "sahp" ? {} : GEN_LSPD); });
-export const gRoles = (id: string): GRole[] => roleOv(id) || GEN_ROLES;
+/* LSSD: Coordinador, Subcoordinador (los nombra Jefatura) y Miembro de la división */
+const LSSD_ROLES: GRole[] = [{ k: "coord", l: "Coordinador", c: "#e2c66a", co: true }, { k: "subcoord", l: "Subcoordinador", c: "#f3dc95", co: true }, { k: "miembro", l: "Miembro de la división", c: "#5b93b8" }];
+export const gRoles = (id: string): GRole[] => roleOv(id) || (DEPT.id === "lssd" && id in Object.fromEntries(Object.values(GEN_LSSD).map(c => [c.id, 1])) ? LSSD_ROLES : GEN_ROLES);
 export const gMap = (id: string): Record<string, string> => { const o = LS.json<Record<string, string> | null>(`lspdt.groster.${id}`, null); return o && typeof o === "object" && !Array.isArray(o) ? o : {}; };
 export const gSave = (id: string, m: Record<string, string>) => LS.setJSON(`lspdt.groster.${id}`, m);
 /* indicativo de radio en el roster de la división; en las subdivisiones de la METRO, por defecto el de la METRO */
@@ -103,17 +106,19 @@ const gCalls = (id: string) => LS.json<Record<string, string>>(`lspdt.gcall.${id
 export const gCall = (id: string, n: string) => { const c = gCalls(id)[n]; if (c !== undefined) return c; const g = Object.values(GEN).find(x => x.id === id); return g?.parent === "Metropolitan Division" ? rosterCall(n) : ""; };
 export const gSaveCall = (id: string, n: string, v: string) => LS.setJSON(`lspdt.gcall.${id}`, { ...gCalls(id), [n]: v });
 export const gRoleOf = (id: string, x: string): GRole => gRoles(id).find(r => r.k === x) || gRoles(id)[gRoles(id).length - 1] || { k: x, l: x, c: "#94a3b8" };
-export const isGMem = (id: string, n: string) => !!gMap(id)[n];
+/* Jefatura del LSSD y la SAHP: acceso completo a las divisiones de su departamento (lo mismo controla el servidor) */
+const jefIn = (id: string, n: string) => !!ME_ROLES.jef && ME_ROLES.jef === n && DEPT.id !== "lspd" && Object.values(GEN).some(c => c.id === id);
+export const isGMem = (id: string, n: string) => !!gMap(id)[n] || jefIn(id, n);
 const parentCo = (c: GenCfg, n: string): boolean => !!c.parent && (c.parent === "Metropolitan Division" ? isUCoord("md", n) : GEN[c.parent] ? isGCo(GEN[c.parent].id, n) : false);
 /* quién edita el roster: la coordinación de esa misma división y el dueño; el resto de la administración, solo si todavía no tiene coordinación */
 export function rosterCo(id: string, n: string): boolean {
   const m = gMap(id), co = (r: string) => !!gRoles(id).find(x => x.k === r)?.co;
-  return !!ME_ROLES.owner || co(m[n] || "") || (!!ME_ROLES.admin && !Object.values(m).some(co));
+  return !!ME_ROLES.owner || co(m[n] || "") || jefIn(id, n) || (!!ME_ROLES.admin && !Object.values(m).some(co));
 }
 /* el dueño de la terminal (six) puede editar todo */
 export const uRosterCo = (k: UnitKey, n: string) => !!ME_ROLES.owner || (uMap(k)[n] || []).some(x => COORD_R.includes(x));
 export function isGCo(id: string, n: string): boolean {
-  if (ME_ROLES.admin) return true;
+  if (ME_ROLES.admin || jefIn(id, n)) return true;
   const r = gMap(id)[n]; if (r && gRoleOf(id, r).co) return true;
   const c = Object.values(GEN).find(x => x.id === id); return !!c && parentCo(c, n);
 }

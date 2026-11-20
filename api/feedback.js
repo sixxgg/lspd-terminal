@@ -3,7 +3,7 @@
 import crypto from "node:crypto";
 import { q } from "../lib/db.js";
 import { audit } from "../lib/audit.js";
-import { send, body, wrap, requireUser, isSix } from "../lib/core.js";
+import { send, body, wrap, requireUser, isSix, query } from "../lib/core.js";
 
 const CHANNEL = process.env.DISCORD_FB_CHANNEL || "1551455529035898970";
 const PING = process.env.DISCORD_FB_PING || "335538916662968320";
@@ -29,12 +29,14 @@ const clean = h => String(h).replace(/<(script|style|iframe|object|embed|link|me
 async function notify(t, site) {
   const tok = (process.env.DISCORD_BOT_TOKEN || "").trim().replace(/^Bot\s+/i, ""); if (!tok) return "falta la variable DISCORD_BOT_TOKEN en Vercel (y un Redeploy después de crearla)";
   const nI = (String(t.html).match(/<img[^>]*>/gi) || []).length, txt = plain(String(t.html).replace(/<img[^>]*>/gi, ""));
-  const head = `<@${PING}> 💗 **Nuevo feedback** de **${t.who}**${t.who !== "six" && t.who !== t.by ? ` · ${t.by}` : ""}${nI ? ` · 📷 ${nI} ${nI === 1 ? "foto" : "fotos"}` : ""}${t.cat ? `\n**${{ error: "🐞 Error", idea: "💡 Idea", mejora: "✨ Mejora", otro: "💬 Otro" }[t.cat]}**${t.area ? ` · ${t.area}` : ""}` : ""}`;
+  const dep = t.dept && t.dept !== "lspd"; /* LSSD y SAHP: lo revisa su administración (CristianGV367 en el LSSD), no six */
+  const head = `${dep ? `🟢 **${t.dept.toUpperCase()}** · ` : `<@${PING}> `}💗 **Nuevo feedback** de **${t.who}**${t.who !== "six" && t.who !== t.by ? ` · ${t.by}` : ""}${nI ? ` · 📷 ${nI} ${nI === 1 ? "foto" : "fotos"}` : ""}${t.cat ? `\n**${{ error: "🐞 Error", idea: "💡 Idea", mejora: "✨ Mejora", otro: "💬 Otro" }[t.cat]}**${t.area ? ` · ${t.area}` : ""}` : ""}`;
   const content = `${head}\n>>> ${txt.length > 1500 ? txt.slice(0, 1500) + "…" : txt || "(solo fotos)"}`;
   const url = `${site}/?ir=six-not`, go = (body) => fetch(`https://discord.com/api/v10/channels/${CHANNEL}/messages`, { method: "POST", headers: { Authorization: "Bot " + tok, "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(8000) });
   try {
-    let r = await go({ content, allowed_mentions: { users: [PING] }, components: [{ type: 1, components: [{ type: 2, style: 5, label: "Abrir en la terminal", url }] }] });
-    if (r.status === 400) r = await go({ content: `${content}\n[Abrir en la terminal](<${url}>)`, allowed_mentions: { users: [PING] } }); // por si el botón no se acepta
+    const am = dep ? { parse: [] } : { users: [PING] };
+    let r = await go({ content, allowed_mentions: am, components: [{ type: 1, components: [{ type: 2, style: 5, label: "Abrir en la terminal", url }] }] });
+    if (r.status === 400) r = await go({ content: `${content}\n[Abrir en la terminal](<${url}>)`, allowed_mentions: am }); // por si el botón no se acepta
     if (r.ok) return "";
     let m = ""; try { m = (await r.json()).message || ""; } catch {}
     const hint = r.status === 401 ? "el token no es válido (¿se reseteó? copiá el nuevo en DISCORD_BOT_TOKEN y hacé Redeploy)"
@@ -61,8 +63,25 @@ async function myIds(n) {
   return ids;
 }
 
+/* tickets del departamento para su administración (LSSD: CristianGV367) */
+const FBR = /^[a-z0-9]{1,40}$/;
+async function deptTicket(u, id) {
+  if (!u.dadm || !FBR.test(String(id || ""))) return null;
+  const r = (await q("select v from kv where k=$1", ["lspdt.six.fb." + id])).rows[0]; let t = null; try { t = JSON.parse(r?.v || "null"); } catch { /* */ }
+  return t && t.dept === u.dept ? t : null;
+}
+
 export default wrap(async (req, res) => {
   const u = await requireUser(req, res); if (!u) return;
+  if (req.method === "GET" && u.dadm) {
+    const qs = query(req);
+    if (qs.dept) { const list = [];
+      for (const r of (await q("select v from kv where k like 'lspdt.six.fb.%' and v is not null")).rows) { let t; try { t = JSON.parse(r.v); } catch { continue; }
+        if (t && t.dept === u.dept && t.st !== "elim") list.push({ id: t.id, t: t.t, u: t.u || t.t, st: t.st, html: t.html, x: t.x, cat: t.cat || "", area: t.area || "", by: t.by, who: t.who, nota: t.nota || "", imgs: (t.imgs || []).length, rev: t.rev || "" }); }
+      list.sort((a, b) => b.u - a.u); return send(res, 200, { list }); }
+    if (qs.img) { const t = await deptTicket(u, qs.id), i = Number(qs.img) || 0, k = t?.imgs?.[i]; if (!k) return send(res, 404, { msg: "No está" });
+      const v = (await q("select v from kv where k=$1", [k])).rows[0]?.v || ""; return send(res, 200, { src: v }); }
+  }
   if (req.method === "GET") { // los feedback propios y su estado (para las notificaciones de cada usuario)
     const ids = (await myIds(u.n)).filter(x => /^[a-z0-9]{1,40}$/.test(x)), list = [];
     /* solo los campos del aviso (sin el texto completo ni las imágenes del ticket): esto se consulta cada 2 min por persona */
@@ -77,6 +96,13 @@ export default wrap(async (req, res) => {
   }
   if (req.method !== "POST") return send(res, 405, { error: "method" });
   const b = await body(req);
+  if (b.a === "st") { // la administración del departamento cambia el estado y deja una nota
+    const t = await deptTicket(u, b.id); if (!t) return send(res, 403, { msg: "Solo la administración del departamento" });
+    const ST = ["pend", "curso", "add", "fix", "rej"]; if (!ST.includes(b.st)) return send(res, 400, { msg: "Estado inválido" });
+    Object.assign(t, { st: b.st, nota: String(b.nota || "").slice(0, 2000), u: Date.now(), rev: u.n });
+    await q("update kv set v=$2, t=nextval('kv_seq'), by=$3, at=$4 where k=$1", ["lspdt.six.fb." + t.id, JSON.stringify(t), u.n, Date.now()]);
+    await audit(u.n, "revisó feedback", "feedback", `${t.id} → ${b.st}`); return send(res, 200, { ok: true });
+  }
   if (b.test) { // prueba del aviso (solo six)
     if (!isSix(u)) return send(res, 403, { msg: "Solo six" });
     const dc = await notify({ by: u.n, who: "six", html: "✅ Prueba del aviso de feedback de la terminal." }, siteOf(req));
