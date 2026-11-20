@@ -3,7 +3,7 @@
    solo la ven los miembros de esa división.
    Datos: lspdt.uprof.<slug> (solo el dueño), .ban (portada), lspdt.ucom.<slug> (comentarios), lspdt.uvis.<slug> (visitas), lspdt.ufol.<slug> (seguidores). */
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Activity, Check, Bold, Camera, Eye, Heading1, Heading2, Heading3, IdCard, Italic, List, Lock, MessageSquare, Pencil, Quote, Save, Send, Strikethrough, Trash2, Trophy, Underline, UserCheck, UserPlus, Users, X, type LucideIcon } from "lucide-react";
+import { Activity, NotebookPen, Check, Bold, Camera, Eye, Heading1, Heading2, Heading3, IdCard, Italic, List, Lock, MessageSquare, Pencil, Quote, Save, Send, Strikethrough, Trash2, Trophy, Underline, UserCheck, UserPlus, Users, X, type LucideIcon } from "lucide-react";
 import { Button, Card, Textarea } from "@/components/ui";
 import { Avatar, RankBadge } from "@/components/agents";
 import { Ribbon, RibbonRack } from "@/components/ribbon";
@@ -109,6 +109,21 @@ function VerifPick({ n }: { n: string }) {
   return <select aria-label="Verificación" title="Verificación del perfil (solo six)" value={v} onChange={e => setVerif(n, e.target.value as VTier | "")}
     className="rounded-lg border border-slate-200 bg-transparent px-1.5 py-0.5 text-xs text-slate-500 outline-none focus:border-brand-500 dark:border-slate-700">
     <option value="">Sin verificar</option>{(Object.keys(VERIF) as VTier[]).map(k => <option key={k} value={k}>{VERIF[k].l}</option>)}</select>;
+}
+
+/* bloc de notas del perfil: solo lo ve su dueño (lspdt.unote.<slug>, privado también en el servidor). Se guarda solo mientras escribís. */
+function Notas({ n }: { n: string }) {
+  const k = `lspdt.unote.${slugOf(n)}`, [v, setV] = useState(() => LS.get(k) || ""), [st, setSt] = useState<"" | "w" | "ok">(""), cur = useRef(v);
+  cur.current = v;
+  useEffect(() => { if (v === (LS.get(k) || "")) return; setSt("w"); const t = setTimeout(() => { LS.set(k, v); setSt("ok"); }, 700); return () => clearTimeout(t); }, [v, k]);
+  useEffect(() => () => { if (cur.current !== (LS.get(k) || "")) LS.set(k, cur.current); }, [k]);
+  return (
+    <Card className="p-4">
+      <p className="mb-0.5 flex items-center gap-2 text-sm font-semibold"><NotebookPen className="size-4 text-slate-400" />Bloc de notas
+        <span className={cn("ml-auto text-[11px] font-normal", st === "ok" ? "text-emerald-500" : "text-slate-400")}>{st === "w" ? "Guardando…" : st === "ok" ? "Guardado" : ""}</span></p>
+      <p className="mb-2 flex items-center gap-1 text-[11px] text-slate-400"><Lock className="size-3" />Solo lo ves vos</p>
+      <Textarea rows={8} value={v} onChange={e => setV(e.target.value)} placeholder="Anotá lo que quieras: se guarda solo y lo podés editar cuando quieras." className="resize-y text-sm leading-relaxed" />
+    </Card>);
 }
 
 export function Perfil() {
@@ -218,6 +233,7 @@ export function Perfil() {
             {ed ? <div className="space-y-2"><BioEditor v={bio} set={setBio} />
               <div className="flex justify-end gap-1.5"><Button size="sm" variant="ghost" icon={<X />} onClick={() => { setBio(P.bio || ""); setEd(false); }}>Cancelar</Button><Button size="sm" icon={<Save />} onClick={() => { saveP({ bio: bio.trim().slice(0, 2000) }); setEd(false); toast("Guardado"); }}>Guardar</Button></div></div>
               : P.bio ? <Md s={P.bio} /> : <p className="text-sm text-slate-400">{own ? "Escribí algo sobre vos." : "Sin información."}</p>}</Card>
+          {own && <Notas key={who} n={who} />}
           <Card className="p-4"><p className="mb-1 flex items-center gap-2 text-sm font-semibold"><Eye className="size-4 text-slate-400" />Visitantes recientes</p>
             <p className="mb-2 text-xs text-slate-400">{vis.c.toLocaleString("es-AR")} visitas al perfil</p>
             {vis.l.length ? <div className="divide-y divide-slate-100 dark:divide-slate-800">{vis.l.slice(0, 6).map(v => (

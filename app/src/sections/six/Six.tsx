@@ -2,7 +2,7 @@
    Pestañas: Inicio y, de la A a la Z, Administración · Comunicados · Equipo de ilícitos · Gestión de staff · Notificaciones. Los datos van en lspdt.six.* (el servidor no se los muestra a nadie más). */
 import "./six.css";
 import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
-import { AtSign, Bell, Check, KeyRound, Link2, ChevronRight, Copy, Home, Lock, Megaphone, Plus, Power, RefreshCw, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X, ScrollText, Search, Banknote, Pin, Upload, Globe, Crosshair } from "lucide-react";
+import { AtSign, Bell, Check, KeyRound, Link2, ChevronRight, Copy, Home, Lock, Megaphone, Plus, Power, RefreshCw, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X, ScrollText, Search, Banknote, Pin, Upload, Globe, Crosshair, Drama, PersonStanding } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
 import { api, authApi } from "@/lib/api";
 import { discordHtml } from "@/lib/discord";
@@ -14,6 +14,8 @@ import { DC_CHANS, DC_ROLES, PLANTILLAS, STAFF_ROLE, STATS0, comTitle, splitComs
 import { RobosTab } from "./RobosTab";
 import { SitioTab } from "./Sitio";
 import { ArmasTab } from "./Armas";
+import { PedsTab } from "./Peds";
+import { PlaymakersTab } from "./Playmakers";
 import { NotifTab, fbList, whoOf, FB_SEEN } from "./Notif";
 import { LS, reloadAll, useJSON } from "@/lib/store";
 import { GUEST_OPTS } from "@/lib/guest";
@@ -24,7 +26,7 @@ type Staff = { id: string; n: string; rol: string; dc: string; notas: string };
 type Com = { id: string; t: string; body: string; ts: number; pin?: boolean };
 type Sent = { id: string; ts: number; banda: string; res: IlicForm["res"]; txt: string };
 const ROLES = ["Owner", "Administración", "Moderación", "Soporte", "Ilícitos", "Desarrollo", "Otro"];
-const TABS = [["ini", "INICIO", Home], ["rob", "ROBOS", Banknote], ["web", "SITIO WEB", Globe], ["arm", "ARMAS", Crosshair], ["adm", "ADMINISTRACIÓN", Settings2], ["com", "COMUNICADOS", Megaphone], ["ilic", "EQUIPO DE ILÍCITOS", Skull], ["staff", "GESTIÓN DE STAFF", Users], ["not", "NOTIFICACIONES", Bell], ["logs", "LOGS", ScrollText]] as const;
+const TABS = [["ini", "INICIO", Home], ["rob", "ROBOS", Banknote], ["web", "SITIO WEB", Globe], ["arm", "ARMAS", Crosshair], ["peds", "PEDS", PersonStanding], ["pm", "PLAYMAKERS", Drama], ["adm", "ADMINISTRACIÓN", Settings2], ["com", "COMUNICADOS", Megaphone], ["ilic", "EQUIPO DE ILÍCITOS", Skull], ["staff", "GESTIÓN DE STAFF", Users], ["not", "NOTIFICACIONES", Bell], ["logs", "LOGS", ScrollText]] as const;
 type Tab = (typeof TABS)[number][0];
 const LOCKED = (): Tab[] => (NS.id === "six" ? ["staff"] : []); // en six: próximamente
 const NAME = () => (NS.id === "six" ? "six" : "anita");
@@ -82,7 +84,7 @@ function Ticker({ f }: { f: () => string }) {
 
 export function Six({ onExit, start = "ini", who = "six", resume }: { onExit: () => void; start?: "ini" | "not"; who?: Who; resume?: boolean }) {
   NS.id = who; /* todo lo que sigue usa el espacio de este panel */
-  const C0 = cfg0(who), [cfg, setCfg] = useJSON<SixCfg>(cfgKey(who), C0), c = { ...C0, ...cfg }, tabs = TABS.filter(t => who === "six" || !["not", "logs", "rob", "web"].includes(t[0]));
+  const C0 = cfg0(who), [cfg, setCfg] = useJSON<SixCfg>(cfgKey(who), C0), c = { ...C0, ...cfg }, tabs = TABS.filter(t => (who === "six" ? t[0] !== "pm" : !["not", "logs", "rob", "web"].includes(t[0])));
   /* al recargar (resume) vuelve a la misma pestaña y sin repetir la intro */
   const [tab, setTab0] = useState<Tab>(() => { let t: string | null = null; try { t = resume ? sessionStorage.getItem("lspdt.panelTab") : null; } catch { /* */ } return t && TABS.some(x => x[0] === t) ? (t as Tab) : start; });
   const setTab = (t: Tab) => { setTab0(t); try { sessionStorage.setItem("lspdt.panelTab", t); } catch { /* */ } };
@@ -123,6 +125,8 @@ export function Six({ onExit, start = "ini", who = "six", resume }: { onExit: ()
           : tab === "rob" && who === "six" ? <RobosTab />
           : tab === "web" && who === "six" ? <SitioTab />
           : tab === "arm" ? <ArmasTab />
+          : tab === "peds" ? <PedsTab />
+          : tab === "pm" && who !== "six" ? <PlaymakersTab />
           : tab === "not" ? <NotifTab />
           : tab === "logs" && who === "six" ? <LogsTab />
           : tab === "adm" ? <AdmTab c={c} set={set} replay={() => { setReplay(x => x + 1); setBooted(false); }} />
@@ -154,6 +158,8 @@ function HomeTab({ go, unread, staff }: { go: (t: Tab) => void; unread: number; 
     ["ilic", "Equipo de ilícitos", Skull, `${sent.length} respuestas`, sent.length ? `Última: ${sent[sent.length - 1].banda}` : "Sin respuestas todavía"],
     ["staff", "Gestión de staff", Users, `${staff} en el equipo`, six ? "Próximamente" : "Tu equipo"],
     ["com", "Comunicados", Megaphone, `${com.length} guardados`, "Plantillas, estadísticas y vista de Discord"],
+    ...(six ? [] : [["pm", "Playmakers", Drama, "🎭 Mensajes de tickets", "Para copiar y pegar en Discord"] as [Tab, string, typeof Bell, string, string]]),
+    ["peds", "PEDs", PersonStanding, "860 modelos", "Con imagen, modelo y hash"],
     ["adm", "Administración", Settings2, "Tema, efectos e intro", six ? "Avisos de Discord" : "Colores y efectos"],
   ];
   return (
