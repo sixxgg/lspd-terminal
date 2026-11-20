@@ -13,9 +13,10 @@ import { Col, Split } from "@/components/layout";
 import { LUGARES, fmtDate, findAgent, lvl, norm, rankES, uid } from "@/lib/domain";
 import { LS, ME_ROLES, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { K9_PL, MD_CALLS, UNITS, uRosterCo, unitRoles, insRole, isUCoord, isUMem, uMap, uSaveMap, uTop, type UnitKey } from "@/lib/units";
+import { K9_PL, MD_CALLS, UNITS, rosterCall, uRosterCo, unitRoles, insRole, isUCoord, isUMem, uMap, uSaveMap, uTop, type UnitKey } from "@/lib/units";
 import { unitPalette } from "@/lib/divisions";
 import { setCall } from "@/lib/mdcalls";
+import { CsBadges } from "@/components/csbadges";
 import { cn } from "@/lib/cn";
 import { Psb, dcIdOf } from "./Psb";
 import { RoleEditor } from "./Gen";
@@ -135,7 +136,7 @@ function Roster({ k, pal }: { k: UnitKey; pal: Record<string, string> }) {
   return <RosterBoard ab={u.ab} roles={u.R.map(([x, l]) => ({ k: x, l, c: pal[x] }))} subs={(u.SUB || []).map(([x, l]) => ({ k: x, l, c: pal[x] || "#94a3b8" }))} map={m} canEdit={co} onSave={x => uSaveMap(k, x)}
     call={k === "md" ? { l: "Indicativo", ph: "R20D", get: callOf, set: (n, v) => setCall(n, v, me.n, "miembro") } : undefined}
     disc={k === "psb" ? { l: "Discord ID", ph: "123456789012345678", get: n => LS.json<Record<string, string>>("lspdt.psbIds", {})[n] || dcIdOf(n), set: (n, v) => { const M = LS.json<Record<string, string>>("lspdt.psbIds", {}); if (v) M[n] = v; else delete M[n]; LS.setJSON("lspdt.psbIds", M); } } : undefined}
-    tags={n => <>{k === "k9" && <DogEd n={n} can={false} />}{k === "asd" && asdSusp(n) && <span title={asdSuspTxt(n)} className="inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-300">Patrullaje aéreo suspendido</span>}</>}
+    tags={n => <>{k === "md" && <CsBadges s={rosterCall(n)} />}{k === "k9" && <DogEd n={n} can={false} />}{k === "asd" && asdSusp(n) && <span title={asdSuspTxt(n)} className="inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-300">Patrullaje aéreo suspendido</span>}</>}
     info={n => K9_PL[n] ? `#${K9_PL[n]} · fuera del roster cargado` : ""}
     editExtra={k === "k9" ? n => <Field label="K-9 asignado"><DogEd n={n} can /></Field> : undefined} />;
 }

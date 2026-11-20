@@ -16,6 +16,7 @@ import { getRoster } from "@/lib/domain";
 import { UNITS, insRole, rosterCall, uMap, uTop } from "@/lib/units";
 import { CS_CFG0, K_CFG, K_LOG, K_RES, MOVE_L, emOf, metroComm, csNums, csTok, isReserva, logOf, moveMember, resOf, setCall, setReserva, withTok, type CsCfg, type CsLog, type CsTipo, type Move } from "@/lib/mdcalls";
 import { cn } from "@/lib/cn";
+import { CsBadges } from "@/components/csbadges";
 
 type Ser = "D" | "C";
 type P = { n: string; role: string; c: string; tipo: CsTipo; asp: boolean; swat: boolean };
@@ -25,21 +26,21 @@ const SEC: Record<Ser, { l: string; sub: string; acc: string; from: number; top0
 };
 /* qué es cada casilla según su número */
 const slotRole = (s: Ser, n: number): [string, string] => s === "D"
-  ? n < 10 ? ["Mando", "#a78bfa"] : n % 10 === 0 ? ["Team Leader · Pelotón D", "#f5a524"] : n % 10 === 5 ? ["Instructor", "#22c55e"] : ["Operador SWAT", "#e05a52"]
-  : n === 30 ? ["Team Pelotón Leader", "#f5a524"] : ["METRO", "#3b8fd9"];
-const LEG: Record<Ser, [string, string][]> = { D: [["Mando (R01D–R09D)", "#a78bfa"], ["Team Leader (termina en 0)", "#f5a524"], ["Instructor (termina en 5)", "#22c55e"], ["Operador", "#e05a52"]],
-  C: [["Team Pelotón Leader (R30C)", "#f5a524"], ["Operador / aspirante", "#3b8fd9"]] };
+  ? n < 10 ? ["Mando", "#a78bfa"] : n % 10 === 0 ? ["Team Leader · Pelotón D", "#f5a524"] : n % 10 === 5 ? ["Instructor SWAT", "#22c55e"] : ["Operador SWAT", "#e05a52"]
+  : n % 10 === 0 ? ["Líder de Pelotón C", "#38bdf8"] : ["METRO", "#3b8fd9"];
+const LEG: Record<Ser, [string, string][]> = { D: [["Mando (R01D–R09D)", "#a78bfa"], ["Team Leader Pelotón D (termina en 0)", "#f5a524"], ["Instructor SWAT (termina en 5)", "#22c55e"], ["Operador", "#e05a52"]],
+  C: [["Líder de Pelotón C (termina en 0)", "#38bdf8"], ["Operador / aspirante", "#3b8fd9"]] };
 const fecha = (t: number) => { const d = new Date(t), p = (x: number) => String(x).padStart(2, "0"); return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`; };
 const parseN = (v: string) => { const m = v.trim().match(/^R?\s*(\d{1,3})\s*[CD]?$/i) || v.match(/(\d{1,3})/); return m ? +m[1] : 0; };
 
 export function MetroCalls({ can }: { can: boolean }) {
-  useStoreVersion();
+  const ver = useStoreVersion();
   const me = useMe(), { toast, confirm } = useFeedback(), M = uMap("md"), R = UNITS.md.R;
   const [ser, setSer] = useState<Ser>(() => (localStorage.getItem("lspdt.next.csSer") === "C" ? "C" : "D"));
   const go = (s: Ser) => { setSer(s); setSel(""); try { localStorage.setItem("lspdt.next.csSer", s); } catch { /* */ } };
   const [q, setQ] = useState(""), [sel, setSel] = useState(""), [hq, setHq] = useState(""), [hn, setHn] = useState(40), [nuevo, setNuevo] = useState(""), [extra, setExtra] = useState<string[]>([]);
   const [cfg, setCfg] = useJSON<CsCfg & { dTop?: number; cTop?: number }>(K_CFG, CS_CFG0), [cfgOpen, setCfgOpen] = useState(false);
-  const log = logOf(), res = resOf();
+  const log = logOf(), res = useMemo(() => resOf(), [ver]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* personas: roster de METRO (con su rol y si es SWAT), aspirantes del examen práctico y reservas */
   const people = useMemo<P[]>(() => {
@@ -130,12 +131,11 @@ export function MetroCalls({ can }: { can: boolean }) {
             {!can && <span className="text-[11px] text-slate-400">Solo lectura</span>}</div>
           {groups.map(([gl, L]) => L.length > 0 && <div key={gl}>
             <div className="border-b border-slate-100 bg-slate-50 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[.14em] text-slate-500 dark:border-slate-800 dark:bg-slate-900/60">{gl} <span className="font-mono text-slate-400">{L.length}</span></div>
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">{L.map(p => { const n = numOf(p), on = sel === p.n, d = n > 0 && (occ[ser].get(n) || []).length > 1, [rl, rc] = n ? slotRole(ser, n) : ["", ""], other = csNums(callOf(p), ser === "D" ? "C" : "D")[0]; return (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">{L.map(p => { const n = numOf(p), on = sel === p.n, d = n > 0 && (occ[ser].get(n) || []).length > 1, other = csNums(callOf(p), ser === "D" ? "C" : "D")[0]; return (
               <div key={p.n} onClick={() => can && setSel(on ? "" : p.n)} className={cn("flex items-center gap-3 px-4 py-2 transition", can && "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40", on && "bg-[color-mix(in_srgb,var(--a)_12%,transparent)] hover:bg-[color-mix(in_srgb,var(--a)_12%,transparent)]")}>
                 <Avatar n={p.n} size={30} />
                 <div className="min-w-0 flex-1"><b className="block truncate text-[13.5px]">{p.n}</b>
-                  <span className="text-[11px] font-semibold" style={{ color: p.c }}>{p.role}</span>{other ? <span className="ml-1.5 font-mono text-[10.5px] text-slate-400">· {csTok(other, ser === "D" ? "C" : "D")}</span> : null}</div>
-                {n > 0 && <span className="hidden rounded-md px-1.5 py-0.5 text-[10px] font-bold sm:inline" style={{ background: rc + "22", color: rc }}>{rl}</span>}
+                  <span className="text-[11px] font-semibold" style={{ color: p.c }}>{p.role}</span><CsBadges s={callOf(p)} className="ml-1.5 align-middle" />{other ? <span className="ml-1.5 font-mono text-[10.5px] text-slate-400">· {csTok(other, ser === "D" ? "C" : "D")}</span> : null}</div>
                 {can ? <input key={n} defaultValue={n ? csTok(n, ser) : ""} placeholder={on ? "Elegí en el mapa" : "—"} onClick={e => { e.stopPropagation(); setSel(p.n); }}
                   onBlur={e => { const v = parseN(e.target.value); if (v !== n) { if (v && !free(v) && !(occ[ser].get(v) || []).includes(p.n)) { toast(`${csTok(v, ser)} ya lo tiene ${(occ[ser].get(v) || []).join(", ")}`, "err"); e.target.value = n ? csTok(n, ser) : ""; return; } setNum(p, v); } }}
                   onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()}

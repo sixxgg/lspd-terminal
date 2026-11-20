@@ -30,7 +30,7 @@ export function DivHero({ d }: { d: string }) {
           <p className="dv-hero-k text-[11px] font-bold uppercase tracking-[0.2em]">{LSSD_INFO[d] && DEPT.id === "lssd" ? `${DEPTS.lssd.name} · ${LSSD_INFO[d].of}` : DEPTS[DEPT.id].name}</p>
           <h2 className="dv-hero-t mt-1 text-2xl font-extrabold uppercase tracking-tight text-white sm:text-[2rem]">{d}</h2>
           <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-white/80">{DIV_DESC[d] || divAb(d)[0]}</p>
-          {subs.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{subs.map(x => <span key={x} className="rounded-full border border-white/15 bg-white/[.07] px-2.5 py-0.5 text-[11px] font-medium text-white/80 backdrop-blur">{x}</span>)}</div>}
+          {subs.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{subs.map(x => <span key={x} className="rounded-full border border-white/15 bg-white/[.07] px-2.5 py-0.5 text-[11px] font-medium text-white/80">{x}</span>)}</div>}
         </div>
       </div>
     </div>

@@ -96,7 +96,7 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
         <Bell className="size-4" />{unread > 0 && <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-pink-500 px-1 text-[10px] font-bold text-white">{unread > 9 ? "9+" : unread}</span>}</button>
       {/* centro de notificaciones: baja desde arriba dentro de la tablet, con tarjetas como los avisos del sistema */}
       {createPortal(<div className={cn(host ? "absolute" : "fixed", "inset-0 z-[85]", open ? "pointer-events-auto" : "pointer-events-none")} aria-hidden={!open}>
-        <div onClick={() => setOpen(false)} className={cn("absolute inset-0 bg-slate-950/55 backdrop-blur-md transition-opacity duration-300", open ? "opacity-100" : "opacity-0")} />
+        <div onClick={() => setOpen(false)} className={cn("absolute inset-0 bg-slate-950/55 transition-opacity duration-300", open ? "opacity-100 backdrop-blur-md" : "invisible opacity-0")} />
         <div role="dialog" aria-label="Notificaciones" className={cn("absolute inset-x-0 top-0 mx-auto flex max-h-full w-[min(480px,100%)] flex-col px-3 pt-3 transition duration-300 ease-[cubic-bezier(.2,.8,.2,1)]", open ? "translate-y-0 opacity-100" : "-translate-y-8 opacity-0")}>
           <div className="flex items-end gap-2 px-1 pb-3 text-white">
             <div className="min-w-0 flex-1"><p className="font-display text-2xl font-bold leading-none">Notificaciones</p>

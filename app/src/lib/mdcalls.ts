@@ -28,8 +28,11 @@ export function metroComm(o: { cfg: Partial<CsCfg>; title: string; intro: string
   return L.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
-export const resOf = () => LS.json<Record<string, string>>(K_RES, {});
-export const logOf = () => { const L = LS.json<CsLog[]>(K_LOG, []); return Array.isArray(L) ? L : []; };
+/* lecturas frecuentes con caché mientras el texto guardado no cambie (resOf devuelve copia porque se modifica antes de guardar) */
+const CJ: Record<string, { raw: string | null; v: unknown }> = {};
+function cj<T>(k: string, d: T): T { const raw = LS.get(k), c = CJ[k]; if (c && c.raw === raw) return c.v as T; const v = LS.json<T>(k, d); CJ[k] = { raw, v }; return v; }
+export const resOf = () => ({ ...cj<Record<string, string>>(K_RES, {}) });
+export const logOf = () => { const L = cj<CsLog[]>(K_LOG, []); return Array.isArray(L) ? L : []; };
 /* callsign vigente de alguien: el del roster si es miembro, si no su reserva */
 export const callOfAny = (n: string) => rosterCall(n) || resOf()[n] || "";
 /* números de cada serie dentro de un texto («R20D · R30C» → D20, C30). La serie D también acepta el formato viejo «D-01» (= R01D) */
@@ -59,8 +62,9 @@ const setCalls = (n: string, v: string) => LS.setJSON(K_CALLS, { ...MD_CALLS, ..
 
 /* «Reserva»: aspirante aprobado o futuro integrante que queda a la espera de lugar (otra etiqueta, aparte de Aspirante) */
 const K_TAG = "lspdt.mdx.csTag";
-const tagOf = () => LS.json<Record<string, string>>(K_TAG, {});
-export const isReserva = (n: string) => tagOf()[n] === "reserva";
+const tagOf = () => ({ ...cj<Record<string, string>>(K_TAG, {}) });
+const reservas = () => cj<Record<string, string>>(K_TAG, {});
+export const isReserva = (n: string) => reservas()[n] === "reserva";
 export function setReserva(n: string, on: boolean, by: string) {
   const T = tagOf(); if (on) T[n] = "reserva"; else delete T[n]; LS.setJSON(K_TAG, T);
   const c = callOfAny(n); pushLog({ by, n, de: c, a: c, tipo: rosterCall(n) ? "miembro" : "reserva", mot: on ? "Queda en reserva" : "Sale de la reserva" });

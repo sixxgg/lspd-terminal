@@ -17,6 +17,9 @@ import { api } from "@/lib/api";
 import { rosterCall, uMap, uRosterCo, uSaveMap } from "@/lib/units";
 import { CS_CFG0, K_CFG, callOfAny, csNums, csTok, isReserva, metroComm, moveMember, resOf, setCall, setReserva, withTok, type CsCfg } from "@/lib/mdcalls";
 import { cn } from "@/lib/cn";
+import { CsBadges } from "@/components/csbadges";
+/* convocatorias de archivo (solo lectura): las marcadas así en lo guardado o en la planilla inicial */
+const archIds0 = (a: Conv[], b: Conv[]) => new Set([...a, ...b].filter(x => x.arch).map(x => x.id));
 
 type As = "" | "si" | "jus" | "ret" | "no";
 type S = Record<string, number>;
@@ -93,25 +96,25 @@ function apply(T: Ty, L: Conv[], mine: Record<string, V>): Conv[] {
 const same = (a: V, b: V) => (a === DEL ? undefined : a ?? "") === (b === DEL ? undefined : b ?? "") || (a === DEL && b === undefined) || (b === DEL && a === undefined);
 
 /* ---------- celdas ---------- */
-function Nota({ v, set, busy }: { v?: number; set: (x?: number) => void; busy?: string }) {
+function Nota({ v, set, busy, ro }: { v?: number; set: (x?: number) => void; busy?: string; ro?: boolean }) {
   const [t, setT] = useState<string | null>(null);
   const shown = t ?? (typeof v === "number" ? String(v).replace(".", ",") : "");
   const commit = () => { if (t === null) return; const x = parseFloat(t.replace(",", ".")); set(t.trim() === "" || isNaN(x) ? undefined : Math.min(10, Math.max(0, x))); setT(null); };
-  return <input inputMode="decimal" value={shown} placeholder="–" title={busy ? `${busy} lo está cambiando` : "Nota de 0 (peor) a 10 (mejor)"} onChange={e => setT(e.target.value)} onBlur={commit} onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+  return <input inputMode="decimal" readOnly={ro} tabIndex={ro ? -1 : undefined} value={shown} placeholder="–" title={busy ? `${busy} lo está cambiando` : "Nota de 0 (peor) a 10 (mejor)"} onChange={e => setT(e.target.value)} onBlur={commit} onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
     className={cn("h-8 w-12 rounded-lg border bg-transparent text-center text-[13px] tabular-nums outline-none transition focus:border-brand-500 focus:bg-white dark:focus:bg-slate-900",
       typeof v === "number" ? tone(v) : "border-dashed border-slate-200 dark:border-slate-700", busy && "ring-2 ring-amber-400/70 ring-offset-1 ring-offset-white dark:ring-offset-slate-900")} />;
 }
-function Asis({ T, v, set, busy }: { T: Ty; v: As; set: (x: As) => void; busy?: string }) {
+function Asis({ T, v, set, busy, ro }: { T: Ty; v: As; set: (x: As) => void; busy?: string; ro?: boolean }) {
   return <div title={busy ? `${busy} lo está cambiando` : undefined} className={cn("inline-flex rounded-lg border border-slate-200 p-0.5 dark:border-slate-700", busy && "ring-2 ring-amber-400/70")}>
-    {T.as.map(k => [k, ...AS_ALL[k]] as const).map(([k, l, I, on]) => <button key={k} title={l} aria-label={l} aria-pressed={v === k} onClick={() => set(v === k ? "" : k)}
+    {T.as.map(k => [k, ...AS_ALL[k]] as const).map(([k, l, I, on]) => <button key={k} title={l} aria-label={l} aria-pressed={v === k} disabled={ro && v !== k} onClick={() => set(v === k ? "" : k)}
       className={cn("grid size-7 place-items-center rounded-md border border-transparent transition", v === k ? on : "text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white")}><I className="size-3.5" strokeWidth={2.6} /></button>)}
   </div>;
 }
 
-function Bonus({ v, set }: { v?: number; set: (x?: number) => void }) {
+function Bonus({ v, set, ro }: { v?: number; set: (x?: number) => void; ro?: boolean }) {
   const [t, setT] = useState<string | null>(null), shown = t ?? (typeof v === "number" ? "+" + String(v).replace(".", ",") : "");
   const commit = () => { if (t === null) return; const x = parseFloat(t.replace(",", ".").replace("+", "")); set(t.trim() === "" || isNaN(x) || x === 0 ? undefined : Math.min(2, Math.max(0, x))); setT(null); };
-  return <input inputMode="decimal" value={shown} placeholder="+0" title="Bonus que se suma al promedio (0 a 2)" onChange={e => setT(e.target.value)} onBlur={commit} onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+  return <input inputMode="decimal" readOnly={ro} tabIndex={ro ? -1 : undefined} value={shown} placeholder="+0" title="Bonus que se suma al promedio (0 a 2)" onChange={e => setT(e.target.value)} onBlur={commit} onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
     className={cn("h-8 w-12 rounded-lg border bg-transparent text-center text-[13px] tabular-nums outline-none transition focus:border-brand-500", typeof v === "number" ? "border-violet-400/50 bg-violet-500/10 text-violet-700 dark:text-violet-300" : "border-dashed border-slate-200 dark:border-slate-700")} />;
 }
 
@@ -137,12 +140,17 @@ function Prac({ T }: { T: Ty }) {
   const putDr = (d: typeof dr) => { setDr(d); try { localStorage.setItem(DRAFT, JSON.stringify(d)); } catch { /* */ } };
   const S0 = useMemo(() => flat(T, stored), [stored]), view = useMemo(() => apply(T, stored, dr.mine), [stored, dr.mine]); // eslint-disable-line react-hooks/exhaustive-deps
   const [cid, setCid] = useState(""), [nuevo, setNuevo] = useState(""), [pick, setPick] = useState(""), [desg, setDesg] = useState(false), [saving, setSaving] = useState(false);
+  const agNames = useMemo(() => getRoster().map(a => a.n), [ver]); // eslint-disable-line react-hooks/exhaustive-deps
   const [exR, setExR] = useState(""), [conf, setConf] = useState<{ k: string; theirs: V; mine: V }[] | null>(null);
-  const c = view.find(x => x.id === cid) || view[view.length - 1], savedC = stored.find(x => x.id === c.id);
+  const c = view.find(x => x.id === cid) || view[view.length - 1], savedC = stored.find(x => x.id === c.id), ro = archIds0(stored, SEED).has(c.id);
   const nCh = Object.keys(dr.mine).filter(k => !same(dr.mine[k], S0[k])).length;
 
   /* editar = anotar el cambio sobre lo guardado (si vuelve al valor guardado, deja de ser cambio) */
-  const editMany = (ch: Record<string, V>) => {
+  const archIds = archIds0(stored, SEED);
+  const editMany = (ch0: Record<string, V>) => {
+    const ch = Object.fromEntries(Object.entries(ch0).filter(([k]) => !archIds.has(k.split("|")[0])));
+    if (Object.keys(ch).length < Object.keys(ch0).length) toast("Esa convocatoria es de archivo: no se puede editar ni borrar", "err");
+    if (!Object.keys(ch).length) return;
     const mine = { ...dr.mine }, base = { ...dr.base };
     for (const [k, v] of Object.entries(ch)) { if (!(k in mine)) base[k] = S0[k]; mine[k] = v; if (same(v, S0[k]) && same(S0[k], base[k])) { delete mine[k]; delete base[k]; } }
     putDr({ mine, base }); live.current.k = Object.keys(mine); live.current.dirty = true;
@@ -200,7 +208,7 @@ function Prac({ T }: { T: Ty }) {
   useEffect(() => { let on = true, tm = 0;
     tick.current = async () => { window.clearTimeout(tm); const { dirty, ...v } = live.current;
       const r = await api("/api/live", { b: K, ...(dirty ? { s: { k: v.k.slice(0, 300), go: v.go, sv: v.sv, svk: v.svk?.slice(0, 300) } } : {}) }).catch(() => null); if (!on) return;
-      if (r && r.__s === 200) { live.current.dirty = false; const O = ((r.o || []) as Live[]).filter(o => o.v); setOthers(O); liveKt.current = r.kt || 0;
+      if (r && r.__s === 200) { live.current.dirty = false; const O = ((r.o || []) as Live[]).filter(o => o.v); setOthers(prev => (JSON.stringify(prev.map(x => [x.n, x.v])) === JSON.stringify(O.map(x => [x.n, x.v])) ? prev : O)); liveKt.current = r.kt || 0;
         if (r.kt > ktOf(K)) void syncWait();
         const myK = new Set(Object.keys(mineRef.current));
         for (const o of O) { const v = o.v!, ov = (L?: string[]) => (L || []).filter(k => myK.has(k));
@@ -262,9 +270,9 @@ function Prac({ T }: { T: Ty }) {
         </div>
       </div>
 
-      {c.arch && <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/60"><Archive className="size-4" />Convocatoria de archivo: queda como recuerdo, con gente que ya no está en la división. Para la próxima, creá una nueva con «+».</div>}
+      {c.arch && <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/60"><Archive className="size-4" />Convocatoria de archivo: queda como recuerdo, con gente que ya no está en la división. Es de solo lectura: nadie puede editar ni borrar nada. Para la próxima, creá una nueva con «+».</div>}
       {/* cambios sin guardar */}
-      {nCh > 0 && <div className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-amber-400/50 bg-amber-50/95 px-3 py-2 text-sm shadow-sm backdrop-blur dark:bg-amber-950/80">
+      {nCh > 0 && <div className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-amber-400/50 bg-amber-50 px-3 py-2 text-sm shadow-sm dark:bg-amber-950">
         <span className="size-2 animate-pulse rounded-full bg-amber-500" /><b className="text-amber-800 dark:text-amber-200">{nCh} cambio{nCh === 1 ? "" : "s"} sin guardar</b>
         <span className="text-xs text-amber-700/80 dark:text-amber-300/80">Los demás ven lo guardado hasta que guardes.</span>
         <div className="ml-auto flex gap-2"><Button variant="ghost" size="sm" icon={<RotateCcw />} onClick={discard}>Descartar</Button><Button size="sm" icon={<Save />} onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</Button></div>
@@ -284,19 +292,19 @@ function Prac({ T }: { T: Ty }) {
           </thead>
           <tbody>{res.length ? res.map(({ r, g, st }) => { const isNew = !savedC?.rows.some(x => x.id === r.id), csN = cs.nums(rcs(r)), dup = csN.some(x => cs.dup.includes(x)); return (
             <tr key={r.id} className={cn("group border-b border-slate-100 last:border-0 dark:border-slate-800", isNew && "bg-amber-400/[.04]")}>
-              <td className="px-3 py-1.5"><div className="flex items-center gap-1.5"><b className="whitespace-nowrap">{r.n}</b>
+              <td className="px-3 py-1.5"><div className="flex items-center gap-1.5"><b className="whitespace-nowrap">{r.n}</b>{T.cs && <CsBadges s={rcs(r)} />}
                 {T.cs && !inRoster(r.n) && (canRoster ? <button title="No está en el roster de METRO: sumarlo como aspirante" onClick={() => { uSaveMap("md", { ...M, [r.n]: ["asp"] }); toast(`${r.n} sumado al roster como aspirante`); }} className="inline-flex items-center gap-0.5 rounded-md bg-slate-100 px-1 py-0.5 text-[10px] font-semibold text-slate-500 hover:bg-brand-500/15 hover:text-brand-600 dark:bg-slate-800"><UserPlus className="size-3" />roster</button>
                   : <span title="No está en el roster de METRO" className="text-[10px] text-slate-400">fuera del roster</span>)}
                 {isReserva(r.n) && <span className="rounded-md bg-teal-500/15 px-1.5 py-0.5 text-[10px] font-bold text-teal-600 dark:text-teal-300">Reserva</span>}
                 {opOf(r.n) && <span className="rounded-md bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold text-sky-600 dark:text-sky-300">Operador METRO</span>}
                 {busyOf(key(r.id, "n")) && <span className="text-[10px] text-amber-500">{busyOf(key(r.id, "n"))}</span>}
-                <button aria-label={`Quitar a ${r.n}`} onClick={async () => { if (await confirm(`¿Quitar a ${r.n} de ${c.n}?`, { danger: true })) delRow(r); }} className="ml-auto text-slate-300 opacity-0 transition hover:text-red-500 group-hover:opacity-100"><Trash2 className="size-3.5" /></button></div></td>
+                {!ro && <button aria-label={`Quitar a ${r.n}`} onClick={async () => { if (await confirm(`¿Quitar a ${r.n} de ${c.n}?`, { danger: true })) delRow(r); }} className="ml-auto text-slate-300 opacity-0 transition hover:text-red-500 group-hover:opacity-100"><Trash2 className="size-3.5" /></button>}</div></td>
               {T.cs && <td className="px-1 py-1.5 text-center"><div className="group/cs relative inline-flex"><button onClick={() => { setPick(pick === r.id ? "" : r.id); if (pick !== r.id) window.setTimeout(() => document.getElementById("prac-cs")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); }} title={dup ? "Callsign repetido" : r.cs && !regC(r.n) ? "Solo en la planilla: pasalo a la pestaña Callsign" : "Elegir callsign libre"}
                 className={cn("h-7 min-w-[3.6rem] rounded-lg border px-1.5 font-mono text-[12px] font-semibold transition", pick === r.id ? "border-brand-500 bg-brand-500/15 text-brand-700 dark:text-brand-300" : dup ? "border-red-400 bg-red-500/10 text-red-600" : rcs(r) ? "border-slate-200 dark:border-slate-700" : "border-dashed border-slate-300 text-slate-400 dark:border-slate-700", r.cs && !regC(r.n) && "border-dashed !border-amber-400 text-amber-600")}>{rcs(r) || "R—C"}</button>
                 {rcs(r) && <button aria-label={`Retirar el callsign de ${r.n}`} title="Retirar callsign" onClick={() => void retire(r)} className="absolute -right-1.5 -top-1.5 hidden size-4 place-items-center rounded-full bg-red-500 text-white shadow group-hover/cs:grid"><X className="size-2.5" strokeWidth={3} /></button>}</div></td>}
-              {Array.from({ length: T.clases }, (_, i) => `c${i + 1}` as const).map(k => <td key={k} className="px-1 py-1.5 text-center"><Asis T={T} v={r[k] || ""} set={x => edit(key(r.id, k), x)} busy={busyOf(key(r.id, k))} /></td>)}
-              {EJ.flatMap(([, , ks]) => ks.map((k, i) => <td key={k} className={cn("px-1 py-1.5 text-center", i === 0 && "border-l border-slate-100 dark:border-slate-800")}><Nota v={r.s[k]} set={x => edit(key(r.id, "s." + k), x)} busy={busyOf(key(r.id, "s." + k))} /></td>))}
-              {T.bonus && <td className="border-l border-slate-100 px-1 text-center dark:border-slate-800"><Bonus v={r.b} set={x => edit(key(r.id, "b"), x)} /></td>}
+              {Array.from({ length: T.clases }, (_, i) => `c${i + 1}` as const).map(k => <td key={k} className="px-1 py-1.5 text-center"><Asis T={T} ro={ro} v={r[k] || ""} set={x => edit(key(r.id, k), x)} busy={busyOf(key(r.id, k))} /></td>)}
+              {EJ.flatMap(([, , ks]) => ks.map((k, i) => <td key={k} className={cn("px-1 py-1.5 text-center", i === 0 && "border-l border-slate-100 dark:border-slate-800")}><Nota ro={ro} v={r.s[k]} set={x => edit(key(r.id, "s." + k), x)} busy={busyOf(key(r.id, "s." + k))} /></td>))}
+              {T.bonus && <td className="border-l border-slate-100 px-1 text-center dark:border-slate-800"><Bonus ro={ro} v={r.b} set={x => edit(key(r.id, "b"), x)} /></td>}
               <td className="border-l border-slate-100 bg-brand-500/[.04] px-3 text-center font-display text-base font-bold tabular-nums dark:border-slate-800">{g === null ? <span className="text-slate-300">—</span> : <span className={gTone(g)}>{f1(g)}</span>}</td>
               <td className="whitespace-nowrap px-3"><button onClick={() => setExR(r.id)} title={[r.ex === "pau" ? `En pausa ${r.exh ? "hasta el " + dmy(r.exh) : "hasta próximo aviso"}` : r.ex === "aus" ? "No se presentó (sin justificar)" : "Presentación al examen y nota", r.nota].filter(Boolean).join("\n")}
                 className={cn("mr-1.5 inline-grid size-6 place-items-center rounded-md border align-middle transition", r.ex === "pau" ? "border-amber-400/60 bg-amber-400/15 text-amber-600 dark:text-amber-300" : r.ex === "aus" ? "border-red-400/60 bg-red-500/10 text-red-600" : r.nota ? "border-brand-400/50 text-brand-600 dark:text-brand-300" : "border-slate-200 text-slate-400 hover:text-slate-700 dark:border-slate-700 dark:hover:text-white")}>
@@ -309,9 +317,9 @@ function Prac({ T }: { T: Ty }) {
         </table>
       </Card>
       <div className="flex flex-wrap items-center gap-2">
-        <Input list="prac-ag" value={nuevo} onChange={e => setNuevo(e.target.value)} onKeyDown={e => e.key === "Enter" && add()} placeholder={T.cs ? "Agregar aspirante (nombre del roster)" : "Agregar agente evaluado"} className="max-w-xs" />
-        <datalist id="prac-ag">{getRoster().map(a => <option key={a.n} value={a.n} />)}</datalist>
-        <Button variant="outline" icon={<Plus />} onClick={add} disabled={!nuevo.trim()}>Agregar</Button>
+        {!ro && <><Input list="prac-ag" value={nuevo} onChange={e => setNuevo(e.target.value)} onKeyDown={e => e.key === "Enter" && add()} placeholder={T.cs ? "Agregar aspirante (nombre del roster)" : "Agregar agente evaluado"} className="max-w-xs" />
+        <datalist id="prac-ag">{agNames.map(n => <option key={n} value={n} />)}</datalist>
+        <Button variant="outline" icon={<Plus />} onClick={add} disabled={!nuevo.trim()}>Agregar</Button></>}
         <span className="ml-auto flex flex-wrap items-center gap-2 text-[11px] text-slate-500">{T.bonus && <span>Global = promedio + bonus ·</span>}{AS.map(([k, l, I, on]) => <span key={k} className="inline-flex items-center gap-1"><span className={cn("grid size-4 place-items-center rounded", on)}><I className="size-2.5" strokeWidth={3} /></span>{l}</span>)}
           <span className="ml-1 inline-flex items-center gap-1">Nota <b>0</b><span className="h-1.5 w-14 rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-emerald-500" /><b>10</b></span></span>
       </div>
@@ -348,13 +356,13 @@ function Prac({ T }: { T: Ty }) {
         return <Modal open onClose={() => setExR("")} size="md" icon={<CalendarClock />} title={r.n} desc="Presentación al examen práctico" footer={<Button onClick={() => setExR("")}>Listo</Button>}>
           <div className="space-y-4">
             <div className="grid gap-2">{OP.map(([k, l, d, I, col]) => { const on = (r.ex || "") === k; return (
-              <button key={k} onClick={() => set("ex", k)} className={cn("flex items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition", on ? (col === "emerald" ? "border-emerald-500 bg-emerald-500/10" : col === "amber" ? "border-amber-400 bg-amber-400/10" : "border-red-400 bg-red-500/10") : "border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50")}>
+              <button key={k} disabled={ro} onClick={() => set("ex", k)} className={cn("flex items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition", on ? (col === "emerald" ? "border-emerald-500 bg-emerald-500/10" : col === "amber" ? "border-amber-400 bg-amber-400/10" : "border-red-400 bg-red-500/10") : "border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50")}>
                 <I className={cn("mt-0.5 size-4 shrink-0", col === "emerald" ? "text-emerald-500" : col === "amber" ? "text-amber-500" : "text-red-500")} /><span><b className="block text-sm">{l}</b><span className="text-xs text-slate-500">{d}</span></span></button>); })}</div>
             {r.ex === "pau" && <label className="block space-y-1 text-xs font-semibold text-slate-500">Revisar el <span className="font-normal text-slate-400">(opcional; sin fecha queda «hasta próximo aviso»)</span>
-              <Input type="date" value={r.exh || ""} onChange={e => set("exh", e.target.value)} className="max-w-[12rem]" /></label>}
+              <Input type="date" disabled={ro} value={r.exh || ""} onChange={e => set("exh", e.target.value)} className="max-w-[12rem]" /></label>}
             <label className="block space-y-1 text-xs font-semibold text-slate-500">Nota del instructor <span className="font-normal text-slate-400">(interna, no sale en Discord)</span>
-              <Textarea value={r.nota || ""} onChange={e => set("nota", e.target.value)} rows={3} placeholder="Ej.: avisó por ticket que no podía; reprogramar para la próxima jornada." className="text-[13px] font-normal" /></label>
-            <p className="text-[11px] text-slate-400">Queda como cambio sin guardar: tocá «Guardar» arriba para que lo vean los demás.</p>
+              <Textarea readOnly={ro} value={r.nota || ""} onChange={e => set("nota", e.target.value)} rows={3} placeholder="Ej.: avisó por ticket que no podía; reprogramar para la próxima jornada." className="text-[13px] font-normal" /></label>
+            <p className="text-[11px] text-slate-400">{ro ? "Convocatoria de archivo: solo lectura." : "Queda como cambio sin guardar: tocá «Guardar» arriba para que lo vean los demás."}</p>
           </div></Modal>; })()}
 
       {/* choque: alguien guardó lo mismo antes */}

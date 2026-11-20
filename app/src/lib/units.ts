@@ -119,7 +119,16 @@ export function isGCo(id: string, n: string): boolean {
 }
 const COORD_R = ["coord", "subcoord", "co", "aco"];
 
+/* se lee muchísimo (cada fila de cada pestaña): se guarda el resultado mientras el texto guardado no cambie */
+const UM: Record<string, { raw: string | null; m: Record<string, string[]> }> = {};
 export function uMap(k: UnitKey, me?: string): Record<string, string[]> {
+  const u = UNITS[k], raw = LS.get(u.rk), c = UM[k];
+  if (c && c.raw === raw) return c.m;
+  const m = uMap0(k, me);
+  const u0 = UNITS[k]; if (!(u0.seedV && raw && (Number((JSON.parse(raw) || {})._v) || 0) < u0.seedV)) UM[k] = { raw, m };
+  void u; return m;
+}
+function uMap0(k: UnitKey, me?: string): Record<string, string[]> {
   const u = UNITS[k], o = LS.json<Record<string, unknown> | null>(u.rk, null);
   if (!o || typeof o !== "object" || Array.isArray(o)) return u.def;
   if (u.seedV && (Number(o._v) || 0) < u.seedV) {
@@ -158,4 +167,5 @@ export function rosterDivs(n: string): string[] {
   for (const [d, c] of Object.entries(GEN)) if (!out.includes(d) && isGMem(c.id, n)) out.push(d);
   return out;
 }
-export const rosterCall = (n: string) => ({ ...MD_CALLS, ...LS.json<Record<string, string>>("lspdt.mdCalls", {}) })[n] || "";
+let RC: { raw: string | null; m: Record<string, string> } = { raw: "\u0000", m: {} };
+export const rosterCall = (n: string) => { const raw = LS.get("lspdt.mdCalls"); if (raw !== RC.raw) RC = { raw, m: { ...MD_CALLS, ...LS.json<Record<string, string>>("lspdt.mdCalls", {}) } }; return RC.m[n] || ""; };
