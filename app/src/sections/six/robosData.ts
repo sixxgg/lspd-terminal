@@ -120,20 +120,25 @@ export const MISIONES: Mision[] = [
   m("High Class", "Robo de vehículo", 2, 4, "1.600$", { cat: "veh", f: [85] }), m("Null Operation", "Encargo", 2, 4, "8.000$", { cat: "esp", f: [86] }),
 ];
 /* versión del catálogo: si la publicada en la base es de otra versión, Supervisores usa la nueva sin esperar a que six la vuelva a publicar */
-export const ROBOS_V = 2;
+export const ROBOS_V = 3;
 
 /* ---------- cruce ---------- */
 const base = (n: string) => n.replace(/\s*\((II|encargo)\)$/i, "").toLowerCase();
 /* el perfil de banda solo se deduce de la recompensa: ítems para droga → drogas · piezas de armas → armas */
 export const perfilDe = (mi: Mision): "drogas" | "armas" | null => (/droga/i.test(mi.rec) ? "drogas" : /piezas/i.test(mi.rec) ? "armas" : null);
 export type Nota = { t: "act" | "nuevo" | "rev" | "dup" | "sin"; x: string };
-export type Item = Robo & { mis: Mision[]; min?: number; nuevo?: boolean; chg?: { de: number; a: number; f: number[] }; notas: Nota[] };
+export type Item = Robo & { mis: Mision[]; min?: number; nuevo?: boolean; chg?: { de: number; a: number; f: number[] }; notas: Nota[]; ed?: { at: number; c: string[] } };
+/* ediciones de six desde el catálogo (lspdt.six.robEdit, privado de six): pisan a la normativa y al Excel; se publican solas a Supervisores › Robos */
+export type RobEdit = Partial<Pick<Robo, "n" | "max" | "pol" | "reh" | "blq" | "pv" | "mando" | "ilg" | "arm">> & { min?: number | null; at: number };
+export const ROB_EDIT = "lspdt.six.robEdit";
+/* cambios fijos ya decididos (van aunque nadie edite): Galería de Arte pasa de 5 a 4 binomios */
+const FIX: Record<string, Omit<RobEdit, "at">> = { galeria: { pol: 8 } };
 const PV_DEF: Record<Cat, PV> = { rap: [true, true, false], men: [true, false, false], veh: [true, true, false], esp: [true, false, true], may: [true, true, true], mis: [true, true, false] };
 /* misiones NO ACTIVO: quedan fuera del catálogo hasta que vuelvan */
 export const INACTIVAS = MISIONES.filter(m => m.off);
 /* el Excel es lo vigente: sus atracadores pisan a la normativa vieja y los robos que solo están en el Excel entran como nuevos
    (vehículo, armas, rehenes y policía según su categoría). Policías máx. = atracadores máx. + 2 */
-export function catalogo(): Item[] {
+export function catalogo(ED: Record<string, RobEdit> = {}): Item[] {
   const out: Item[] = NORMATIVA.map(x => ({ ...x, mis: [], notas: [] }));
   for (const mi of MISIONES) {
     if (mi.off) continue;
@@ -161,6 +166,12 @@ export function catalogo(): Item[] {
       const tw = MISIONES.find(o => o !== mi && base(o.n) === base(mi.n));
       if (tw) it.notas.push({ t: "dup", x: `Mismo nombre que la fila ${tw.f[0]} (${tw.rec}): parece otra versión para otro perfil, sin especificar.` });
     }
+    /* lo fijo y lo que edita six: lo último manda */
+    const e = { ...(FIX[it.id] || {}), ...(ED[it.id] || {}) } as Partial<RobEdit>, c: string[] = [];
+    const L: Record<string, string> = { n: "Nombre", min: "Atracadores mín.", max: "Atracadores máx.", pol: "Policías máx.", reh: "Rehenes", blq: "Bloqueo", pv: "Vehículos policiales", mando: "Mando", ilg: "Vehículo", arm: "Armas" };
+    for (const k of Object.keys(L) as (keyof RobEdit)[]) { if (!(k in e) || e[k] === undefined) continue; const prev = JSON.stringify((it as Record<string, unknown>)[k]); if (prev === JSON.stringify(e[k])) continue;
+      c.push(k === "pol" ? `${L[k]}: ${it.pol ?? "—"} → ${e.pol ?? "—"}` : k === "max" || k === "min" ? `${L[k]}: ${it[k] ?? "—"} → ${e[k] ?? "—"}` : L[k]); (it as Record<string, unknown>)[k] = e[k] ?? undefined; }
+    if (c.length) { it.ed = { at: ED[it.id]?.at || 0, c }; it.notas.unshift({ t: "act", x: `${c.join(" · ")}.` }); }
   }
   return out;
 }

@@ -1,9 +1,11 @@
 import { useMemo, useRef, useState } from "react";
-import { Camera, Car, Gift, X, CarFront, Copy, Info, Plus, RefreshCw, Search, Shield, Ship, Users } from "lucide-react";
+import { Camera, Car, Gift, X, CarFront, Copy, Info, Minus, Pencil, Plus, RefreshCw, RotateCcw, Save, Search, Shield, Ship, Users } from "lucide-react";
 import { toPng } from "html-to-image";
 import { useFeedback } from "@/components/feedback";
 import { cn } from "@/lib/cn";
-import { CATS, INACTIVAS, MISIONES, WPN, catalogo, perfilDe, recOf, unidades, type Cat, type Item } from "./robosData";
+import { CATS, INACTIVAS, MISIONES, ROB_EDIT, WPN, catalogo, perfilDe, recOf, unidades, type Cat, type Item, type RobEdit } from "./robosData";
+import { Modal } from "@/components/modal";
+import { useJSON } from "@/lib/store";
 
 const NT = {
   act: { l: "Actualizado", c: "#f59e0b", I: RefreshCw }, nuevo: { l: "Nuevo", c: "#a855f7", I: Plus },
@@ -31,7 +33,7 @@ function Armas({ arm }: { arm?: string }) {
       <G d={d} className={w[i] ? "" : "opacity-40"} />{l}{w[i] === 2 && <b className="text-[9px] text-red-300">OBLIG.</b>}</span>))}</div>;
 }
 
-function Card({ it, obs }: { it: Item; obs: boolean }) {
+function Card({ it, obs, onEdit }: { it: Item; obs: boolean; onEdit?: () => void }) {
   const C = CATS[it.cat], perf = [...new Set(it.mis.map(perfilDe).filter(Boolean))] as string[];
   const R = recOf(it.mis);
   return (
@@ -43,6 +45,8 @@ function Card({ it, obs }: { it: Item; obs: boolean }) {
         {perf.map(p => <span key={p} className={cn("rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase", p === "drogas" ? "border-lime-400/40 bg-lime-500/10 text-lime-300" : "border-orange-400/40 bg-orange-500/10 text-orange-300")}>Banda de {p}</span>)}
         {it.nuevo && it.cat !== "mis" && <span className="rounded-md border border-purple-400/40 bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-bold text-purple-300">NUEVO</span>}
         {it.chg && <span title={`Antes ${it.chg.de}`} className="rounded-md border border-amber-400/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">{it.chg.de} → {it.chg.a}</span>}
+        {it.ed && <span title={it.ed.c.join(" · ")} className="rounded-md border border-sky-400/40 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">EDITADO</span>}
+        {onEdit && <button aria-label="Editar robo" title="Editar robo" onClick={onEdit} className="rounded-lg p-1 text-slate-500 transition hover:bg-white/10 hover:text-white"><Pencil className="size-4" /></button>}
       </header>
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="rounded-xl bg-black/40 p-2"><p className="text-[10px] uppercase tracking-wider text-slate-500">Atracadores</p>
@@ -77,7 +81,8 @@ function Card({ it, obs }: { it: Item; obs: boolean }) {
 }
 
 export function Catalogo({ cat, share }: { cat: Cat | "all"; share?: boolean }) {
-  const { toast } = useFeedback(), all = useMemo(catalogo, []), box = useRef<HTMLDivElement>(null), secs = useRef<Record<string, HTMLElement | null>>({});
+  const [ED, setED] = useJSON<Record<string, RobEdit>>(ROB_EDIT, {}), [edit, setEdit] = useState<Item | null>(null);
+  const { toast } = useFeedback(), all = useMemo(() => catalogo(share ? {} : ED), [ED, share]), box = useRef<HTMLDivElement>(null), secs = useRef<Record<string, HTMLElement | null>>({});
   const [flt, setFlt] = useState<"" | "act" | "nuevo" | "pend">(""), [q, setQ] = useState(""), [obs, setObs] = useState(true), [busy, setBusy] = useState(false), [shot, setShot] = useState(false);
   const isPend = (x: Item) => x.notas.some(n => n.t === "rev" || n.t === "dup");
   const FLT = { act: (x: Item) => !!x.chg, nuevo: (x: Item) => !!x.nuevo && x.cat !== "mis", pend: isPend } as const;
@@ -138,9 +143,58 @@ export function Catalogo({ cat, share }: { cat: Cat | "all"; share?: boolean }) 
           <section key={k} ref={el => { secs.current[`${Object.keys(CATS).indexOf(k) + 1}-${k}`] = el; }} className={cn(shot && "space-y-4 bg-[#05070a] p-8")}>
             {shot && <Head sub={CATS[k].l} />}
             <h3 className="mb-2 flex items-baseline gap-2 font-sans"><span className="size-2.5 rounded-full" style={{ background: CATS[k].c }} /><b className="text-white">{CATS[k].l}</b>{CATS[k].code && <span className="rounded border border-white/15 px-1 font-mono text-[10px] text-slate-400">Cód. {CATS[k].code}</span>}<span className="text-xs text-slate-500">{CATS[k].d}</span></h3>
-            <div className={cn("grid gap-3", shot ? "grid-cols-5" : "sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4")}>{list.filter(x => x.cat === k).map(x => <Card key={x.id} it={x} obs={obs} />)}</div>
+            <div className={cn("grid gap-3", shot ? "grid-cols-5" : "sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4")}>{list.filter(x => x.cat === k).map(x => <Card key={x.id} it={x} obs={obs} onEdit={share || shot ? undefined : () => setEdit(x)} />)}</div>
           </section>))}
         {!list.length && <p className="py-10 text-center font-sans text-sm text-slate-500">Nada coincide con la búsqueda.</p>}
       </div>
+      {edit && <RobEditModal it={edit} base={catalogo({ ...ED, [edit.id]: { at: 0 } }).find(x => x.id === edit.id)!} cur={ED[edit.id]} onClose={() => setEdit(null)}
+        onSave={e => { const nx = { ...ED }; if (e) nx[edit.id] = e; else delete nx[edit.id]; setED(nx); setEdit(null); toast(e ? `${edit.n}: actualizado (también en Supervisores › Robos)` : `${edit.n}: vuelve a lo original`); }} />}
     </div>);
+}
+
+/* six edita un robo: atracadores, policías (en binomios), rehenes, bloqueo, vehículos policiales, mando, vehículo ilegal y armas.
+   Se guarda solo lo que difiere del original; «Restaurar» vuelve a la normativa/Excel. */
+const ARMS = Object.keys(WPN);
+function RobEditModal({ it, base, cur, onClose, onSave }: { it: Item; base: Item; cur?: RobEdit; onClose: () => void; onSave: (e: RobEdit | null) => void }) {
+  const [f, setF] = useState({ n: it.n, min: it.min ?? null as number | null, max: it.max ?? null as number | null, pol: it.pol ?? null as number | null, reh: it.reh || "", blq: it.blq ?? null as boolean | null,
+    pv: [...(it.pv || [false, false, false])] as boolean[], mando: !!it.mando, ilg: it.ilg || "", arm: it.arm || "" });
+  const num = (v: string) => (v.trim() === "" ? null : Math.max(0, Math.min(99, Math.round(+v) || 0)));
+  const fld = "w-full rounded-lg border border-slate-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-brand-500 dark:border-slate-700";
+  const save = () => {
+    const e: RobEdit = { at: Date.now() }, B = base as unknown as Record<string, unknown>, set = (k: keyof RobEdit, v: unknown) => { if (JSON.stringify(v ?? null) !== JSON.stringify(B[k] ?? null)) (e as Record<string, unknown>)[k] = v; };
+    set("n", f.n.trim() || base.n); set("min", f.min); set("max", f.max); set("pol", f.pol); set("reh", f.reh.trim() || undefined); set("blq", f.blq);
+    set("pv", f.pv[3] ? f.pv.slice(0, 4) : f.pv.slice(0, 3)); set("mando", f.mando); set("ilg", f.ilg.trim() || undefined); set("arm", f.arm || undefined);
+    onSave(Object.keys(e).length > 1 ? e : null);
+  };
+  const stepPol = (d: number) => setF({ ...f, pol: Math.max(0, (f.pol || 0) + d) });
+  return (
+    <Modal open onClose={onClose} title={`Editar · ${it.n}`} desc="Se actualiza al instante en Supervisores › Robos" icon={<Pencil />} size="lg"
+      footer={<>{cur && <button onClick={() => onSave(null)} className="mr-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 hover:text-red-500"><RotateCcw className="size-4" />Restaurar original</button>}
+        <button onClick={onClose} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-white">Cancelar</button>
+        <button onClick={save} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500"><Save className="size-4" />Guardar</button></>}>
+      <div className="space-y-4">
+        <label className="block space-y-1"><span className="text-xs font-semibold text-slate-500">Nombre</span><input className={fld} value={f.n} onChange={e => setF({ ...f, n: e.target.value })} /></label>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="space-y-1"><span className="text-xs font-semibold text-slate-500">Atracadores mín.</span><input className={fld} inputMode="numeric" value={f.min ?? ""} onChange={e => setF({ ...f, min: num(e.target.value) })} /></label>
+          <label className="space-y-1"><span className="text-xs font-semibold text-slate-500">Atracadores máx.</span><input className={fld} inputMode="numeric" value={f.max ?? ""} onChange={e => setF({ ...f, max: num(e.target.value) })} /></label>
+          <div className="space-y-1"><span className="text-xs font-semibold text-slate-500">Policías máx.</span>
+            <div className="flex items-center gap-1"><button type="button" title="Un binomio menos" onClick={() => stepPol(-2)} className="rounded-lg border border-slate-200 p-2 dark:border-slate-700"><Minus className="size-4" /></button>
+              <input className={cn(fld, "text-center font-bold")} inputMode="numeric" value={f.pol ?? ""} onChange={e => setF({ ...f, pol: num(e.target.value) })} />
+              <button type="button" title="Un binomio más" onClick={() => stepPol(2)} className="rounded-lg border border-slate-200 p-2 dark:border-slate-700"><Plus className="size-4" /></button></div>
+            <p className="text-[11px] text-sky-600 dark:text-sky-300">{unidades(f.pol) || "—"}</p></div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="space-y-1"><span className="text-xs font-semibold text-slate-500">Rehenes</span><input className={fld} value={f.reh} onChange={e => setF({ ...f, reh: e.target.value })} placeholder="Ej.: Sí (1 a 6)" /></label>
+          <div className="space-y-1"><span className="text-xs font-semibold text-slate-500">Bloqueo</span><div className="flex gap-1">{([[true, "Sí"], [false, "No"], [null, "—"]] as const).map(([v, l]) => (
+            <button key={l} type="button" onClick={() => setF({ ...f, blq: v })} className={cn("flex-1 rounded-lg border px-3 py-2 text-sm font-semibold", f.blq === v ? "border-brand-500 bg-brand-500/15" : "border-slate-200 text-slate-500 dark:border-slate-700")}>{l}</button>))}</div></div>
+        </div>
+        <div className="space-y-1"><span className="text-xs font-semibold text-slate-500">La policía puede llevar</span><div className="flex flex-wrap gap-1.5">
+          {PV.map(([l, I], i) => (<button key={l} type="button" onClick={() => { const pv = [...f.pv]; pv[i] = !pv[i]; setF({ ...f, pv }); }} className={cn("inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold", f.pv[i] ? "border-sky-500 bg-sky-500/15 text-sky-700 dark:text-sky-200" : "border-slate-200 text-slate-500 dark:border-slate-700")}><I className="size-4" />{l}</button>))}
+          <button type="button" onClick={() => setF({ ...f, mando: !f.mando })} className={cn("rounded-lg border px-3 py-1.5 text-sm font-semibold", f.mando ? "border-amber-500 bg-amber-500/15 text-amber-700 dark:text-amber-200" : "border-slate-200 text-slate-500 dark:border-slate-700")}>Con mando</button></div></div>
+        <label className="block space-y-1"><span className="text-xs font-semibold text-slate-500">Vehículo de los atracadores</span><input className={fld} value={f.ilg} onChange={e => setF({ ...f, ilg: e.target.value })} /></label>
+        <label className="block space-y-1"><span className="text-xs font-semibold text-slate-500">Armas de los atracadores</span>
+          <select className={fld} value={f.arm} onChange={e => setF({ ...f, arm: e.target.value })}>{ARMS.map(a => <option key={a} value={a}>{a}</option>)}</select></label>
+        <Armas arm={f.arm} />
+      </div>
+    </Modal>);
 }

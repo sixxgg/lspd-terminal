@@ -5,10 +5,10 @@ import { BookOpen, Check, Copy, Download, FileSpreadsheet, Gavel, Layers, Link2,
 import { api } from "@/lib/api";
 import { Modal } from "@/components/modal";
 import { useFeedback } from "@/components/feedback";
-import { LS } from "@/lib/store";
+import { LS, useJSON } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import { Catalogo } from "./Robos";
-import { CATS, ROBOS_V, catalogo, type Cat, type Item } from "./robosData";
+import { CATS, ROBOS_V, ROB_EDIT, catalogo, type Cat, type Item, type RobEdit } from "./robosData";
 import { art, leyOf, pena, pubItems, type Ref, type RobosPub } from "./robosLegal";
 
 type View = "cat" | "art" | "xls";
@@ -30,7 +30,7 @@ function CatBar({ cat, set, all }: { cat: Cat | "all"; set: (c: Cat | "all") => 
 
 /* share: vista de un invitado (link de six): sin Excel, sin foto y sin invitar */
 export function RobosTab({ share }: { share?: boolean }) {
-  const all = useMemo(catalogo, []), [inv, setInv] = useState(false);
+  const [ED] = useJSON<Record<string, RobEdit>>(ROB_EDIT, {}), all = useMemo(() => catalogo(share ? {} : ED), [ED, share]), [inv, setInv] = useState(false);
   /* publica la versión oficial en la base para Supervisores › Robos (solo si cambió algo) */
   useEffect(() => { if (share) return; const items = pubItems(all), cur = LS.json<RobosPub | null>("lspdt.robos", null);
     if (JSON.stringify(cur?.items) !== JSON.stringify(items) || cur?.v !== ROBOS_V) LS.setJSON("lspdt.robos", { at: Date.now(), by: "six", items, v: ROBOS_V }); }, [all, share]);
