@@ -131,6 +131,15 @@ export type Item = Robo & { mis: Mision[]; min?: number; nuevo?: boolean; chg?: 
 /* ediciones de six desde el catálogo (lspdt.six.robEdit, privado de six): pisan a la normativa y al Excel; se publican solas a Supervisores › Robos */
 export type RobEdit = Partial<Pick<Robo, "n" | "max" | "pol" | "reh" | "blq" | "pv" | "mando" | "ilg" | "arm">> & { min?: number | null; at: number };
 export const ROB_EDIT = "lspdt.six.robEdit";
+/* historial de cambios de los robos (lspdt.six.robLog): cada edición o restauración, con qué cambió; se publica también a Supervisores */
+export type RobLog = { t: number; id: string; n: string; c: string[]; r?: boolean };
+export const ROB_LOG = "lspdt.six.robLog";
+const DL: [keyof Item, string][] = [["n", "Nombre"], ["min", "Atracadores mín."], ["max", "Atracadores máx."], ["pol", "Policías máx."], ["reh", "Rehenes"], ["blq", "Bloqueo"], ["pv", "Vehículos policiales"], ["mando", "Mando"], ["ilg", "Vehículo"], ["arm", "Armas"]];
+const PVN = ["patrulla", "interceptor", "helicóptero", "barco"];
+const fmtV = (k: keyof Item, v: unknown): string => v == null || v === "" ? "—" : k === "blq" || k === "mando" ? (v ? "Sí" : "No") : k === "pv" ? ((v as boolean[]).map((x, i) => (x ? PVN[i] : "")).filter(Boolean).join(", ") || "ninguno")
+  : k === "pol" ? `${v} (${unidades(v as number)})` : String(v);
+/* qué cambió entre dos versiones de un robo, en texto */
+export const robDiff = (a: Item, b: Item): string[] => DL.filter(([k]) => JSON.stringify(a[k] ?? null) !== JSON.stringify(b[k] ?? null)).map(([k, l]) => `${l}: ${fmtV(k, a[k])} → ${fmtV(k, b[k])}`);
 /* cambios fijos ya decididos (van aunque nadie edite): Galería de Arte pasa de 5 a 4 binomios */
 const FIX: Record<string, Omit<RobEdit, "at">> = { galeria: { pol: 8 } };
 const PV_DEF: Record<Cat, PV> = { rap: [true, true, false], men: [true, false, false], veh: [true, true, false], esp: [true, false, true], may: [true, true, true], mis: [true, true, false] };

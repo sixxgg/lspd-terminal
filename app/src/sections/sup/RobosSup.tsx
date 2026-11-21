@@ -1,7 +1,7 @@
 /* Supervisores › Robos: la versión oficial del catálogo de robos y su articulado.
    Sale de la base (lspdt.robos, la publica six); si todavía no está publicada, se arma con el mismo catálogo. */
 import { useMemo, useState } from "react";
-import { BookOpen, Check, Gavel, Layers, Search } from "lucide-react";
+import { BookOpen, Check, Gavel, History, Layers, Search } from "lucide-react";
 import { Card, Empty, SearchInput } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { CopyMenu } from "@/components/output";
@@ -42,12 +42,15 @@ function leyText(it: PubItem) {
 export function RobosSup() {
   const [P] = useJSON<RobosPub | null>("lspdt.robos", null);
   const all = useMemo(() => (P?.items?.length && P.v === ROBOS_V ? P.items : pubItems(catalogo())), [P]);
-  const [tab, setTab] = useState<"cat" | "art">("cat"), [cat, setCat] = useState<Cat | "">(""), [q, setQ] = useState(""), [sel, setSel] = useState<PubItem | null>(null);
+  const [tab, setTab] = useState<"cat" | "art" | "his">("cat"), [cat, setCat] = useState<Cat | "">(""), [q, setQ] = useState(""), [sel, setSel] = useState<PubItem | null>(null);
   const s = q.trim().toLowerCase();
   const L = all.filter(x => (!cat || x.cat === cat) && (!s || `${x.n} ${[...x.ley.cons, ...x.ley.cond.flatMap(c => c.arts)].map(r => `${r.a} ${art(r.a)?.t}`).join(" ")}`.toLowerCase().includes(s)));
   return (
     <div className="space-y-4">
-      <DivNav value={tab} onChange={v => setTab(v as "cat" | "art")} options={[{ value: "cat", label: "Catálogo de robos", icon: <BookOpen />, txt: "Catálogo" }, { value: "art", label: "Articulado de robos", icon: <Gavel />, txt: "Articulado" }]} />
+      <DivNav value={tab} onChange={v => setTab(v as "cat" | "art" | "his")} options={[{ value: "cat", label: "Catálogo de robos", icon: <BookOpen />, txt: "Catálogo" }, { value: "art", label: "Articulado de robos", icon: <Gavel />, txt: "Articulado" }, { value: "his", label: `Historial de cambios (${P?.log?.length || 0})`, icon: <History />, txt: "Historial" }]} />
+      {tab === "his" ? <Card className="divide-y divide-slate-100 dark:divide-slate-800">{!P?.log?.length ? <Empty icon={<History />} title="Sin cambios todavía" desc="Cuando six actualice un robo, queda registrado acá." />
+        : P.log.map((x, i) => <div key={i} className="px-4 py-3"><div className="flex flex-wrap items-baseline gap-x-2"><b>{x.n}</b>{x.r && <span className="rounded bg-slate-500/15 px-1.5 text-[10px] font-bold text-slate-500">RESTAURADO</span>}<span className="ml-auto text-xs text-slate-500">{fullDT(x.t)}</span></div>
+          <ul className="mt-1 text-sm text-slate-600 dark:text-slate-300">{x.c.map(c => <li key={c}>· {c}</li>)}</ul></div>)}</Card> : <>
       <Card className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 text-[12.5px] text-slate-600 dark:text-slate-300">
         <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400"><Check className="size-4" />Versión oficial</span>
         <span>{P?.at ? `Publicada ${fullDT(P.at)}` : "Catálogo vigente"} · {all.filter(x => x.cat !== "mis").length} robos y {all.filter(x => x.cat === "mis").length} misiones</span>
@@ -87,6 +90,7 @@ export function RobosSup() {
               </span>
             </button>); })}</div>}
         </Card>); })}
+      </>}
       {sel && <RoboModal it={sel} onClose={() => setSel(null)} />}
     </div>);
 }

@@ -108,12 +108,12 @@ export function Six({ onExit, start = "ini", who = "six", resume }: { onExit: ()
 
       <header className="sticky top-0 z-30 border-b border-six/25 bg-black/70 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-4 px-4">
-          <span className="six-logo text-3xl font-black" data-t={NAME()}>{NAME()}</span>
-          <div className="hidden text-[10px] leading-tight text-slate-500 md:block"><p>SESIÓN PRIVADA · <span className="text-six">CIFRADA</span></p><p>FIRMA <Ticker f={() => hex(8).toUpperCase()} /></p></div>
-          <nav className="mx-auto flex gap-1 rounded-xl border border-six/10 bg-black/40 p-1">{tabs.map(([k, l, I]) => (
+          <span className="six-logo shrink-0 text-3xl font-black" data-t={NAME()}>{NAME()}</span>
+          <div className="hidden shrink-0 whitespace-nowrap text-[10px] leading-tight text-slate-500 md:block min-[2050px]:hidden min-[2450px]:block"><p>SESIÓN PRIVADA · <span className="text-six">CIFRADA</span></p><p>FIRMA <Ticker f={() => hex(8).toUpperCase()} /></p></div>
+          <nav className="scrollbar-none mx-auto flex min-w-0 gap-1 overflow-x-auto rounded-xl border border-six/10 bg-black/40 p-1">{tabs.map(([k, l, I]) => (
             <button key={k} onClick={() => setTab(k)} title={l} className={cn("six-tab inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-[11px] font-bold tracking-[0.14em] transition",
-              tab === k ? "on text-six" : "text-slate-500 hover:text-six")}><I className="size-4 shrink-0" /><span className={tab === k ? "hidden sm:inline" : "hidden min-[1700px]:inline"}>{l}</span>{LOCKED().includes(k) && <Lock className="size-3 opacity-60" />}{k === "not" && unread > 0 && <span className="rounded-full bg-six px-1.5 text-[10px] font-black text-black">{unread}</span>}</button>))}</nav>
-          <span className="hidden tabular-nums text-sm text-six six-txt xl:inline"><Ticker f={() => new Date().toLocaleTimeString("es-AR", { hour12: false })} /></span>
+              tab === k ? "on text-six" : "text-slate-500 hover:text-six")}><I className="size-4 shrink-0" /><span className={tab === k ? "hidden sm:inline" : "hidden min-[2050px]:inline"}>{l}</span>{LOCKED().includes(k) && <Lock className="size-3 opacity-60" />}{k === "not" && unread > 0 && <span className="rounded-full bg-six px-1.5 text-[10px] font-black text-black">{unread}</span>}</button>))}</nav>
+          <span className="hidden shrink-0 tabular-nums text-sm text-six six-txt xl:inline"><Ticker f={() => new Date().toLocaleTimeString("es-AR", { hour12: false })} /></span>
           <NBtn ghost icon={<Power />} onClick={exit} title="Volver a la MDT"><span className="hidden sm:inline">SALIR</span></NBtn>
         </div>
         <div className="six-line h-px" />

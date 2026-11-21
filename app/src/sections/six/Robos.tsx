@@ -3,7 +3,7 @@ import { Camera, Car, Gift, X, CarFront, Copy, Info, Minus, Pencil, Plus, Refres
 import { toPng } from "html-to-image";
 import { useFeedback } from "@/components/feedback";
 import { cn } from "@/lib/cn";
-import { CATS, INACTIVAS, MISIONES, ROB_EDIT, WPN, catalogo, perfilDe, recOf, unidades, type Cat, type Item, type RobEdit } from "./robosData";
+import { CATS, INACTIVAS, MISIONES, ROB_EDIT, ROB_LOG, WPN, catalogo, robDiff, type RobLog, perfilDe, recOf, unidades, type Cat, type Item, type RobEdit } from "./robosData";
 import { Modal } from "@/components/modal";
 import { useJSON } from "@/lib/store";
 
@@ -81,7 +81,7 @@ function Card({ it, obs, onEdit }: { it: Item; obs: boolean; onEdit?: () => void
 }
 
 export function Catalogo({ cat, share }: { cat: Cat | "all"; share?: boolean }) {
-  const [ED, setED] = useJSON<Record<string, RobEdit>>(ROB_EDIT, {}), [edit, setEdit] = useState<Item | null>(null);
+  const [ED, setED] = useJSON<Record<string, RobEdit>>(ROB_EDIT, {}), [LOG, setLOG] = useJSON<RobLog[]>(ROB_LOG, []), [edit, setEdit] = useState<Item | null>(null);
   const { toast } = useFeedback(), all = useMemo(() => catalogo(share ? {} : ED), [ED, share]), box = useRef<HTMLDivElement>(null), secs = useRef<Record<string, HTMLElement | null>>({});
   const [flt, setFlt] = useState<"" | "act" | "nuevo" | "pend">(""), [q, setQ] = useState(""), [obs, setObs] = useState(true), [busy, setBusy] = useState(false), [shot, setShot] = useState(false);
   const isPend = (x: Item) => x.notas.some(n => n.t === "rev" || n.t === "dup");
@@ -148,7 +148,8 @@ export function Catalogo({ cat, share }: { cat: Cat | "all"; share?: boolean }) 
         {!list.length && <p className="py-10 text-center font-sans text-sm text-slate-500">Nada coincide con la búsqueda.</p>}
       </div>
       {edit && <RobEditModal it={edit} base={catalogo({ ...ED, [edit.id]: { at: 0 } }).find(x => x.id === edit.id)!} cur={ED[edit.id]} onClose={() => setEdit(null)}
-        onSave={e => { const nx = { ...ED }; if (e) nx[edit.id] = e; else delete nx[edit.id]; setED(nx); setEdit(null); toast(e ? `${edit.n}: actualizado (también en Supervisores › Robos)` : `${edit.n}: vuelve a lo original`); }} />}
+        onSave={e => { const nx = { ...ED }; if (e) nx[edit.id] = e; else delete nx[edit.id]; const after = catalogo(nx).find(x => x.id === edit.id), c = after ? robDiff(edit, after) : [];
+          if (c.length) setLOG([{ t: Date.now(), id: edit.id, n: after!.n, c, r: !e }, ...LOG].slice(0, 300)); setED(nx); setEdit(null); toast(e ? `${edit.n}: actualizado (también en Supervisores › Robos)` : `${edit.n}: vuelve a lo original`); }} />}
     </div>);
 }
 

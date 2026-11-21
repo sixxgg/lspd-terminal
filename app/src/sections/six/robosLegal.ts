@@ -140,5 +140,5 @@ export const pena = (x?: Art) => (!x ? "" : [x.m ? `$${x.m.toLocaleString("es-AR
 
 /* versión oficial (Supervisores › Robos): el catálogo con su articulado, guardado en la base (lspdt.robos) por six */
 export type PubItem = Item & { ley: Ley };
-export type RobosPub = { at: number; by: string; items: PubItem[]; v?: number };
+export type RobosPub = { at: number; by: string; items: PubItem[]; v?: number; log?: import("./robosData").RobLog[] };
 export const pubItems = (all: Item[]): PubItem[] => all.map(it => ({ ...it, ley: leyOf(it) }));
