@@ -13,9 +13,9 @@ type Ped = { n: string; c: string };
 const ALL: Ped[] = PED_CATS.flatMap(([c, ns]) => ns.map(n => ({ n, c })));
 const img = (n: string) => `${import.meta.env.BASE_URL}peds/${n}.webp`;
 /* hash del modelo (Jenkins one-at-a-time, como GetHashKey) */
-const joaat = (s: string) => { let h = 0; for (const ch of s.toLowerCase()) { h = (h + ch.charCodeAt(0)) >>> 0; h = (h + (h << 10)) >>> 0; h = (h ^ (h >>> 6)) >>> 0; }
+export const joaat = (s: string) => { let h = 0; for (const ch of s.toLowerCase()) { h = (h + ch.charCodeAt(0)) >>> 0; h = (h + (h << 10)) >>> 0; h = (h ^ (h >>> 6)) >>> 0; }
   h = (h + (h << 3)) >>> 0; h = (h ^ (h >>> 11)) >>> 0; h = (h + (h << 15)) >>> 0; return h; };
-const signed = (h: number) => (h > 0x7fffffff ? h - 0x100000000 : h);
+export const signed = (h: number) => (h > 0x7fffffff ? h - 0x100000000 : h);
 
 export function PedsTab() {
   const { toast } = useFeedback(), [q, setQ] = useState(""), [cat, setCat] = useState("all"), [open, setOpen] = useState<Ped | null>(null), [done, setDone] = useState("");

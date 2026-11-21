@@ -37,12 +37,13 @@ export function DivHero({ d }: { d: string }) {
     </div>
   );
 }
-/* subdivisiones: todas se abren con su roster, uniformidad y administración (la MDSO, solo con licencias) */
+/* subdivisiones: todas se abren con su roster, uniformidad y administración. La MDSO quedó bloqueada: sus licencias pasaron al A.S.D */
+const LOCKED_SUB: Record<string, string> = { "Metropolitan Drone Support Operations": "Las licencias pasaron al A.S.D" };
 function SubTiles({ d, sel, onSel, open }: { d: string; sel: string; onSel: (s: string) => void; open: boolean }) {
   const subs = subsOf(d).slice().sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" })); if (!subs.length) return null; /* de la A a la Z */
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-      {subs.map(s => <SubTile key={s} s={s} on={sel === s} onClick={open && GEN[s] ? () => onSel(sel === s ? "" : s) : undefined} />)}
+      {subs.map(s => <SubTile key={s} s={s} on={sel === s} onClick={open && GEN[s] && !LOCKED_SUB[s] ? () => onSel(sel === s ? "" : s) : undefined} />)}
     </div>
   );
 }
@@ -53,6 +54,7 @@ function SubTile({ s, on, onClick }: { s: string; on: boolean; onClick?: () => v
       <div className="size-14 grayscale-[35%]"><DivLogo d={s} /></div>
       <b className="text-xs font-semibold uppercase leading-tight">{s}</b>
       <span className="inline-flex items-center gap-1 text-[11px] text-slate-400"><Lock className="size-3" />Bloqueada</span>
+      {LOCKED_SUB[s] && <span className="text-[10.5px] leading-tight text-slate-400">{LOCKED_SUB[s]}</span>}
     </div>);
   return (
     <button onClick={onClick} title={on ? "Cerrar" : "Abrir"} className={cn("flex flex-col items-center gap-2 rounded-2xl border bg-white p-4 text-center transition hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900/60", on ? "border-[color:var(--a)] ring-2 ring-[color:var(--a)]/40" : "border-slate-200 dark:border-slate-800")}
@@ -84,7 +86,7 @@ export function Division({ d }: { d: string }) {
   else if (k === "rtd") body = <Rtd dn={d} />;
   else if (k) body = <Unit k={k} dn={d} />;
   else if (GEN[d]) body = <GenDiv d={d} />;
-  if (open && GEN[sub] && subsOf(d).includes(sub)) body = <SubBody sub={sub} />;
+  if (open && GEN[sub] && !LOCKED_SUB[sub] && subsOf(d).includes(sub)) body = <SubBody sub={sub} />;
   return <div className="space-y-4" style={hv(d)}><DivHero d={d} /><SubTiles d={d} open={open} sel={sub} onSel={s => { setSub(s); LS.set("lspdt.next.dsub." + d, s); }} />{body}</div>;
 }
 

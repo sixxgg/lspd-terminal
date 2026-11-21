@@ -297,7 +297,7 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
   });
   /* rueda / panel táctil: desplaza; Ctrl + rueda o pellizco: zoom */
   useEffect(() => { const el = wrapRef.current; if (!el) return;
-    const w = (e: WheelEvent) => { e.preventDefault(); const r = el.getBoundingClientRect();
+    const w = (e: WheelEvent) => { if ((e.target as HTMLElement | null)?.closest?.("[data-tb]")) return; e.preventDefault(); const r = el.getBoundingClientRect();
       if (e.ctrlKey || e.metaKey) { zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.01))); return; }
       const f = e.deltaMode ? 30 : 1; setView(v => ({ ...v, x: v.x - (e.shiftKey ? e.deltaY : e.deltaX) * f, y: v.y - (e.shiftKey ? 0 : e.deltaY) * f })); };
     el.addEventListener("wheel", w, { passive: false }); return () => el.removeEventListener("wheel", w); }, []);
@@ -383,7 +383,7 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
   const T: [Tool, string, string, typeof Hand][] = [["sel", "Elegir", "Seleccionar (V) · arrastrá el fondo para moverte, Shift + arrastrar para elegir varios", MousePointer2], ["hand", "Mover", "Mover el lienzo (H o barra espaciadora)", Hand],
     ["note", "Nota", "Nota adhesiva (N)", StickyNote], ["text", "Texto", "Texto (T)", Type], ["rect", "Cuadro", "Rectángulo (R)", Square], ["ellipse", "Círculo", "Círculo (O)", Circle], ["diamond", "Rombo", "Rombo / decisión (D)", Diamond],
     ["frame", "Marco", "Marco (F)", Frame], ["banner", "Banner", "Banner de título (B)", Flag], ["conn", "Flecha", "Flecha (C): arrastrá de una forma a otra", ArrowUpRight], ["pen", "Lápiz", "Lápiz (P)", PenLine], ["erase", "Goma", "Goma (E): tocá algo para borrarlo", Eraser]];
-  const tb = "flex w-14 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium leading-none transition [&>svg]:size-4", tbI = "text-slate-300 hover:bg-white/10", sep = <span className="mx-1 h-5 w-px bg-white/15" />;
+  const tb = "flex w-14 shrink-0 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium leading-none transition [&>svg]:size-4", tbI = "text-slate-300 hover:bg-white/10", sep = <span className="mx-1 h-5 w-px bg-white/15" />;
   const fb = (on: boolean) => cn("grid size-7 place-items-center rounded-md text-xs font-bold transition [&>svg]:size-3.5", on ? "bg-brand-600 text-white" : "text-slate-300 hover:bg-white/10");
   const grid = 24 * view.z, dot = Math.max(0.7, view.z * 1.1);
   return (
@@ -419,7 +419,8 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
           {marq && <div className="pointer-events-none absolute border border-indigo-400 bg-indigo-400/10" style={{ left: marq.x, top: marq.y, width: marq.w, height: marq.h }} />}
         </div>
 
-        {canEdit && <div className="absolute left-3 top-1/2 flex -translate-y-1/2 flex-col gap-0.5 rounded-xl border border-white/10 bg-[#1f2125]/95 p-1 shadow-xl backdrop-blur" onPointerDown={e => e.stopPropagation()}>
+        {/* la barra arranca arriba y, si la pantalla es baja, se desplaza: antes quedaba centrada y en pantallas bajas se cortaban herramientas (Banner, Plantilla…) */}
+        {canEdit && <div className="scrollbar-thin absolute left-3 top-3 flex max-h-[calc(100%-1.5rem)] flex-col gap-0.5 overflow-y-auto overscroll-contain rounded-xl border border-white/10 bg-[#1f2125]/95 p-1 shadow-xl backdrop-blur" data-tb onPointerDown={e => e.stopPropagation()}>
           {T.map(([kk, l, t, I]) => <button key={kk} title={t} aria-label={t} onClick={() => setTool(kk)} className={cn(tb, tool === kk ? "bg-brand-600 text-white" : tbI)}><I />{l}</button>)}
           <span className="mx-1 my-0.5 h-px bg-white/15" />
           <button title="Agregar una imagen o un mapa" onClick={() => fileRef.current?.click()} className={cn(tb, tbI)}><ImagePlus />Imagen</button>
@@ -429,7 +430,7 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
           <button title="Borrar todo lo de la pizarra" onClick={async () => { if (items.length && (await confirm("¿Borrar todo lo de la pizarra? Se puede deshacer con Ctrl+Z mientras no salgas.", { danger: true }))) { commit([]); setSel([]); } }} className={cn(tb, "text-red-400 hover:bg-red-500/15")}><Trash2 />Limpiar</button>
         </div>}
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => { const f = e.target.files?.[0]; if (f) void addImg(f); e.target.value = ""; }} />
-        {tpl && <div className="absolute left-20 top-1/2 w-60 -translate-y-1/2 rounded-xl border border-white/10 bg-[#1f2125] p-2 shadow-xl" onPointerDown={e => e.stopPropagation()}>
+        {tpl && <div className="absolute left-20 top-3 w-60 rounded-xl border border-white/10 bg-[#1f2125] p-2 shadow-xl" onPointerDown={e => e.stopPropagation()}>
           <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Plantillas</p>
           {TPL.map(([kk, l, f]) => <button key={kk} onClick={() => addTpl(f)} className="block w-full rounded-lg px-2 py-1.5 text-left text-sm hover:bg-white/10">{l}</button>)}</div>}
         {share && k && <SharePanel k={k} meta={meta} me={me.n} onMeta={onMeta!} onClose={() => setShare(false)} />}

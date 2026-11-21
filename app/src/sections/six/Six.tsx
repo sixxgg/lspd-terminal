@@ -2,7 +2,7 @@
    Pestañas: Inicio y, de la A a la Z, Administración · Comunicados · Equipo de ilícitos · Gestión de staff · Notificaciones. Los datos van en lspdt.six.* (el servidor no se los muestra a nadie más). */
 import "./six.css";
 import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
-import { AtSign, Bell, Check, KeyRound, Link2, ChevronRight, Copy, Home, Lock, Megaphone, Plus, Power, RefreshCw, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X, ScrollText, Search, Banknote, Pin, Upload, Globe, Crosshair, Drama, PersonStanding } from "lucide-react";
+import { AtSign, Bell, Check, KeyRound, Link2, ChevronRight, Copy, Home, Lock, Megaphone, Plus, Power, RefreshCw, RotateCcw, Save, Settings2, Skull, Ticket, Trash2, Users, X, ScrollText, Search, Banknote, Pin, Upload, Globe, Crosshair, Drama, Wrench } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
 import { api, authApi } from "@/lib/api";
 import { discordHtml } from "@/lib/discord";
@@ -14,7 +14,7 @@ import { DC_CHANS, DC_ROLES, PLANTILLAS, STAFF_ROLE, STATS0, comTitle, splitComs
 import { RobosTab } from "./RobosTab";
 import { SitioTab } from "./Sitio";
 import { ArmasTab } from "./Armas";
-import { PedsTab } from "./Peds";
+import { UtilTab } from "./Utilidades";
 import { PlaymakersTab } from "./Playmakers";
 import { NotifTab, fbList, whoOf, FB_SEEN } from "./Notif";
 import { LS, reloadAll, useJSON } from "@/lib/store";
@@ -26,7 +26,7 @@ type Staff = { id: string; n: string; rol: string; dc: string; notas: string };
 type Com = { id: string; t: string; body: string; ts: number; pin?: boolean };
 type Sent = { id: string; ts: number; banda: string; res: IlicForm["res"]; txt: string };
 const ROLES = ["Owner", "Administración", "Moderación", "Soporte", "Ilícitos", "Desarrollo", "Otro"];
-const TABS = [["ini", "INICIO", Home], ["rob", "ROBOS", Banknote], ["web", "SITIO WEB", Globe], ["arm", "ARMAS", Crosshair], ["peds", "PEDS", PersonStanding], ["pm", "PLAYMAKERS", Drama], ["adm", "ADMINISTRACIÓN", Settings2], ["com", "COMUNICADOS", Megaphone], ["ilic", "EQUIPO DE ILÍCITOS", Skull], ["staff", "GESTIÓN DE STAFF", Users], ["not", "NOTIFICACIONES", Bell], ["logs", "LOGS", ScrollText]] as const;
+const TABS = [["ini", "INICIO", Home], ["rob", "ROBOS", Banknote], ["web", "SITIO WEB", Globe], ["arm", "ARMAS", Crosshair], ["util", "UTILIDADES", Wrench], ["pm", "PLAYMAKERS", Drama], ["adm", "ADMINISTRACIÓN", Settings2], ["com", "COMUNICADOS", Megaphone], ["ilic", "EQUIPO DE ILÍCITOS", Skull], ["staff", "GESTIÓN DE STAFF", Users], ["not", "NOTIFICACIONES", Bell], ["logs", "LOGS", ScrollText]] as const;
 type Tab = (typeof TABS)[number][0];
 const LOCKED = (): Tab[] => (NS.id === "six" ? ["staff"] : []); // en six: próximamente
 const NAME = () => (NS.id === "six" ? "six" : "anita");
@@ -125,7 +125,7 @@ export function Six({ onExit, start = "ini", who = "six", resume }: { onExit: ()
           : tab === "rob" && who === "six" ? <RobosTab />
           : tab === "web" && who === "six" ? <SitioTab />
           : tab === "arm" ? <ArmasTab />
-          : tab === "peds" ? <PedsTab />
+          : tab === "util" ? <UtilTab />
           : tab === "pm" && who !== "six" ? <PlaymakersTab />
           : tab === "not" ? <NotifTab />
           : tab === "logs" && who === "six" ? <LogsTab />
@@ -159,7 +159,7 @@ function HomeTab({ go, unread, staff }: { go: (t: Tab) => void; unread: number; 
     ["staff", "Gestión de staff", Users, `${staff} en el equipo`, six ? "Próximamente" : "Tu equipo"],
     ["com", "Comunicados", Megaphone, `${com.length} guardados`, "Plantillas, estadísticas y vista de Discord"],
     ...(six ? [] : [["pm", "Playmakers", Drama, "🎭 Mensajes de tickets", "Para copiar y pegar en Discord"] as [Tab, string, typeof Bell, string, string]]),
-    ["peds", "PEDs", PersonStanding, "860 modelos", "Con imagen, modelo y hash"],
+    ["util", "Utilidades", Wrench, "PEDs y vehículos", "Con imagen, modelo y hash"],
     ["adm", "Administración", Settings2, "Tema, efectos e intro", six ? "Avisos de Discord" : "Colores y efectos"],
   ];
   return (

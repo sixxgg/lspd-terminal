@@ -62,6 +62,7 @@ export const SKINS: Record<string, Skin> = {
   everforest: { l: "Everforest", dark: true, sw: ["#2d353b", "#343f44", "#a7c080"], bg: "#2d353b", card: "#343f44", soft: "#3d484d", line: "#475258", ink: "#d3c6aa", mut: "#9da9a0", acc: "#a7c080" },
   synthwave: { l: "Synthwave '84", dark: true, sw: ["#262335", "#2a2139", "#ff7edb"], bg: "#1e1a2b", card: "#262335", soft: "#2f2a45", line: "#463b63", ink: "#f4eefa", mut: "#b5a8d0", acc: "#ff7edb" },
   github: { l: "GitHub claro", dark: false, sw: ["#f6f8fa", "#ffffff", "#0969da"], bg: "#f6f8fa", card: "#ffffff", soft: "#f6f8fa", line: "#d0d7de", ink: "#1f2328", mut: "#59636e", acc: "#0969da" },
+  githubd: { l: "GitHub oscuro", dark: true, sw: ["#0d1117", "#151b23", "#4493f8"], bg: "#0d1117", card: "#151b23", soft: "#212830", line: "#3d444d", ink: "#f0f6fc", mut: "#9198a1", acc: "#4493f8" },
   dawn: { l: "Rosé Pine claro", dark: false, sw: ["#faf4ed", "#fffaf3", "#b4637a"], bg: "#faf4ed", card: "#fffaf3", soft: "#f2e9e1", line: "#dfdad9", ink: "#575279", mut: "#797593", acc: "#b4637a" },
   ...LSSD_SKINS, ...SAHP_SKINS,
   /* estilo «clasic» (panel tipo Eleven): no se elige en la lista, lo da la administración (Administración › Accesos) */
