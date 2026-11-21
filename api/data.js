@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { q, tx } from "../lib/db.js";
 import { audit, auditList, auditRoster, diffSum, keepVersion, versions, HIST_SKIP, ROSTER_OUT } from "../lib/audit.js";
-import { send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept, isXList, xCheck, loadBoards, isBoardKey } from "../lib/core.js";
+import { agxCheck, send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept, isXList, xCheck, loadBoards, isBoardKey } from "../lib/core.js";
 
 async function downloadImg(url) {
   const fail = m => Object.assign(new Error(m), { status: 400 });
@@ -95,6 +95,8 @@ export default wrap(async (req, res) => {
       for (const n of new Set([...Object.keys(cur), ...Object.keys(nv)])) if (cur[n] !== nv[n] && (CO.includes(cur[n]) || CO.includes(nv[n]))) { why = "Solo Jefatura nombra o retira Coordinadores y Subcoordinadores"; break; } }
     else if (JSON.stringify(cur.sub || []) !== JSON.stringify(nv.sub || [])) why = "Solo Jefatura decide qué puede hacer el subcoordinador";
   }
+  /* edición de agentes del LSSD y la SAHP: permisos por rango y por campo (ver agxCheck) */
+  if (!why && bk === "lspdt.agx") why = typeof b.v === "string" ? agxCheck(u, k, (await q("select v from kv where k=$1", [k])).rows[0]?.v ?? null, b.v) : "Valor inválido";
   /* OIS remitido a la FID: cualquiera que pueda cargar OIS abre (o actualiza) el caso en la PSB, sin tocar el resto de los expedientes */
   if (b.oisFid && typeof b.oisFid === "object") {
     if (canWrite(u, "lspdt.ois")) return send(res, 403, { msg: "No podés cargar procedimientos OIS" });

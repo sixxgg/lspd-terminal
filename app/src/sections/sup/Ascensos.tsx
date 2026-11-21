@@ -10,6 +10,8 @@ import { Col, Note, Split } from "@/components/layout";
 import { DET, DET_MIN, LADDER, dcIdOfAgent, findAgent, genderOf, lvl, rankES, rkTxt, type Agent } from "@/lib/domain";
 import { dcfg, fillTpl, tplOf, type TplKey } from "@/lib/templates";
 import { useMe } from "@/lib/me";
+import { DEPT } from "@/lib/dept";
+import { ME_ROLES } from "@/lib/store";
 import { useStoreVersion } from "@/lib/store";
 
 type Mode = "asc" | "desc";
@@ -38,6 +40,8 @@ export function Ascensos() {
   const [mode, setMode] = useState<Mode>(pre?.tipo || "asc");
   const [ag, setAg] = useState(pre?.n || ""), [nuevo, setNuevo] = useState(pre?.nr || ""), [art, setArt] = useState<"el" | "la">(pre && genderOf(pre.n) === "f" ? "la" : "el");
   const [upd, setUpd] = useState(true);
+  /* LSSD/SAHP: el rango del roster lo tocan Capitanía y Jefatura (el servidor no deja a los Supervisores) */
+  const rkOk = DEPT.id === "lspd" || !!ME_ROLES.six || !!ME_ROLES.dadm || me.l >= 8;
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
   const [dcId, setDcId] = useState(() => (pre ? dcIdOfAgent(findAgent(pre.n)) : "")), [variant, setVariant] = useState("1");
   const c = dcfg();
@@ -84,11 +88,11 @@ export function Ascensos() {
             </div>
             {a && nr && (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
-                <Checkbox checked={upd} onChange={setUpd} label="Actualizar también su rango en el roster" />
+                {rkOk ? <Checkbox checked={upd} onChange={setUpd} label="Actualizar también su rango en el roster" /> : <span className="text-xs text-slate-500">El rango en el roster lo cambian Capitanía y Jefatura (Agentes › Editar agente).</span>}
                 <Button size="sm" icon={<ClipboardCheck />} onClick={async () => {
-                  if (!(await confirm(`¿Registrar el ${mode === "asc" ? "ascenso" : "descenso"} de ${a.n} (${rankES(a.r)} → ${rankES(nr)})${upd ? " y actualizar su rango en el roster" : ""}?`))) return;
+                  if (!(await confirm(`¿Registrar el ${mode === "asc" ? "ascenso" : "descenso"} de ${a.n} (${rankES(a.r)} → ${rankES(nr)})${upd && rkOk ? " y actualizar su rango en el roster" : ""}?`))) return;
                   addMov(a.n, { tipo: mode, de: a.r, a: nr, via: "Contrato / resolución" }, me);
-                  if (upd) updateAgent(a.n, x => { x.r = nr; if (mode === "asc") (x as Agent & { a?: string }).a = new Date().toISOString().slice(0, 10); });
+                  if (upd && rkOk) updateAgent(a.n, x => { x.r = nr; if (mode === "asc") (x as Agent & { a?: string }).a = new Date().toISOString().slice(0, 10); });
                   toast("Movimiento registrado en el perfil");
                 }}>Registrar movimiento</Button>
               </div>

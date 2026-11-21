@@ -4,7 +4,7 @@ import { send, body, wrap, roster, findIn, lvl, CAP, norm, emailOf, hashPw, chec
 import { fullData } from "../lib/store.js";
 import { randomBytes } from "node:crypto";
 import { XDEPTS, deptAcc, deptFind, deptList, deptOfAcc, deptUser, isDeptAcc, rosterKey } from "../lib/lssd.js";
-const xRoster = async d => deptList((await q("select v from kv where k=$1", [rosterKey(d)])).rows[0]?.v, d);
+const xRoster = async d => deptList((await q("select v from kv where k=$1", [rosterKey(d)])).rows[0]?.v, d, (await q("select v from kv where k=$1", [`lspdt.${d}.agx`])).rows[0]?.v);
 const XN = { lssd: "LSSD", sahp: "SAHP" };
 const digits = s => (/^#?(\d{1,5})$/.exec(String(s || "").trim()) || [])[1] || "";
 

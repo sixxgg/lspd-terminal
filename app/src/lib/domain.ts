@@ -2,6 +2,7 @@ import { LS, DEF_ROSTER, type Agent } from "./store";
 export type { Agent };
 import gta from "./gta.json";
 import { DEPT, onDept } from "./dept";
+import { AGX_KEY, applyAgx, type AgxE } from "./agx";
 import { isXRank, xInsSvg } from "./xins";
 
 export const LEVEL: Record<string, number> = {
@@ -66,10 +67,12 @@ export const emailOf = (n: string) => norm(n).replace(/[^a-z0-9]/g, "") + "@sana
 export const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
 
 /* roster del departamento activo (en el LSSD, sin los perros del K-9: esos se ven en su roster y en su división) */
-let K9F: [unknown, Agent[]] = [null, []];
+/* LSSD/SAHP: con las ediciones de Jefatura, Capitanía y Supervisores aplicadas (lib/agx.ts) y la fecha de ingreso de la planilla como fecha de contrato */
+let K9F: [unknown, unknown, Agent[]] = [null, null, []];
 export function getRoster(): Agent[] {
   const a = LS.ro<Agent[] | null>("lspdt.roster", null);
-  if (DEPT.id !== "lspd") { if (!Array.isArray(a)) return []; if (K9F[0] !== a) K9F = [a, a.filter(x => x && x.r !== "K-9")]; return K9F[1]; }
+  if (DEPT.id !== "lspd") { if (!Array.isArray(a)) return []; const O = LS.ro<Record<string, AgxE> | null>(AGX_KEY, null);
+    if (K9F[0] !== a || K9F[1] !== O) K9F = [a, O, applyAgx(a.filter(x => x && x.r !== "K-9"), O).map(x => ({ ...x, c: x.c || dmyToISO(x.i || "") || "" }))]; return K9F[2]; }
   return Array.isArray(a) && a.length ? a : DEF_ROSTER;
 }
 export const findAgent = (n: string) => getRoster().find(a => a.n === n) || null;

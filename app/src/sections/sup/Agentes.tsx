@@ -17,6 +17,7 @@ import { ACC_LAST, LS, ME_ROLES, useStoreVersion } from "@/lib/store";
 import { GEN, gMap, gRoles, gSave, rosterCo } from "@/lib/units";
 import { useMe } from "@/lib/me";
 import { allProfiles, profFull, updateAgent, updateProf, type Profile } from "@/lib/profiles";
+import { ESTADOS_X, RANKS_X, agxFields, agxOf } from "@/lib/agx";
 import { missOf, vName, vehOf, type PHist } from "@/lib/patrol";
 import { cn } from "@/lib/cn";
 import { StatusPill, Thumbs } from "./Patrullas";
@@ -32,6 +33,10 @@ const phOf = (p: Profile): Ph => p.ph || { x: 50, y: 22, z: 1 };
 const phStyle = (f: Ph) => ({ objectPosition: `${f.x}% ${f.y}%`, transform: `scale(${f.z})`, transformOrigin: `${f.x}% ${f.y}%` });
 /* el roster del LSSD y la SAHP se carga desde la planilla (Administración › Roster y respaldo): acá no se edita */
 const rosEd = () => DEPT.id === "lspd";
+/* LSSD/SAHP: editan Jefatura (todo), Capitanía (datos y rango de quien está por debajo) y Supervisores (estado, Discord y observaciones de quien está por debajo).
+   El servidor controla lo mismo (agxCheck) */
+const xFull = (myL: number) => !!ME_ROLES.six || !!ME_ROLES.dadm || myL >= 10;
+const xEd = (myL: number, a: Agent) => DEPT.id !== "lspd" && (xFull(myL) || (myL >= 7 && lvl(a.r) < myL));
 const logoSrc = () => srcOf(logoOf()) || logoOf();
 export function mainDiv(p: Profile) {
   if (p.main && p.div.includes(p.main)) return p.main;
@@ -90,15 +95,18 @@ export function Agentes() {
   const [q, setQ] = useState(() => { const j = JUMP.ag || ""; JUMP.ag = undefined; return j; }), [g, setG] = useState(""), [d, setD] = useState("");
   useJump("ag", v => setQ(v));
   const [view, setView] = useState<"grid" | "list">(() => (LS.get("lspdt.agView") === "list" ? "list" : "grid"));
-  const [cur, setCur] = useState<string | null>(null), [reg, setReg] = useState<string | null | false>(false);
+  const [cur, setCur] = useState<string | null>(null), [reg, setReg] = useState<string | null | false>(false), [xe, setXe] = useState<string | null>(null), [rk, setRk] = useState(""), [est, setEst] = useState("");
   const s = norm(q.trim());
-  const list = R.filter(a => { if (g && !GROUPS[g].r.includes(a.r)) return false; if (d) { const dv = profFull(a.n, P).div; if (d === "-" ? dv.length : !dv.includes(d)) return false; }
+  const list = R.filter(a => { if (g && !GROUPS[g].r.includes(a.r)) return false; if (rk && a.r !== rk) return false; if (est && (a.e || "Activo") !== est) return false; if (d) { const dv = profFull(a.n, P).div; if (d === "-" ? dv.length : !dv.includes(d)) return false; }
     return !s || norm(a.n).includes(s) || String(a.p).includes(s) || norm(a.s || "").includes(s); }).sort((x, y) => lvl(y.r) - lvl(x.r) || x.n.localeCompare(y.n, "es"));
   return (
     <div className="space-y-5">
       <Card className="flex flex-wrap items-center gap-2 p-3">
         <SearchInput className="min-w-[14rem] flex-1" value={q} onChange={setQ} placeholder="Buscar por nombre, placa o State ID…" />
         <Select className="w-auto text-sm" value={g} onChange={e => setG(e.target.value)}><option value="">{DEPTS[DEPT.id].short} · Todos</option>{Object.entries(GROUPS).filter(([, x]) => R.some(a => x.r.includes(a.r))).map(([k, x]) => <option key={k} value={k}>{x.l}</option>)}</Select>
+        {DEPT.id !== "lspd" && <>
+          <Select aria-label="Rango" className="w-auto max-w-[14rem] text-sm" value={rk} onChange={e => setRk(e.target.value)}><option value="">Todos los rangos</option>{(RANKS_X[DEPT.id] || []).filter(r => R.some(a => a.r === r)).map(r => <option key={r} value={r}>{r}</option>)}</Select>
+          <Select aria-label="Estado" className="w-auto text-sm" value={est} onChange={e => setEst(e.target.value)}><option value="">Todos los estados</option>{[...new Set([...ESTADOS_X, ...R.map(a => a.e || "Activo")])].map(x => <option key={x} value={x}>{x}</option>)}</Select></>}
         <Select className="w-auto max-w-[16rem] text-sm" value={d} onChange={e => setD(e.target.value)}><option value="">Todas las divisiones</option><option value="-">Sin división</option>{ALL_DIVS.map(x => <option key={x} value={x}>{SUBDIVS.has(x) ? "— " : ""}{x}</option>)}</Select>
         <Segmented size="sm" value={view} onChange={v => { setView(v); LS.set("lspdt.agView", v); }} options={[{ value: "grid", label: <LayoutGrid className="size-4" aria-label="Tarjetas" /> }, { value: "list", label: <Rows3 className="size-4" aria-label="Lista" /> }]} />
         {nVac > 0 && rosEd() && <Button variant="outline" icon={<X />} title="Pasa a Activo a todos los agentes de vacaciones" onClick={async () => {
@@ -113,9 +121,9 @@ export function Agentes() {
             <h3 className="mb-3 mt-2 flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300">{gr.l}<span className="rounded-md bg-slate-100 px-1.5 text-xs text-slate-500 dark:bg-slate-800">{l.length}</span></h3>
             <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {l.map(a => { const p = profFull(a.n, P), md = mainDiv(p); return (
-                <button key={a.n} onClick={() => setCur(a.n)} title={p.div.join(" · ") || "Sin división"}
+                <button key={`${a.n}#${a.p}`} onClick={() => setCur(a.n)} title={p.div.join(" · ") || "Sin división"}
                   className="group overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-800 dark:bg-slate-900/60">
-                  <PhotoBox a={a} p={p} className="transition group-hover:brightness-105" onClear={() => { updateAgent(a.n, x => { x.e = "Activo"; }); toast(`${a.n}: vuelve a Activo`); }} />
+                  <PhotoBox a={a} p={p} className="transition group-hover:brightness-105" onClear={rosEd() || xEd(me.l, a) ? () => { updateAgent(a.n, x => { x.e = "Activo"; }); toast(`${a.n}: vuelve a Activo`); } : undefined} />
                   <div className="p-3">
                     <p className="truncate text-sm font-semibold">{a.n}</p>
                     <p className="truncate font-mono text-[11px] text-slate-400">{a.s || "—"}{p.cs && ` · ${p.cs}`}</p>
@@ -133,14 +141,15 @@ export function Agentes() {
         : <Card className="overflow-hidden"><div className="scrollbar-thin overflow-x-auto"><table className="w-full min-w-[56rem] text-sm">
             <thead><tr className="border-b border-slate-100 text-left text-[11px] uppercase tracking-wide text-slate-400 dark:border-slate-800">{["Agente", "State ID", "Placa", "Rango", "Callsign", "División", "Estado", "Ingreso"].map(h => <th key={h} className="px-4 py-3 font-semibold">{h}</th>)}</tr></thead>
             <tbody>{list.map(a => { const p = profFull(a.n, P); return (
-              <tr key={a.n} onClick={() => setCur(a.n)} className="cursor-pointer border-b border-slate-100 transition last:border-0 hover:bg-slate-50 dark:border-slate-800/70 dark:hover:bg-slate-800/40">
+              <tr key={`${a.n}#${a.p}`} onClick={() => setCur(a.n)} className="cursor-pointer border-b border-slate-100 transition last:border-0 hover:bg-slate-50 dark:border-slate-800/70 dark:hover:bg-slate-800/40">
                 <td className="px-4 py-2.5"><div className="flex items-center gap-2.5"><MiniPhoto a={a} p={p} size={30} /><span className="font-semibold">{a.n}</span></div></td>
                 <td className="px-4 font-mono text-xs">{a.s || "—"}</td><td className="px-4 font-mono text-xs">{a.p ? "#" + a.p : "—"}</td><td className="px-4"><RankBadge r={a.r} /></td>
                 <td className="px-4 font-mono text-xs">{p.cs || "—"}</td><td className="max-w-[14rem] truncate px-4 text-xs">{mainDiv(p) || "—"}</td>
                 <td className="px-4">{a.e === "Activo" ? <span className="rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">Activo</span> : <span className="text-xs text-slate-500">{a.e || "—"}</span>}</td>
                 <td className="px-4 font-mono text-xs">{dstr(pdate(a.c))}</td>
               </tr>); })}</tbody></table></div></Card>}
-      {cur && findAgent(cur) && <ProfileModal n={cur} onClose={() => setCur(null)} onEdit={() => setReg(cur)} />}
+      {cur && findAgent(cur) && <ProfileModal n={cur} onClose={() => setCur(null)} onEdit={() => (rosEd() ? setReg(cur) : setXe(cur))} />}
+      {xe && findAgent(xe) && <AgxModal n={xe} myL={me.l} onClose={() => setXe(null)} onRenamed={nn => setCur(nn)} />}
       {reg !== false && <RegModal n={reg} myL={me.l} onClose={() => setReg(false)} onCreated={n => setCur(n)} />}
     </div>
   );
@@ -234,9 +243,9 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
             </div>
             <div className="mt-5 flex flex-wrap justify-center gap-1.5">
               {foto && <button className={act} onClick={() => { setPh({ ...phOf(p) }); setTab("res"); }}><Move />Encuadre</button>}
-              {rosEd() && <button className={act} onClick={onEdit}><Pencil />Editar datos</button>}
+              {(rosEd() || xEd(me.l, a)) && <button className={act} onClick={onEdit}><Pencil />{rosEd() ? "Editar datos" : "Editar agente"}</button>}
               {profOk() && profOk(a.n) && <button className={act} onClick={() => goTo("me", "perfil", { n: a.n })}><IdCard />Perfil social</button>}
-              {a.e && a.e !== "Activo" && rosEd() && <button className={act} onClick={() => { updateAgent(a.n, x => { x.e = "Activo"; }); toast(`${a.n}: vuelve a Activo`); }}><Check />Pasar a Activo</button>}
+              {a.e && a.e !== "Activo" && (rosEd() || xEd(me.l, a)) && <button className={act} onClick={() => { updateAgent(a.n, x => { x.e = "Activo"; }); toast(`${a.n}: vuelve a Activo`); }}><Check />Pasar a Activo</button>}
               {me.l >= 8 && rosEd() && <button className={cn(act, "text-red-300 hover:bg-red-500/20")} onClick={async () => {
                 if (!(await confirm(`¿Dar de baja a ${a.n}? Se quita del roster (su perfil y notas se conservan).`, { danger: true, ok: "Dar de baja" }))) return;
                 LS.setJSON("lspdt.roster", getRoster().filter(x => x.n !== n)); onClose(); toast("Agente dado de baja"); }}><UserMinus />Dar de baja</button>}
@@ -247,7 +256,7 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
         {/* legajo */}
         <section className="flex min-w-0 flex-1 flex-col lg:min-h-0">
           <header className="border-b border-slate-100 px-5 pb-3 pt-5 dark:border-slate-800/80 sm:px-7">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[.26em] text-slate-400">Expediente personal · Los Santos Police Department</p>
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[.26em] text-slate-400">Expediente personal · {DEPTS[DEPT.id].name}</p>
             <nav className="scrollbar-thin mt-3 flex gap-1 overflow-x-auto pr-10" role="tablist">
               {tabs.map(([k, l, c]) => (
                 <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn("flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
@@ -276,7 +285,7 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
               <div><H>Ficha</H>
                 <dl className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                   <F k="Rango">{rankES(a.r)}</F><F k="Estado">{a.e || "—"}</F><F k="Fecha de ingreso">{dstr(pdate(a.c))}</F>
-                  <F k="Último ascenso">{dstr(pdate(a.a))}</F><F k="Discord">{a.d || "—"}</F><F k="Correo">{emailOf(a.n)}</F>
+                  <F k="Último ascenso">{dstr(pdate(a.a))}</F><F k="Discord">{[a.d, a.di && `ID ${a.di}`].filter(Boolean).join(" · ") || "—"}</F><F k="Correo">{emailOf(a.n)}</F>
                   <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-900"><dt className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">Callsign</dt>
                     <Input key={p.cs} defaultValue={p.cs} placeholder="Sin callsign" className="mt-0.5 h-7 border-0 bg-transparent px-0 font-mono text-sm font-semibold uppercase shadow-none focus:ring-0" onBlur={e => { const v = e.target.value.trim().toUpperCase(); if (v !== p.cs) done(x => { x.cs = v; }, "Callsign guardado"); }} onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()} /></div>
                   <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-900"><dt className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">Franjas de servicio</dt>
@@ -286,6 +295,11 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
                 </dl>
                 {(a as Agent & { o?: string }).o && <p className="mt-2 rounded-xl border-l-4 border-amber-400 bg-amber-50 px-3 py-2 text-sm dark:bg-amber-500/5"><b>Observaciones:</b> {(a as Agent & { o?: string }).o}</p>}
               </div>
+              {DEPT.id !== "lspd" && (() => { const lg = (agxOf(a.n0 || a.n).log || []).slice().reverse(); return lg.length ? (
+                <div><H right={<span className="text-[11px] text-slate-400">{lg.length}</span>}>Registro de cambios</H>
+                  <ol className="space-y-1.5">{lg.slice(0, 12).map((x, i) => (
+                    <li key={i} className="rounded-xl bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900"><p className="text-[11px] text-slate-500"><b className="text-slate-700 dark:text-slate-200">{x.por}</b>{x.pr && ` · ${rankES(x.pr)}`} · {new Date(x.t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                      <p className="mt-0.5">{x.c.join(" · ")}</p></li>))}</ol></div>) : null; })()}
               <div><H right={<button className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline dark:text-brand-300" onClick={() => { setDivSel(p.div); setEditDiv(!editDiv); }}>{editDiv ? <><X className="size-3.5" />Cerrar</> : <><Pencil className="size-3.5" />Editar</>}</button>}>Divisiones · {divs.length}</H>
                 {editDiv ? <>
                   <div className="grid gap-x-4 gap-y-1 rounded-xl border border-slate-200 p-3 text-sm sm:grid-cols-2 dark:border-slate-800">
@@ -488,3 +502,38 @@ function RegModal({ n, myL, onClose, onCreated }: { n: string | null; myL: numbe
   );
 }
 
+
+/* LSSD/SAHP › Editar agente: los datos actuales, solo los campos que tu rango puede tocar; al guardar se aplican en todo (rango, placa, estado…) */
+function AgxModal({ n, myL, onClose, onRenamed }: { n: string; myL: number; onClose: () => void; onRenamed: (n: string) => void }) {
+  const { toast } = useFeedback(), a = findAgent(n)!, full = xFull(myL), F = agxFields(myL, full), can = (k: string) => F.includes(k);
+  const ranks = (RANKS_X[DEPT.id] || []).filter(r => full || lvl(r) < myL), rOpts = ranks.includes(a.r) ? ranks : [a.r, ...ranks];
+  const [f, setF] = useState(() => ({ n: a.n, p: a.p || "", r: a.r, e: a.e || "Activo", c: a.c || "", a: a.a || "", d: a.d || "", di: a.di || "", o: a.o || "" }));
+  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
+  const ok = () => {
+    const nm = f.n.trim().replace(/\s+/g, " "), p = f.p.trim(), R = getRoster();
+    if (!nm) { toast("Poné el nombre del agente", "err"); return; }
+    if (nm !== a.n && R.some(x => norm(x.n) === norm(nm))) { toast("Ya hay un agente con ese nombre", "err"); return; }
+    if (p && R.some(x => x.p === p && x.n !== a.n)) { toast("Esa placa ya está asignada a otro agente", "err"); return; }
+    if (f.di.trim() && !/^\d{17,20}$/.test(f.di.trim())) { toast("El ID de Discord son 17 a 20 números", "err"); return; }
+    updateAgent(a.n, x => { if (can("n")) x.n = nm; if (can("p")) x.p = p; if (can("r")) x.r = f.r; if (can("e")) x.e = f.e; if (can("i")) x.c = f.c; if (can("a")) x.a = f.a;
+      if (can("d")) x.d = f.d.trim(); if (can("di")) x.di = f.di.trim(); if (can("o")) x.o = f.o.trim(); });
+    onClose(); toast("Agente actualizado"); if (can("n") && nm !== a.n) onRenamed(nm);
+  };
+  return (
+    <Modal open onClose={onClose} title={`Editar agente · ${a.n}`} icon={<Pencil />} size="lg"
+      desc={full ? "Jefatura: podés editar todos los datos" : myL >= 8 ? "Capitanía: datos y rango (hasta un rango menor al tuyo)" : "Supervisores: estado, Discord y observaciones"}
+      footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon={<Check />} onClick={ok}>Guardar cambios</Button></>}>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Nombre y apellidos"><Input value={f.n} onChange={set("n")} disabled={!can("n")} /></Field>
+        <Field label="N° de placa"><Input value={f.p} onChange={set("p")} inputMode="numeric" disabled={!can("p")} /></Field>
+        <Field label="Rango"><Select value={f.r} onChange={set("r")} disabled={!can("r")}>{rOpts.map(r => <option key={r} value={r}>{r}</option>)}</Select></Field>
+        <Field label="Estado"><Select value={f.e} onChange={set("e")} disabled={!can("e")}>{[...new Set([...ESTADOS_X, f.e])].map(x => <option key={x}>{x}</option>)}</Select></Field>
+        <Field label="Fecha de ingreso"><Input type="date" value={f.c} onChange={set("c")} disabled={!can("i")} /></Field>
+        <Field label="Último ascenso" hint={f.r !== a.r ? "(se guarda con el cambio de rango)" : undefined}><Input type="date" value={f.a} onChange={set("a")} disabled={!can("a")} /></Field>
+        <Field label="Discord · usuario"><Input value={f.d} onChange={set("d")} placeholder="usuario" disabled={!can("d")} /></Field>
+        <Field label="Discord · ID"><Input value={f.di} onChange={set("di")} inputMode="numeric" placeholder="17 a 20 números" disabled={!can("di")} /></Field>
+      </div>
+      <Field label="Observaciones administrativas" hint="(opcional)"><Textarea rows={3} value={f.o} onChange={set("o")} disabled={!can("o")} /></Field>
+      <p className="text-xs text-slate-500">Las divisiones y el cargo (Coordinador, Subcoordinador o Miembro) se editan en la ficha, en <b>Divisiones › Editar</b>. Cada cambio queda registrado con quién lo hizo y cuándo; si cambia el rango, también queda en la carrera del agente.</p>
+    </Modal>);
+}

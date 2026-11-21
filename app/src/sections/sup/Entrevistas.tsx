@@ -4,7 +4,7 @@
    Todo va a la base: las entrevistas en lspdt.entrev y las preguntas en lspdt.entrevQ (las edita Sargento I o superior). */
 import { useMemo, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Building2, Check, ChevronDown, ChevronRight, CircleDashed, Clock, Compass, HelpCircle, MessagesSquare, Pencil, Plus, RotateCcw, Save, Search, Shield, StickyNote, Target, Trash2, UserRoundCheck, X } from "lucide-react";
-import { Button, Card, Empty, Input, Textarea, SearchInput } from "@/components/ui";
+import { Button, Card, Empty, Input, Segmented, Textarea, SearchInput } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { Revisar } from "@/components/revisar";
 import { rosterDivs } from "@/lib/units";
@@ -16,6 +16,8 @@ import { LS, useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { AgentMenu } from "@/components/sgtpick";
 import { cn } from "@/lib/cn";
+import { DEPT } from "@/lib/dept";
+import { EntRes } from "./EntRes";
 
 /* preguntas: de lo general a lo particular y el cierre siempre al final. n = recordatorio para el sargento */
 type Q = { id: string; q: string; n?: string };
@@ -28,6 +30,17 @@ const Q_DEF: Q[] = [
   { id: "rel", q: "¿Mantiene alguna relación sentimental, dentro o fuera del Departamento?", n: "Recordarle que toda relación sentimental entre miembros del Departamento debe comunicarse a la PSB." },
   { id: "mas", q: "Por último, ¿hay algo más que quiera comentarnos o aportar a esta entrevista?" },
 ];
+/* LSSD: entrevista presencial individual (reemplaza a las preguntas anteriores, que quedaron en lspdt.lssd.entrevQ y ya no se usan) */
+const Q_LSSD: Q[] = [
+  { id: "lx1", q: "¿Cómo considera que se encuentra actualmente el Departamento en términos de organización y funcionamiento?" },
+  { id: "lx2", q: "¿Qué aspectos del funcionamiento departamental considera que deberían recibir mayor atención?" },
+  { id: "lx3", q: "¿Considera que existe una coordinación adecuada entre las diferentes unidades y divisiones? ¿Qué mejoraría?" },
+  { id: "lx4", q: "¿Qué tipo de actuaciones policiales considera que deberían recibir mayor prioridad actualmente?" },
+  { id: "lx5", q: "¿Qué procedimientos, protocolos o competencias considera que deberían revisarse o reforzarse?" },
+  { id: "lx6", q: "¿Qué iniciativas institucionales propondría para fortalecer la presencia y el servicio del Sheriff en el condado?" },
+  { id: "lx7", q: "Si tuviese la oportunidad de implementar tres cambios dentro del Departamento, ¿cuáles serían y por qué?" },
+];
+const xQ = () => DEPT.id === "lssd";
 /* las respuestas viejas se guardaban por número de pregunta (en el orden anterior) */
 const OLD = ["siente", "conf", "rama", "div", "rel", "mas", "asp"];
 const resOf = (e: Ent): Record<string, string> => Object.fromEntries(Object.entries(e.res || {}).map(([k, v]) => [/^\d+$/.test(k) ? OLD[+k] || k : k, v]));
@@ -116,7 +129,8 @@ const Pill = ({ c, I, children }: { c: string; I: typeof Check; children: ReactN
 export function Entrevistas() {
   const me = useMe();
   const [ENT, setENT] = useJSON<Record<string, Ent>>("lspdt.entrev", {});
-  const [QS0, setQS] = useJSON<Q[]>("lspdt.entrevQ", []), QS = QS0.length ? QS0 : Q_DEF;
+  const [QS0, setQS] = useJSON<Q[]>(xQ() ? "lspdt.entrevQ2" : "lspdt.entrevQ", []), QS = QS0.length ? QS0 : xQ() ? Q_LSSD : Q_DEF;
+  const [vw, setVw] = useState<"seg" | "res">("seg");
   const [f, setF] = useState(""), [rf, setRf] = useState(""), [q, setQ] = useState(""), [open, setOpen] = useState<string | null>(null), [qOpen, setQOpen] = useState(false);
   const [closed, setClosed] = useState<Set<string>>(new Set());
   const A = useMemo(() => getRoster().filter(a => lvl(a.r) > 0 && lvl(a.r) < 7).sort((a, b) => lvl(b.r) - lvl(a.r) || a.n.localeCompare(b.n)), [ENT]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -134,14 +148,17 @@ export function Entrevistas() {
       <span className="grid size-9 shrink-0 place-items-center rounded-lg" style={{ background: c + "1f", color: c }}><I className="size-[18px]" /></span>
       <span className="min-w-0"><b className="block text-xl font-black leading-none tabular-nums" style={{ color: c }}>{n}</b><span className="mt-1 block truncate text-[11px] font-medium text-slate-500">{l}</span></span></button>);
   const cur = open ? A.find(a => a.n === open) : null;
+  const tabs = DEPT.id === "lssd" && <Segmented value={vw} onChange={setVw} options={[{ value: "seg", label: "Entrevistas" }, { value: "res", label: "Resultados de entrevistas" }]} />;
+  if (vw === "res") return <div className="space-y-4">{tabs}<EntRes /></div>;
   return (
     <div className="space-y-4">
+      {tabs}
       <Card className="p-4">
         <div className="grid items-center gap-5 xl:grid-cols-[auto_minmax(0,1.6fr)_minmax(0,1fr)]">
           <div className="flex items-center gap-4">
             <Ring v={pct} c="#10b981"><span><b className="block text-lg font-black tabular-nums">{Math.round(pct * 100)}%</b><span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-500">hechas</span></span></Ring>
             <div><p className="text-[11px] font-bold uppercase tracking-[.14em] text-brand-600 dark:text-brand-300">Seguimiento</p><p className="text-base font-bold leading-tight">{done} de {A.length} entrevistados</p>
-              <p className="mt-0.5 text-xs text-slate-500">Agentes por debajo de Sargento II</p>
+              <p className="mt-0.5 text-xs text-slate-500">{DEPT.id === "lspd" ? "Agentes por debajo de Sargento II" : "Agentes por debajo de Sergeant"}</p>
               <Button size="sm" variant="outline" icon={<MessagesSquare />} className="mt-2" onClick={() => setQOpen(true)}>Preguntas ({QS.length})</Button></div>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -223,7 +240,7 @@ function PregModal({ QS, can, onSave, onClose }: { QS: Q[]; can: boolean; onSave
   const txt = QS.map((x, i) => `**${i + 1}.** ${x.q}${x.n ? `\n> ⚠️ ${x.n}` : ""}`).join("\n");
   return (
     <Modal open onClose={onClose} title="Preguntas de la entrevista" icon={<MessagesSquare />} size="lg" desc={ed ? "Editando: los cambios se ven en todas las entrevistas al guardar." : undefined}
-      footer={ed ? <><Button variant="ghost" icon={<RotateCcw />} className="mr-auto" onClick={async () => { if (await confirm("¿Volver a las preguntas de siempre?")) setEd(Q_DEF); }}>Las de siempre</Button>
+      footer={ed ? <><Button variant="ghost" icon={<RotateCcw />} className="mr-auto" onClick={async () => { if (await confirm("¿Volver a las preguntas de siempre?")) setEd(xQ() ? Q_LSSD : Q_DEF); }}>Las de siempre</Button>
         <Button variant="ghost" onClick={() => setEd(null)}>Cancelar</Button><Button icon={<Save />} disabled={L.some(x => !x.q.trim())} onClick={() => { onSave(L.map(x => ({ ...x, q: x.q.trim(), n: x.n?.trim() || undefined }))); setEd(null); }}>Guardar</Button></>
         : <>{can && <Button variant="ghost" icon={<Pencil />} className="mr-auto" onClick={() => setEd(QS.map(x => ({ ...x })))}>Editar</Button>}<Button variant="ghost" onClick={onClose}>Cerrar</Button><CopyMenu size="md" variant="primary" text={txt} up /></>}>
       <ol className="space-y-2">{L.map((x, i) => (
