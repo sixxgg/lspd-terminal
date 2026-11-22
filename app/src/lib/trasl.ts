@@ -1,5 +1,5 @@
 /* Traslados a la LSSD (Capitanía y Jefatura): solicitud → entrevista de 13 preguntas → evaluación de 4 criterios → votación por mayoría simple
-   → incorporación a la plantilla. Todo es confidencial: el servidor solo lo da a Captain para arriba (o acceso a Capitanía/Jefatura) y six
+   → incorporación a la plantilla. Todo es confidencial: el servidor solo lo da a Lieutenant para arriba (o acceso a Capitanía/Jefatura) y six
    (lib/core.js › traslOk). Claves (cada departamento la suya; hoy solo la LSSD):
    - lspdt.trasl.<id>                    la solicitud (datos, entrevista, copia original, aclaraciones, rondas, cierres, rechazo, incorporación, registro)
    - lspdt.trasl.<id>.v.<ronda>.<slug>   el voto de cada revisor en esa ronda (con su historial de cambios): nadie pisa el voto de otro
@@ -94,14 +94,14 @@ export function mayoria(V: Voto[]): { si: number; no: number; rev: number; res: 
   const si = V.filter(v => v.o === "si").length, no = V.filter(v => v.o === "no").length, rev = V.filter(v => v.o === "rev").length;
   return { si, no, rev, res: !si && !no ? "sin" : si > no ? "apr" : no > si ? "rech" : "emp" };
 }
-/* quiénes revisan: la Capitanía y la Jefatura de la LSSD (Captain para arriba) y quienes tienen acceso dado a Capitanía o Jefatura */
-const CAP_R = ["Sheriff", "Undersheriff", "Assistant Sheriff", "Division Chief", "Area Commander", "Captain"];
+/* quiénes revisan: la Capitanía y la Jefatura de la LSSD (Lieutenant para arriba) y quienes tienen acceso dado a Capitanía o Jefatura */
+const CAP_R = ["Sheriff", "Undersheriff", "Assistant Sheriff", "Division Chief", "Area Commander", "Captain", "Lieutenant"];
 export function revisores(): string[] {
   const A = LS.json<Record<string, string[]>>("lspdt.areaAcc", {}), extra = [...(A.cap || []), ...(A.jef || [])];
   const L = getRoster().filter(a => CAP_R.includes(a.r) && !/retir|baja|inactiv/i.test(String((a as { e?: string }).e || ""))).map(a => a.n);
   return [...new Set([...L, ...extra])];
 }
-/* acceso del lado del cliente (el servidor controla lo mismo): six, Captain para arriba o acceso dado a Capitanía/Jefatura en la LSSD */
+/* acceso del lado del cliente (el servidor controla lo mismo): six, Lieutenant para arriba o acceso dado a Capitanía/Jefatura en la LSSD */
 export function traslOk(r?: string): boolean {
   if (ME_ROLES.six) return true; if (DEPT.id !== "lssd") return false;
   const A = LS.json<Record<string, string[]>>("lspdt.areaAcc", {});

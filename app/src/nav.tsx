@@ -135,7 +135,7 @@ function xAreas(d: "lssd" | "sahp", g: { sup?: boolean; cap?: boolean; jef?: boo
     const pick = (A: Area, ks: string[]) => A.sec.filter(x => ks.includes(x.k));
     const UOF: Sec = { k: "uof", l: "Uso de Fuerza", d: "Procedimientos de uso de la fuerza, con y sin fallecimiento: acceso según el rango de los involucrados", icon: ShieldAlert, ready: true };
     const supL: Area = { ...sup, min: 4, req: "Deputy Sheriff Master FTO", sec: [...sup.sec.filter(x => x.k !== "cond" && x.k !== "rob").map(x => ({ ...x, min: Math.max(x.min || 0, 7) })), { ...EXP, min: 7 }, { ...UOF, min: 7 }, FTO].sort(byLabel) };
-    /* Traslados: solo Captain para arriba (ni Tenientes), lo controla traslOk en el cliente y en el servidor */
+    /* Traslados: Capitanía y Jefatura (Lieutenant para arriba), lo controla traslOk en el cliente y en el servidor */
     const TRA: Sec = { k: "tra", l: "Traslados", d: "Solicitudes de traslado: entrevista, evaluación, votación por mayoría simple e incorporación", icon: FolderSymlink, ready: true };
     const capL: Area = { ...cap, min: 8, req: "Lieutenant", sec: [...pick(sup, ["asc", "fbk", "cond"]), ...pick(cap, ["equ"]), EXP, UOF, TRA].map(x => ({ ...x, min: undefined })).sort(byLabel) };
     const jefL: Area = { ...jef, min: 10, req: "Area Commander (Comandante)", sec: [...jef.sec, ...pick(sup, ["asc", "cond", "fbk"]), EXP, UOF, TRA].map(x => ({ ...x, min: undefined })).sort(byLabel) };
@@ -187,7 +187,7 @@ export const lockedOf = (a: Area, r?: string) => (GUEST.on ? [] : a.sec.filter(s
 const divOff = (l: string) => DEPT.id !== "lspd" && !ME_ROLES.jef && !ME_ROLES.six && LS.json<string[]>("lspdt.divoff", []).includes(l);
 /* Inicio › Briefing: solo si un Supervisor (o six) lo activó para los oficiales */
 const briefOn = () => LS.json<boolean>("lspdt.briefOn", false) === true;
-/* Traslados (LSSD): Captain para arriba aunque el área la vean desde Teniente */
+/* Traslados (LSSD): Lieutenant para arriba */
 const traOk = (r?: string) => (DEPT.id === "lssd" ? traslOk(r) : !!ME_ROLES.six);
 export const secsOf = (a: Area, r?: string) => isSoon(a) ? a.sec : GUEST.on ? a.sec.filter(s => guestSec(a.k, s.k)) : a.sec.filter(s => (!s.min || effL(r) >= s.min) && (a.k !== "ini" || s.k !== "brf" || briefOn()) && (s.k !== "tra" || traOk(r)) && (a.k !== "div" || (divVisible(s.l, PROF.me) && !divOff(s.l)))); /* el rango manda también para los administradores */
 

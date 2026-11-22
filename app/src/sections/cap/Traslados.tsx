@@ -1,4 +1,4 @@
-/* LSSD › Capitanía / Jefatura › Traslados: de la solicitud a la incorporación. Solo Capitanía y Jefatura (Captain para arriba) y six;
+/* LSSD › Capitanía / Jefatura › Traslados: de la solicitud a la incorporación. Solo Capitanía y Jefatura (Lieutenant para arriba) y six;
    el servidor controla lo mismo (lib/core.js › traslOk). Datos y reglas en lib/trasl.ts. La aprobación es por MAYORÍA SIMPLE de los
    votos válidos (a favor vs. en contra); las revisiones pedidas no suman y no dejan cerrar hasta resolverse. Nada se borra. */
 import { useMemo, useState } from "react";
@@ -37,7 +37,7 @@ export function Traslados() {
       <Card className="flex flex-wrap items-center gap-3 p-4">
         <span className="grid size-10 place-items-center rounded-xl bg-brand-500/15 text-brand-600 dark:text-brand-300"><FolderArchive className="size-5" /></span>
         <div className="min-w-0 flex-1"><p className="font-semibold">Traslados a la LSSD</p>
-          <p className="text-xs text-slate-500">Solicitud, entrevista, evaluación y votación por mayoría simple de Capitanía y Jefatura. Confidencial: solo Captain para arriba.</p></div>
+          <p className="text-xs text-slate-500">Solicitud, entrevista, evaluación y votación por mayoría simple de Capitanía y Jefatura. Confidencial: solo Capitanía y Jefatura (Lieutenant para arriba).</p></div>
         {sinVoto.length > 0 && <button onClick={() => setTab(sinVoto[0].est === "prev" ? "prev" : "enrev")} className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700 dark:text-amber-300">
           <Vote className="size-4" />{sinVoto.length} votación{sinVoto.length > 1 ? "es" : ""} sin tu voto</button>}
         <Button icon={<Plus className="size-4" />} onClick={() => setNuevo(true)}>Nuevo traslado</Button>
