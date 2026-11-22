@@ -140,9 +140,8 @@ function xAreas(d: "lssd" | "sahp", g: { sup?: boolean; cap?: boolean; jef?: boo
     const capL: Area = { ...cap, min: 8, req: "Lieutenant", sec: [...pick(sup, ["asc", "fbk", "cond"]), ...pick(cap, ["equ"]), EXP, UOF, TRA].map(x => ({ ...x, min: undefined })).sort(byLabel) };
     const jefL: Area = { ...jef, min: 10, req: "Area Commander (Comandante)", sec: [...jef.sec, ...pick(sup, ["asc", "cond", "fbk"]), EXP, UOF, TRA].map(x => ({ ...x, min: undefined })).sort(byLabel) };
     const admK = ME_ROLES.admin || ME_ROLES.six ? ADM_X : ["acc", "ts", "fbt"]; /* la administración del departamento: accesos, invitaciones, cuentas y hora */
-    /* Robos: un solo lugar, Oficiales › Robos (antes también había un área «Robos» aparte). Oficiales se abre a todo el LSSD para Robos;
-       Informes, Códigos y Radio siguen desde Deputy Sheriff Bonus I */
-    const B = base.map(a => (a.k === "ofi" ? { ...a, min: 0, sec: a.sec.map(x => (x.k === "rob" ? x : { ...x, min: Math.max(x.min || 0, 2) })) } : a));
+    /* Robos: un solo lugar, Oficiales › Robos (antes también había un área «Robos» aparte). Oficiales (Informes, Códigos, Radio y Robos) se abre a todo el LSSD desde Deputy Sheriff Trainee */
+    const B = base.map(a => (a.k === "ofi" ? { ...a, min: 0, req: "Deputy Sheriff Trainee" } : a));
     return [...B, div, supL, capL, jefL, { ...adm, sec: adm.sec.filter(s => admK.includes(s.k)) }].sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
   }
   const L = [...base, div, g.sup ? { ...sup, req: "Sergeant" } : { ...sup, req: "Sergeant", sec: sup.sec.filter(x => x.k === "cond") },
