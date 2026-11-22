@@ -105,7 +105,7 @@ export function Home({ me, go }: { me: { n: string; r: string; p?: string }; go:
             <button onClick={() => go("ini", "nov")} className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-600 hover:underline dark:text-brand-300">Todas<ArrowRight className="size-3.5" /></button></div>
           <div className="px-5 pb-5">
             <p className="text-[15px] font-semibold leading-snug">{rel.t}</p><p className="text-[11.5px] text-slate-500">{rel.f}</p>
-            <ul className="mt-3 space-y-2.5">{[...rel.items, ...(rel.g || []).flatMap(g => g[1])].slice(0, 4).map(x => <li key={x} className="flex gap-2.5 text-[13px] leading-relaxed text-slate-600 dark:text-slate-300"><span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-pink-500" /><span>{x}</span></li>)}</ul>
+            <ul className="mt-3 space-y-2.5">{(rel.sub || []).slice(-4).reverse().map(([v, x]) => <li key={v} className="flex gap-2.5 text-[13px] leading-relaxed text-slate-600 dark:text-slate-300"><span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-pink-500" /><span><b className="mr-1.5 font-mono text-[11.5px] text-pink-600 dark:text-pink-300">v{v}</b>{x}</span></li>)}</ul>
           </div>
         </Card>
       </div>

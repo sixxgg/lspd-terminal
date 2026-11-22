@@ -1,5 +1,5 @@
-/* Briefing y debriefing: un muro de notas que publican los Supervisores (Supervisores › Briefing) y lee todo el departamento
-   (Inicio › Briefing, solo lectura). Briefing = antes del servicio u operativo; debriefing = lo que salió y qué mejorar.
+/* Briefing y debriefing: un muro de notas de los Supervisores (Supervisores › Briefing). Los oficiales NO lo ven, salvo que un
+   Supervisor o six lo active para Inicio (lspdt.briefOn): ahí aparece Inicio › Briefing, en solo lectura. El servidor controla lo mismo al leer. Briefing = antes del servicio u operativo; debriefing = lo que salió y qué mejorar.
    Cada nota: título, contenido, prioridad (normal, alta, urgente) y fijada. Orden: fijadas arriba, después por prioridad y fecha.
    Datos en lspdt.brief (cada departamento el suyo). El servidor solo deja escribir a Supervisores para arriba (lib/core.js). */
 import { useMemo, useState } from "react";
@@ -35,6 +35,7 @@ const txtOf = (n: Nota) => [`## 📋 ${TIPO[n.k].l}: ${n.t}`, `**Prioridad:** ${
 export function Briefing({ ro }: { ro?: boolean }) {
   const me = useMe(), { toast, confirm } = useFeedback(), [L, setL] = useJSON<Nota[]>(KEY, []);
   const can = !ro && (!!ME_ROLES.six || me.admin || myLevel(me.r) >= (DEPT.id === "lspd" ? 6 : 7));
+  const [on, setOn] = useJSON<boolean>("lspdt.briefOn", false);
   const [tab, setTab] = useState<Tipo>("b"), [q, setQ] = useState(""), [ed, setEd] = useState<Nota | null>(null), [ver, setVer] = useState<Nota | null>(null);
   const s = norm(q.trim());
   const vis = useMemo(() => (Array.isArray(L) ? L : []).filter(n => n.k === tab && (!s || norm(`${n.t} ${n.x} ${n.by}`).includes(s))).sort(ord), [L, tab, s]);
@@ -56,7 +57,11 @@ export function Briefing({ ro }: { ro?: boolean }) {
     <div className="space-y-4">
       <Card className="flex flex-wrap items-center gap-3 p-4">
         <span className="grid size-10 place-items-center rounded-xl bg-brand-500/15 text-brand-600 dark:text-brand-300"><Megaphone className="size-5" /></span>
-        <div className="min-w-0 flex-1"><p className="font-semibold">{TIPO[tab].l}</p><p className="text-xs text-slate-500">{TIPO[tab].d}.{ro ? " Lo publican los Supervisores." : " Lo que publiques acá lo ve todo el departamento en Inicio › Briefing."}</p></div>
+        <div className="min-w-0 flex-1"><p className="font-semibold">{TIPO[tab].l}</p><p className="text-xs text-slate-500">{TIPO[tab].d}.{ro ? " Lo publican los Supervisores." : on === true ? " Activado para los oficiales: lo ven en Inicio › Briefing." : " Solo lo ven los Supervisores."}</p></div>
+        {can && <button type="button" role="switch" aria-checked={on === true} onClick={() => { setOn(on !== true); toast(on === true ? "Los oficiales ya no lo ven" : "Activado: los oficiales lo ven en Inicio › Briefing"); }}
+          className="flex items-center gap-2.5 rounded-xl border border-slate-200 px-3 py-2 text-left text-[12.5px] font-semibold dark:border-slate-700">
+          <span className={cn("relative h-5 w-9 shrink-0 rounded-full transition", on === true ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-700")}><span className={cn("absolute top-0.5 size-4 rounded-full bg-white shadow transition-all", on === true ? "left-[18px]" : "left-0.5")} /></span>
+          Visible para los oficiales</button>}
         {can && <Button icon={<Plus className="size-4" />} onClick={nueva}>Nuevo {TIPO[tab].l.toLowerCase()}</Button>}
       </Card>
       <div className="flex flex-wrap items-center gap-2">
@@ -95,7 +100,7 @@ function NotaCard({ n, onOpen }: { n: Nota; onOpen: () => void }) {
 function Editor({ n: n0, onClose, onSave }: { n: Nota; onClose: () => void; onSave: (n: Nota) => void }) {
   const [n, setN] = useState(n0), up = (p: Partial<Nota>) => setN({ ...n, ...p });
   return (
-    <Modal open onClose={onClose} size="md" icon={<Megaphone />} title={n0.id ? "Editar nota" : `Nuevo ${TIPO[n.k].l.toLowerCase()}`} desc="Lo que publiques acá lo ve todo el departamento en Inicio › Briefing."
+    <Modal open onClose={onClose} size="md" icon={<Megaphone />} title={n0.id ? "Editar nota" : `Nuevo ${TIPO[n.k].l.toLowerCase()}`} desc="Lo ven los Supervisores; los oficiales solo si está activado «Visible para los oficiales»."
       footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={() => onSave(n)}>{n0.id ? "Guardar" : "Publicar"}</Button></>}>
       <div className="space-y-4">
         <Segmented value={n.k} onChange={k => up({ k })} options={[{ value: "b", label: "Briefing", icon: <ClipboardList className="size-4" /> }, { value: "d", label: "Debriefing", icon: <ClipboardCheck className="size-4" /> }]} />

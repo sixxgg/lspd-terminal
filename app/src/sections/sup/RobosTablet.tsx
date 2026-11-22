@@ -6,7 +6,7 @@ import { Clock, Store, Swords, Users } from "lucide-react";
 import { Card, SearchInput, Segmented } from "@/components/ui";
 import { norm } from "@/lib/domain";
 import { cn } from "@/lib/cn";
-import { BANDAS, BANDA_KEYS, TAB_MIS, TAB_ROBOS, type Banda } from "../six/tabletData";
+import { BANDAS, BANDA_KEYS, type Banda, type TabData } from "../six/tabletData";
 
 export function BandaChips({ L, sm }: { L: Banda[]; sm?: boolean }) {
   return <>{L.map(b => <span key={b} title={BANDAS[b].d} className={cn("inline-flex items-center whitespace-nowrap rounded-md border px-1.5 font-bold", sm ? "py-0 text-[10px]" : "py-0.5 text-[11px]")}
@@ -15,10 +15,11 @@ export function BandaChips({ L, sm }: { L: Banda[]; sm?: boolean }) {
 const GRUPOS: [string, string][] = [["badulaque", "Badulaques y licorerías"], ["tab:pelu", "Peluquerías"], ["tab:ropa", "Tiendas de ropa"], ["tab:tatto", "Tiendas de tatuajes"], ["tab:antig", "Antigüedades"], ["tab:cajas", "Cajas y contenedores"], ["grow", "Growshop"]];
 const TIPO_C: Record<string, string> = { Asesinato: "#ef4444", Entrega: "#22c55e", Destrucción: "#94a3b8", Escolta: "#38bdf8", Infiltración: "#06b6d4", "Robo de vehículo": "#f59e0b", Encargo: "#a78bfa", Persecución: "#f97316" };
 
-export function TabletView() {
+export function TabletView({ T }: { T: TabData }) {
+  const TAB_ROBOS = T.robos, TAB_MIS = T.mis;
   const [v, setV] = useState<"rob" | "mis">("rob"), [q, setQ] = useState(""), [bd, setBd] = useState<Banda | "" | "none">("");
   const s = norm(q.trim());
-  const mis = useMemo(() => TAB_MIS.filter(m => (!s || norm(`${m.n} ${m.tipo}`).includes(s)) && (!bd || (bd === "none" ? !m.b : m.b === bd))).sort((a, b) => a.nv - b.nv || a.n.localeCompare(b.n)), [s, bd]);
+  const mis = useMemo(() => TAB_MIS.filter(m => (!s || norm(`${m.n} ${m.tipo}`).includes(s)) && (!bd || (bd === "none" ? !m.b : m.b === bd))).sort((a, b) => a.nv - b.nv || a.n.localeCompare(b.n)), [s, bd, TAB_MIS]);
   return (
     <div className="space-y-4">
       <Card className="flex flex-wrap items-center gap-3 px-4 py-3 text-[12.5px] text-slate-600 dark:text-slate-300">
@@ -50,10 +51,10 @@ export function TabletView() {
               <td className="px-4 py-2 font-semibold">{m.n}</td>
               <td className="px-2"><span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase" style={{ background: (TIPO_C[m.tipo] || "#94a3b8") + "22", color: TIPO_C[m.tipo] || "#94a3b8" }}>{m.tipo}</span></td>
               <td className="px-2 text-right tabular-nums">{m.nv}+</td><td className="px-2 text-right tabular-nums">{m.min}–{m.max}</td>
-              <td className="px-2 text-right font-bold tabular-nums text-sky-600 dark:text-sky-400">{m.pt}</td>
+              <td className="px-2 text-right font-bold tabular-nums text-sky-600 dark:text-sky-400">{m.pt || "—"}</td>
               <td className="px-2 text-right font-bold tabular-nums text-emerald-600 dark:text-emerald-400">${m.$.toLocaleString("es-AR")}</td><td className="px-2 text-right tabular-nums text-slate-500">+{m.xp}</td>
               <td className="px-4">{m.b ? <BandaChips L={[m.b]} sm /> : <span className="text-[11px] text-slate-400">Cualquiera</span>}</td></tr>))}</tbody></table></div></Card>
-        <p className="text-center text-[11px] text-slate-400">Faltan misiones de la tablet: se van sumando.</p>
+        <p className="text-center text-[11px] text-slate-400">Datos de la tablet cargados por six el {new Date(T.at).toLocaleDateString("es-AR")}. Información de Gestión de ilícitos: no se comparte.</p>
       </>}
     </div>);
 }

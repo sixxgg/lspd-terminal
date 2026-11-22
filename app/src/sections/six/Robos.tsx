@@ -3,8 +3,8 @@ import { Camera, Car, Gift, X, CarFront, Copy, Info, Minus, Pencil, Plus, Refres
 import { toPng } from "html-to-image";
 import { useFeedback } from "@/components/feedback";
 import { cn } from "@/lib/cn";
-import { BANDAS } from "./tabletData";
-import { CATS, INACTIVAS, MISIONES, ROB_EDIT, ROB_LOG, WPN, bandasDe, catalogo, robDiff, sedesDe, tabOf, type RobLog, perfilDe, recOf, unidades, type Cat, type Item, type RobEdit } from "./robosData";
+import { BANDAS, useTablet, type TabData } from "./tabletData";
+import { CATS, inactivas, misionesCon, ROB_EDIT, ROB_LOG, WPN, bandasDe, catalogo, robDiff, sedesDe, tabOf, type RobLog, perfilDe, recOf, unidades, type Cat, type Item, type RobEdit } from "./robosData";
 import { Modal } from "@/components/modal";
 import { useJSON } from "@/lib/store";
 
@@ -34,8 +34,8 @@ function Armas({ arm }: { arm?: string }) {
       <G d={d} className={w[i] ? "" : "opacity-40"} />{l}{w[i] === 2 && <b className="text-[9px] text-red-300">OBLIG.</b>}</span>))}</div>;
 }
 
-function Card({ it, obs, onEdit }: { it: Item; obs: boolean; onEdit?: () => void }) {
-  const C = CATS[it.cat], bds = bandasDe(it.mis), perf = bds.length ? [] : [...new Set(it.mis.map(perfilDe).filter(Boolean))] as string[], T = tabOf(it.mis), sedes = sedesDe(it.id);
+function Card({ it, obs, onEdit, TD }: { it: Item; obs: boolean; onEdit?: () => void; TD?: TabData | null }) {
+  const C = CATS[it.cat], bds = bandasDe(it.mis), perf = bds.length ? [] : [...new Set(it.mis.map(perfilDe).filter(Boolean))] as string[], T = tabOf(it.mis), sedes = sedesDe(it.id, TD);
   const R = recOf(it.mis);
   return (
     <article className={cn("relative flex flex-col gap-3 overflow-hidden rounded-2xl border bg-gradient-to-b from-[#0e131a] to-[#07090d] p-4 font-sans", it.chg ? "border-amber-500/40" : it.nuevo && it.cat !== "mis" ? "border-purple-500/40" : "border-white/[.07]")}>
@@ -87,12 +87,12 @@ function Card({ it, obs, onEdit }: { it: Item; obs: boolean; onEdit?: () => void
 
 export function Catalogo({ cat, share }: { cat: Cat | "all"; share?: boolean }) {
   const [ED, setED] = useJSON<Record<string, RobEdit>>(ROB_EDIT, {}), [LOG, setLOG] = useJSON<RobLog[]>(ROB_LOG, []), [edit, setEdit] = useState<Item | null>(null);
-  const { toast } = useFeedback(), all = useMemo(() => catalogo(share ? {} : ED), [ED, share]), box = useRef<HTMLDivElement>(null), secs = useRef<Record<string, HTMLElement | null>>({});
+  const { toast } = useFeedback(), TD0 = useTablet(), TD = share ? null : TD0, all = useMemo(() => catalogo(share ? {} : ED, TD), [ED, share, TD]), box = useRef<HTMLDivElement>(null), secs = useRef<Record<string, HTMLElement | null>>({});
   const [flt, setFlt] = useState<"" | "act" | "nuevo" | "pend">(""), [q, setQ] = useState(""), [obs, setObs] = useState(true), [busy, setBusy] = useState(false), [shot, setShot] = useState(false);
   const isPend = (x: Item) => x.notas.some(n => n.t === "rev" || n.t === "dup");
   const FLT = { act: (x: Item) => !!x.chg, nuevo: (x: Item) => !!x.nuevo && x.cat !== "mis", pend: isPend } as const;
   const list = all.filter(x => (cat === "all" || x.cat === cat) && (!flt || FLT[flt](x)) && (!q.trim() || (x.n + " " + x.mis.map(m => m.n).join(" ")).toLowerCase().includes(q.trim().toLowerCase())));
-  const dup = MISIONES.filter(m => !m.off && m.f.length > 1), rev = MISIONES.filter(m => !m.off && /revisar|falta/i.test(m.rec)), chg = all.filter(x => x.chg), nuevos = all.filter(x => x.nuevo && x.cat !== "mis");
+  const MIS = misionesCon(TD), dup = MIS.filter(m => !m.off && m.f.length > 1), rev = MIS.filter(m => !m.off && /revisar|falta/i.test(m.rec)), chg = all.filter(x => x.chg), nuevos = all.filter(x => x.nuevo && x.cat !== "mis");
   /* FOTO 4K: una imagen por bloque (resumen y cada tipo de robo), a 1920 px x2 = 3840 px de ancho */
   const foto = async () => {
     setBusy(true); setShot(true);
@@ -137,7 +137,7 @@ export function Catalogo({ cat, share }: { cat: Cat | "all"; share?: boolean }) 
             <ul className="mt-1 space-y-0.5 text-slate-300">{nuevos.map(x => <li key={x.id}>· {x.n} → {CATS[x.cat].l} · {x.max} / {x.pol} <span className="text-slate-500">(fila {x.mis[0].f.join(", ")})</span></li>)}</ul></div>
           <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3"><b className="text-red-300">Pendiente en el Excel</b><p className="text-slate-500">Lo que conviene completar o limpiar en la planilla.</p>
             <p className="mt-1.5 font-semibold text-slate-400">NO ACTIVO (fuera del catálogo)</p>
-            <ul className="space-y-0.5 text-slate-300">{INACTIVAS.map(m => <li key={m.n}>· {m.n} <span className="text-slate-500">(fila {m.f[0]})</span></li>)}</ul>
+            <ul className="space-y-0.5 text-slate-300">{inactivas(TD).map(m => <li key={m.n}>· {m.n} <span className="text-slate-500">(fila {m.f[0]})</span></li>)}</ul>
             <p className="mt-1.5 font-semibold text-slate-400">Filas repetidas sin decir para qué banda</p>
             <ul className="space-y-0.5 text-slate-300">{dup.map(m => <li key={m.n}>· {m.n} <span className="text-slate-500">(filas {m.f.join(" y ")})</span></li>)}</ul>
             <p className="mt-1.5 font-semibold text-slate-400">Recompensa sin definir</p>
@@ -148,12 +148,12 @@ export function Catalogo({ cat, share }: { cat: Cat | "all"; share?: boolean }) 
           <section key={k} ref={el => { secs.current[`${Object.keys(CATS).indexOf(k) + 1}-${k}`] = el; }} className={cn(shot && "space-y-4 bg-[#05070a] p-8")}>
             {shot && <Head sub={CATS[k].l} />}
             <h3 className="mb-2 flex items-baseline gap-2 font-sans"><span className="size-2.5 rounded-full" style={{ background: CATS[k].c }} /><b className="text-white">{CATS[k].l}</b>{CATS[k].code && <span className="rounded border border-white/15 px-1 font-mono text-[10px] text-slate-400">Cód. {CATS[k].code}</span>}<span className="text-xs text-slate-500">{CATS[k].d}</span></h3>
-            <div className={cn("grid gap-3", shot ? "grid-cols-5" : "sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4")}>{list.filter(x => x.cat === k).map(x => <Card key={x.id} it={x} obs={obs} onEdit={share || shot ? undefined : () => setEdit(x)} />)}</div>
+            <div className={cn("grid gap-3", shot ? "grid-cols-5" : "sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4")}>{list.filter(x => x.cat === k).map(x => <Card key={x.id} it={x} obs={obs} TD={TD} onEdit={share || shot ? undefined : () => setEdit(x)} />)}</div>
           </section>))}
         {!list.length && <p className="py-10 text-center font-sans text-sm text-slate-500">Nada coincide con la búsqueda.</p>}
       </div>
-      {edit && <RobEditModal it={edit} base={catalogo({ ...ED, [edit.id]: { at: 0 } }).find(x => x.id === edit.id)!} cur={ED[edit.id]} onClose={() => setEdit(null)}
-        onSave={e => { const nx = { ...ED }; if (e) nx[edit.id] = e; else delete nx[edit.id]; const after = catalogo(nx).find(x => x.id === edit.id), c = after ? robDiff(edit, after) : [];
+      {edit && <RobEditModal it={edit} base={catalogo({ ...ED, [edit.id]: { at: 0 } }, TD).find(x => x.id === edit.id)!} cur={ED[edit.id]} onClose={() => setEdit(null)}
+        onSave={e => { const nx = { ...ED }; if (e) nx[edit.id] = e; else delete nx[edit.id]; const after = catalogo(nx, TD).find(x => x.id === edit.id), c = after ? robDiff(edit, after) : [];
           if (c.length) setLOG([{ t: Date.now(), id: edit.id, n: after!.n, c, r: !e }, ...LOG].slice(0, 300)); setED(nx); setEdit(null); toast(e ? `${edit.n}: actualizado (también en Supervisores › Robos)` : `${edit.n}: vuelve a lo original`); }} />}
     </div>);
 }

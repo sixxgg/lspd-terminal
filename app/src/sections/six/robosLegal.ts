@@ -145,4 +145,7 @@ export const pena = (x?: Art) => (!x ? "" : [x.m ? `$${x.m.toLocaleString("es-AR
 /* versión oficial (Supervisores › Robos): el catálogo con su articulado, guardado en la base (lspdt.robos) por six */
 export type PubItem = Item & { ley: Ley };
 export type RobosPub = { at: number; by: string; items: PubItem[]; v?: number; log?: import("./robosData").RobLog[] };
-export const pubItems = (all: Item[]): PubItem[] => all.map(it => ({ ...it, ley: leyOf(it) }));
+/* lo que se publica para Supervisores, Oficiales y el LSSD: sin nada de Gestión de ilícitos (recompensas, tablet, bandas ni notas de six) */
+export const pubItems = (all: Item[]): PubItem[] => all.map(it => ({ ...it, notas: [], chg: undefined, mis: it.mis.map(m => ({ n: m.n, tipo: m.tipo, min: m.min, max: m.max, f: m.f, rec: "" })), ley: leyOf(it) }));
+/* la versión completa, solo para quien tiene los datos de la tablet */
+export const fullItems = (all: Item[]): PubItem[] => all.map(it => ({ ...it, ley: leyOf(it) }));

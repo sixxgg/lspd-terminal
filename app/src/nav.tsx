@@ -19,7 +19,7 @@ const RAW_AREAS: Area[] = [
   { k: "ini", l: "Inicio", icon: Home, min: 0, sec: [{ k: "home", l: "Inicio", d: "Resumen del departamento", icon: Home, ready: true },
     /* se entra desde la versión que está debajo del logo */
     { k: "nov", l: "Novedades", d: "Registro de cambios por versión y la primera versión de la terminal", icon: ScrollText, ready: true, hide: true },
-    /* lo que publican los Supervisores (Supervisores › Briefing), en solo lectura para todo el departamento */
+    /* lo que publican los Supervisores (Supervisores › Briefing), en solo lectura: aparece solo si lo activaron para los oficiales */
     { k: "brf", l: "Briefing", d: "Briefing y debriefing que publican los Supervisores", icon: Megaphone, ready: true }] },
   { k: "age", l: "Agentes", icon: Users, min: 6, req: "Sargento I", sec: [{ k: "prof", l: "Agentes", d: "Planilla del departamento por rango: Jefatura, Capitanía, Supervisores, Detectives y Patrulleros", icon: Users, ready: true }] },
   { k: "cal", l: "Calendario", icon: CalendarDays, min: 0, sec: [{ k: "cal", l: "Calendario", d: "Prácticas, instrucciones y eventos de las divisiones", icon: CalendarDays, ready: true }] },
@@ -182,5 +182,7 @@ export const lockedOf = (a: Area, r?: string) => (GUEST.on ? [] : a.sec.filter(s
 /* secciones que ve cada uno dentro de un área (algunas piden más rango que el área) */
 /* divisiones archivadas por Jefatura (LSSD/SAHP): fuera del menú, salvo para Jefatura */
 const divOff = (l: string) => DEPT.id !== "lspd" && !ME_ROLES.jef && !ME_ROLES.six && LS.json<string[]>("lspdt.divoff", []).includes(l);
-export const secsOf = (a: Area, r?: string) => isSoon(a) ? a.sec : GUEST.on ? a.sec.filter(s => guestSec(a.k, s.k)) : a.sec.filter(s => (!s.min || effL(r) >= s.min) && (a.k !== "div" || (divVisible(s.l, PROF.me) && !divOff(s.l)))); /* el rango manda también para los administradores */
+/* Inicio › Briefing: solo si un Supervisor (o six) lo activó para los oficiales */
+const briefOn = () => LS.json<boolean>("lspdt.briefOn", false) === true;
+export const secsOf = (a: Area, r?: string) => isSoon(a) ? a.sec : GUEST.on ? a.sec.filter(s => guestSec(a.k, s.k)) : a.sec.filter(s => (!s.min || effL(r) >= s.min) && (a.k !== "ini" || s.k !== "brf" || briefOn()) && (a.k !== "div" || (divVisible(s.l, PROF.me) && !divOff(s.l)))); /* el rango manda también para los administradores */
 
