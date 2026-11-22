@@ -17,6 +17,7 @@ import { APP_VERSION, hasNews } from "@/sections/Novedades";
 import { cn } from "@/lib/cn";
 import { DEPT, logoOf } from "@/lib/dept";
 import { closeExpired, type Prop } from "@/lib/votes";
+import { TIPOS, slug as tSlug, solList, traslOk, votos } from "@/lib/trasl";
 import { calAck, calAll, calMine, fmtWhen, isToday, reuLabel, reuList, reuVisible } from "@/lib/calendar";
 
 /* a: «app» que la manda (encabezado de la tarjeta, como en el celular); si falta, sale del tipo de aviso */
@@ -86,6 +87,13 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
       L.push({ id: `vot:${v.id}:${v.estado}`, t: v.cierre.t, I: ok ? (asc ? TrendingUp : TrendingDown) : Vote, c: ok ? (asc ? "#22c55e" : "#f59e0b") : "#94a3b8",
         title: ok ? `${asc ? "Ascenso" : "Descenso"} aceptado: ${rankES(v.nr)} ${v.ag.n}` : `${asc ? "Ascenso" : "Descenso"} rechazado: ${v.ag.n}`,
         body: ok ? `Ya se puede ${asc ? "ascender" : "descender"} a ${rankES(v.nr)}${v.cierre.auto ? " · la votación venció" : ""}` : `La votación ${v.cierre.auto ? "venció" : "se cerró"} sin mayoría a favor`, go: ["sup", "vot"] }); }
+    /* traslados (LSSD, Capitanía y Jefatura): votaciones abiertas sin mi voto y aclaraciones nuevas de otros */
+    if (traslOk(me.r)) for (const x of solList()) {
+      if ((x.est === "prev" || x.est === "enrev") && !votos(x.id, x.ronda).some(v => tSlug(v.n) === tSlug(me.n)))
+        L.push({ id: `tra:v:${x.id}:${x.ronda}`, t: x.upd, I: Vote, c: "#a855f7", title: `Traslado a votar: ${x.n}`, body: `${TIPOS[x.tipo].l} · ronda ${x.ronda}`, a: "Traslados", go: [lvl(me.r) >= 10 ? "jef" : "cap", "tra"] });
+      for (const a of x.adic) if (a.by !== me.n && Date.now() - a.t < 14 * 864e5 && ["prev", "enrev"].includes(x.est))
+        L.push({ id: `tra:a:${a.id}`, t: a.t, I: MessageSquare, c: "#a855f7", title: `Nueva información en el traslado de ${x.n}`, body: `${a.by}: ${a.x.slice(0, 80)}`, a: "Traslados", go: [lvl(me.r) >= 10 ? "jef" : "cap", "tra"] });
+    }
     if (hasNews()) L.push({ id: "ver:" + APP_VERSION, t: lsGet<number>("lspdt.next.verT:" + APP_VERSION, 0) || (lsSet("lspdt.next.verT:" + APP_VERSION, Date.now()), Date.now()), I: Sparkles, c: "#f472b6", title: `Versión ${APP_VERSION}`, body: "Hay novedades en la terminal. Tocá para verlas.", go: ["ini", "nov"] });
     return L.sort((a, b) => b.t - a.t).slice(0, 30);
   }, [fb.list, cases, psb, me.n, kEv, ver]); // eslint-disable-line react-hooks/exhaustive-deps

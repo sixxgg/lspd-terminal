@@ -2,12 +2,13 @@ import { PROF, profOk } from "@/lib/nick";
 import { SATD, divVisible } from "@/lib/divisions";
 import type { LucideIcon } from "lucide-react";
 import {
-  Megaphone, CalendarDays, Home, BookOpenCheck, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
+  Megaphone, FolderSymlink, CalendarDays, Home, BookOpenCheck, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
   Gavel, Pill, BadgeCheck, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, FolderOpen, Fingerprint, UserRound, Presentation, UserMinus, RadioTower, UsersRound, Images, HeartHandshake, BookMarked } from "lucide-react";
 import { GUEST, LS, ME_ROLES } from "./lib/store";
 import { DEPT, onDept } from "./lib/dept";
 import { Helicopter } from "./components/icons";
 import { lvl } from "./lib/domain";
+import { traslOk } from "./lib/trasl";
 
 export type Sec = { k: string; l: string; sl?: string; d: string; icon: LucideIcon; ready?: boolean; min?: number; hide?: boolean }; /* hide: no aparece en la barra de secciones (se entra por otro lado) */
 export type Area = { k: string; l: string; icon?: LucideIcon; min: number; req?: string; admin?: boolean; hidden?: boolean; beta?: boolean; sec: Sec[] };
@@ -134,12 +135,15 @@ function xAreas(d: "lssd" | "sahp", g: { sup?: boolean; cap?: boolean; jef?: boo
     const pick = (A: Area, ks: string[]) => A.sec.filter(x => ks.includes(x.k));
     const UOF: Sec = { k: "uof", l: "Uso de Fuerza", d: "Procedimientos de uso de la fuerza, con y sin fallecimiento: acceso según el rango de los involucrados", icon: ShieldAlert, ready: true };
     const supL: Area = { ...sup, min: 4, req: "Deputy Sheriff Master FTO", sec: [...sup.sec.filter(x => x.k !== "cond" && x.k !== "rob").map(x => ({ ...x, min: Math.max(x.min || 0, 7) })), { ...EXP, min: 7 }, { ...UOF, min: 7 }, FTO].sort(byLabel) };
-    /* Robos: lo consulta todo el LSSD (catálogo y artículos, con buscador y categorías) */
-    const rob: Area = { k: "rob", l: "Robos", icon: Gavel, min: 0, sec: [{ k: "rob", l: "Robos", d: "Catálogo oficial de robos y sus artículos: buscador y categorías", icon: Gavel, ready: true }] };
-    const capL: Area = { ...cap, min: 8, req: "Lieutenant", sec: [...pick(sup, ["asc", "fbk", "cond"]), EXP, UOF].map(x => ({ ...x, min: undefined })).sort(byLabel) };
-    const jefL: Area = { ...jef, min: 10, req: "Area Commander (Comandante)", sec: [...jef.sec, ...pick(sup, ["asc", "cond", "fbk"]), EXP, UOF].map(x => ({ ...x, min: undefined })).sort(byLabel) };
+    /* Traslados: solo Captain para arriba (ni Tenientes), lo controla traslOk en el cliente y en el servidor */
+    const TRA: Sec = { k: "tra", l: "Traslados", d: "Solicitudes de traslado: entrevista, evaluación, votación por mayoría simple e incorporación", icon: FolderSymlink, ready: true };
+    const capL: Area = { ...cap, min: 8, req: "Lieutenant", sec: [...pick(sup, ["asc", "fbk", "cond"]), ...pick(cap, ["equ"]), EXP, UOF, TRA].map(x => ({ ...x, min: undefined })).sort(byLabel) };
+    const jefL: Area = { ...jef, min: 10, req: "Area Commander (Comandante)", sec: [...jef.sec, ...pick(sup, ["asc", "cond", "fbk"]), EXP, UOF, TRA].map(x => ({ ...x, min: undefined })).sort(byLabel) };
     const admK = ME_ROLES.admin || ME_ROLES.six ? ADM_X : ["acc", "ts", "fbt"]; /* la administración del departamento: accesos, invitaciones, cuentas y hora */
-    return [...base, div, rob, supL, capL, jefL, { ...adm, sec: adm.sec.filter(s => admK.includes(s.k)) }].sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
+    /* Robos: un solo lugar, Oficiales › Robos (antes también había un área «Robos» aparte). Oficiales se abre a todo el LSSD para Robos;
+       Informes, Códigos y Radio siguen desde Deputy Sheriff Bonus I */
+    const B = base.map(a => (a.k === "ofi" ? { ...a, min: 0, sec: a.sec.map(x => (x.k === "rob" ? x : { ...x, min: Math.max(x.min || 0, 2) })) } : a));
+    return [...B, div, supL, capL, jefL, { ...adm, sec: adm.sec.filter(s => admK.includes(s.k)) }].sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
   }
   const L = [...base, div, g.sup ? { ...sup, req: "Sergeant" } : { ...sup, req: "Sergeant", sec: sup.sec.filter(x => x.k === "cond") },
     g.cap ? { ...cap, req: "Lieutenant" } : SOON("cap", "Capitanía", Briefcase, 8, "Lieutenant"),
@@ -167,7 +171,7 @@ const galOk = () => !!ME_ROLES.six || !!ME_ROLES.admin || (DEPT.id !== "lspd" &&
 /* invitado: solo las secciones que abrió six (Novedades va siempre con el Inicio) */
 const guestSec = (a: string, s: string) => GUEST.secs.includes(`${a}/${s}`) || (a === "ini" && s === "nov");
 /* Informes, Códigos y Radio pasaron a Oficiales: los accesos guardados (última pantalla, enlaces) siguen andando */
-const MOVED: Record<string, string> = { inf: "ofi", cod: "ofi", rad: "ofi" };
+const MOVED: Record<string, string> = { inf: "ofi", cod: "ofi", rad: "ofi", rob: "ofi" };
 export const fixNav = <T extends { a: string; s: string }>(n: T): T => (MOVED[n.a] ? { ...n, a: MOVED[n.a] } : n);
 /* acceso dado desde Administración › Accesos: cuenta como Sargento I (Supervisores), Teniente (Capitanía) o Comandante (Jefatura) */
 const AREA_L: Record<string, number> = { sup: 6, cap: 8, jef: 10 };
@@ -184,5 +188,7 @@ export const lockedOf = (a: Area, r?: string) => (GUEST.on ? [] : a.sec.filter(s
 const divOff = (l: string) => DEPT.id !== "lspd" && !ME_ROLES.jef && !ME_ROLES.six && LS.json<string[]>("lspdt.divoff", []).includes(l);
 /* Inicio › Briefing: solo si un Supervisor (o six) lo activó para los oficiales */
 const briefOn = () => LS.json<boolean>("lspdt.briefOn", false) === true;
-export const secsOf = (a: Area, r?: string) => isSoon(a) ? a.sec : GUEST.on ? a.sec.filter(s => guestSec(a.k, s.k)) : a.sec.filter(s => (!s.min || effL(r) >= s.min) && (a.k !== "ini" || s.k !== "brf" || briefOn()) && (a.k !== "div" || (divVisible(s.l, PROF.me) && !divOff(s.l)))); /* el rango manda también para los administradores */
+/* Traslados (LSSD): Captain para arriba aunque el área la vean desde Teniente */
+const traOk = (r?: string) => (DEPT.id === "lssd" ? traslOk(r) : !!ME_ROLES.six);
+export const secsOf = (a: Area, r?: string) => isSoon(a) ? a.sec : GUEST.on ? a.sec.filter(s => guestSec(a.k, s.k)) : a.sec.filter(s => (!s.min || effL(r) >= s.min) && (a.k !== "ini" || s.k !== "brf" || briefOn()) && (s.k !== "tra" || traOk(r)) && (a.k !== "div" || (divVisible(s.l, PROF.me) && !divOff(s.l)))); /* el rango manda también para los administradores */
 

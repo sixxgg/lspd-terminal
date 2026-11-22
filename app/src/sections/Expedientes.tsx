@@ -13,6 +13,8 @@ import { LS, ME_ROLES, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { getRoster, lvl, rankES, uid } from "@/lib/domain";
 import { myLevel } from "@/nav";
+import { ESTS, RES, TIPOS as T_TIPOS, slug as tSlug, solList, traslOk } from "@/lib/trasl";
+import { FolderSymlink } from "lucide-react";
 import { FB_TIPOS } from "@/legacy/feedback";
 import { cn } from "@/lib/cn";
 
@@ -87,6 +89,14 @@ function Expediente({ a }: { a: { n: string; r: string; p?: string; i?: string }
             style={flt === k ? { borderColor: c, background: c + "1a", color: c } : undefined}><I className="size-3.5" style={{ color: c }} />{v}</button>); })}</div>
       </Card>
 
+      {/* Historial de traslados: confidencial (solo Capitanía y Jefatura; el servidor no les manda los traslados a los demás) */}
+      {traslOk(me.r) && (() => { const T = solList().filter(x => tSlug(x.n) === tSlug(a.n)); return T.length > 0 && (
+        <Card className="space-y-2 border-violet-500/30 p-4"><p className="flex items-center gap-2 text-[15px] font-semibold"><FolderSymlink className="size-4 text-violet-500" />Historial de traslados <span className="text-[11px] font-normal text-slate-400">· confidencial: Capitanía y Jefatura</span></p>
+          {T.map(x => { const c = x.cierres[x.cierres.length - 1]; return (
+            <button key={x.id} onClick={() => { try { sessionStorage.setItem("lspdt.next.traslSel", x.id); } catch { /* */ } window.dispatchEvent(new CustomEvent("lspd:go", { detail: { a: myLevel(me.r) >= 10 ? "jef" : "cap", s: "tra" } })); }}
+              className="flex w-full flex-wrap items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-left text-[13px] transition hover:border-violet-400 dark:border-slate-800">
+              <b>{T_TIPOS[x.tipo].l}{x.tipo === "ext" ? ` · ${x.dep}` : ""}</b><span className="text-slate-500">· solicitud {x.fsol.split("-").reverse().join("/")}{c ? ` · ${RES[c.res]}` : ""}{x.inc ? ` · ${x.inc.r}, placa #${x.inc.p}` : ""}</span>
+              <span className="ml-auto rounded px-1.5 text-[11px] font-bold" style={{ background: ESTS[x.est].c + "22", color: ESTS[x.est].c }}>{ESTS[x.est].l}</span></button>); })}</Card>); })()}
       <Card className="space-y-3 p-4">
         <div className="flex flex-wrap gap-1.5">{ALTA.map(k => { const [l, I, c] = TIPOS[k], on = tipo === k; return (
           <button key={k} onClick={() => setTipo(k)} className={cn("inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[13px] font-semibold transition", on ? "" : "border-slate-200 text-slate-500 hover:text-slate-800 dark:border-slate-700 dark:hover:text-white")}
