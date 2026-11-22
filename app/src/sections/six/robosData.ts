@@ -1,3 +1,4 @@
+import { BANDA_KEYS, TAB_MIS, TAB_ROBOS, nk, type Banda, type TMis, type TRobo } from "./tabletData";
 /* Catálogo de robos (six): la Normativa de Robos (Notion) cruzada con la planilla «Misiones y robos».
    Cada robo de la normativa se une con sus misiones (atracadores mín./máx. y recompensa) y se marcan diferencias,
    misiones que no tienen robo en la normativa (con una propuesta de categoría y policías = atracadores + 2) y lo que se puede sacar. */
@@ -12,8 +13,9 @@ export const CATS: Record<Cat, { l: string; c: string; d: string; code?: string 
   mis: { l: "Misiones (no son robos)", c: "#a855f7", d: "Asesinato, escolta, entrega, destrucción e infiltración" },
 };
 type PV = [boolean, boolean, boolean, boolean?]; // patrulla, interceptor, helicóptero, barco
-export type Robo = { id: string; n: string; cat: Cat; ilg?: string; arm?: string; reh?: string; blq?: boolean | null; max?: number | null; pol?: number | null; pv?: PV; mando?: boolean | null; norm: boolean };
-export type Mision = { n: string; tipo: string; min: number; max: number; rec: string; robo?: string; cat?: Cat; off?: boolean; f: number[] };
+export type Robo = { id: string; n: string; cat: Cat; ilg?: string; arm?: string; reh?: string; blq?: boolean | null; max?: number | null; pol?: number | null; pv?: PV; mando?: boolean | null; norm: boolean; tab?: boolean };
+/* tab: las variantes de la misión que están activas en la tablet (nivel, policías para arrancar, dinero, experiencia y tipo de banda) */
+export type Mision = { n: string; tipo: string; min: number; max: number; rec: string; robo?: string; cat?: Cat; off?: boolean; f: number[]; tab?: TMis[] };
 
 const MD = "Máx. deportivos (sin alerón)", MDX = "Máx. deportivos", CV = "Cualquier vehículo";
 const BLANCA = "Mínimo armas blancas · Escopeta ✗ · SMG y superiores ✗", PIST = "Obligatorio mín. 1 pistola · Escopeta ✗ · SMG y superiores ✗";
@@ -36,6 +38,7 @@ const NORMATIVA: Robo[] = [
   r("tumbas", "Tumbas", "rap", { ilg: MD, arm: CUCH, reh: "No", blq: false, max: 4, pol: 6, pv: [true, true, false], mando: false }),
   r("expend", "Máquinas expendedoras", "rap", { ilg: MD, arm: CUCH, reh: "No", blq: false, max: 2, pol: null, pv: [true, true, false], mando: false }),
   r("cabinas", "Cabinas telefónicas", "rap", { ilg: MD, arm: CUCH, reh: "No", blq: false, max: 2, pol: null, pv: [true, true, false], mando: false }),
+  r("tab:cajas", "Cajas y contenedores", "rap", { ilg: MD, arm: CUCH, reh: "No", blq: false, max: 2, pol: 4, pv: [true, true, false], mando: false, norm: false, tab: true }),
   r("parqui", "Parquímetros", "rap", { ilg: MD, arm: CUCH, reh: "No", blq: false, max: 2, pol: null, pv: [true, true, false], mando: false }),
 
   r("badulaque", "Badulaque / Licorería (máx. 2 al día)", "men", { ilg: MD, arm: BLANCA, reh: "Tendero", blq: false, max: 2, pol: 4, pv: [true, false, false], mando: false }),
@@ -45,6 +48,11 @@ const NORMATIVA: Robo[] = [
   r("farmacia", "Farmacias (máx. 2 por semana)", "men", { ilg: MDX, arm: PIST, reh: "Sí (1 a 4)", blq: true, max: 4, pol: 6, pv: [true, false, false], mando: false }),
   r("furgonmat", "Asalto furgón de materiales", "men", { ilg: MD, arm: FURGON, reh: "Sí (1 a 4)", blq: true, max: 4, pol: 6, pv: [true, false, false], mando: false }),
   r("textil", "Asalto fábrica textil", "men", { ilg: MD, arm: PIST, reh: "Sí (1 a 4)", blq: true, max: 4, pol: 6, pv: [true, false, false], mando: false }),
+  /* robos activos de la tablet que no estaban en la normativa: tipo badulaque, también para civiles (propuesta: mismos parámetros que el badulaque) */
+  r("tab:pelu", "Peluquerías", "men", { ilg: MD, arm: BLANCA, reh: "Tendero (NPC, por /dados)", blq: false, max: 2, pol: 4, pv: [true, false, false], mando: false, norm: false, tab: true }),
+  r("tab:ropa", "Tiendas de ropa", "men", { ilg: MD, arm: BLANCA, reh: "Tendero (NPC, por /dados)", blq: false, max: 2, pol: 4, pv: [true, false, false], mando: false, norm: false, tab: true }),
+  r("tab:tatto", "Tiendas de tatuajes", "men", { ilg: MD, arm: BLANCA, reh: "Tendero (NPC, por /dados)", blq: false, max: 2, pol: 4, pv: [true, false, false], mando: false, norm: false, tab: true }),
+  r("tab:antig", "Antigüedades", "men", { ilg: MD, arm: BLANCA, reh: "Tendero (NPC, por /dados)", blq: false, max: 2, pol: 4, pv: [true, false, false], mando: false, norm: false, tab: true }),
   r("furgonfleeca", "Asalto furgón Fleeca", "men", { ilg: MD, arm: BLANCA, reh: "El conductor del furgón", blq: true, max: 6, pol: 8, pv: [true, false, false], mando: false }),
 
   r("importacion", "Coche de importación", "veh", { ilg: CV, arm: CUCH, reh: "No", blq: false, max: 2, pol: 4, pv: [true, true, false] }),
@@ -120,7 +128,32 @@ export const MISIONES: Mision[] = [
   m("High Class", "Robo de vehículo", 2, 4, "1.600$", { cat: "veh", f: [85] }), m("Null Operation", "Encargo", 2, 4, "8.000$", { cat: "esp", f: [86] }),
 ];
 /* versión del catálogo: si la publicada en la base es de otra versión, Supervisores usa la nueva sin esperar a que six la vuelva a publicar */
-export const ROBOS_V = 3;
+export const ROBOS_V = 4;
+
+/* ---------- la tablet manda: cada misión de la planilla se une con sus variantes de la tablet (jugadores y dinero de la tablet);
+   las que solo están en la tablet entran como misiones nuevas ---------- */
+const NEW_TAB: Record<string, Partial<Mision>> = { "Galería de arte": { robo: "galeria" }, "Alijo submarino": { cat: "esp" }, "Robo de un V12": { cat: "veh" }, "Cargamento de mayonesa": { cat: "mis" } };
+for (const t of TAB_MIS) {
+  const k = nk(t.n), mi = MISIONES.find(x => nk(x.n) === k);
+  if (mi) { (mi.tab ||= []).push(t); continue; }
+  MISIONES.push({ n: t.n, tipo: t.tipo, min: t.min, max: t.max, rec: "", f: [], cat: "mis", ...NEW_TAB[t.n], tab: [t] });
+}
+for (const mi of MISIONES) {
+  if (!mi.tab?.length) continue;
+  mi.min = Math.min(...mi.tab.map(t => t.min)); mi.max = Math.max(...mi.tab.map(t => t.max));
+  const $ = [...new Set(mi.tab.map(t => t.$))].sort((a, b) => a - b).map(n => `${n.toLocaleString("es-AR")}$`), ex = mi.rec.includes("+") ? mi.rec.slice(mi.rec.indexOf("+") + 1).trim() : "";
+  mi.rec = [$.join(" / "), ex].filter(Boolean).join(" + ");
+}
+/* para qué banda es cada robo: las etiquetas de sus misiones en la tablet */
+export const bandasDe = (mis: Mision[]): Banda[] => BANDA_KEYS.filter(b => mis.some(m => m.tab?.some(t => t.b === b)));
+/* lo de la tablet de un robo: nivel mínimo, policías en servicio que pide para arrancar y experiencia */
+export function tabOf(mis: Mision[]) {
+  const T = mis.flatMap(m => m.tab || []); if (!T.length) return null;
+  const r = (L: number[]) => { const a = Math.min(...L), b = Math.max(...L); return a === b ? String(a) : `${a} a ${b}`; };
+  return { nv: Math.min(...T.map(t => t.nv)), pt: r(T.map(t => t.pt)), xp: r(T.map(t => t.xp)), n: T.length };
+}
+/* sedes de la tablet de cada robo (badulaques, licorerías, growshop, peluquerías…) */
+export const sedesDe = (id: string): TRobo[] => TAB_ROBOS.filter(t => t.grp === id);
 
 /* ---------- cruce ---------- */
 const base = (n: string) => n.replace(/\s*\((II|encargo)\)$/i, "").toLowerCase();
@@ -163,12 +196,15 @@ export function catalogo(ED: Record<string, RobEdit> = {}): Item[] {
       const top = Math.max(...it.mis.map(x => x.max));
       if (it.norm && it.max != null && top !== it.max) {
         it.chg = { de: it.max, a: top, f: it.mis.filter(x => x.max === top).flatMap(x => x.f) };
-        it.notas.push({ t: "act", x: `La normativa vieja decía ${it.max}; el Excel (fila ${it.chg.f.join(", ")}) dice ${top}. Queda ${top} atracadores y ${top + 2} policías.` });
+        const src = it.mis.some(x => x.max === top && x.tab) ? "la tablet" : `el Excel (fila ${it.chg.f.join(", ")})`;
+        it.notas.push({ t: "act", x: `La normativa vieja decía ${it.max}; ${src} dice ${top}. Queda ${top} atracadores y ${top + 2} policías.` });
         it.max = top; it.pol = top + 2;
       }
     }
-    if (it.nuevo) it.notas.push({ t: "nuevo", x: it.cat === "mis" ? `Misión del Excel (${it.mis[0].tipo.toLowerCase()}), no es un robo. Policías máx. ${it.pol}.` : `Robo nuevo del Excel. Vehículo, armas, rehenes y policía según ${CATS[it.cat].l}.` });
-    else if (!it.mis.length) it.notas.push({ t: "sin", x: "No tiene misión en el Excel: sin recompensa cargada." });
+    const de = it.mis.some(x => !x.f.length) ? "de la tablet" : "del Excel";
+    if (it.tab) it.notas.push({ t: "nuevo", x: `Robo activo de la tablet (${sedesDe(it.id).length} sedes), tipo badulaque: también lo hacen civiles. Parámetros propuestos como el Badulaque: ajustalos si no van.` });
+    else if (it.nuevo) it.notas.push({ t: "nuevo", x: it.cat === "mis" ? `Misión ${de} (${it.mis[0].tipo.toLowerCase()}), no es un robo. Policías máx. ${it.pol}.` : `Robo nuevo ${de}. Vehículo, armas, rehenes y policía según ${CATS[it.cat].l}.` });
+    else if (!it.mis.length && !sedesDe(it.id).length) it.notas.push({ t: "sin", x: "No tiene misión en el Excel: sin recompensa cargada." });
     for (const mi of it.mis) {
       if (/revisar|falta/i.test(mi.rec)) it.notas.push({ t: "rev", x: `«${mi.n}» (fila ${mi.f.join(", ")}): la recompensa está pendiente.` });
       if (mi.f.length > 1) it.notas.push({ t: "dup", x: `«${mi.n}» está repetida en las filas ${mi.f.join(" y ")} y no dice para qué banda es cada una.` });
@@ -185,6 +221,15 @@ export function catalogo(ED: Record<string, RobEdit> = {}): Item[] {
   return out;
 }
 
+/* las ediciones de six que ya están en una versión publicada (para no perderlas si cambia la versión del catálogo y six todavía no volvió a publicar) */
+const ED_L: Record<string, keyof RobEdit> = { Nombre: "n", "Atracadores mín.": "min", "Atracadores máx.": "max", "Policías máx.": "pol", Rehenes: "reh", Bloqueo: "blq", "Vehículos policiales": "pv", Mando: "mando", Vehículo: "ilg", Armas: "arm" };
+export function edOfPub(items?: Item[]): Record<string, RobEdit> {
+  const o: Record<string, RobEdit> = {};
+  for (const it of items || []) { if (!it.ed?.at) continue; const e: RobEdit = { at: it.ed.at };
+    for (const c of it.ed.c) { const k = ED_L[c.split(":")[0].trim()]; if (k && k !== "at") (e as Record<string, unknown>)[k] = (it as Record<string, unknown>)[k] ?? null; }
+    o[it.id] = e; }
+  return o;
+}
 /* policías en unidades: binomios (2) y, si sobra uno, una unión */
 export const unidades = (n?: number | null) => { if (!n) return ""; const b = Math.floor(n / 2), u = n % 2; return [b ? `${b} binomio${b > 1 ? "s" : ""}` : "", u ? "1 unión" : ""].filter(Boolean).join(" + "); };
 /* recompensa: el dinero por un lado y lo extra (ítems para droga, piezas de armas, objetos) por otro */
@@ -193,9 +238,9 @@ const num = (s: string) => Number(s.replace(/[.,](?=\d{3}\b)/g, "").replace(",",
 export function recOf(mis: Item["mis"]) {
   const amts = new Set<number>(), extra = new Set<string>(); let pend = false;
   for (const m of mis) {
-    const r = m.rec, mm = r.match(MONEY); if (mm) amts.add(num(mm[1]));
+    const r = m.rec, mm = r.match(MONEY); if (m.tab?.length) m.tab.forEach(t => amts.add(t.$)); else if (mm) amts.add(num(mm[1]));
     if (/revisar|falta/i.test(r)) pend = true;
-    const ex = r.replace(MONEY, "").replace(/revisar|falta hacerla|no activo/gi, "").replace(/^[\s+\-–·]+|[\s+\-–·]+$/g, "").trim();
+    const ex = r.replace(/(\d[\d.,]*\s*\$\s*\/?\s*)+/g, "").replace(/revisar|falta hacerla|no activo/gi, "").replace(/^[\s+\-–·]+|[\s+\-–·]+$/g, "").trim();
     if (ex) extra.add(ex[0].toUpperCase() + ex.slice(1));
   }
   const L = [...amts].sort((a, b) => a - b), f = (n: number) => `$${n.toLocaleString("es-AR")}`;

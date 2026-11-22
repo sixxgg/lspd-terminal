@@ -3,7 +3,8 @@ import { Camera, Car, Gift, X, CarFront, Copy, Info, Minus, Pencil, Plus, Refres
 import { toPng } from "html-to-image";
 import { useFeedback } from "@/components/feedback";
 import { cn } from "@/lib/cn";
-import { CATS, INACTIVAS, MISIONES, ROB_EDIT, ROB_LOG, WPN, catalogo, robDiff, type RobLog, perfilDe, recOf, unidades, type Cat, type Item, type RobEdit } from "./robosData";
+import { BANDAS } from "./tabletData";
+import { CATS, INACTIVAS, MISIONES, ROB_EDIT, ROB_LOG, WPN, bandasDe, catalogo, robDiff, sedesDe, tabOf, type RobLog, perfilDe, recOf, unidades, type Cat, type Item, type RobEdit } from "./robosData";
 import { Modal } from "@/components/modal";
 import { useJSON } from "@/lib/store";
 
@@ -34,7 +35,7 @@ function Armas({ arm }: { arm?: string }) {
 }
 
 function Card({ it, obs, onEdit }: { it: Item; obs: boolean; onEdit?: () => void }) {
-  const C = CATS[it.cat], perf = [...new Set(it.mis.map(perfilDe).filter(Boolean))] as string[];
+  const C = CATS[it.cat], bds = bandasDe(it.mis), perf = bds.length ? [] : [...new Set(it.mis.map(perfilDe).filter(Boolean))] as string[], T = tabOf(it.mis), sedes = sedesDe(it.id);
   const R = recOf(it.mis);
   return (
     <article className={cn("relative flex flex-col gap-3 overflow-hidden rounded-2xl border bg-gradient-to-b from-[#0e131a] to-[#07090d] p-4 font-sans", it.chg ? "border-amber-500/40" : it.nuevo && it.cat !== "mis" ? "border-purple-500/40" : "border-white/[.07]")}>
@@ -43,6 +44,8 @@ function Card({ it, obs, onEdit }: { it: Item; obs: boolean; onEdit?: () => void
         <div className="min-w-0 flex-1"><h3 className="text-[15px] font-bold leading-tight text-white">{it.n}</h3>
           <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: C.c }}>{C.l}{C.code && <span className="ml-1.5 text-slate-500">· {C.code}</span>}</p></div>
         {perf.map(p => <span key={p} className={cn("rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase", p === "drogas" ? "border-lime-400/40 bg-lime-500/10 text-lime-300" : "border-orange-400/40 bg-orange-500/10 text-orange-300")}>Banda de {p}</span>)}
+        {bds.map(b => <span key={b} title={BANDAS[b].d} className="rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase" style={{ borderColor: BANDAS[b].c + "66", background: BANDAS[b].c + "1a", color: BANDAS[b].c }}>{BANDAS[b].l}</span>)}
+        {(it.tab || sedes.length > 0) && <span title={sedes.map(t => t.n).join("\n")} className="rounded-md border border-teal-400/40 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-bold text-teal-300">TABLET · {sedes.length}</span>}
         {it.nuevo && it.cat !== "mis" && <span className="rounded-md border border-purple-400/40 bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-bold text-purple-300">NUEVO</span>}
         {it.chg && <span title={`Antes ${it.chg.de}`} className="rounded-md border border-amber-400/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">{it.chg.de} → {it.chg.a}</span>}
         {it.ed && <span title={it.ed.c.join(" · ")} className="rounded-md border border-sky-400/40 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">EDITADO</span>}
@@ -64,7 +67,9 @@ function Card({ it, obs, onEdit }: { it: Item; obs: boolean; onEdit?: () => void
         <dt className="text-slate-500">Rehenes</dt><dd className="text-slate-200">{it.reh ?? "—"}</dd>
         <dt className="text-slate-500">Bloqueo</dt><dd className="text-slate-200">{yn(it.blq)}</dd>
         {it.ilg && <><dt className="text-slate-500">Vehículo</dt><dd className="text-slate-200">{it.ilg}</dd></>}
-        {it.mis.length > 0 && <><dt className="text-slate-500">Planilla</dt><dd className="text-slate-300">{it.mis.map(m => `${m.n} · fila ${m.f.join(", ")} (${m.min}–${m.max})`).join(" · ")}</dd></>}
+        {it.mis.length > 0 && <><dt className="text-slate-500">Planilla</dt><dd className="text-slate-300">{it.mis.map(m => `${m.n} · ${m.f.length ? `fila ${m.f.join(", ")}` : "solo tablet"} (${m.min}–${m.max})`).join(" · ")}</dd></>}
+        {T && <><dt className="text-slate-500">Tablet</dt><dd className="text-slate-300">Nv. {T.nv}+ · {T.pt} pol. para arrancar · +{T.xp} xp</dd></>}
+        {sedes.length > 0 && <><dt className="text-slate-500">Sedes</dt><dd className="text-slate-300">{sedes.length} en la tablet · {[...new Set(sedes.map(t => `${t.cd} min`))].join(" / ")} de espera{sedes.some(t => t.acc === "all") ? " · también civiles" : ""}</dd></>}
       </dl>
       <div className="space-y-1.5">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Policía puede llevar</p>

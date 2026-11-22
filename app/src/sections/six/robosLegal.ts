@@ -5,7 +5,9 @@
    - Tentativa: el artículo del robo en grado de tentativa.
    - Consumado: el robo + lo que pasa siempre en ese robo y el artículo no cubre (ej: armas obligatorias a la vista).
    - Con disparos: lo consumado + atentado agravado (143.3), salvo que el artículo ya tenga «abrir fuego contra los agentes».
-   - Según lo que pase: rehenes, armas, vehículo robado, hackeo, explosivos, herramientas, grupo, CK y huida.
+   - Rehenes: casi siempre son NPC y salen con el comando IC /dados (número del 1 al 6): eso NO se imputa. El 124.1 va solo si el rehén
+     es un jugador (persona física), y por eso queda como condicional, nunca en el consumado.
+   - Según lo que pase: rehén jugador, armas, vehículo robado, hackeo, explosivos, herramientas, grupo, CK y huida.
    Es una guía armada desde la normativa de robos y el Código Penal: el agente ajusta a lo que pasó. */
 import { penalOf, type Art } from "@/lib/penal";
 import { WPN, type Cat, type Item } from "./robosData";
@@ -22,6 +24,8 @@ const BASE: Record<string, Ref[]> = {
   expend: [{ a: "132.6", why: "Se fuerza la máquina para sacar el dinero (el daño de forzarla ya va incluido)" }],
   cabinas: [{ a: "132.6", why: "Se fuerza la cabina para sacar el dinero (el daño de forzarla ya va incluido)" }],
   parqui: [{ a: "132.103", why: "El parquímetro es un bien público" }],
+  "tab:pelu": [{ a: "132.110", why: "Peluquería: pequeño comercio" }], "tab:ropa": [{ a: "132.110", why: "Tienda de ropa: pequeño comercio" }], "tab:tatto": [{ a: "132.110", why: "Tienda de tatuajes: pequeño comercio" }],
+  "tab:antig": [{ a: "132.110", why: "Tienda de antigüedades: pequeño comercio" }], "tab:cajas": [{ a: "132.102", why: "Se fuerzan cajas o contenedores para sacar lo de adentro" }],
   badulaque: [{ a: "132.110" }, { a: "132.102", why: "Si además abren la caja fuerte del local" }],
   grow: [{ a: "132.129" }], informatica: [{ a: "132.130" }], granja: [{ a: "132.129", why: "Granja de cultivo" }], farmacia: [{ a: "132.130" }],
   furgonmat: [{ a: "132.131" }], textil: [{ a: "132.108" }], furgonfleeca: [{ a: "132.131", why: "Furgón de transporte de caudales" }],
@@ -107,7 +111,7 @@ export function leyOf(it: Item): Ley {
   const add = (k: string, l: string, when: string, arts: Ref[], ik = k) => cond.push(incTxt(ik) ? { k, l, when, arts: [], inc: incTxt(ik) } : { k, l, when, arts });
   if (ALT[it.id]) cond.push(ALT[it.id]);
   if (!mis && it.reh && !/^(no|—|-)$/i.test(it.reh.trim()))
-    add("reh", "Rehenes", `Si toman rehenes (${it.reh})`, [{ a: "124.1", why: "Retener a una persona contra su voluntad" }, { a: "124.5", why: "Si piden algo a cambio de soltarlos (negociación)" }]);
+    add("reh", "Rehén jugador", `Solo si el rehén es un jugador (persona física). Los rehenes NPC salen por /dados (1 a 6) y no se imputan`, [{ a: "124.1", why: "Retener a un jugador contra su voluntad" }, { a: "124.5", why: "Si piden algo a cambio de soltarlo (negociación)" }]);
   if (!mis && w) {
     const pa = [...new Set(perm.map(i => W_ART[i]).filter(a => !armObl.some(o => o.a === a)))];
     if (has("arm")) add("arm", "Armas", "Si muestran o usan armas (obligatorias o permitidas)", [], "arm");

@@ -1,7 +1,7 @@
 /* Supervisores › Robos: la versión oficial del catálogo de robos y su articulado.
    Sale de la base (lspdt.robos, la publica six); si todavía no está publicada, se arma con el mismo catálogo. */
 import { useMemo, useState } from "react";
-import { BookOpen, Check, Gavel, History, Layers, Search } from "lucide-react";
+import { BookOpen, Check, Dices, Gavel, History, Layers, Search, Tablet } from "lucide-react";
 import { Card, Empty, SearchInput } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { CopyMenu } from "@/components/output";
@@ -9,7 +9,9 @@ import { useJSON } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import { fullDT } from "@/lib/domain";
 import { DivNav } from "../div/DivTools";
-import { CATS, ROBOS_V, WPN, catalogo, recOf, unidades, type Cat } from "../six/robosData";
+import { CATS, ROBOS_V, WPN, bandasDe, catalogo, edOfPub, recOf, sedesDe, tabOf, unidades, type Cat } from "../six/robosData";
+import { BANDAS, BANDA_KEYS, type Banda } from "../six/tabletData";
+import { BandaChips, TabletView } from "./RobosTablet";
 import { art, pena, pubItems, type PubItem, type Ref, type RobosPub } from "../six/robosLegal";
 
 const KEYS = Object.keys(CATS) as Cat[];
@@ -41,20 +43,22 @@ function leyText(it: PubItem) {
 
 export function RobosSup() {
   const [P] = useJSON<RobosPub | null>("lspdt.robos", null);
-  const all = useMemo(() => (P?.items?.length && P.v === ROBOS_V ? P.items : pubItems(catalogo())), [P]);
-  const [tab, setTab] = useState<"cat" | "art" | "his">("cat"), [cat, setCat] = useState<Cat | "">(""), [q, setQ] = useState(""), [sel, setSel] = useState<PubItem | null>(null);
+  const all = useMemo(() => (P?.items?.length && P.v === ROBOS_V ? P.items : pubItems(catalogo(edOfPub(P?.items)))), [P]);
+  const [tab, setTab] = useState<"cat" | "art" | "tab" | "his">("cat"), [cat, setCat] = useState<Cat | "">(""), [q, setQ] = useState(""), [sel, setSel] = useState<PubItem | null>(null), [bd, setBd] = useState<Banda | "">("");
   const s = q.trim().toLowerCase();
-  const L = all.filter(x => (!cat || x.cat === cat) && (!s || `${x.n} ${[...x.ley.cons, ...x.ley.cond.flatMap(c => c.arts)].map(r => `${r.a} ${art(r.a)?.t}`).join(" ")}`.toLowerCase().includes(s)));
+  const L = all.filter(x => (!cat || x.cat === cat) && (!bd || bandasDe(x.mis).includes(bd)) && (!s || `${x.n} ${[...x.ley.cons, ...x.ley.cond.flatMap(c => c.arts)].map(r => `${r.a} ${art(r.a)?.t}`).join(" ")}`.toLowerCase().includes(s)));
   return (
     <div className="space-y-4">
-      <DivNav value={tab} onChange={v => setTab(v as "cat" | "art" | "his")} options={[{ value: "cat", label: "Catálogo de robos", icon: <BookOpen />, txt: "Catálogo" }, { value: "art", label: "Articulado de robos", icon: <Gavel />, txt: "Articulado" }, { value: "his", label: `Historial de cambios (${P?.log?.length || 0})`, icon: <History />, txt: "Historial" }]} />
-      {tab === "his" ? <Card className="divide-y divide-slate-100 dark:divide-slate-800">{!P?.log?.length ? <Empty icon={<History />} title="Sin cambios todavía" desc="Cuando six actualice un robo, queda registrado acá." />
+      <DivNav value={tab} onChange={v => setTab(v as "cat" | "art" | "tab" | "his")} options={[{ value: "cat", label: "Catálogo de robos", icon: <BookOpen />, txt: "Catálogo" }, { value: "art", label: "Articulado de robos", icon: <Gavel />, txt: "Articulado" },
+        { value: "tab", label: "En la tablet (robos activos y misiones)", icon: <Tablet />, txt: "Tablet" }, { value: "his", label: `Historial de cambios (${P?.log?.length || 0})`, icon: <History />, txt: "Historial" }]} />
+      {tab === "tab" ? <TabletView /> : tab === "his" ? <Card className="divide-y divide-slate-100 dark:divide-slate-800">{!P?.log?.length ? <Empty icon={<History />} title="Sin cambios todavía" desc="Cuando six actualice un robo, queda registrado acá." />
         : P.log.map((x, i) => <div key={i} className="px-4 py-3"><div className="flex flex-wrap items-baseline gap-x-2"><b>{x.n}</b>{x.r && <span className="rounded bg-slate-500/15 px-1.5 text-[10px] font-bold text-slate-500">RESTAURADO</span>}<span className="ml-auto text-xs text-slate-500">{fullDT(x.t)}</span></div>
           <ul className="mt-1 text-sm text-slate-600 dark:text-slate-300">{x.c.map(c => <li key={c}>· {c}</li>)}</ul></div>)}</Card> : <>
       <Card className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 text-[12.5px] text-slate-600 dark:text-slate-300">
         <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400"><Check className="size-4" />Versión oficial</span>
         <span>{P?.at ? `Publicada ${fullDT(P.at)}` : "Catálogo vigente"} · {all.filter(x => x.cat !== "mis").length} robos y {all.filter(x => x.cat === "mis").length} misiones</span>
         <span className="basis-full text-[12px] text-slate-500">Si el artículo del robo ya trae un agravante (armas, rostro cubierto, huida, hackeo…) <b>no se imputa aparte</b>: la pena del artículo ya lo cubre. El homicidio doloso (119.1) va solo si hay CK de un jugador.</span>
+        <span className="basis-full inline-flex items-start gap-1.5 text-[12px] text-slate-500"><Dices className="mt-0.5 size-3.5 shrink-0 text-brand-500" /><span>Rehenes: los NPC salen con el comando IC <b>/dados</b> (del 1 al 6) y <b>no se imputan</b>. La detención ilegal (124.1) va solo si el rehén es un jugador (persona física).</span></span>
       </Card>
       <div className="flex flex-wrap items-center gap-2">
         <SearchInput className="min-w-[14rem] flex-1 sm:max-w-xs" value={q} onChange={setQ} placeholder={tab === "art" ? "Buscar robo o artículo (ej: 132.110)…" : "Buscar robo…"} />
@@ -62,6 +66,10 @@ export function RobosSup() {
           <button key={k || "all"} onClick={() => setCat(k)} className={cn("inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11.5px] font-semibold transition", on ? "border-transparent text-white" : "border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300")}
             style={on ? { background: c || "rgb(var(--b-600))" } : undefined}>{k && !on && <span className="size-2 rounded-full" style={{ background: c }} />}{k ? CATS[k].l : "Todos"}<span className="tabular-nums opacity-70">{n}</span></button>); })}</div>
       </div>
+      <div className="flex flex-wrap items-center gap-1.5"><span className="mr-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">Tipo de banda</span>
+        {(["", ...BANDA_KEYS] as (Banda | "")[]).map(b => { const on = bd === b, n = b ? all.filter(x => bandasDe(x.mis).includes(b)).length : 0; return (
+          <button key={b || "all"} onClick={() => setBd(b)} className={cn("inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-semibold transition", on ? "border-transparent text-white" : "border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300")}
+            style={on ? { background: b ? BANDAS[b].c : "rgb(var(--b-600))" } : undefined}>{b ? BANDAS[b].l : "Todas"}{b && <span className="tabular-nums opacity-70">{n}</span>}</button>); })}</div>
       {!L.length ? <Card><Empty icon={<Search />} title="Nada coincide" /></Card> : KEYS.filter(k => L.some(x => x.cat === k)).map(k => { const C = CATS[k], G = L.filter(x => x.cat === k); return (
         <Card key={k} className="cv-auto overflow-hidden">
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-2.5 dark:border-slate-800" style={{ background: `linear-gradient(90deg, ${C.c}18, transparent 60%)` }}>
@@ -72,7 +80,8 @@ export function RobosSup() {
               <span>Robo</span><span>Atracad.</span><span>Policías</span><span>Rehenes</span><span>Bloqueo</span><span>Armas</span><span>Recompensa</span></div>
             <div className="divide-y divide-slate-100 dark:divide-slate-800">{G.map(it => { const R = recOf(it.mis); return (
               <button key={it.id} onClick={() => setSel(it)} className="grid w-full gap-x-3 gap-y-1 px-4 py-2.5 text-left text-[12.5px] transition hover:bg-slate-50 xl:grid-cols-[minmax(0,1.5fr)_5rem_6.5rem_minmax(0,1fr)_4rem_minmax(0,1.6fr)_minmax(0,1fr)] xl:items-center dark:hover:bg-slate-800/40">
-                <span className="min-w-0"><b className="block truncate text-[13.5px]">{it.n}</b><span className="text-[11px] text-slate-500">{it.ilg || "—"}</span></span>
+                <span className="min-w-0"><b className="block truncate text-[13.5px]">{it.n}</b><span className="text-[11px] text-slate-500">{it.ilg || "—"}{(() => { const T = tabOf(it.mis), S = sedesDe(it.id).length; return [T && ` · Nv. ${T.nv}+ · ${T.pt} pol. para arrancar`, S > 0 && ` · ${S} sede${S > 1 ? "s" : ""} en la tablet`].filter(Boolean).join(""); })()}</span>
+                  {bandasDe(it.mis).length > 0 && <span className="mt-0.5 flex flex-wrap gap-1"><BandaChips L={bandasDe(it.mis)} sm /></span>}</span>
                 <span><span className="text-slate-400 xl:hidden">Atracadores: </span><b className="tabular-nums">{atr(it)}</b></span>
                 <span><span className="text-slate-400 xl:hidden">Policías: </span><b className="tabular-nums text-sky-600 dark:text-sky-400">{it.pol ?? "—"}</b>{it.pol ? <span className="block text-[10.5px] text-slate-500">{unidades(it.pol)}</span> : null}</span>
                 <span className="truncate"><span className="text-slate-400 xl:hidden">Rehenes: </span>{it.reh || "—"}</span>
@@ -117,7 +126,10 @@ function RoboModal({ it, onClose }: { it: PubItem; onClose: () => void }) {
           <dl className="divide-y divide-slate-100 rounded-xl border border-slate-200 text-[12.5px] dark:divide-slate-800 dark:border-slate-800">{info.map(([k, v]) => <div key={k} className="flex gap-3 px-3 py-1.5"><dt className="w-28 shrink-0 text-slate-500">{k}</dt><dd className="font-semibold">{v}</dd></div>)}</dl>
           <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Armas</p><Armas arm={it.arm} /><p className="mt-1 text-[11px] text-slate-500">{it.arm}</p></div>
           {it.mis.length > 0 && <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Misiones</p>
-            <ul className="space-y-1 text-[12px]">{it.mis.map(m => <li key={m.n + m.f[0]} className="rounded-lg bg-slate-50 px-2.5 py-1.5 dark:bg-slate-800/50"><b>{m.n}</b> <span className="text-slate-500">· {m.min}–{m.max} · {m.rec}</span></li>)}</ul></div>}
+            <ul className="space-y-1 text-[12px]">{it.mis.map(m => <li key={m.n + m.f[0]} className="rounded-lg bg-slate-50 px-2.5 py-1.5 dark:bg-slate-800/50"><b>{m.n}</b> <span className="text-slate-500">· {m.min}–{m.max} · {m.rec}</span>
+              {m.tab?.map((t, i) => <span key={i} className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500"><Tablet className="size-3" />Nv. {t.nv}+ · {t.min}–{t.max} jug. · {t.pt} pol. · ${t.$.toLocaleString("es-AR")} · +{t.xp} xp{t.b && <BandaChips L={[t.b]} sm />}</span>)}</li>)}</ul></div>}
+          {sedesDe(it.id).length > 0 && <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Sedes en la tablet ({sedesDe(it.id).length})</p>
+            <ul className="flex flex-wrap gap-1 text-[11px]">{sedesDe(it.id).map(t => <li key={t.n} className="rounded-md bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{t.n} <span className="text-slate-400">· {t.cd} min</span></li>)}</ul></div>}
         </div>
         <div className="space-y-3">
           <div className="grid grid-cols-3 gap-1.5">{COLS.map(([k, l, c, d]) => (

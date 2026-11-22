@@ -2,7 +2,7 @@ import { PROF, profOk } from "@/lib/nick";
 import { SATD, divVisible } from "@/lib/divisions";
 import type { LucideIcon } from "lucide-react";
 import {
-  CalendarDays, Home, BookOpenCheck, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
+  Megaphone, CalendarDays, Home, BookOpenCheck, FileText, Users, TrendingUp, Radio, Siren, Video, Car, ClipboardList, MessagesSquare, Vote, ShieldAlert, MessageSquareWarning,
   Gavel, Pill, BadgeCheck, Package, KeyRound, BarChart3, History, Dog, Shield, GraduationCap, Building2, Gauge, Search, Crosshair, UserCheck, Palette, Database, Scale, Medal, ClipboardCheck, MessageCircle, Trophy, Settings, Briefcase, ScrollText, Clock, Star, Landmark, Heart, FolderOpen, Fingerprint, UserRound, Presentation, UserMinus, RadioTower, UsersRound, Images, HeartHandshake, BookMarked } from "lucide-react";
 import { GUEST, LS, ME_ROLES } from "./lib/store";
 import { DEPT, onDept } from "./lib/dept";
@@ -18,7 +18,9 @@ const SATD_SEC: Sec = { k: "dv_satd", l: SATD, d: "Academia conjunta del LSPD, e
 const RAW_AREAS: Area[] = [
   { k: "ini", l: "Inicio", icon: Home, min: 0, sec: [{ k: "home", l: "Inicio", d: "Resumen del departamento", icon: Home, ready: true },
     /* se entra desde la versión que está debajo del logo */
-    { k: "nov", l: "Novedades", d: "Registro de cambios por versión y la primera versión de la terminal", icon: ScrollText, ready: true, hide: true }] },
+    { k: "nov", l: "Novedades", d: "Registro de cambios por versión y la primera versión de la terminal", icon: ScrollText, ready: true, hide: true },
+    /* lo que publican los Supervisores (Supervisores › Briefing), en solo lectura para todo el departamento */
+    { k: "brf", l: "Briefing", d: "Briefing y debriefing que publican los Supervisores", icon: Megaphone, ready: true }] },
   { k: "age", l: "Agentes", icon: Users, min: 6, req: "Sargento I", sec: [{ k: "prof", l: "Agentes", d: "Planilla del departamento por rango: Jefatura, Capitanía, Supervisores, Detectives y Patrulleros", icon: Users, ready: true }] },
   { k: "cal", l: "Calendario", icon: CalendarDays, min: 0, sec: [{ k: "cal", l: "Calendario", d: "Prácticas, instrucciones y eventos de las divisiones", icon: CalendarDays, ready: true }] },
   /* Oficiales: desde Oficial II (Informes, Códigos radiales y Procedimientos; el servidor controla lo mismo con los informes) */
@@ -36,6 +38,7 @@ const RAW_AREAS: Area[] = [
   { k: "sup", l: "Supervisores", icon: ClipboardList, min: 6, req: "Sargento I", sec: [
     { k: "asc", l: "Ascensos / Descensos", sl: "Ascensos", d: "Contratos y resoluciones con /me y /do", icon: TrendingUp, ready: true },
     { k: "t1080", l: "10-80", d: "Citación por radio con vestimenta Clase A", icon: Radio, ready: true },
+    { k: "brf", l: "Briefing", d: "Briefing y debriefing: notas para todo el departamento, con prioridad y fijadas", icon: Megaphone, ready: true },
     { k: "alt", l: "Alerta Táctica", d: "Solicitud de elevación o ampliación de la alerta", icon: Siren, ready: true },
     { k: "cond", l: "Condecoraciones", sl: "Condecoraciones", d: "Medallas, franjas de servicio y condecoraciones de los agentes", icon: Medal, ready: true },
     { k: "bod", l: "Bodycam", d: "Pedido de la grabación de un oficial", icon: Video, ready: true },

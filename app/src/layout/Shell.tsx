@@ -23,7 +23,7 @@ import { calAll, calNew } from "@/lib/calendar";
 /* versión actual: con fuego y NEW mientras haya novedades sin ver; abre el registro de cambios */
 /* nombre del encabezado: «Mi perfil (BETA)» y «Mi cuenta» */
 /* escalones para que las divisiones entren en un renglón */
-const FIT = ["", "!tracking-normal !px-2.5", "!tracking-normal !px-2 !text-[11.5px] !gap-1.5", "!tracking-normal !px-2 !text-[11px] !gap-1.5", "!tracking-normal !px-2 !text-[11px] !gap-1.5"];
+const FIT = ["", "!tracking-normal !px-2.5", "!tracking-normal !px-2.5", "!tracking-normal !px-2 !text-[11.5px] !gap-1.5", "!tracking-normal !px-1.5 !text-[11px] !gap-1"];
 function UserMenu({ children, onAcc, go, up, wide }: { children: ReactNode; onAcc: () => void; go: (a: string, s: string) => void; up?: boolean; wide?: boolean }) {
   const [o, setO] = useState(false), box = useRef<HTMLDivElement>(null);
   useEffect(() => { if (!o) return; const f = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setO(false); }; document.addEventListener("mousedown", f); return () => document.removeEventListener("mousedown", f); }, [o]);
@@ -107,12 +107,12 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
   me: { n: string; r: string; p?: string }; area: Area; sec: Sec; go: (a: string, s: string) => void; onLogout: () => void; children: ReactNode;
 }) {
   const [ap, setAp] = useState(false), divBar = area.k === "div" || area.k === "ldiv";
-  /* divisiones: siempre en un solo renglón con el nombre completo. Si no entran se achican de a poco (espaciado, letra, sin íconos);
+  /* todas las barras (Supervisores, divisiones…): siempre en un solo renglón con el nombre completo. Si no entran se achican de a poco (espaciado, letra, sin íconos);
      recién si en una pantalla angosta tampoco entran, la barra se desliza con los bordes difuminados. */
   const barRef = useRef<HTMLElement>(null), [fit, setFit] = useState(0);
-  useLayoutEffect(() => { setFit(0); }, [area.k, divBar]);
-  useLayoutEffect(() => { const el = barRef.current; if (!divBar || !el) return; if (el.scrollWidth > el.clientWidth + 1 && fit < 4) setFit(fit + 1); }, [fit, divBar, area.k]);
-  useEffect(() => { if (!divBar) return; const el = barRef.current; if (!el) return; let w = el.clientWidth;
+  useLayoutEffect(() => { setFit(0); }, [area.k, divBar, me.r]);
+  useLayoutEffect(() => { const el = barRef.current; if (!el) return; if (el.scrollWidth > el.clientWidth + 1 && fit < 4) setFit(fit + 1); }, [fit, divBar, area.k]);
+  useEffect(() => { const el = barRef.current; if (!el) return; let w = el.clientWidth;
     const ro = new ResizeObserver(() => { if (Math.abs(el.clientWidth - w) > 8) { w = el.clientWidth; setFit(0); } }); ro.observe(el); return () => ro.disconnect(); }, [divBar, area.k]);
   useEffect(() => { if (divBar) barRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: "nearest", inline: "center" }); }, [divBar, sec.k, fit]);
   /* acceso oculto: 3 clics seguidos en el escudo (o Ctrl+Alt+6 / Ctrl+Alt+A): abre el panel de six o el de Anita, solo para su dueño */
@@ -245,10 +245,10 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
         </div>
         {secsOf(area, me.r).filter(s => !s.hide).length + lockedOf(area, me.r).length > 1 && (
           <div className="border-t border-slate-200/70 dark:border-slate-800/70">
-            <nav ref={barRef} aria-label="Secciones" className={cn("scrollbar-none mx-auto flex max-w-[1760px] gap-0.5 overflow-x-auto px-3 py-2 sm:px-5 [&>*:first-child]:ml-auto [&>*:last-child]:mr-auto", divBar && fit >= 4 && "[mask-image:linear-gradient(90deg,transparent,#000_24px,#000_calc(100%-24px),transparent)]")}>
+            <nav ref={barRef} aria-label="Secciones" className={cn("scrollbar-none mx-auto flex max-w-[1760px] gap-0.5 overflow-x-auto px-3 py-2 sm:px-5 [&>*:first-child]:ml-auto [&>*:last-child]:mr-auto", fit >= 4 && "[mask-image:linear-gradient(90deg,transparent,#000_24px,#000_calc(100%-24px),transparent)]")}>
               {secsOf(area, me.r).filter(s => !s.hide).map(s => { const on = s.k === sec.k, I = s.icon; return (
                 <button key={s.k} onClick={() => go(area.k, s.k)} title={divBar ? s.l : s.d} aria-current={on ? "page" : undefined}
-                  className={cn("inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-[12.5px] font-semibold transition min-[1800px]:px-3.5 min-[1800px]:text-[13px]", "uppercase tracking-wide", divBar && FIT[fit], divBar && fit >= 3 && !on && "[&>svg]:hidden", focusRing,
+                  className={cn("inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-[12.5px] font-semibold transition-colors min-[1800px]:px-3.5 min-[1800px]:text-[13px]", "uppercase tracking-wide", FIT[fit], fit >= 2 && (!on || fit >= 4) && "[&>svg]:hidden", focusRing,
                     on ? "bg-brand-500/15 text-brand-700 ring-1 ring-inset ring-brand-500/40 dark:text-brand-200" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-white")}>
                   <I className="size-4 shrink-0" />{s.sl || s.l}</button>); })}
               {(() => { const L = lockedOf(area, me.r); return L.length > 0 && (

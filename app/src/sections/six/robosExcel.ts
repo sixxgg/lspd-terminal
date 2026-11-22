@@ -1,7 +1,8 @@
 /* Excel de robos (se carga solo al exportar): hoja «Robos» con cada robo explicado, hoja «Articulado» con los artículos
    de cada robo (tentativa, consumado, con disparos y según lo que pase) y, opcional, hoja «Artículos» con el texto y la pena. */
 import ExcelJS from "exceljs";
-import { CATS, perfilDe, recOf, unidades, type Cat, type Item } from "./robosData";
+import { CATS, bandasDe, perfilDe, recOf, unidades, type Cat, type Item } from "./robosData";
+import { BANDAS } from "./tabletData";
 import { art, leyOf, type Ref } from "./robosLegal";
 
 const ARGB = (hex: string) => "FF" + hex.replace("#", "").toUpperCase();
@@ -58,11 +59,11 @@ export async function robosXlsx(items: Item[], o: { obs: boolean; desc: boolean 
   for (const k of cats) {
     const L = items.filter(x => x.cat === k); section(s1, H1.length, k, L.length);
     L.forEach((it, i) => {
-      const R = recOf(it.mis), perf = [...new Set(it.mis.map(perfilDe).filter(Boolean))];
-      const r = s1.addRow([CATS[k].l, it.n + (perf.length ? `\n(banda de ${perf.join(" / ")})` : "") + (it.nuevo && k !== "mis" ? "\n[NUEVO]" : ""),
+      const R = recOf(it.mis), bds = bandasDe(it.mis).map(b => BANDAS[b].l), perf = bds.length ? bds : [...new Set(it.mis.map(perfilDe).filter(Boolean))].map(p => `banda de ${p}`);
+      const r = s1.addRow([CATS[k].l, it.n + (perf.length ? `\n(${perf.join(" / ")})` : "") + (it.nuevo && k !== "mis" ? "\n[NUEVO]" : ""),
         it.min != null && it.max != null && it.min < it.max ? `${it.min} a ${it.max}` : it.max ?? "—", it.pol ?? "—", unidades(it.pol) || "—", it.reh || "—", yn(it.blq), it.ilg || "—",
         (it.arm || "—").replace(/ · /g, "\n"), [...PVL.filter((_, j) => it.pv?.[j]), ...(it.mando ? ["Con mando"] : [])].join(", ") || "—",
-        R.money || (R.pend ? "A definir" : "—"), R.extra.join("\n") || "—", it.mis.map(m => `${m.n} (fila ${m.f.join(", ")}, ${m.min}–${m.max}, ${m.rec})`).join("\n") || "—",
+        R.money || (R.pend ? "A definir" : "—"), R.extra.join("\n") || "—", it.mis.map(m => `${m.n} (${m.f.length ? `fila ${m.f.join(", ")}` : "tablet"}, ${m.min}–${m.max}, ${m.rec})`).join("\n") || "—",
         ...(o.obs ? [it.notas.map(n => "• " + n.x).join("\n") || "—"] : [])]);
       body(r, k, i % 2 === 1); [3, 4, 7].forEach(c => { r.getCell(c).alignment = { vertical: "top", horizontal: "center", wrapText: true }; });
       r.getCell(4).font = { bold: true, color: { argb: "FF0369A1" } }; r.getCell(11).font = { bold: true, color: { argb: "FF047857" } };
