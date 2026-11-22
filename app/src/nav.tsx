@@ -26,6 +26,7 @@ const RAW_AREAS: Area[] = [
     { k: "inf", l: "Informes policiales", sl: "Informes", d: "Redactar, registrar y buscar informes", icon: FileText, ready: true },
     { k: "cod", l: "Códigos radiales", d: "Códigos de radio, 10-X, terminología, derechos y alfabeto NATO", icon: Radio, ready: true },
     { k: "pro", l: "Procedimientos", d: "Estupefacientes y dinero no justificado, y el mando del táctico en un 487", icon: Pill, ready: true },
+    { k: "rob", l: "Robos", d: "Catálogo oficial de robos y su articulado (el mismo que en Supervisores)", icon: Gavel, ready: true },
     { k: "rad", l: "Comunicados por radio", sl: "Radio", d: "10.03 con sujetos y vehículo de huida, por /rlspd o /rsapd", icon: RadioTower, ready: true },
   ] },
   /* oculta del menú: se entra desde el nombre del encabezado (por ahora solo six, BETA) */
