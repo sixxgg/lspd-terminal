@@ -24,7 +24,10 @@ export default wrap(async (req, res) => {
     /* invitado: los datos de las secciones elegidas, como una sesión de solo lectura */
     if (s.kind === "guest") {
       const secs = cleanSecs(s.secs), store = {}, kt = {}; let t = 0;
-      for (const r of (await q(`${SEL} where v is not null`)).rows) { t = Math.max(t, +r.t); if (!guestKey(r.k, secs)) continue; store[r.k] = r.img ? imgUrl(r.k, r.t) + "&g=" + qs.t : r.v; kt[r.k] = +r.t; }
+      /* primero solo claves y fechas (sin los valores): los valores de lo que el invitado no puede ver nunca salen de la base, que es lo que gasta la transferencia */
+      const idx = (await q("select k, t, v like 'data:%' as img from kv where v is not null")).rows, ok = [];
+      for (const r of idx) { t = Math.max(t, +r.t); if (!guestKey(r.k, secs)) continue; kt[r.k] = +r.t; if (r.img) store[r.k] = imgUrl(r.k, r.t) + "&g=" + qs.t; else ok.push(r.k); }
+      if (!Number(qs.since) || Number(qs.since) < t) for (const r of (await q("select k, v from kv where k = any($1)", [ok])).rows) store[r.k] = r.v;
       if (!Number(qs.since)) { s.views = (s.views || 0) + 1; s.last = Date.now(); await q("update meta set v=$2 where k=$1", ["share:" + qs.t, JSON.stringify(s)]);
         await audit(s.title || "Invitado", "entró como invitado a", "la terminal", `Link de ${s.by}`, String(req.headers["x-forwarded-for"] || "").split(",")[0]); }
       return send(res, 200, { guest: true, secs, title: s.title || "Invitado", by: s.by, exp: s.exp, store, kt, t, defRoster: defRoster(), now: Date.now() });
@@ -53,6 +56,8 @@ export default wrap(async (req, res) => {
     const now = Date.now(), L = [];
     for (const r of (await q("select k, v from meta where k like 'share:%'")).rows) { try { const s = JSON.parse(r.v); if (s.k === b.list && s.exp > now) L.push({ t: r.k.slice(6), exp: s.exp, by: s.by, views: s.views || 0, title: s.title, last: s.last || 0, at: s.at || 0, secs: s.secs }); } catch { /* */ } }
     return send(res, 200, { list: L.sort((a, b) => a.exp - b.exp) }); }
+  /* limpieza de enlaces vencidos (antes solo se borraban si alguien los abría después de vencer) */
+  if (Math.random() < 0.05) await q("delete from meta where k like 'share:%' and v ~ '^\\{' and (case when v ~ '\"exp\":[0-9]+' then substring(v from '\"exp\":([0-9]+)')::bigint else 9999999999999 end) < $1", [Date.now()]).catch(() => {});
   const kind = typeof b.k === "string" ? kindOf(b.k) : "";
   if (!kind) return send(res, 400, { msg: "Sección inválida" });
   if (kind === "robos" || kind === "guest" ? !isSix(u) : !canRead(b.k, u) || (kind === "unif" && divWrite(b.k, u))) return send(res, 403, { msg: kind === "robos" || kind === "guest" ? "Solo six" : kind === "unif" ? "Solo la coordinación de la división crea links de la uniformidad" : "Solo los miembros de la división" });

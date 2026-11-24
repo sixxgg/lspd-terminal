@@ -1,31 +1,70 @@
 import crypto from "node:crypto";
+import dns from "node:dns";
+import https from "node:https";
+import net from "node:net";
 import { q, tx } from "../lib/db.js";
 import { audit, auditList, auditRoster, diffSum, keepVersion, versions, HIST_SKIP, ROSTER_OUT } from "../lib/audit.js";
-import { agxCheck, send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept, isXList, xCheck, loadBoards, isBoardKey } from "../lib/core.js";
-
-async function downloadImg(url) {
-  const fail = m => Object.assign(new Error(m), { status: 400 });
-  /* solo https públicas; cada redirección se vuelve a validar (evita que un enlace lleve a la red interna) */
-  const check = s => { let u; try { u = new URL(s); } catch { throw fail("La URL no es válida"); }
-    const h = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-    const priv = /^(localhost|.*\.local|.*\.internal|127\.|10\.|192\.168\.|169\.254\.|0\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|::1?$|f[cd][0-9a-f]{2}:|fe80:|::ffff:)/.test(h);
-    if (u.protocol !== "https:" || priv || u.username || u.password) throw fail("Solo se aceptan URLs públicas con https"); return u; };
-  const ctl = AbortSignal.timeout(10000);
-  let u = check(url), r;
-  for (let i = 0; ; i++) {
-    r = await fetch(u, { signal: ctl, redirect: "manual", headers: { "User-Agent": "LSPD-Terminal" } }).catch(() => { throw fail("No se pudo descargar la imagen"); });
-    if (r.status >= 300 && r.status < 400 && r.headers.get("location")) { if (i >= 3) throw fail("Demasiadas redirecciones"); u = check(new URL(r.headers.get("location"), u).href); continue; }
-    break;
-  }
-  if (!r.ok) throw fail(`El sitio respondió ${r.status}. Si es un enlace de Discord, puede haber vencido: subí la imagen desde tu PC.`);
-  const type = (r.headers.get("content-type") || "").split(";")[0].trim();
-  if (!/^image\/(png|jpe?g|gif|webp|svg\+xml|avif)$/.test(type)) throw fail("El enlace no es una imagen");
-  const buf = Buffer.from(await r.arrayBuffer());
-  if (buf.length > 3.2e6) throw fail("La imagen pesa más de 3 MB");
-  return `data:${type};base64,${buf.toString("base64")}`;
-}
+import { agxCheck, send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept, isXList, xCheck, loadBoards, boardKnown, isBoardKey } from "../lib/core.js";
 import { mergeText } from "../lib/merge.js";
 import { fullData, imgUrl, shapeVal } from "../lib/store.js";
+
+/* ---------- descarga de imágenes por URL (anti-SSRF) ----------
+   Solo https públicas. La dirección se valida cuando el socket se conecta (lookup propio), así que un dominio que resuelva a una IP interna
+   (o que cambie su DNS entre la validación y la conexión) no pasa; cada redirección se vuelve a validar. */
+function privIp(ip) {
+  const v = net.isIP(ip);
+  if (v === 4) { const [a, b, c] = ip.split(".").map(Number);
+    return a === 0 || a === 10 || a === 127 || a >= 224 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31)
+      || (a === 192 && (b === 168 || (b === 0 && c === 0) || (b === 0 && c === 2))) || (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100))) || (a === 203 && b === 0 && c === 113); }
+  if (v === 6) { const h = ip.toLowerCase();
+    if (h === "::" || h === "::1") return true;
+    const m = /^(?:::ffff:|64:ff9b::)(\d+\.\d+\.\d+\.\d+)$/.exec(h); if (m) return privIp(m[1]);       /* IPv4 mapeada / NAT64 */
+    const w = /^(?:::ffff:|64:ff9b::)([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(h); if (w) { const x = parseInt(w[1], 16), y = parseInt(w[2], 16); return privIp(`${x >> 8}.${x & 255}.${y >> 8}.${y & 255}`); }
+    const first = parseInt(h.split(":")[0] || "0", 16);
+    return (first & 0xfe00) === 0xfc00 || (first & 0xffc0) === 0xfe80 || (first & 0xff00) === 0xff00 || h.startsWith("2001:db8"); }
+  return true;
+}
+export const isPrivateIp = privIp;
+function safeLookup(host, opts, cb) {
+  dns.lookup(host, { all: true, verbatim: true }, (err, list) => {
+    if (err) return cb(err);
+    if (!list.length || list.some(a => privIp(a.address))) return cb(Object.assign(new Error("private address"), { code: "EPRIVATE" }));
+    if (opts && opts.all) return cb(null, list);
+    cb(null, list[0].address, list[0].family);
+  });
+}
+function getHttps(u, max) {
+  return new Promise((resolve, reject) => {
+    const rq = https.request(u, { method: "GET", lookup: safeLookup, timeout: 10000, headers: { "User-Agent": "LSPD-Terminal", Accept: "image/*" } }, rs => {
+      const len = Number(rs.headers["content-length"] || 0);
+      if (rs.statusCode >= 300 && rs.statusCode < 400) { rs.resume(); return resolve({ status: rs.statusCode, headers: rs.headers }); }
+      if (len > max) { rs.destroy(); return reject(Object.assign(new Error("big"), { big: true })); }
+      const chunks = []; let n = 0;
+      rs.on("data", c => { n += c.length; if (n > max) { rs.destroy(); reject(Object.assign(new Error("big"), { big: true })); } else chunks.push(c); });
+      rs.on("end", () => resolve({ status: rs.statusCode, headers: rs.headers, buf: Buffer.concat(chunks) }));
+      rs.on("error", reject);
+    });
+    rq.on("timeout", () => rq.destroy(new Error("timeout")));
+    rq.on("error", reject); rq.end();
+  });
+}
+async function downloadImg(url) {
+  const fail = m => Object.assign(new Error(m), { status: 400 });
+  const check = s => { let u; try { u = new URL(s); } catch { throw fail("La URL no es válida"); }
+    const h = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+    if (u.protocol !== "https:" || u.username || u.password || /^(localhost|.*\.local|.*\.internal)$/.test(h) || (net.isIP(h) && privIp(h))) throw fail("Solo se aceptan URLs públicas con https"); return u; };
+  const MAX = 3.2e6;
+  let u = check(url), r;
+  for (let i = 0; ; i++) {
+    r = await getHttps(u, MAX).catch(e => { throw fail(e.big ? "La imagen pesa más de 3 MB" : e.code === "EPRIVATE" ? "Solo se aceptan URLs públicas con https" : "No se pudo descargar la imagen"); });
+    if (r.status >= 300 && r.status < 400 && r.headers.location) { if (i >= 3) throw fail("Demasiadas redirecciones"); u = check(new URL(r.headers.location, u).href); continue; }
+    break;
+  }
+  if (r.status < 200 || r.status >= 300) throw fail(`El sitio respondió ${r.status}. Si es un enlace de Discord, puede haber vencido: subí la imagen desde tu PC.`);
+  const type = String(r.headers["content-type"] || "").split(";")[0].trim();
+  if (!/^image\/(png|jpe?g|gif|webp|svg\+xml|avif)$/.test(type)) throw fail("El enlace no es una imagen");
+  return `data:${type};base64,${r.buf.toString("base64")}`;
+}
 
 export default wrap(async (req, res) => {
   const u = await requireUser(req, res);
@@ -74,7 +113,7 @@ export default wrap(async (req, res) => {
   if (b.a === "sync") return send(res, 200, await fullData(u, b.have && typeof b.have === "object" ? b.have : {}));
   /* contraseña restablecida: hasta que la cambie no puede guardar nada */
   try { if (JSON.parse((await q("select v from meta where k='mustpw'")).rows[0]?.v || "[]").includes(u.n)) return send(res, 403, { error: "perm", msg: "Primero cambiá tu contraseña" }); } catch { /* */ }
-  if (isBoardKey(bk)) await loadBoards();
+  if (isBoardKey(bk)) { await loadBoards(); if (!boardKnown(bk)) await loadBoards(true); } /* una pizarra recién creada: se relee el índice una vez antes de rechazar */
   let why = canWrite(u, k);
   /* galería: six, administración y quienes estén habilitados en Administración › Galería */
   if (!why && bk === "lspdt.galeria" && !isSix(u) && !u.admin) { let E = []; try { E = JSON.parse((await q("select v from kv where k=$1", [k.replace(/galeria$/, "galEditors")])).rows[0]?.v || "[]"); } catch { /* */ }
