@@ -6,7 +6,10 @@ Terminal de mando del LSPD (Eleven Project). Desde la **v0.3** es una página we
 
 | Carpeta | Qué hay |
 |---|---|
-| `public/` | La terminal (una sola página) y el ícono para instalarla como app |
+| `app/` | La terminal: app React + Vite + TypeScript. Vercel la compila (`cd app && npm ci && npm run build`) y deja el resultado en `public/next/` (no se guarda en git) |
+| `public/` | Archivos estáticos: íconos, insignias (`ins/`), divisiones (`div/`) y la versión 0.3 (`legacy/`) |
+| `dev/` | Servidor local para probar (`node dev/server.mjs`) |
+| `scripts/` | SQL de mantenimiento (`optimize-db.sql`) |
 | `api/` | Funciones de Vercel: `auth` (cuentas y sesiones), `data` (datos compartidos), `img` (fotos) |
 | `lib/` | Conexión a Postgres, fusión de cambios, reglas de permisos y roster por defecto |
 
@@ -38,5 +41,22 @@ Terminal de mando del LSPD (Eleven Project). Desde la **v0.3** es una página we
 
 ```bash
 npm install
-DATABASE_URL=postgres://usuario@localhost:5432/lspd node dev/server.mjs   # http://localhost:3000
+(cd app && npm ci && npm run build)   # genera public/next
+DATABASE_URL=postgres://usuario@localhost:5432/lspd node dev/server.mjs   # http://localhost:3100
 ```
+
+Para trabajar en la interfaz con recarga en vivo: `cd app && npm run dev` (proxy de `/api` a `localhost:3100`).
+
+## Variables de entorno
+
+| Variable | Para qué |
+|---|---|
+| `DATABASE_URL` (o `POSTGRES_URL`) | Conexión a Postgres |
+| `ADMINS` | Dueños de la terminal, nombres separados por coma |
+| `PG_POOL_MAX` | Conexiones por instancia (por defecto 3) |
+| `PGSSL_VERIFY=1` | Verifica el certificado TLS de la base (recomendado; probalo con Neon) |
+| `FIVEMANAGE_API_KEY` | Clave de la galería de Fivemanage (también se puede cargar desde Administración) |
+
+## Mantenimiento de la base
+
+`scripts/optimize-db.sql` mide el peso por tabla, purga sesiones vencidas y actualiza estadísticas. Los índices se crean solos (migración v7).
