@@ -4,6 +4,7 @@ import { toPng } from "html-to-image";
 import { useFeedback } from "@/components/feedback";
 import { cn } from "@/lib/cn";
 import { BANDAS, useTablet, type TabData } from "./tabletData";
+import { ArmasMis } from "./ArmasMis";
 import { CATS, inactivas, misionesCon, ROB_EDIT, ROB_LOG, WPN, bandasDe, catalogo, robDiff, sedesDe, tabOf, type RobLog, perfilDe, recOf, unidades, type Cat, type Item, type RobEdit } from "./robosData";
 import { Modal } from "@/components/modal";
 import { useJSON } from "@/lib/store";
@@ -68,6 +69,7 @@ function Card({ it, obs, onEdit, TD }: { it: Item; obs: boolean; onEdit?: () => 
         <dt className="text-slate-500">Bloqueo</dt><dd className="text-slate-200">{yn(it.blq)}</dd>
         {it.ilg && <><dt className="text-slate-500">Vehículo</dt><dd className="text-slate-200">{it.ilg}</dd></>}
         {it.mis.length > 0 && <><dt className="text-slate-500">Planilla</dt><dd className="text-slate-300">{it.mis.map(m => `${m.n} · ${m.f.length ? `fila ${m.f.join(", ")}` : "solo tablet"} (${m.min}–${m.max})`).join(" · ")}</dd></>}
+        {it.mis.some(m => m.tab?.some(t => t.arm)) && <><dt className="text-slate-500">Enemigos</dt><dd><ArmasMis L={it.mis.flatMap(m => m.tab || [])} /></dd></>}
         {T && <><dt className="text-slate-500">Tablet</dt><dd className="text-slate-300">Nv. {T.nv}+ · {T.pt} pol. para arrancar · +{T.xp} xp</dd></>}
         {sedes.length > 0 && <><dt className="text-slate-500">Sedes</dt><dd className="text-slate-300">{sedes.length} en la tablet · {[...new Set(sedes.map(t => `${t.cd} min`))].join(" / ")} de espera{sedes.some(t => t.acc === "all") ? " · también civiles" : ""}</dd></>}
       </dl>

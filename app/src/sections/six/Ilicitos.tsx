@@ -5,13 +5,14 @@ import { useRef, useState } from "react";
 import { Download, ShieldAlert, Upload, UserPlus, X } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
 import { useJSON } from "@/lib/store";
-import { ILG_ACC, TAB_KEY, parseTab, useTablet } from "./tabletData";
+import { ILG_ACC, TAB_KEY, mergeTab, parseTab, useTablet } from "./tabletData";
 
 export function Ilicitos() {
   const { toast } = useFeedback(), TD = useTablet(), [, setTD] = useJSON<unknown>(TAB_KEY, null), [acc, setAcc] = useJSON<string[]>(ILG_ACC, []), [n, setN] = useState(""), f = useRef<HTMLInputElement>(null);
   const L = Array.isArray(acc) ? acc : [];
   const add = () => { const x = n.trim(); if (!x) return; if (L.some(y => y.toLowerCase() === x.toLowerCase())) { toast("Ya está"); return; } setAcc([...L, x]); setN(""); toast(`${x} ahora es de Gestión de ilícitos`); };
   const load = async (file?: File) => { if (!file) return; const d = parseTab(await file.text()); if (!d) { toast("Ese archivo no es el de la tablet", "err"); return; }
+    if (d.merge) { const m = mergeTab(TD, d); setTD(m); toast(`Actualizadas ${d.mis.length} misiones (armamento, nivel, jugadores, policías y recompensa); ahora hay ${m.mis.length}`); return; }
     setTD({ ...d, at: Date.now() }); toast(`Cargado: ${d.robos.length} robos y ${d.mis.length} misiones`); };
   const save = () => { if (!TD) return; const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(TD)], { type: "application/json" })); a.download = "tablet-ilicitos.json"; a.click(); URL.revokeObjectURL(a.href); };
   return (
@@ -30,7 +31,7 @@ export function Ilicitos() {
         <h3 className="six-h text-sm font-bold">DATOS DE LA TABLET</h3>
         {TD ? <p className="text-sm text-slate-300"><b className="text-white">{TD.robos.length}</b> robos activos · <b className="text-white">{TD.mis.length}</b> misiones · cargado el {new Date(TD.at).toLocaleString("es-AR")}</p>
           : <p className="text-sm text-amber-300">Todavía no están cargados: subí el archivo <b>tablet-ilicitos.json</b>.</p>}
-        <p className="text-xs text-slate-500">No van en el código de la terminal: el repositorio es público. Se guardan en la base y el servidor solo se los da a Gestión de ilícitos.</p>
+        <p className="text-xs text-slate-500">Un archivo con <code>merge</code> (por ejemplo el de armamento de «Resumen de ilegales») actualiza las misiones sin borrar bandas, robos activos ni recompensas. No van en el código de la terminal: el repositorio es público. Se guardan en la base y el servidor solo se los da a Gestión de ilícitos.</p>
         <div className="flex flex-wrap gap-2">
           <button onClick={() => f.current?.click()} className="six-btn inline-flex items-center gap-1.5 rounded-xl border border-six/50 bg-six/10 px-3 py-2 text-xs font-bold text-six"><Upload className="size-4" />{TD ? "REEMPLAZAR" : "CARGAR"} .JSON</button>
           {TD && <button onClick={save} className="six-btn inline-flex items-center gap-1.5 rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:text-six"><Download className="size-4" />DESCARGAR COPIA</button>}
