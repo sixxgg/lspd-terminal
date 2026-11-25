@@ -12,7 +12,7 @@ import { useFeedback } from "@/components/feedback";
 import { dmy, findAgent as getAgent, lvl, rankES, uid } from "@/lib/domain";
 import { LS, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { PATROL_CARS, VST, delPhotos, eqAll, eqFor, extraOf, missOf, vName, vehOf, patReport, pfoto, readImg, vcount, type Cell, type PHist, type Patrol, type PRow } from "@/lib/patrol";
+import { PATROL_CARS, VST, delPhotos, eqAll, eqForAg, eqQuita, eqUnit, eqUnitOf, extraOf, missOf, vName, vehOf, patReport, pfoto, readImg, vcount, type Cell, type PHist, type Patrol, type PRow } from "@/lib/patrol";
 import { cn } from "@/lib/cn";
 
 const newPat = (): Patrol => ({ fecha: new Date().toISOString().slice(0, 10), rows: [] });
@@ -103,7 +103,7 @@ function Patrullas({ onReg }: { onReg?: () => void }) {
         <div className="space-y-2">{PAT.rows.map((r, i) => (
           <Card key={r.n} className="flex flex-col gap-3 p-3 md:flex-row md:items-start">
             <div className="flex w-full items-center gap-2.5 md:w-52 md:shrink-0">
-              <Avatar n={r.n} size={30} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{r.n}</p><div className="mt-0.5 flex items-center gap-1.5"><RankBadge r={r.r} />{r.p && <span className="font-mono text-[11px] text-slate-400">#{r.p}</span>}</div></div>
+              <Avatar n={r.n} size={30} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{r.n}</p><div className="mt-0.5 flex items-center gap-1.5"><RankBadge r={r.r} />{r.p && <span className="font-mono text-[11px] text-slate-400">#{r.p}</span>}{(() => { const u = eqUnitOf(r.n); return u ? <span title="Lleva el equipamiento de su unidad" className="rounded bg-slate-900 px-1 text-[9.5px] font-bold text-white dark:bg-slate-700">{u === "swat" ? "S.W.A.T." : "METRO"}</span> : null; })()}</div></div>
               <button aria-label="Quitar de la revisión" onClick={() => { delPhotos([r]); save(p => { p.rows.splice(i, 1); }); }} className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600 md:hidden dark:hover:bg-red-500/10"><X className="size-4" /></button>
             </div>
             <div className="grid flex-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -135,10 +135,13 @@ function Patrullas({ onReg }: { onReg?: () => void }) {
         </Card>)}
 
       <Modal open={eqOpen} onClose={() => setEqOpen(false)} title="Equipamiento requerido" icon={<Package />} size="md" desc="Lo define Capitanía en «Equipamiento de patrullas». Es el mismo para todos los patrullas.">
-        {eqAll().length ? <div className="grid gap-x-4 sm:grid-cols-2">{eqAll().map(x => <div key={x.n} className="flex items-center justify-between gap-3 border-b border-slate-100 py-1.5 text-[13px] dark:border-slate-800"><span>{x.n}</span><span className="rounded-md bg-brand-500/10 px-1.5 font-mono text-xs font-bold text-brand-600 dark:text-brand-300">×{x.q}</span></div>)}</div> : <p className="text-xs text-slate-400">Sin ítems</p>}
+        {(() => { const row = (x: { n: string; q: number }) => <div key={x.n} className="flex items-center justify-between gap-3 border-b border-slate-100 py-1.5 text-[13px] dark:border-slate-800"><span>{x.n}</span><span className="rounded-md bg-brand-500/10 px-1.5 font-mono text-xs font-bold text-brand-600 dark:text-brand-300">×{x.q}</span></div>;
+          return <div className="space-y-4">{eqAll().length ? <div className="grid gap-x-4 sm:grid-cols-2">{eqAll().map(row)}</div> : <p className="text-xs text-slate-400">Sin ítems</p>}
+            <div><p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">METRO <span className="font-medium normal-case tracking-normal">· solo miembros de la Metropolitan Division{eqQuita().length ? ` · no llevan: ${eqQuita().join(", ")}` : ""}</span></p><div className="grid gap-x-4 sm:grid-cols-2">{eqUnit("metro").map(row)}</div></div>
+            <div><p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">S.W.A.T. <span className="font-medium normal-case tracking-normal">· además de lo de la METRO</span></p><div className="grid gap-x-4 sm:grid-cols-2">{eqUnit("swat").map(row)}</div></div></div>; })()}
       </Modal>
       {pick !== null && PAT.rows[pick] && <CarPicker open onClose={() => setPick(null)} who={PAT.rows[pick].n} have={vehOf(PAT.rows[pick])} top={topCars} onAdd={ks => addVeh(pick, ks)} />}
-      {miss && <MissModal key={`${miss.i}${miss.k}`} row={PAT.rows[miss.i]} k={miss.k} items={eqFor(miss.k)} onClose={() => setMiss(null)}
+      {miss && <MissModal key={`${miss.i}${miss.k}`} row={PAT.rows[miss.i]} k={miss.k} items={eqForAg(miss.k, PAT.rows[miss.i].n)} onClose={() => setMiss(null)}
         onSave={c => { save(p => { p.rows[miss.i].v[miss.k] = { ...c, by: me.n }; }); setMiss(null);
           toast(c.s === "ok" ? (c.x?.length ? `Todo correcto · con excedente: ${extraOf(c).join(", ")}` : "Todo correcto: el vehículo quedó como preparado") : `No preparado · falta: ${missOf(c).join(", ")}`, c.s === "ok" ? undefined : "err"); }} />}
     </div>

@@ -43,7 +43,7 @@ export function Ascensos() {
   /* LSSD/SAHP: el rango del roster lo tocan Capitanía y Jefatura (el servidor no deja a los Supervisores) */
   const rkOk = DEPT.id === "lspd" || !!ME_ROLES.six || !!ME_ROLES.dadm || me.l >= 8;
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
-  const [dcId, setDcId] = useState(() => (pre ? dcIdOfAgent(findAgent(pre.n)) : "")), [variant, setVariant] = useState("1");
+  const [dcId, setDcId] = useState(() => (pre ? dcIdOfAgent(findAgent(pre.n)) : "")), [variant, setVariant] = useState("f");
   const c = dcfg();
   const [desde, setDesde] = useState(c.desde), [firma, setFirma] = useState(c.firma);
   const a = ag ? findAgent(ag) : null;
@@ -59,7 +59,9 @@ export function Ascensos() {
     : "/me Abre el cajón, toma una resolución que estaba guardada y la saca, dejándola sobre el escritorio junto a un bolígrafo.";
   const doTxt = `/do Se trataría de ${mode === "asc" ? "un contrato de ascenso" : "una resolución de descenso"} ${de} ${R} ${N}, con número de placa ${P}, al rango de ${NR}. El documento estaría firmado por el jefe de Policía James Hopper, quedando el espacio derecho reservado para una firma pendiente.`;
   const fem = !!a && genderOf(a.n) === "f";
-  const key = (mode === "asc" ? (variant !== "1" ? "asc" + variant : "asc") : "desc") as TplKey;
+  /* variantes del anuncio: simple, completa, formal y especial (los descensos no se anuncian) */
+  const VAR: Record<string, TplKey> = { s: "ascS", c: "asc2", f: "asc", e: "ascE" };
+  const key = (mode === "asc" ? VAR[variant] || "asc" : "desc") as TplKey;
   const dc = useMemo(() => fillTpl(tplOf(key), {
     emoji: c.emoji, fecha: fecha.split("-").reverse().join("/"), mencion: dcId ? `<@${dcId}>` : `**${a?.n || "[agente]"}**`, nombre: a?.n || "[agente]", rango: a && nr ? rkTxt(nr) : "[rango]",
     rango_anterior: a ? rkTxt(a.r) : "[rango]", motivo: mode === "asc" ? "en reconocimiento a su compromiso, desempeño y dedicación al servicio del Departamento" : "",
@@ -100,7 +102,7 @@ export function Ascensos() {
             <Note>{me.l >= DET_MIN ? "Incluye la carrera de detectives." : "Los detectives los gestiona Capitanía (Teniente I o superior)."}</Note>
           </CardBody>
         </Card>
-        <Card>
+        {mode === "desc" ? <Note>Los descensos <b>no se anuncian</b> en Discord: alcanza con el rol (/me y /do) y registrar el movimiento.</Note> : <Card>
           <CardHeader icon={<Megaphone />} title="Anuncio de Discord" desc={canTpl ? "Capitanía y los administradores pueden editar la plantilla." : undefined} action={canTpl ? <Button size="sm" variant="ghost" icon={<Pencil />} onClick={() => setTplEd(key)}>Editar plantilla</Button> : undefined} />
           <CardBody>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -109,14 +111,14 @@ export function Ascensos() {
               <Field label="Desde"><Input value={desde} onChange={e => setDesde(e.target.value)} /></Field>
               <Field label="Firma"><Input value={firma} onChange={e => setFirma(e.target.value)} /></Field>
             </div>
-            {mode === "asc" && <Field label="Variante del texto"><Segmented size="sm" value={variant} onChange={setVariant} options={[{ value: "1", label: "Variante 1" }, { value: "2", label: "Variante 2" }, { value: "3", label: "Variante 3" }]} /></Field>}
+            {mode === "asc" && <Field label="Tipo de anuncio"><Segmented size="sm" value={variant} onChange={setVariant} options={[{ value: "s", label: "Simple" }, { value: "c", label: "Completo" }, { value: "f", label: "Formal" }, { value: "e", label: "Especial" }]} /></Field>}
           </CardBody>
-        </Card>
+        </Card>}
       </Col>
       <Col>
         <CopyLine tag="/me" label="Rol: tomar el documento" text={meTxt} errors={errs} />
         <CopyLine tag="/do" label={mode === "asc" ? "Contrato de ascenso" : "Resolución de descenso"} text={doTxt} errors={errs} />
-        <DiscordOutput sticky={false} title={mode === "asc" ? "Anuncio de ascenso" : "Anuncio de descenso"} text={dc} errors={dcErrs} ctx={{ users: a && dcId ? { [dcId]: a.n } : {} }} web={false} />
+        {mode === "asc" && <DiscordOutput sticky={false} title="Anuncio de ascenso" text={dc} errors={dcErrs} ctx={{ users: a && dcId ? { [dcId]: a.n } : {} }} web={false} />}
       </Col>
       {tplEd && <TplEditor k={tplEd} onClose={() => setTplEd(null)} />}
     </Split>

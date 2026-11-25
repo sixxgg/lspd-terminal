@@ -2,17 +2,23 @@
    Los datos no están en el código (el repo es público): se cargan acá con el .json y quedan en lspdt.ilg.tablet, que el servidor
    solo le da a six y a los de lspdt.ilgAcc (nombre de la cuenta o usuario OOC). */
 import { useRef, useState } from "react";
-import { Download, ShieldAlert, Upload, UserPlus, X } from "lucide-react";
+import { Download, History, ShieldAlert, Upload, UserPlus, X } from "lucide-react";
 import { useFeedback } from "@/components/feedback";
 import { useJSON } from "@/lib/store";
-import { ILG_ACC, TAB_KEY, parseTab, useTablet } from "./tabletData";
+import { ILG_ACC, TAB_BAK, TAB_KEY, mergeTab, parseTab, useTablet, type TabData } from "./tabletData";
 
 export function Ilicitos() {
-  const { toast } = useFeedback(), TD = useTablet(), [, setTD] = useJSON<unknown>(TAB_KEY, null), [acc, setAcc] = useJSON<string[]>(ILG_ACC, []), [n, setN] = useState(""), f = useRef<HTMLInputElement>(null);
+  const { toast, confirm } = useFeedback(), TD = useTablet(), [, setTD] = useJSON<unknown>(TAB_KEY, null), [acc, setAcc] = useJSON<string[]>(ILG_ACC, []), [n, setN] = useState(""), f = useRef<HTMLInputElement>(null);
   const L = Array.isArray(acc) ? acc : [];
   const add = () => { const x = n.trim(); if (!x) return; if (L.some(y => y.toLowerCase() === x.toLowerCase())) { toast("Ya está"); return; } setAcc([...L, x]); setN(""); toast(`${x} ahora es de Gestión de ilícitos`); };
+  const [bak, setBak] = useJSON<TabData | null>(TAB_BAK, null);
+  /* antes de tocar los datos se guarda una copia (se puede volver con «Restaurar copia») */
   const load = async (file?: File) => { if (!file) return; const d = parseTab(await file.text()); if (!d) { toast("Ese archivo no es el de la tablet", "err"); return; }
-    setTD({ ...d, at: Date.now() }); toast(`Cargado: ${d.robos.length} robos y ${d.mis.length} misiones`); };
+    if (TD) setBak({ ...TD, at: TD.at });
+    if (d.merge && TD) { const r = mergeTab(TD, d); setTD(r.d); toast(`Sumado: ${r.upd} misiones actualizadas y ${r.nue} nuevas · total ${r.d.mis.length}`); return; }
+    const { merge: _m, ...x } = d; void _m; setTD({ ...x, at: Date.now() }); toast(`Cargado: ${d.robos.length} robos y ${d.mis.length} misiones`); };
+  const restore = async () => { if (!bak || !(await confirm(`¿Volver a la copia del ${new Date(bak.at).toLocaleString("es-AR")}? Lo actual pasa a ser la copia.`, { ok: "Restaurar" }))) return;
+    const cur = TD; setTD({ ...bak, at: Date.now() }); setBak(cur); toast("Copia restaurada"); };
   const save = () => { if (!TD) return; const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(TD)], { type: "application/json" })); a.download = "tablet-ilicitos.json"; a.click(); URL.revokeObjectURL(a.href); };
   return (
     <div className="grid gap-4 font-sans lg:grid-cols-2">
@@ -30,9 +36,10 @@ export function Ilicitos() {
         <h3 className="six-h text-sm font-bold">DATOS DE LA TABLET</h3>
         {TD ? <p className="text-sm text-slate-300"><b className="text-white">{TD.robos.length}</b> robos activos · <b className="text-white">{TD.mis.length}</b> misiones · cargado el {new Date(TD.at).toLocaleString("es-AR")}</p>
           : <p className="text-sm text-amber-300">Todavía no están cargados: subí el archivo <b>tablet-ilicitos.json</b>.</p>}
-        <p className="text-xs text-slate-500">No van en el código de la terminal: el repositorio es público. Se guardan en la base y el servidor solo se los da a Gestión de ilícitos.</p>
+        <p className="text-xs text-slate-500">Si el archivo dice <code>"merge": true</code> se suma a lo que ya está (no borra nada); si no, lo reemplaza. Antes de cada carga se guarda una copia. No van en el código de la terminal: el repositorio es público. Se guardan en la base y el servidor solo se los da a Gestión de ilícitos.</p>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => f.current?.click()} className="six-btn inline-flex items-center gap-1.5 rounded-xl border border-six/50 bg-six/10 px-3 py-2 text-xs font-bold text-six"><Upload className="size-4" />{TD ? "REEMPLAZAR" : "CARGAR"} .JSON</button>
+          <button onClick={() => f.current?.click()} className="six-btn inline-flex items-center gap-1.5 rounded-xl border border-six/50 bg-six/10 px-3 py-2 text-xs font-bold text-six"><Upload className="size-4" />{TD ? "SUMAR / REEMPLAZAR" : "CARGAR"} .JSON</button>
+          {bak && <button onClick={() => void restore()} title={`Copia del ${new Date(bak.at).toLocaleString("es-AR")} · ${bak.mis.length} misiones`} className="six-btn inline-flex items-center gap-1.5 rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:text-six"><History className="size-4" />RESTAURAR COPIA</button>}
           {TD && <button onClick={save} className="six-btn inline-flex items-center gap-1.5 rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:text-six"><Download className="size-4" />DESCARGAR COPIA</button>}
           <input ref={f} type="file" accept=".json,application/json" hidden onChange={e => { void load(e.target.files?.[0]); e.target.value = ""; }} />
         </div>

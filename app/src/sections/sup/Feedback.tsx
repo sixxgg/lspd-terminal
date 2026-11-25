@@ -24,9 +24,11 @@ export function artTxt(v?: string) {
   if (!m) return s.replace(/^art(ículo|\.)?\s*/i, "Artículo ");
   const t = (m[2] || penalOf(m[1])?.t || "").trim(); return `Artículo ${m[1]}${t ? " — " + t : ""}`;
 }
-export function fbCtx(ag: string, me: { n: string; r: string }) {
+/* prev: cuántos feedbacks positivos ya tiene registrados (para remarcar que viene haciéndolo bien) */
+export function fbCtx(ag: string, me: { n: string; r: string }, prev = 0) {
   const a = findAgent(ag), f = a ? genderOf(a.n) === "f" : false;
-  return { agArt: ag ? `${f ? "la" : "el"} agente ${ag}` : "[el agente]", ag: a ? `${rankES(a.r)} ${a.n}${a.p ? " · #" + a.p : ""}` : ag || "[Agente]", sup: `${rankES(me.r)} ${me.n}`, art: artTxt };
+  return { agArt: ag ? `${f ? "la" : "el"} agente ${ag}` : "[el agente]", ag: a ? `${rankES(a.r)} ${a.n}${a.p ? " · #" + a.p : ""}` : ag || "[Agente]", sup: `${rankES(me.r)} ${me.n}`, art: artTxt,
+    lo: f ? "la" : "lo", o: f ? "a" : "o", prev };
 }
 export const TipoPill = ({ k }: { k: string }) => { const t = TIPOS.find(x => x[0] === k); if (!t) return null;
   return <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold dark:border-slate-700 dark:bg-slate-900"><i className="size-2 rounded-full" style={{ background: t[3] }} />{t[1]}</span>; };
@@ -50,7 +52,8 @@ function FbForm({ init, onSaved }: { init: Fb | null; onSaved: (id: string) => v
   useEffect(() => { if (!A.id) LS.setJSON(myKey("fbDraft", me.n), A); }, [A]);
   const up = (p: Partial<Fb>) => setA(a => ({ ...a, ...p }));
   const P = TPL.find(t => t.k === A.tpl) || TPL[TPL.length - 1];
-  const text = useMemo(() => fbText(A, fbCtx(A.ag, me)), [A, me]), errs = fbErrs(A) as string[];
+  const [FL] = useJSON<Fb[]>("lspdt.feedback", []), prev = useMemo(() => (Array.isArray(FL) ? FL : []).filter(x => x.ag === A.ag && x.id !== A.id && (x.tipo === "pos" || x.tipo === "good")).length, [FL, A.ag, A.id]);
+  const text = useMemo(() => fbText(A, fbCtx(A.ag, me, prev)), [A, me, prev]), errs = fbErrs(A) as string[];
   const arts = useMemo(() => getPenal().slice().sort(artCmp), []);
   const save = () => {
     if (errs.length) { setErr(true); toast("Falta completar: " + errs.join(", "), "err"); return; }

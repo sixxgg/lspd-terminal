@@ -131,7 +131,7 @@ export function Radio() {
       <Col className="lg:sticky lg:top-32 lg:self-start">
         <CopyLine tag={`/${chan(canal)}`} label="Mensaje de radio" text={txt} errors={errs} />
         <Card className="flex flex-wrap items-center gap-2 p-3">
-          <p className="min-w-0 flex-1 text-[12px] text-slate-500">{txt.length} caracteres · guardalo para corregirlo después y para que las sugerencias aprendan.</p>
+          <p className="min-w-0 flex-1 text-[12px] text-slate-500">{txt.length + chan(canal).length + 2} caracteres{txt.length + chan(canal).length + 2 > 290 ? " (se manda en partes)" : ""} · guardalo para corregirlo después y para que las sugerencias aprendan.</p>
           <Button size="sm" variant="ghost" icon={<RotateCcw />} onClick={reset}>Limpiar</Button>
           <Button size="sm" icon={<Save />} disabled={!!errs.length} onClick={() => { setH([{ id: uid(), t: Date.now(), by: me.n, txt, ...data }, ...H].slice(0, 150)); toast("Comunicado guardado"); }}>Guardar</Button>
         </Card>

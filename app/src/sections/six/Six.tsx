@@ -84,7 +84,7 @@ function Ticker({ f }: { f: () => string }) {
 
 export function Six({ onExit, start = "ini", who = "six", resume }: { onExit: () => void; start?: "ini" | "not"; who?: Who; resume?: boolean }) {
   NS.id = who; /* todo lo que sigue usa el espacio de este panel */
-  const C0 = cfg0(who), [cfg, setCfg] = useJSON<SixCfg>(cfgKey(who), C0), c = { ...C0, ...cfg }, tabs = TABS.filter(t => (who === "six" ? t[0] !== "pm" : !["not", "logs", "rob", "web"].includes(t[0])));
+  const C0 = cfg0(who), [cfg, setCfg] = useJSON<SixCfg>(cfgKey(who), C0), c = { ...C0, ...cfg }, tabs = TABS.filter(t => (who === "six" ? t[0] !== "pm" : !["not", "logs", "web"].includes(t[0])));
   /* al recargar (resume) vuelve a la misma pestaña y sin repetir la intro */
   const [tab, setTab0] = useState<Tab>(() => { let t: string | null = null; try { t = resume ? sessionStorage.getItem("lspdt.panelTab") : null; } catch { /* */ } return t && TABS.some(x => x[0] === t) ? (t as Tab) : start; });
   const setTab = (t: Tab) => { setTab0(t); try { sessionStorage.setItem("lspdt.panelTab", t); } catch { /* */ } };
@@ -122,7 +122,7 @@ export function Six({ onExit, start = "ini", who = "six", resume }: { onExit: ()
       <main key={tab} className="six-in relative mx-auto max-w-[1600px] px-4 py-6">
         {LOCKED().includes(tab) ? <Soon t={TABS.find(x => x[0] === tab)![1]} />
           : tab === "ini" ? <HomeTab go={setTab} unread={unread} staff={staff.length} />
-          : tab === "rob" && who === "six" ? <RobosTab />
+          : tab === "rob" ? <RobosTab />
           : tab === "web" && who === "six" ? <SitioTab />
           : tab === "arm" ? <ArmasTab />
           : tab === "util" ? <UtilTab />

@@ -18,7 +18,7 @@ import { cn } from "@/lib/cn";
 type Just = { mot: string; motx?: string; asis: string; asisA?: Record<string, string>; f: string; hechos: string; med: string; obs?: string; pres?: string[]; por: string; t: number };
 type Ag = { n: string; r: string; p?: string; r0?: string }; /* r0: rango con el que se lo citó, si cambió antes de cerrar */
 /* ag/r/p = primer citado (compatibilidad); ags = todos los citados; cit = quiénes citaron; tags = etiquetas para filtrar */
-export type Cit1080 = { id: string; no: number; t: number; ag: string; r: string; r0?: string; p?: string; ags?: Ag[]; esc: string; lugar: string; por: string; pr?: string; cit?: string[]; tags?: string[]; j?: Just };
+export type Cit1080 = { id: string; no: number; t: number; ag: string; r: string; r0?: string; p?: string; ags?: Ag[]; esc: string; lugar: string; por: string; pr?: string; cit?: string[]; citG?: string; tags?: string[]; j?: Just };
 export const keyOf = (psb?: boolean) => (psb ? "lspdt.psbCit" : "lspdt.t1080");
 const agsRaw = (c: Cit1080): Ag[] => (c.ags?.length ? c.ags : [{ n: c.ag, r: c.r, p: c.p }]);
 /* mientras está abierto se usa el rango actual del roster (si lo ascendieron o descendieron, sale el nuevo);
@@ -91,7 +91,7 @@ function tidy(t: string) {
 const ASL = (k: string) => ASIS.find(x => x[0] === k)?.[1] || "";
 function justText(c: Cit1080, j: Just) {
   const A = agsOf(c), many = A.length > 1, fem = A.every(a => genderOf(a.n) === "f"), o = fem ? "a" : "o";
-  const cit = citOf(c), citers = joinY(cit.map(n => (n === c.por ? supTxt(n, c.pr) : supTxt(n))));
+  const cit = citOf(c), citers = c.citG ? `${supTxt(c.por, c.pr)}, en nombre de ${c.citG === "Supervisores" ? "la Supervisión" : c.citG === "Capitanía" ? "Capitanía" : "Jefatura"}` : joinY(cit.map(n => (n === c.por ? supTxt(n, c.pr) : supTxt(n))));
   const pres = (j.pres || []).filter(Boolean), extra = pres.filter(n => !cit.includes(n)), con = extra.length ? `, con la presencia de ${joinY(extra.map(n => supTxt(n)))}` : "";
   const mot = (j.mot === "Otro" && j.motx?.trim() ? j.motx.trim() : j.mot.trim()) || "Sin especificar", motl = mot.charAt(0).toLowerCase() + mot.slice(1);
   const fecha = j.f ? dts(new Date(`${j.f}T12:00:00-03:00`).getTime(), "D") : dts(c.t, "D");

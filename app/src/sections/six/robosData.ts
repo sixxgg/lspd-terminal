@@ -155,7 +155,10 @@ export const bandasDe = (mis: Mision[]): Banda[] => BANDA_KEYS.filter(b => mis.s
 export function tabOf(mis: Mision[]) {
   const T = mis.flatMap(m => m.tab || []); if (!T.length) return null;
   const r = (L: number[]) => { const a = Math.min(...L), b = Math.max(...L); return a === b ? String(a) : `${a} a ${b}`; };
-  return { nv: Math.min(...T.map(t => t.nv)), pt: r(T.map(t => t.pt)), xp: r(T.map(t => t.xp)), n: T.length };
+  const ord = ["sin", "cac", "pist", "grandes", "exp"] as const, arms = T.map(t => t.arm).filter(Boolean) as (typeof ord)[number][];
+  /* el armamento más pesado de las misiones del robo (con qué se juega) */
+  const arm = arms.length ? ord[Math.max(...arms.map(a => ord.indexOf(a)))] : undefined;
+  return { nv: Math.min(...T.map(t => t.nv)), pt: r(T.map(t => t.pt)), xp: r(T.map(t => t.xp)), n: T.length, arm };
 }
 /* sedes de la tablet de cada robo (badulaques, licorerías, growshop, peluquerías…) */
 export const sedesDe = (id: string, T?: TabData | null): TRobo[] => (T?.robos || []).filter(t => t.grp === id);

@@ -98,9 +98,23 @@ export function DiscordOutput({ title, text, footer, errors, need, pen, ctx, tag
 }
 
 /* Una línea para copiar (comandos /me, /do, /rlspd…) */
+/* el chat del juego corta en 290 caracteres (contando el comando): lo largo se parte en mensajes por palabras, cada uno con su comando y «(1/3)» */
+const CHAT_MAX = 290;
+function splitChat(full: string, max = CHAT_MAX): string[] {
+  const t = full.trim(); if (t.length <= max) return [t];
+  const m = /^(\/\w+)\s+/.exec(t), cmd = m ? m[1] + " " : "", body = m ? t.slice(m[0].length) : t, room = max - cmd.length - 8;
+  const out: string[] = []; let cur = "";
+  for (let w of body.split(/\s+/)) {
+    while (w.length > room) { if (cur) { out.push(cur); cur = ""; } out.push(w.slice(0, room)); w = w.slice(room); }
+    if (cur && cur.length + 1 + w.length > room) { out.push(cur); cur = w; } else cur = cur ? `${cur} ${w}` : w;
+  }
+  if (cur) out.push(cur);
+  return out.map((x, i) => `${cmd}${x} (${i + 1}/${out.length})`);
+}
 export function CopyLine({ label, text, errors, tag }: { label: string; text: string; errors?: string[]; tag?: string }) {
   const [val, setVal] = useState(text); useEffect(() => setVal(text), [text]);
   const copy = useCopy(), [ro, setRo] = useState(false), rev = useMemo(() => revOf(val, errors), [val, errors]);
+  const full = tag && !val.trimStart().startsWith("/") ? `${tag} ${val.trim()}` : val.trim(), parts = tag ? splitChat(full) : [full];
   return (
     <Card data-nodraft className="overflow-hidden">
       <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
@@ -111,7 +125,14 @@ export function CopyLine({ label, text, errors, tag }: { label: string; text: st
       {ro && <RevPanel r={rev} onClose={() => setRo(false)} onFix={() => setVal(fixSpell(val))} className="m-3" />}
       <textarea value={val} onChange={e => setVal(e.target.value)} rows={3} spellCheck={false}
         className="block w-full resize-y bg-slate-950 px-4 py-3 font-mono text-[12.5px] leading-relaxed text-slate-200 outline-none focus:ring-2 focus:ring-inset focus:ring-brand-500/60" />
-      <div className="flex justify-end border-t border-slate-100 px-4 py-2.5 dark:border-slate-800"><Button size="sm" variant="outline" icon={<Copy />} onClick={() => copy(val, errors)}>Copiar</Button></div>
+      {parts.length > 1 ? <div className="space-y-2 border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+        <p className="text-[12px] text-amber-700 dark:text-amber-300">Tiene {full.length} caracteres y el chat corta en {CHAT_MAX}: mandalo en {parts.length} mensajes, en orden.</p>
+        {parts.map((x, i) => <div key={i} className="flex items-start gap-2 rounded-lg bg-slate-100 p-2 dark:bg-slate-900">
+          <span className="min-w-0 flex-1 break-words font-mono text-[11.5px] leading-relaxed text-slate-700 dark:text-slate-200">{x}</span>
+          <span className="shrink-0 pt-0.5 text-[10.5px] tabular-nums text-slate-400">{x.length}</span>
+          <Button size="sm" variant="outline" icon={<Copy />} onClick={() => copy(tag && !val.trimStart().startsWith("/") && x.startsWith(tag + " ") ? x.slice(tag.length + 1) : x, i === 0 ? errors : undefined)}>Parte {i + 1}</Button></div>)}
+      </div>
+      : <div className="flex justify-end border-t border-slate-100 px-4 py-2.5 dark:border-slate-800"><Button size="sm" variant="outline" icon={<Copy />} onClick={() => copy(val, errors)}>Copiar</Button></div>}
     </Card>
   );
 }

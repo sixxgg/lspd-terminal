@@ -14,7 +14,10 @@ import { cn } from "@/lib/cn";
 
 type Alt = { tipo: string; nivel: string; puntos: string[]; lugares: string[]; hechos: string[]; sujetos: string; armas: string[]; extra: string; cons: Record<string, string>; otras: string; inc: string };
 type Res = { nivel: string; ini: number; fin: number; dias: number; horas: number; nota: string; por: { n: string; r: string }; t: number };
-type Sol = Alt & { id: string; t: number; autor: { n: string; r: string }; firma: string; texto: string; estado: "pendiente" | "aprobada" | "rechazada"; res?: Res };
+/* ed: correcciones del escrito (quién y cuándo) · adds: actualizaciones que se suman después sin tocar el escrito original */
+type Sol = Alt & { id: string; t: number; autor: { n: string; r: string }; firma: string; texto: string; estado: "pendiente" | "aprobada" | "rechazada"; res?: Res;
+  ed?: { t: number; n: string }[]; adds?: { t: number; n: string; x: string }[] };
+const conAdds = (r: Sol) => r.texto + (r.adds?.length ? "\n\n" + r.adds.map(a => `**Actualización (${fmtDate(a.t)}, ${a.n}):** ${a.x}`).join("\n") : "");
 const NEW = (): Alt => ({ tipo: "elevacion", nivel: "2", puntos: ["Los Santos"], lugares: [], hechos: [], sujetos: "", armas: [], extra: "", cons: { oh: "", cc: "" }, otras: "", inc: "" });
 const vig = (r: Sol) => { if (r.estado !== "aprobada" || !r.res) return ""; const now = Date.now() / 1000; return now < r.res.ini ? "programada" : now <= r.res.fin ? "vigente" : "finalizada"; };
 const ST = { pendiente: ["Pendiente", "#f59e0b"], aprobada: ["Aprobada", "#22c55e"], rechazada: ["Rechazada", "#ef4444"] } as const;
@@ -27,7 +30,8 @@ export function Alerta() {
   const firmaDef = `${rankES(me.r)} ${me.n}${me.p ? "\nPlaca #" + me.p : ""}\nLos Santos Police Department`;
   const [firma, setFirma] = useState(() => LS.get(myKey("altFirma", me.n)) || firmaDef);
   const [list, setList] = useJSON<Sol[]>("lspdt.alertas", []);
-  const [reuse, setReuse] = useState(0);
+  const [reuse, setReuse] = useState(0), [editId, setEditId] = useState<string | null>(null);
+  const editing = editId ? list.find(r => r.id === editId) : undefined;
   useEffect(() => { LS.set(myKey("altDraft", me.n), JSON.stringify(A)); }, [A]);
   const set = <K extends keyof Alt>(k: K, v: Alt[K]) => setA(x => ({ ...x, [k]: v }));
   const text = useMemo(() => altText(A, firma.trim()) as string, [A, firma]);
@@ -37,6 +41,9 @@ export function Alerta() {
   const toggle = (k: "hechos" | "armas", v: string) => set(k, A[k].includes(v) ? A[k].filter(x => x !== v) : [...A[k], v]);
   const save = () => {
     if (errs.length) { toast("Falta completar: " + errs.join(", "), "err"); return; }
+    if (editId && list.some(r => r.id === editId)) {
+      setList(list.map(r => (r.id === editId ? { ...r, ...structuredClone(A), firma: firma.trim(), texto: text, ed: [...(r.ed || []), { t: Date.now(), n: me.n }] } : r)));
+      setEditId(null); setA(NEW()); setTab("list"); toast("Solicitud corregida · queda registrado quién la corrigió"); return; }
     setList([...list, { ...structuredClone(A), id: uid(), t: Date.now(), autor: { n: me.n, r: me.r }, firma: firma.trim(), texto: text, estado: "pendiente" }]);
     setA(NEW()); setTab("list"); toast("Solicitud registrada · queda pendiente de aprobación");
   };
@@ -49,7 +56,10 @@ export function Alerta() {
   return (
     <div className="space-y-5" key={reuse}>
       <Segmented value={tab} onChange={setTab} options={[{ value: "new", label: "Nueva solicitud", icon: <FilePlus2 /> }, { value: "list", label: `Solicitudes (${list.length})`, icon: <Inbox /> }]} />
-      {tab === "list" ? <Lista list={list} setList={setList} onReuse={r => { setA({ ...NEW(), ...structuredClone({ tipo: r.tipo || "elevacion", nivel: r.nivel, puntos: r.puntos, lugares: r.lugares, hechos: r.hechos, sujetos: r.sujetos, armas: r.armas, extra: r.extra, cons: r.cons, otras: r.otras }), inc: "" }); setTab("new"); setReuse(x => x + 1); toast("Datos cargados en una solicitud nueva · completá el número de incidente"); }} /> : (
+      {editing && tab === "new" && <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[13px] text-amber-800 dark:text-amber-200">
+        <PenLine className="size-4" /><span className="flex-1">Corrigiendo la solicitud de <b>{editing.autor.n}</b> del {fmtDate(editing.t)} (incidente {editing.inc}). Al guardar se reemplaza el escrito y queda registrado.</span>
+        <Button size="sm" variant="ghost" onClick={() => { setEditId(null); setA(NEW()); }}>Cancelar corrección</Button></div>}
+      {tab === "list" ? <Lista list={list} setList={setList} onEdit={r => { setA({ ...NEW(), ...structuredClone({ tipo: r.tipo || "elevacion", nivel: r.nivel, puntos: r.puntos, lugares: r.lugares, hechos: r.hechos, sujetos: r.sujetos, armas: r.armas, extra: r.extra, cons: r.cons, otras: r.otras, inc: r.inc }) }); setFirma(r.firma); setEditId(r.id); setTab("new"); setReuse(x => x + 1); }} onReuse={r => { setA({ ...NEW(), ...structuredClone({ tipo: r.tipo || "elevacion", nivel: r.nivel, puntos: r.puntos, lugares: r.lugares, hechos: r.hechos, sujetos: r.sujetos, armas: r.armas, extra: r.extra, cons: r.cons, otras: r.otras }), inc: "" }); setTab("new"); setReuse(x => x + 1); toast("Datos cargados en una solicitud nueva · completá el número de incidente"); }} /> : (
         <Split>
           <Col>
             <Card>
@@ -116,7 +126,7 @@ export function Alerta() {
             footer={<>
               <Button variant="ghost" onClick={() => setA(NEW())}>Nueva</Button>
               <Button variant="outline" icon={<Copy />} onClick={() => copy(text.replace(/\*\*/g, ""), errs)}>Copiar sin negritas</Button>
-              <Button onClick={save}>Registrar solicitud</Button>
+              <Button onClick={save}>{editing ? "Guardar corrección" : "Registrar solicitud"}</Button>
             </>} />
         </Split>
       )}
@@ -124,10 +134,10 @@ export function Alerta() {
   );
 }
 
-function Lista({ list, setList, onReuse }: { list: Sol[]; setList: (l: Sol[]) => void; onReuse: (r: Sol) => void }) {
+function Lista({ list, setList, onReuse, onEdit }: { list: Sol[]; setList: (l: Sol[]) => void; onReuse: (r: Sol) => void; onEdit: (r: Sol) => void }) {
   const me = useMe(), { toast, confirm } = useFeedback(), copy = useCopy();
   const [fil, setFil] = useState("all"), [open, setOpen] = useState<string | null>(null);
-  const [apr, setApr] = useState({ niv: "2", ini: dtLocal(new Date()), dias: "2", horas: "0", nota: "" });
+  const [apr, setApr] = useState({ niv: "2", ini: dtLocal(new Date()), dias: "2", horas: "0", nota: "" }), [add, setAdd] = useState("");
   const L = list.slice().sort((a, b) => b.t - a.t).filter(r => fil === "all" || r.estado === fil || (fil === "vig" && vig(r) === "vigente"));
   const cnt = (k: string) => list.filter(r => r.estado === k).length;
   const upd = (id: string, f: (r: Sol) => Sol) => setList(list.map(r => (r.id === id ? f(structuredClone(r)) : r)));
@@ -188,13 +198,24 @@ function Lista({ list, setList, onReuse }: { list: Sol[]; setList: (l: Sol[]) =>
                         </Card>
                       )}
                       <details className="group rounded-xl border border-slate-200 dark:border-slate-800">
-                        <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300">Ver el escrito enviado</summary>
-                        <div className="space-y-2 p-3 pt-0"><pre className="scrollbar-thin max-h-80 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 font-mono text-[12px] text-slate-200">{r.texto}</pre>
-                          <div className="flex justify-end"><Button size="sm" variant="outline" icon={<Copy />} onClick={() => copy(r.texto)}>Copiar escrito</Button></div></div>
+                        <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300">Ver el escrito enviado{r.ed?.length ? ` · corregido ${r.ed.length} ${r.ed.length === 1 ? "vez" : "veces"}` : ""}</summary>
+                        <div className="space-y-2 p-3 pt-0"><pre className="scrollbar-thin max-h-80 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 font-mono text-[12px] text-slate-200">{conAdds(r)}</pre>
+                          {!!r.ed?.length && <p className="text-[11px] text-slate-500">Correcciones: {r.ed.map(e => `${e.n} (${fmtDate(e.t)})`).join(" · ")}</p>}
+                          <div className="flex justify-end"><Button size="sm" variant="outline" icon={<Copy />} onClick={() => copy(conAdds(r))}>Copiar escrito</Button></div></div>
                       </details>
+                      {/* actualizaciones: datos nuevos (más heridos, otra zona, armas que aparecieron…) sin reescribir la solicitud */}
+                      <div className="space-y-1.5 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Actualizaciones{r.adds?.length ? ` · ${r.adds.length}` : ""}</p>
+                        {r.adds?.map((a, i) => <div key={i} className="flex items-start gap-2 text-[13px]"><span className="min-w-0 flex-1"><b>{fmtDate(a.t)} · {a.n}:</b> {a.x}</span>
+                          {(a.n === me.n || can) && <button aria-label="Quitar actualización" className="text-slate-400 hover:text-red-500" onClick={() => upd(r.id, x => ({ ...x, adds: (x.adds || []).filter((_, j) => j !== i) }))}><X className="size-3.5" /></button>}</div>)}
+                        <div className="flex gap-2"><Input value={add} onChange={e => setAdd(e.target.value)} placeholder="Sumar un dato nuevo (ej: se confirmó un segundo tirador en Vinewood)…" className="h-9 flex-1 text-[13px]"
+                          onKeyDown={e => { if (e.key === "Enter" && add.trim()) { upd(r.id, x => ({ ...x, adds: [...(x.adds || []), { t: Date.now(), n: me.n, x: add.trim() }] })); setAdd(""); } }} />
+                          <Button size="sm" variant="outline" disabled={!add.trim()} onClick={() => { upd(r.id, x => ({ ...x, adds: [...(x.adds || []), { t: Date.now(), n: me.n, x: add.trim() }] })); setAdd(""); toast("Actualización sumada"); }}>Sumar</Button></div>
+                      </div>
                       <div className="flex flex-wrap justify-end gap-2">
                         {r.estado !== "pendiente" && can && <Button variant="ghost" size="sm" icon={<RotateCcw />} onClick={async () => { if (await confirm("¿Volver la solicitud a pendiente? Se borra la resolución.")) upd(r.id, x => { delete x.res; return { ...x, estado: "pendiente" }; }); }}>Volver a pendiente</Button>}
-                        <Button variant="outline" size="sm" onClick={() => onReuse(r)}>Usar como base</Button>
+                        {(can || r.autor.n === me.n) && <Button variant="outline" size="sm" icon={<PenLine />} onClick={() => onEdit(r)}>Corregir</Button>}
+                        <Button variant="outline" size="sm" onClick={() => onReuse(r)}>Adaptar (nueva con estos datos)</Button>
                         {can && <Button variant="ghost" size="sm" icon={<Trash2 />} className="text-red-600 dark:text-red-400" onClick={async () => { if (await confirm("¿Eliminar la solicitud del registro?", { danger: true, ok: "Eliminar" })) setList(list.filter(x => x.id !== r.id)); }}>Eliminar</Button>}
                       </div>
                     </div>

@@ -8,10 +8,12 @@ import { useFeedback } from "@/components/feedback";
 import { LS, useJSON } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import { Catalogo } from "./Robos";
-import { CATS, ROBOS_V, ROB_EDIT, ROB_LOG, catalogo, type Cat, type Item, type RobEdit, type RobLog } from "./robosData";
-import { art, leyOf, pena, pubItems, type Ref, type RobosPub } from "./robosLegal";
+import { CATS, ROB_EDIT, ROB_LOG, catalogo, type Cat, type Item, type RobEdit, type RobLog } from "./robosData";
+import { art, leyOf, pena, type Ref } from "./robosLegal";
 import { useTablet } from "./tabletData";
 import { Ilicitos } from "./Ilicitos";
+import { publishRobos } from "./robPub";
+import { NS } from "./fx";
 
 type View = "cat" | "art" | "his" | "xls" | "ilg";
 const VK = "lspdt.six.robView", KEYS = Object.keys(CATS) as Cat[];
@@ -36,19 +38,18 @@ export function RobosTab({ share }: { share?: boolean }) {
   /* el primer cambio del historial: la Galería de Arte pasó de 5 a 4 binomios (cambio fijo del catálogo) */
   useEffect(() => { if (share || LS.get(ROB_LOG + "Seed")) return; LS.set(ROB_LOG + "Seed", "1"); if (!LOG.some(x => x.id === "galeria")) setLOG([...LOG, { t: Date.now(), id: "galeria", n: "Galería de Arte", c: ["Policías máx.: 10 (5 binomios) → 8 (4 binomios)"] }]); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   /* publica la versión oficial en la base para Supervisores › Robos (solo si cambió algo) */
-  useEffect(() => { if (share) return; const items = pubItems(all), log = LOG.slice(0, 100), cur = LS.json<RobosPub | null>("lspdt.robos", null);
-    if (JSON.stringify(cur?.items) !== JSON.stringify(items) || JSON.stringify(cur?.log || []) !== JSON.stringify(log) || cur?.v !== ROBOS_V) LS.setJSON("lspdt.robos", { at: Date.now(), by: "six", items, v: ROBOS_V, log }); }, [all, LOG, share]);
+  useEffect(() => { if (!share) publishRobos(ED, LOG, TD, NS.id === "anita" ? "Anita" : "six"); }, [all, LOG, share]); // eslint-disable-line react-hooks/exhaustive-deps
   const [view, setView] = useState<View>(() => { const v = LS.get(VK) as View; return v && !(share && (v === "xls" || v === "his" || v === "ilg")) ? v : "cat"; }), [cat, setCat] = useState<Cat | "all">("all");
   const go = (v: View) => { setView(v); LS.set(VK, v); };
-  const T: [View, string, typeof BookOpen][] = [["cat", "CATÁLOGO DE ROBOS", BookOpen], ["art", "ARTÍCULOS PARA LOS ROBOS", Gavel], ...(share ? [] : [["his", "HISTORIAL DE CAMBIOS", History], ["xls", "EXPORTAR A EXCEL", FileSpreadsheet], ["ilg", "ILÍCITOS", ShieldAlert]] as [View, string, typeof BookOpen][])];
+  const T: [View, string, typeof BookOpen][] = [["cat", "CATÁLOGO DE ROBOS", BookOpen], ["art", "ARTÍCULOS PARA LOS ROBOS", Gavel], ...(share ? [] : [["his", "HISTORIAL DE CAMBIOS", History], ["xls", "EXPORTAR A EXCEL", FileSpreadsheet], ...(NS.id === "six" ? [["ilg", "ILÍCITOS", ShieldAlert]] : [])] as [View, string, typeof BookOpen][])];
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-1 rounded-2xl border border-six/15 bg-black/40 p-1">{T.map(([k, l, I]) => (
         <button key={k} onClick={() => go(k)} className={cn("six-btn inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold tracking-[0.12em] transition", view === k ? "border border-six/60 bg-six/15 text-six" : "border border-transparent text-slate-500 hover:text-slate-300")}>
           <I className="size-4" />{l}</button>))}
-        {!share && <button onClick={() => setInv(true)} className="six-btn inline-flex items-center justify-center gap-2 rounded-xl border border-transparent px-3 py-2.5 text-xs font-bold tracking-[0.12em] text-slate-400 transition hover:text-six"><UserPlus className="size-4" />INVITAR A VER</button>}</div>
+        {!share && NS.id === "six" && <button onClick={() => setInv(true)} className="six-btn inline-flex items-center justify-center gap-2 rounded-xl border border-transparent px-3 py-2.5 text-xs font-bold tracking-[0.12em] text-slate-400 transition hover:text-six"><UserPlus className="size-4" />INVITAR A VER</button>}</div>
       {view !== "xls" && view !== "his" && view !== "ilg" && <CatBar cat={cat} set={setCat} all={all} />}
-      {view === "cat" ? <Catalogo cat={cat} share={share} /> : view === "his" && !share ? <Historial log={LOG} /> : view === "ilg" && !share ? <Ilicitos /> : view === "art" ? <Articulos all={all} cat={cat} /> : !share && <Exportar all={all} />}
+      {view === "cat" ? <Catalogo cat={cat} share={share} /> : view === "his" && !share ? <Historial log={LOG} /> : view === "ilg" && !share && NS.id === "six" ? <Ilicitos /> : view === "art" ? <Articulos all={all} cat={cat} /> : !share && <Exportar all={all} />}
       {inv && <Invite onClose={() => setInv(false)} />}
     </div>);
 }

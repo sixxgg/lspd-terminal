@@ -161,7 +161,7 @@ export function Catalogo({ cat, share }: { cat: Cat | "all"; share?: boolean }) 
 /* six edita un robo: atracadores, policías (en binomios), rehenes, bloqueo, vehículos policiales, mando, vehículo ilegal y armas.
    Se guarda solo lo que difiere del original; «Restaurar» vuelve a la normativa/Excel. */
 const ARMS = Object.keys(WPN);
-function RobEditModal({ it, base, cur, onClose, onSave }: { it: Item; base: Item; cur?: RobEdit; onClose: () => void; onSave: (e: RobEdit | null) => void }) {
+export function RobEditModal({ it, base, cur, onClose, onSave }: { it: Item; base: Item; cur?: RobEdit; onClose: () => void; onSave: (e: RobEdit | null) => void }) {
   const [f, setF] = useState({ n: it.n, min: it.min ?? null as number | null, max: it.max ?? null as number | null, pol: it.pol ?? null as number | null, reh: it.reh || "", blq: it.blq ?? null as boolean | null,
     pv: [...(it.pv || [false, false, false])] as boolean[], mando: !!it.mando, ilg: it.ilg || "", arm: it.arm || "" });
   const num = (v: string) => (v.trim() === "" ? null : Math.max(0, Math.min(99, Math.round(+v) || 0)));

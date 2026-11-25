@@ -20,7 +20,7 @@
   "t": "# {emoji} **ALERTA TÁCTICA {nivel}** {emoji}\n\nSe activa la **Alerta Táctica {nivel}** durante un **plazo** de **{plazo}** —del {inicio_fecha} a las {inicio_hora} al {fin_fecha} a las {fin_hora}—; esta alerta entra en vigor desde la emisión de la presente notificación.\n\n> **Zonas afectadas:** {puntos}\n> **Incidente:** C-{incidente}\n> **Finaliza:** {fin_relativo}\n\n{rol}"
  },
  "asc": {
-  "l": "Anuncio de ascenso · variante 1",
+  "l": "Anuncio de ascenso · formal",
   "vars": [
    "emoji",
    "fecha",
@@ -36,7 +36,7 @@
   "t": "# {emoji} **ASCENSO LSPD** {emoji}\n\nEstimados miembros del Departamento de Policía de Los Santos,\n\nSe informa que, con fecha **{fecha}**, {mencion} ha sido {ascendido} al rango de **{rango}** en reconocimiento a su compromiso, desempeño y dedicación al servicio del Departamento.\n\nEste ascenso refleja la confianza depositada en {el_agente} para asumir nuevas responsabilidades, así como su capacidad para mantener los estándares de profesionalidad y operatividad exigidos.\n\nDesde **{desde}**, se le traslada la enhorabuena y se le anima a continuar desempeñando sus funciones con el mismo nivel de implicación y compromiso.\n\n¡Enhorabuena, {mencion}!\n\n*{firma}*"
  },
  "asc2": {
-  "l": "Anuncio de ascenso · variante 2",
+  "l": "Anuncio de ascenso · completo",
   "vars": [
    "emoji",
    "fecha",
@@ -82,5 +82,37 @@
    "descendido"
   ],
   "t": "# {emoji} **DESCENSO LSPD** {emoji}\n\nEstimados miembros del Departamento de Policía de Los Santos,\n\nSe informa que, con fecha **{fecha}**, {mencion} ha sido {descendido} al rango de **{rango}**.\n\nEsta medida responde a la necesidad de mantener los estándares de profesionalidad, disciplina y operatividad exigidos por el Departamento.\n\nDesde **{desde}**, se le anima a reflexionar sobre lo ocurrido y a continuar desempeñando sus funciones con el compromiso que el servicio requiere.\n\n*{firma}*"
+ },
+ "ascS": {
+  "l": "Anuncio de ascenso · simple",
+  "vars": [
+   "emoji",
+   "fecha",
+   "mencion",
+   "nombre",
+   "rango",
+   "rango_anterior",
+   "desde",
+   "firma",
+   "el_agente",
+   "ascendido"
+  ],
+  "t": "# {emoji} **ASCENSO LSPD** {emoji}\n\nCon fecha **{fecha}**, {mencion} asciende al rango de **{rango}**.\n\n¡Enhorabuena y a seguir así!\n\n*{firma}*"
+ },
+ "ascE": {
+  "l": "Anuncio de ascenso · especial",
+  "vars": [
+   "emoji",
+   "fecha",
+   "mencion",
+   "nombre",
+   "rango",
+   "rango_anterior",
+   "desde",
+   "firma",
+   "el_agente",
+   "ascendido"
+  ],
+  "t": "# {emoji} **ASCENSO ESPECIAL · LSPD** {emoji}\n\nEstimados miembros del Departamento de Policía de Los Santos,\n\nHoy, **{fecha}**, tenemos el orgullo de anunciar que {mencion} deja atrás el rango de **{rango_anterior}** para asumir el de **{rango}**.\n\nNo es un ascenso más. Detrás de esta insignia hay horas de servicio que nadie vio, decisiones difíciles tomadas con la cabeza fría y compañeros que saben que pueden contar con {el_agente} cuando las cosas se complican. Ese es el tipo de agente que este Departamento quiere tener en sus filas.\n\nDesde **{desde}** le damos la bienvenida a esta nueva etapa, con todo lo que implica: más responsabilidad, más exigencia y el mismo compromiso de siempre.\n\n¡Enhorabuena, {mencion}! Te lo ganaste.\n\n*{firma}*"
  }
 }

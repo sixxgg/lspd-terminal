@@ -2,6 +2,7 @@ import { dmy } from "./domain";
 /* Revisión de patrullas: lspdt.equip2 (checklist del maletero), lspdt.patrol, lspdt.patHist, lspdt.pfoto.* */
 import { LS } from "./store";
 import { PATROL_CARS } from "./onx";
+import { uMap } from "./units";
 /* VEH: los 4 vehículos fijos de antes (siguen sirviendo para leer revisiones viejas y la planilla de Google).
    Ahora cada agente lleva los patrullas ONX que se le revisaron: r.v = { [spawn]: Cell } */
 const VEH: [string, string][] = [["stx", "Bravado Buffalo STX"], ["scout", "Vapid Scout"], ["mary", "Mary"], ["int", "Interceptor"]];
@@ -17,7 +18,26 @@ export const EQ_KEY = "lspdt.equip2";
 export const eqDef = () => ({ "*": EQ_DEF.map(x => ({ ...x })) }) as Record<string, EqItem[]>;
 const fixEq = (l?: (EqItem | string)[]) => (l || []).map(x => (typeof x === "string" ? { n: x, q: 1 } : x));
 export function eqAll(): EqItem[] { const E = LS.ro<Record<string, (EqItem | string)[]> | null>(EQ_KEY, null); return E ? fixEq(E["*"] || E.stx) : EQ_DEF.map(x => ({ ...x })); }
-export function eqFor(k: string): EqItem[] { const E = LS.ro<Record<string, (EqItem | string)[]> | null>(EQ_KEY, null); return E && E[k] && !E["*"] ? fixEq(E[k]) : eqAll(); }
+/* equipamiento extra de la Metropolitan Division (solo sus miembros): la METRO no lleva escopeta y suma la SMG; el SWAT además lleva su checklist.
+   Se guarda en la misma clave (metro, swat y metroQuita = lo del general que la METRO no lleva) y lo edita Capitanía. */
+const toEq = (L: [string, number][]) => L.map(([n, q]) => ({ n, q }));
+const METRO_DEF = toEq([["SMG + x1 cargador contado adentro", 1], ["Cargadores de SMG (x90 balas)", 3]]);
+const SWAT_DEF = toEq([["Granadas aturdidoras", 5], ["Granadas de humo", 5], ["Tirolesa", 1], ["Cuerda de nylon (20 m)", 1], ["Carabina + x1 cargador contado adentro", 1], ["Cargadores de carabina (x90 balas)", 3]]);
+type EqStore = Record<string, (EqItem | string)[]> & { metroQuita?: string[] };
+const eqStore = () => LS.ro<EqStore | null>(EQ_KEY, null);
+export type EqUnit = "metro" | "swat";
+export const eqUnit = (u: EqUnit): EqItem[] => { const E = eqStore(); return E?.[u] ? fixEq(E[u] as (EqItem | string)[]) : (u === "metro" ? METRO_DEF : SWAT_DEF).map(x => ({ ...x })); };
+export const eqQuita = (): string[] => { const E = eqStore(); return Array.isArray(E?.metroQuita) ? E!.metroQuita! : eqAll().filter(x => /escopeta/i.test(x.n)).map(x => x.n); };
+/* guarda una parte del equipamiento sin pisar el resto */
+export const eqSave = (k: "*" | EqUnit | "metroQuita", v: EqItem[] | string[]) => LS.setJSON(EQ_KEY, { ...(eqStore() || eqDef()), [k]: v });
+/* unidad del agente para el checklist: SWAT (que también es METRO), METRO o ninguna */
+export function eqUnitOf(n: string): EqUnit | "" { const md = uMap("md")[n]; return !md ? "" : md.includes("swat") ? "swat" : "metro"; }
+export function eqForAg(k: string, n: string): EqItem[] {
+  const u = eqUnitOf(n), base = eqFor(k); if (!u) return base;
+  const q = eqQuita(), L = [...base.filter(x => !q.includes(x.n)), ...eqUnit("metro"), ...(u === "swat" ? eqUnit("swat") : [])];
+  return L.filter((x, i) => L.findIndex(y => y.n === x.n) === i);
+}
+function eqFor(k: string): EqItem[] { const E = LS.ro<Record<string, (EqItem | string)[]> | null>(EQ_KEY, null); return E && E[k] && !E["*"] ? fixEq(E[k]) : eqAll(); }
 export type Miss = { n: string; q: number; h: number; o?: string } | string;
 export type Extra = { n: string; q: number; h: number };
 export type Cell = { s: "" | "ok" | "no" | "na"; m?: Miss[]; x?: Extra[]; o?: string; f?: string[]; io?: Record<string, string>; ck?: boolean; by?: string };
