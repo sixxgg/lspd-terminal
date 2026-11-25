@@ -28,7 +28,7 @@ export const ARM: Record<Arm, { l: string; s: string; c: string }> = {
 };
 export const ARM_KEYS = Object.keys(ARM) as Arm[];
 export type TMis = { n: string; tipo: string; nv: number; min: number; max: number; pt: number; $: number; xp: number; b?: Banda; cat?: string; robo?: string;
-  id?: number; arm?: Arm; ae?: Arm[]; npc?: number };
+  id?: number; arm?: Arm; ae?: Arm[]; npc?: number; off?: boolean }; /* arm = armas obligatorias de la misión · off = inactiva en la tablet */
 /* rec: recompensas de la planilla vieja (por nombre de misión) */
 export type TabData = { v: number; at: number; robos: TRobo[]; mis: TMis[]; rec?: Record<string, string> };
 export const TAB_KEY = "lspdt.ilg.tablet", ILG_ACC = "lspdt.ilgAcc";
@@ -39,7 +39,7 @@ export const nk = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLo
 /* los datos de la tablet si esta cuenta los puede leer (six y Gestión de ilícitos); si no, null */
 export function useTablet(): TabData | null { const [x] = useJSON<unknown>(TAB_KEY, null); return tabOk(x) ? x : null; }
 export const TAB_BAK = "lspdt.ilg.tablet.bak";
-type TabFile = TabData & { merge?: boolean };
+type TabFile = TabData & { merge?: boolean; full?: boolean }; /* full: el archivo trae TODAS las misiones de la tablet */
 export const parseTab = (txt: string): TabFile | null => { try { const x = JSON.parse(txt); return tabOk(x) ? x : null; } catch { return null; } };
 /* «merge»: suma lo nuevo sin borrar lo que ya estaba. Cada misión nueva se cruza con la vieja por id; si no, por nombre (nk), y entre
    las que se llaman igual, la del mismo nivel y tipo (después jugadores y dinero). Lo que trae el archivo pisa el valor viejo; lo que
@@ -53,6 +53,8 @@ export function mergeTab(old: TabData, add: TabFile): { d: TabData; upd: number;
       i = C.sort((a, b) => sc(b[0]) - sc(a[0]))[0]?.[1] ?? -1; }
     if (i >= 0) { used.add(i); mis[i] = { ...mis[i], ...m }; upd++; } else { used.add(mis.push({ ...m }) - 1); nue++; }
   }
+  /* «full»: lo que quedó sin cruzar ya no está en la tablet → no se borra, queda como inactiva (fuera del catálogo) */
+  if (add.full) mis.forEach((m, j) => { if (!used.has(j) && !m.off) { mis[j] = { ...m, off: true }; upd++; } });
   const robos = old.robos.map(r => ({ ...r }));
   for (const r of add.robos) { const i = robos.findIndex(x => nk(x.n) === nk(r.n)); if (i >= 0) robos[i] = { ...robos[i], ...r }; else robos.push({ ...r }); }
   return { d: { v: Math.max(old.v || 1, add.v || 1), at: Date.now(), robos, mis, rec: { ...(old.rec || {}), ...(add.rec || {}) } }, upd, nue };

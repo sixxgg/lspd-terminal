@@ -13,7 +13,7 @@ import { cn } from "@/lib/cn";
 import { fullDT } from "@/lib/domain";
 import { DivNav } from "../div/DivTools";
 import { CATS, ROBOS_V, ROB_EDIT, ROB_LOG, WPN, bandasDe, catalogo, edOfPub, recOf, robDiff, sedesDe, tabOf, unidades, type Cat, type RobEdit, type RobLog } from "../six/robosData";
-import { BANDAS, BANDA_KEYS, useTablet, type Banda, type TabData } from "../six/tabletData";
+import { ARM, BANDAS, BANDA_KEYS, useTablet, type Banda, type TabData } from "../six/tabletData";
 import { ArmChip, BandaChips, TabletView } from "./RobosTablet";
 import { art, fullItems, pena, pubItems, type PubItem, type Ref, type RobosPub } from "../six/robosLegal";
 
@@ -86,7 +86,7 @@ export function RobosSup() {
             <div className="divide-y divide-slate-100 dark:divide-slate-800">{G.map(it => { const R = recOf(it.mis); return (
               <button key={it.id} onClick={() => setSel(it)} className={cn("grid w-full grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-2.5 text-left text-[12.5px] transition hover:bg-slate-50 sm:grid-cols-3 lg:grid-cols-6 xl:items-center xl:gap-y-1 dark:hover:bg-slate-800/40", T ? "xl:grid-cols-[minmax(0,1.5fr)_5rem_6.5rem_minmax(0,1fr)_4rem_minmax(0,1.6fr)_minmax(0,1fr)]" : "xl:grid-cols-[minmax(0,1.5fr)_5rem_6.5rem_minmax(0,1fr)_4rem_minmax(0,1.6fr)]")}>
                 <span className="col-span-full min-w-0 xl:col-span-1"><b className="block truncate text-[13.5px]">{it.n}</b><span className="text-[11px] text-slate-500">{it.ilg || "—"}{(() => { const X = tabOf(it.mis), S = sedesDe(it.id, T).length; return [X && ` · Nv. ${X.nv}+ · ${X.pt} pol. para arrancar`, S > 0 && ` · ${S} sede${S > 1 ? "s" : ""} en la tablet`].filter(Boolean).join(""); })()}</span>
-                  {(bandasDe(it.mis).length > 0 || !!tabOf(it.mis)?.arm) && <span className="mt-0.5 flex flex-wrap gap-1"><BandaChips L={bandasDe(it.mis)} sm />{(() => { const X = tabOf(it.mis); return X?.arm ? <ArmChip a={X.arm} sm /> : null; })()}</span>}</span>
+                  {(bandasDe(it.mis).length > 0 || !!tabOf(it.mis)?.arm) && <span className="mt-0.5 flex flex-wrap gap-1"><BandaChips L={bandasDe(it.mis)} sm />{(() => { const X = tabOf(it.mis); return X?.arm ? <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500">Obligatorias:<ArmChip a={X.arm} sm /></span> : null; })()}</span>}</span>
                 <span><span className="text-slate-400 xl:hidden">Atracadores: </span><b className="tabular-nums">{atr(it)}</b></span>
                 <span><span className="text-slate-400 xl:hidden">Policías: </span><b className="tabular-nums text-sky-600 dark:text-sky-400">{it.pol ?? "—"}</b>{it.pol ? <span className="block text-[10.5px] text-slate-500">{unidades(it.pol)}</span> : null}</span>
                 <span className="min-w-0 truncate"><span className="text-slate-400 xl:hidden">Rehenes: </span>{it.reh || "—"}</span>
@@ -136,7 +136,8 @@ function RoboModal({ it, T, onClose, onEdit }: { it: PubItem; T: TabData | null;
   const L = it.ley, C = CATS[it.cat], R = recOf(it.mis), [tab, setTab] = useState<"tent" | "cons" | "hom">("cons"), cc = COLS.find(c => c[0] === tab)!;
   const tot = L[tab].reduce((t, r) => { const x = art(r.a); return { m: t.m + (x?.m || 0), p: t.p + (x?.p || 0) }; }, { m: 0, p: 0 });
   const info: [string, string][] = [["Atracadores", String(atr(it))], ["Policías", `${it.pol ?? "—"}${it.pol ? ` (${unidades(it.pol)})` : ""}`], ["Rehenes", it.reh || "—"], ["Bloqueo", yn(it.blq)], ["Vehículo", it.ilg || "—"],
-    ["Unidades policiales", [...PVL.filter((_, j) => it.pv?.[j]), ...(it.mando ? ["Con mando"] : [])].join(", ") || "—"], ...(T ? [["Recompensa", [R.money || (R.pend ? "A definir" : "—"), ...R.extra].join(" + ")] as [string, string]] : [])];
+    ["Unidades policiales", [...PVL.filter((_, j) => it.pv?.[j]), ...(it.mando ? ["Con mando"] : [])].join(", ") || "—"], ...(T ? [["Recompensa", [R.money || (R.pend ? "A definir" : "—"), ...R.extra].join(" + ")] as [string, string]] : []),
+    ...(T && tabOf(it.mis)?.arm ? [["Armas obligatorias", ARM[tabOf(it.mis)!.arm!].l] as [string, string]] : [])];
   return (
     <Modal open onClose={onClose} size="xl" icon={<Gavel />} title={it.n} desc={<span><span className="font-semibold" style={{ color: C.c }}>{C.l}</span>{C.code ? ` · código ${C.code}` : ""}</span>}
       footer={<><span className="mr-auto text-xs text-slate-500">Guía orientativa: el agente ajusta a lo que pasó.</span>{onEdit && <Button variant="outline" icon={<Pencil className="size-4" />} onClick={onEdit}>Editar</Button>}<CopyMenu size="md" variant="primary" text={leyText(it)} up /></>}>

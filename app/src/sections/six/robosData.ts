@@ -137,6 +137,7 @@ export function misionesCon(T?: TabData | null): Mision[] {
   const L: Mision[] = MISIONES.map(m => ({ ...m, rec: T?.rec?.[m.n] || "" }));
   if (!T) return L;
   for (const t of T.mis) {
+    if (t.off) continue; /* inactiva en la tablet: fuera del catálogo */
     const k = nk(t.n), mi = L.find(x => nk(x.n) === k);
     if (mi) { (mi.tab ||= []).push(t); continue; }
     L.push({ n: t.n, tipo: t.tipo, min: t.min, max: t.max, rec: "", f: [], cat: (t.cat as Cat) || "mis", robo: t.robo, tab: [t] });

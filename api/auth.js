@@ -221,8 +221,8 @@ async function post(req, res) {
   if (a === "sdgen") {
     if (!isSix(me)) return send(res, 403, { msg: "Solo six" });
     if ((await sdHas()) && !(await sdUnlocked(sh))) return send(res, 428, { msg: "Para generar códigos nuevos primero ingresá uno de los actuales", need: "sd" });
-    const err = await sdGenerate(me.n); await audit(me.n, err ? "no pudo generar códigos de autodestrucción" : "generó códigos de autodestrucción nuevos", "seguridad", "", clientIp(req));
-    return send(res, err ? 502 : 200, err ? { msg: err } : { ok: 1 });
+    const L = await sdGenerate(); await audit(me.n, "generó códigos de autodestrucción nuevos", "seguridad", "", clientIp(req));
+    return send(res, 200, { codes: L });
   }
   /* mantenimiento (beta): solo la cuenta de six, desde la IP con la que lo configuró por primera vez */
   if (a === "maint") {
@@ -230,7 +230,7 @@ async function post(req, res) {
     const ip = clientIp(req), own = await ownerIp();
     if (own && own !== ip && !(await sdUnlocked(sh))) return send(res, 403, { msg: "El mantenimiento solo se maneja desde tu IP de siempre (o ingresá un código de autodestrucción para cambiarla)", need: "sd" });
     if (b.op === "state") return send(res, 200, { m: await maintState(), ip, own });
-    if (b.op === "pw") { const err = await maintNewPw(me.n); if (!err && !own) await setOwnerIp(ip); return send(res, err ? 502 : 200, err ? { msg: err } : { ok: 1 }); }
+    if (b.op === "pw") { const pw = await maintNewPw(); if (!own) await setOwnerIp(ip); await audit(me.n, "generó una contraseña de mantenimiento", "mantenimiento", "", ip); return send(res, 200, { pw }); }
     if (b.op === "on" || b.op === "off") {
       if (!(await maintPwOk(b.pw))) return send(res, 403, { msg: "La contraseña no es la que te llegó por Discord" });
       await setOwnerIp(ip); await maintSet(b.op === "on", me.n, b.msg); await audit(me.n, b.op === "on" ? "activó el mantenimiento" : "apagó el mantenimiento", "mantenimiento", "", ip);

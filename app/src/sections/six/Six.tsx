@@ -260,8 +260,8 @@ function AdmTab({ c, set, replay }: { c: SixCfg; set: (p: Partial<SixCfg>) => vo
         <div className="flex flex-wrap gap-2"><NBtn icon={<Power />} onClick={replay}>VER LA INTRO</NBtn><NBtn ghost icon={<RotateCcw />} onClick={() => set({ ...cfg0() })}>RESTABLECER TODO</NBtn></div>
       </Panel>
       <Panel t="Invitaciones" icon={<Ticket />} d="Para registrarse en la terminal hace falta un código. Un solo uso, vence a las 72 h." className="space-y-3"><Invites /></Panel>
-      {NS.id === "six" && <Panel t="Mantenimiento · beta" icon={<Wrench />} d="Solo tu cuenta y tu IP. La contraseña se genera acá y te llega SOLO por mensaje directo del bot: no queda guardada en ningún lado." className="space-y-3"><Mantenimiento /></Panel>}
-      {NS.id === "six" && <Panel t="Códigos de autodestrucción" icon={<Bomb />} d="10 códigos que te llegan SOLO por mensaje directo. Sin uno, nadie borra información importante (cuentas, roster, catálogos, informes, expedientes…)." className="space-y-3"><Autodestruccion /></Panel>}
+      {NS.id === "six" && <Panel t="Mantenimiento · beta" icon={<Wrench />} d="Solo tu cuenta y tu IP. La contraseña se genera en el servidor y se muestra acá UNA sola vez: no queda guardada en ningún lado." className="space-y-3"><Mantenimiento /></Panel>}
+      {NS.id === "six" && <Panel t="Códigos de autodestrucción" icon={<Bomb />} d="10 códigos que se muestran acá UNA sola vez (solo los ves vos). Sin uno, nadie borra información importante (cuentas, roster, catálogos, informes, expedientes…)." className="space-y-3"><Autodestruccion /></Panel>}
       {NS.id === "six" && <Panel t="Avisos de Discord" icon={<Bell />} d="Cada feedback nuevo llega a NOTIFICACIONES y al canal de Discord con mención." className="space-y-3"><DcTest /></Panel>}
       {NS.id === "six" && <Panel t="Contraseñas" icon={<KeyRound />} d="Restablecé la contraseña de quien la olvidó. Le das la temporal y al entrar la tiene que cambiar sí o sí." className="space-y-3 lg:col-span-2"><Accounts /></Panel>}
       {NS.id === "six" && <Panel t="Acceso de Anita" icon={<Users />} d="Qué cuenta abre el panel de Anita (sus datos son solo suyos; vos no los ves)." className="space-y-3"><AnitaAcc /></Panel>}
@@ -271,32 +271,44 @@ function AdmTab({ c, set, replay }: { c: SixCfg; set: (p: Partial<SixCfg>) => vo
 
 /* mantenimiento (beta): pedir la contraseña (llega por MD), y con ella prenderlo o apagarlo. También se apaga escribiéndola en el chat de la pantalla de mantenimiento */
 function Mantenimiento() {
-  const [m, setM] = useState<{ on?: boolean; at?: number; msg?: string } | null>(null), [pw, setPw] = useState(""), [msg, setMsg] = useState(""), [st, setSt] = useState(""), [busy, setBusy] = useState(false);
+  const [m, setM] = useState<{ on?: boolean; at?: number; msg?: string } | null>(null), [pw, setPw] = useState(""), [nuevo, setNuevo] = useState(""), [msg, setMsg] = useState(""), [st, setSt] = useState(""), [busy, setBusy] = useState(false);
   const load = () => void authApi({ a: "maint", op: "state" }).then(r => { if (r.__s === 200) setM(r.m || { on: false }); else setSt(r.msg || ""); });
   useEffect(load, []);
   const run = async (op: string) => { setBusy(true); const r = await authApi({ a: "maint", op, pw, msg }); setBusy(false);
     if (r.__s !== 200) { setSt(r.msg || "No se pudo"); return; }
-    if (op === "pw") setSt("✓ Te mandé la contraseña por mensaje directo de Discord.");
+    if (op === "pw") { setNuevo(String(r.pw || "")); setPw(String(r.pw || "")); setSt("✓ Contraseña nueva: copiala, no se vuelve a mostrar."); }
     else { setPw(""); setSt(op === "on" ? "✓ Mantenimiento activado: el resto ve la pantalla de mantenimiento." : "✓ Mantenimiento apagado."); setM(r.m || { on: false }); } };
   return <div className="space-y-3 font-sans">
     <p className="text-sm">{m?.on ? <span className="font-semibold text-[#ff2b4a]">● Activo desde {new Date(m.at || 0).toLocaleString("es-AR")}</span> : <span className="text-slate-400">○ Apagado</span>}</p>
-    <NBtn icon={<KeyRound />} disabled={busy} onClick={() => void run("pw")}>PEDIR CONTRASEÑA POR DISCORD</NBtn>
-    <input value={pw} onChange={e => setPw(e.target.value.toUpperCase())} placeholder="Pegá la contraseña que te llegó" autoComplete="off" className="w-full rounded-xl border border-six/20 bg-black/40 px-3 py-2 font-mono text-sm tracking-widest text-slate-100 outline-none focus:border-six" />
+    <NBtn icon={<KeyRound />} disabled={busy} onClick={() => void run("pw")}>GENERAR CONTRASEÑA</NBtn>
+    {nuevo && <Secret v={nuevo} />}
+    <input value={pw} onChange={e => setPw(e.target.value.toUpperCase())} placeholder="Contraseña de mantenimiento" autoComplete="off" className="w-full rounded-xl border border-six/20 bg-black/40 px-3 py-2 font-mono text-sm tracking-widest text-slate-100 outline-none focus:border-six" />
     {!m?.on && <input value={msg} onChange={e => setMsg(e.target.value)} maxLength={300} placeholder="Aviso para la pantalla (opcional)" className="w-full rounded-xl border border-six/20 bg-black/40 px-3 py-2 text-sm text-slate-100 outline-none focus:border-six" />}
     <div className="flex flex-wrap gap-2">{m?.on ? <NBtn icon={<Power />} disabled={busy || pw.length < 8} onClick={() => void run("off")}>APAGAR MANTENIMIENTO</NBtn>
       : <NBtn icon={<Wrench />} disabled={busy || pw.length < 8} onClick={() => void run("on")}>ACTIVAR MANTENIMIENTO</NBtn>}</div>
     {st && <p className={cn("text-xs", st.startsWith("✓") ? "text-six" : "text-[#ff2b4a]")}>{st}</p>}
   </div>;
 }
-/* códigos de autodestrucción: se generan en el servidor y se mandan por MD; acá nunca se muestran */
+/* un secreto recién generado: tapado hasta que lo tocás, con botón para copiar */
+function Secret({ v, n }: { v: string; n?: number }) {
+  const [show, setShow] = useState(false), [ok, setOk] = useState(false);
+  return <div className="flex items-center gap-2 rounded-lg border border-six/30 bg-black/50 px-2.5 py-1.5 font-mono text-[13px]">
+    {n && <span className="text-[10px] text-slate-500">{String(n).padStart(2, "0")}</span>}
+    <button type="button" onClick={() => setShow(!show)} className={cn("flex-1 text-left tracking-widest", show ? "text-six" : "blur-[5px] text-slate-300")}>{v}</button>
+    <button type="button" aria-label="Copiar" onClick={() => { void navigator.clipboard.writeText(v); setOk(true); setTimeout(() => setOk(false), 1200); }} className="text-slate-400 hover:text-six">{ok ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}</button></div>;
+}
+/* códigos de autodestrucción: se generan en el servidor y se muestran una sola vez acá */
 function Autodestruccion() {
-  const [S, setS] = useState<{ has?: boolean; unlocked?: boolean } | null>(null), [st, setSt] = useState(""), [busy, setBusy] = useState(false);
+  const [S, setS] = useState<{ has?: boolean; unlocked?: boolean } | null>(null), [st, setSt] = useState(""), [busy, setBusy] = useState(false), [codes, setCodes] = useState<string[]>([]);
   const load = () => void authApi({ a: "sdstate" }).then(r => r.__s === 200 && setS(r as { has?: boolean; unlocked?: boolean }));
   useEffect(load, []);
-  const gen = async () => { setBusy(true); const r = await authApi({ a: "sdgen" }); setBusy(false); setSt(r.__s === 200 ? "✓ Te mandé 10 códigos nuevos por mensaje directo. Los anteriores ya no sirven." : r.msg || "No se pudo"); load(); };
+  const gen = async () => { setBusy(true); const r = await authApi({ a: "sdgen" }); setBusy(false); if (r.__s === 200) { setCodes((r.codes as string[]) || []); setSt("✓ 10 códigos nuevos: guardalos ya, no se vuelven a mostrar. Los anteriores no sirven más."); } else setSt(r.msg || "No se pudo"); load(); };
   return <div className="space-y-3 font-sans">
     <p className="text-sm">{S?.has ? <span className="text-six">● Hay 10 códigos vigentes</span> : <span className="text-amber-300">○ Todavía no generaste códigos: hasta entonces los borrados importantes quedan bloqueados para todos.</span>}{S?.unlocked && <span className="ml-2 text-xs text-slate-400">(esta sesión está desbloqueada)</span>}</p>
     <NBtn icon={<Bomb />} disabled={busy} onClick={() => void gen()}>{S?.has ? "GENERAR CÓDIGOS NUEVOS" : "GENERAR 10 CÓDIGOS"}</NBtn>
+    {codes.length > 0 && <div className="space-y-2"><div className="grid grid-cols-2 gap-1.5">{codes.map((c, i) => <Secret key={c} v={c} n={i + 1} />)}</div>
+      <NBtn ghost icon={<Copy />} onClick={() => void navigator.clipboard.writeText(codes.map((c, i) => `${i + 1}. ${c}`).join("\n"))}>COPIAR LOS 10</NBtn>
+      <NBtn ghost icon={<X />} onClick={() => setCodes([])}>YA LOS GUARDÉ · OCULTAR</NBtn></div>}
     {S?.has && <p className="text-xs text-slate-500">Para generar nuevos te va a pedir uno de los actuales.</p>}
     {st && <p className={cn("text-xs", st.startsWith("✓") ? "text-six" : "text-[#ff2b4a]")}>{st}</p>}
   </div>;

@@ -22,7 +22,7 @@ const VK = "lspdt.six.robView", KEYS = Object.keys(CATS) as Cat[];
 function CatBar({ cat, set, all }: { cat: Cat | "all"; set: (c: Cat | "all") => void; all: Item[] }) {
   const opts: [Cat | "all", string, string, string | undefined, number][] = [["all", "Todos", "#94a3b8", undefined, all.length], ...KEYS.map(k => [k, CATS[k].l, CATS[k].c, CATS[k].code, all.filter(x => x.cat === k).length] as [Cat, string, string, string | undefined, number])];
   return (
-    <div className="grid grid-cols-2 gap-2 font-sans sm:grid-cols-4 xl:grid-cols-7">{opts.map(([k, l, c, code, n]) => { const on = cat === k; return (
+    <div className="scrollbar-none flex gap-2 overflow-x-auto font-sans [&>button]:min-w-[9.5rem] [&>button]:flex-1">{opts.map(([k, l, c, code, n]) => { const on = cat === k; return (
       <button key={k} onClick={() => set(k)} aria-pressed={on} className={cn("group relative flex items-center gap-2.5 overflow-hidden rounded-xl border px-3 py-2.5 text-left transition", on ? "text-white" : "border-white/[.07] bg-black/30 text-slate-400 hover:border-white/15 hover:text-slate-200")}
         style={on ? { borderColor: c + "99", background: `linear-gradient(135deg, ${c}33, ${c}0d)`, boxShadow: `0 0 18px -8px ${c}` } : undefined}>
         <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: c }} />
@@ -41,13 +41,13 @@ export function RobosTab({ share }: { share?: boolean }) {
   useEffect(() => { if (!share) publishRobos(ED, LOG, TD, NS.id === "anita" ? "Anita" : "six"); }, [all, LOG, share]); // eslint-disable-line react-hooks/exhaustive-deps
   const [view, setView] = useState<View>(() => { const v = LS.get(VK) as View; return v && !(share && (v === "xls" || v === "his" || v === "ilg")) ? v : "cat"; }), [cat, setCat] = useState<Cat | "all">("all");
   const go = (v: View) => { setView(v); LS.set(VK, v); };
-  const T: [View, string, typeof BookOpen][] = [["cat", "CATÁLOGO DE ROBOS", BookOpen], ["art", "ARTÍCULOS PARA LOS ROBOS", Gavel], ...(share ? [] : [["his", "HISTORIAL DE CAMBIOS", History], ["xls", "EXPORTAR A EXCEL", FileSpreadsheet], ...(NS.id === "six" ? [["ilg", "ILÍCITOS", ShieldAlert]] : [])] as [View, string, typeof BookOpen][])];
+  const T: [View, string, typeof BookOpen][] = [["cat", "CATÁLOGO", BookOpen], ["art", "ARTÍCULOS", Gavel], ...(share ? [] : [["his", "HISTORIAL", History], ["xls", "EXCEL", FileSpreadsheet], ...(NS.id === "six" ? [["ilg", "ILÍCITOS", ShieldAlert]] : [])] as [View, string, typeof BookOpen][])];
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-1 rounded-2xl border border-six/15 bg-black/40 p-1">{T.map(([k, l, I]) => (
-        <button key={k} onClick={() => go(k)} className={cn("six-btn inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold tracking-[0.12em] transition", view === k ? "border border-six/60 bg-six/15 text-six" : "border border-transparent text-slate-500 hover:text-slate-300")}>
+      <div className="scrollbar-none flex gap-1 overflow-x-auto rounded-2xl border border-six/15 bg-black/40 p-1">{T.map(([k, l, I]) => (
+        <button key={k} onClick={() => go(k)} className={cn("six-btn inline-flex flex-1 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-3 py-2.5 text-xs font-bold tracking-[0.08em] transition", view === k ? "border border-six/60 bg-six/15 text-six" : "border border-transparent text-slate-500 hover:text-slate-300")}>
           <I className="size-4" />{l}</button>))}
-        {!share && NS.id === "six" && <button onClick={() => setInv(true)} className="six-btn inline-flex items-center justify-center gap-2 rounded-xl border border-transparent px-3 py-2.5 text-xs font-bold tracking-[0.12em] text-slate-400 transition hover:text-six"><UserPlus className="size-4" />INVITAR A VER</button>}</div>
+        {!share && NS.id === "six" && <button onClick={() => setInv(true)} className="six-btn inline-flex shrink-0 whitespace-nowrap items-center justify-center gap-2 rounded-xl border border-transparent px-3 py-2.5 text-xs font-bold tracking-[0.12em] text-slate-400 transition hover:text-six"><UserPlus className="size-4" />INVITAR</button>}</div>
       {view !== "xls" && view !== "his" && view !== "ilg" && <CatBar cat={cat} set={setCat} all={all} />}
       {view === "cat" ? <Catalogo cat={cat} share={share} /> : view === "his" && !share ? <Historial log={LOG} /> : view === "ilg" && !share && NS.id === "six" ? <Ilicitos /> : view === "art" ? <Articulos all={all} cat={cat} /> : !share && <Exportar all={all} />}
       {inv && <Invite onClose={() => setInv(false)} />}
