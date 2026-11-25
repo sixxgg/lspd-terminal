@@ -5,7 +5,7 @@ import { DiscordOutput, useCopy } from "@/components/output";
 import { TagInput } from "@/components/fields";
 import { Col, Split } from "@/components/layout";
 import { useFeedback } from "@/components/feedback";
-import { ALT_ARMAS, ALT_CONS, ALT_FRASES, ALT_HECHOS, ALT_PUNTOS, CONS_MAP, altText, annText, plazoTxt } from "@/legacy/alerta";
+import { ALT_ARMAS, ALT_CONS, ALT_FRASES, ALT_HECHOS, ALT_PUNTOS, CONS_MAP, altText, annText, plazoTxt } from "@/content/alerta";
 import { LUGARES, fmtDate, joinY, lvl, norm, rankES, uid , myKey } from "@/lib/domain";
 import { dcfg } from "@/lib/templates";
 import { useMe } from "@/lib/me";

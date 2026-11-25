@@ -15,7 +15,7 @@ import { Instrucciones } from "./Instrucciones";
 import { DivCal } from "./DivCal";
 
 import { dcParts, fileText } from "@/lib/penal";
-import { CMP_L, RTD_CASOS, RTD_F, parsePost, rtdAge, rtdCaso, rtdCmp, rtdScore, rtdText } from "@/legacy/rtd";
+import { CMP_L, RTD_CASOS, RTD_F, parsePost, rtdAge, rtdCaso, rtdCmp, rtdScore, rtdText } from "@/content/rtd";
 import { cn } from "@/lib/cn";
 
 type Caso = { c: number | "otro"; txt: string; r: string; ok: "" | "si" | "no" };

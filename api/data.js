@@ -4,8 +4,9 @@ import { audit, auditList, auditRoster, diffSum, keepVersion, versions, HIST_SKI
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { mergeText } from "../lib/merge.js";
+import { isDestructive, maintCached, sdUnlocked } from "../lib/owner.js";
 import { fullData, imgUrl, shapeVal } from "../lib/store.js";
-import { agxCheck, send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept, isXList, xCheck, loadBoards, isBoardKey } from "../lib/core.js";
+import { agxCheck, send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept, isXList, xCheck, loadBoards, isBoardKey, sessionToken, tokenHash } from "../lib/core.js";
 
 /* IP privada, local o reservada (v4 y v6): el servidor nunca descarga de ahí */
 const privIp = ip => { const a = String(ip).toLowerCase().replace(/^::ffff:/, "");
@@ -40,6 +41,8 @@ async function downloadImg(url) {
 export default wrap(async (req, res) => {
   const u = await requireUser(req, res);
   if (!u) return;
+  /* mantenimiento: nadie más que six lee ni guarda (la página muestra la pantalla de mantenimiento) */
+  { const M = await maintCached(); if (M && !isSix(u)) return send(res, 503, { maint: { at: M.at, msg: M.msg || "" }, msg: "La terminal está en mantenimiento" }); }
 
   if (req.method === "GET") {
     const qs = query(req), since = Number(qs.since);
@@ -153,6 +156,14 @@ export default wrap(async (req, res) => {
   const del = !!b.del;
   const mine = del ? null : (typeof b.v === "string" ? b.v : null);
   if (!del && mine === null) return send(res, 400, { msg: "Falta el valor" });
+  /* borrar algo importante (la clave entera, vaciarla o sacarle la mitad de golpe) pide un código de autodestrucción */
+  if (typeof bk === "string" && isDestructive(bk, true, "x", null)) {
+    const cur0 = (await q("select v from kv where k=$1", [k])).rows[0]?.v ?? null;
+    if (isDestructive(bk, del, cur0, mine) && !(await sdUnlocked(tokenHash(sessionToken(req))))) {
+      await audit(u.n, "intentó borrar sin código", bk, "", clientIp(req));
+      return send(res, 428, { need: "sd", msg: "Eso borra información importante: hace falta un código de autodestrucción" });
+    }
+  }
   if (mine && mine.length > 4.4e6) return send(res, 413, { msg: "El archivo es demasiado pesado" });
 
   const out = await tx(async c => {

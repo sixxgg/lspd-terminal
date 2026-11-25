@@ -3,6 +3,7 @@ import { audit } from "../lib/audit.js";
 import { send, body, wrap, roster, findIn, lvl, CAP, norm, emailOf, hashPw, checkPw, needsRehash, randomPw, safeEq, clientIp, loginBlocked, loginFail, loginOk, sessionToken, tokenHash, newSession, endSession, current, PUBLIC_KEYS, query, canEnter, invalidate, isSix, SIX_OWNER, ID_PIN, OWNERS, dbAdmins, parseList, parseRoster as parseRosterRaw } from "../lib/core.js";
 import { fullData } from "../lib/store.js";
 import { randomBytes } from "node:crypto";
+import { maintCached, postFb, maintNewPw, maintPwOk, maintSet, maintState, ownerIp, sdGenerate, sdHas, sdUnlock, sdUnlocked, setOwnerIp } from "../lib/owner.js";
 import { XDEPTS, deptAcc, deptFind, deptList, deptOfAcc, deptUser, isDeptAcc, rosterKey } from "../lib/lssd.js";
 const xRoster = async d => deptList((await q("select v from kv where k=$1", [rosterKey(d)])).rows[0]?.v, d, (await q("select v from kv where k=$1", [`lspdt.${d}.agx`])).rows[0]?.v);
 const XN = { lssd: "LSSD", sahp: "SAHP" };
@@ -43,7 +44,8 @@ export default wrap(async (req, res) => {
        Antes cada apertura de la página volvía a bajar los tres rosters de la base. */
     const sig = (await q(`select (select coalesce(max(t),0) from kv where k = any($1))::text || ':' || (select count(*)::text || ':' || coalesce(max(created)::text, '') from accounts) as s`, [PUB_SIG_KEYS])).rows[0].s;
     if (!(PUB && PUB.s === sig && Date.now() - PUB.at < 600000)) PUB = { s: sig, at: Date.now(), out: await publicOut() };
-    const out = { ...PUB.out, me: me ? me.n : null };
+    const out = { ...PUB.out, me: me ? me.n : null }, M = await maintCached();
+    if (M && !isSix(me)) { out.maint = { at: M.at, msg: M.msg || "" }; return send(res, 200, out); } /* mantenimiento: la página muestra solo la pantalla de mantenimiento */
     if (me && query(req).full) { delete out.roster; out.data = await fullData(me); } // ahorra una vuelta al iniciar
     return send(res, 200, out);
   }
@@ -103,6 +105,7 @@ async function post(req, res) {
     if (!checkPw(b.pw, acc.hash)) { await loginFail(u, ip); await audit(acc.name, "contraseña incorrecta", "login", "", ip); await new Promise(r => setTimeout(r, 600)); return send(res, 403, { msg: "Contraseña incorrecta." }); }
     await loginOk(u);
     if (needsRehash(acc.hash)) await q("update accounts set hash=$2 where name=$1", [acc.name, hashPw(b.pw)]);
+    { const M = await maintCached(); if (M && !(dept === "lspd" && acc.name === SIX_OWNER)) return send(res, 503, { maint: { at: M.at, msg: M.msg || "" }, msg: "La terminal está en mantenimiento" }); }
     if (X) {
       await q("update accounts set last=$2 where name=$1", [acc.name, Date.now()]);
       await newSession(res, acc.name, !!b.keep); await audit(lag.n, `inició sesión (${XN[dept]})`, "login", b.keep ? "Mantener sesión" : "", ip);
@@ -178,6 +181,18 @@ async function post(req, res) {
 
   if (a === "logout") { const w = await current(req).catch(() => null); if (w) await audit(w.n, "cerró sesión", "login", "", clientIp(req)); await endSession(req, res); return send(res, 200, { ok: 1 }); }
 
+  /* mantenimiento: el chat de la pantalla de mantenimiento (sin sesión). Si lo que se escribe es la contraseña, se apaga; si no, el mensaje le llega a six por Discord */
+  if (a === "maintmsg") {
+    const M = await maintState(); if (!M) return send(res, 200, { off: true });
+    const t = String(b.t || "").trim().slice(0, 800); if (!t) return send(res, 400, { msg: "Escribí un mensaje" });
+    if (await maintPwOk(t)) { await maintSet(false, "six (chat)"); await audit("six", "apagó el mantenimiento", "mantenimiento", "", clientIp(req)); return send(res, 200, { off: true }); }
+    const w = await current(req).catch(() => null), lim = "maintmsg:" + clientIp(req), n = +((await q("select v from meta where k=$1", [lim])).rows[0]?.v || 0);
+    if (n >= 5) return send(res, 429, { msg: "Ya mandaste varios mensajes. Gracias, ya le llegaron." });
+    await q("insert into meta(k,v) values($1,$2) on conflict(k) do update set v=excluded.v", [lim, String(n + 1)]);
+    const err = await postFb(`🛠️ **Mensaje desde la pantalla de mantenimiento**${w ? ` · ${w.n}` : " · sin sesión"}\n>>> ${t.replace(/@/g, "@\u200b")}`);
+    return send(res, err ? 502 : 200, err ? { msg: "No se pudo mandar el mensaje: " + err } : { ok: 1 });
+  }
+
   // Lo que sigue requiere sesión
   const me = await current(req);
   if (!me) return send(res, 401, { error: "auth", msg: "Tu sesión expiró. Volvé a iniciar sesión." });
@@ -189,6 +204,30 @@ async function post(req, res) {
     return send(res, 200, { e: r.email, c: +r.created, last: +r.last, no: all.findIndex(x => x.k === an) + 1, rec: (await metaList("rec:" + an)).length });
   }
   if (a === "recgen") return send(res, 200, { rec: await newRec(an) });
+  /* códigos de autodestrucción: cualquiera que tenga uno desbloquea su sesión 10 minutos para borrar (solo six los recibe por Discord) */
+  const sh = tokenHash(sessionToken(req));
+  if (a === "sdunlock") { const r = await sdUnlock(b.code, sh, clientIp(req)); await audit(me.n, r.ok ? "desbloqueó borrados con un código" : "falló un código de autodestrucción", "seguridad", "", clientIp(req)); return send(res, r.ok ? 200 : 403, r); }
+  if (a === "sdstate") return send(res, 200, { has: isSix(me) ? await sdHas() : undefined, unlocked: await sdUnlocked(sh) });
+  if (a === "sdgen") {
+    if (!isSix(me)) return send(res, 403, { msg: "Solo six" });
+    if ((await sdHas()) && !(await sdUnlocked(sh))) return send(res, 428, { msg: "Para generar códigos nuevos primero ingresá uno de los actuales", need: "sd" });
+    const err = await sdGenerate(me.n); await audit(me.n, err ? "no pudo generar códigos de autodestrucción" : "generó códigos de autodestrucción nuevos", "seguridad", "", clientIp(req));
+    return send(res, err ? 502 : 200, err ? { msg: err } : { ok: 1 });
+  }
+  /* mantenimiento (beta): solo la cuenta de six, desde la IP con la que lo configuró por primera vez */
+  if (a === "maint") {
+    if (!isSix(me)) return send(res, 403, { msg: "Solo six" });
+    const ip = clientIp(req), own = await ownerIp();
+    if (own && own !== ip && !(await sdUnlocked(sh))) return send(res, 403, { msg: "El mantenimiento solo se maneja desde tu IP de siempre (o ingresá un código de autodestrucción para cambiarla)", need: "sd" });
+    if (b.op === "state") return send(res, 200, { m: await maintState(), ip, own });
+    if (b.op === "pw") { const err = await maintNewPw(me.n); if (!err && !own) await setOwnerIp(ip); return send(res, err ? 502 : 200, err ? { msg: err } : { ok: 1 }); }
+    if (b.op === "on" || b.op === "off") {
+      if (!(await maintPwOk(b.pw))) return send(res, 403, { msg: "La contraseña no es la que te llegó por Discord" });
+      await setOwnerIp(ip); await maintSet(b.op === "on", me.n, b.msg); await audit(me.n, b.op === "on" ? "activó el mantenimiento" : "apagó el mantenimiento", "mantenimiento", "", ip);
+      return send(res, 200, { m: await maintState() });
+    }
+    return send(res, 400, { msg: "Acción inválida" });
+  }
   /* administración del departamento: ve las cuentas de su departamento (registro y último ingreso), sin restablecer ni borrar */
   if (a === "deptaccs") {
     if (!me.dadm && !isSix(me)) return send(res, 403, { msg: "Solo la administración del departamento." });
@@ -298,6 +337,7 @@ async function post(req, res) {
   }
   if (a === "delete") {
     if (b.n === me.n) return send(res, 400, { msg: "No podés eliminar tu propia cuenta" });
+    if (!(await sdUnlocked(tokenHash(sessionToken(req))))) return send(res, 428, { msg: "Para eliminar una cuenta hace falta un código de autodestrucción", need: "sd" });
     await q("delete from sessions where name=$1", [b.n]);
     await q("delete from accounts where name=$1", [b.n]); invalidate(); await audit(me.n, "eliminó la cuenta", "cuenta", b.n, clientIp(req));
     return send(res, 200, { ok: 1 });

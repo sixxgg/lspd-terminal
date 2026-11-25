@@ -1,6 +1,6 @@
 /* Código penal (lspdt.penal sobre el catálogo base) e informes policiales (lspdt.informes): misma lógica y texto que la versión clásica */
 import { RK_AB, findAgent, joinY, norm, pad2, rankES } from "./domain";
-import { CIRC, EV_T, INF_EST, INF_FZ, INF_ROLES, INF_TIPOS, PENAL_DEF, SYN } from "@/legacy/penal";
+import { CIRC, EV_T, INF_EST, INF_FZ, INF_ROLES, INF_TIPOS, PENAL_DEF, SYN } from "@/content/penal";
 
 export type Art = { a: string; t: string; d: string; c: string; k?: "cp" | "adm"; g?: string; m?: number; p?: number; pt?: number; v?: number };
 export { CIRC, EV_T, INF_EST, INF_FZ, INF_TIPOS };

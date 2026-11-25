@@ -15,7 +15,7 @@ import { getRoster, lvl, rankES, uid } from "@/lib/domain";
 import { myLevel } from "@/nav";
 import { ESTS, RES, TIPOS as T_TIPOS, slug as tSlug, solList, traslOk } from "@/lib/trasl";
 import { FolderSymlink } from "lucide-react";
-import { FB_TIPOS } from "@/legacy/feedback";
+import { FB_TIPOS } from "@/content/feedback";
 import { cn } from "@/lib/cn";
 
 type Tipo = "fb" | "pos" | "neg" | "obs" | "serv" | "fto";

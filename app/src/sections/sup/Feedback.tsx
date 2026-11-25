@@ -9,7 +9,7 @@ import { findAgent, fmtDate, genderOf, lvl, norm, rankES, uid , myKey } from "@/
 import { getPenal, penalOf, artCmp } from "@/lib/penal";
 import { LS, useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { FB_TIPOS, FB_TPL, fbErrs, fbNew, fbText } from "@/legacy/feedback";
+import { FB_TIPOS, FB_TPL, fbErrs, fbNew, fbText } from "@/content/feedback";
 import { cn } from "@/lib/cn";
 
 type Fb = { ag: string; tipo: string; tpl: string; f: Record<string, string>; obs: string; mejora: string; evid: string; hablado: boolean; fecha: string; id: string; por?: string; t?: number; texto?: string; edit?: string };

@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { startLang } from "./lib/lang";
 import { FeedbackProvider } from "./components/feedback";
+import { OwnerGate } from "./components/owner";
 import "@fontsource/rajdhani/latin-500.css"; import "@fontsource/rajdhani/latin-600.css"; import "@fontsource/rajdhani/latin-700.css";
 import "@fontsource/chakra-petch/latin-500.css"; import "@fontsource/chakra-petch/latin-600.css";
 import "@fontsource/oxanium/latin-500.css"; import "@fontsource/oxanium/latin-600.css";
@@ -16,7 +17,7 @@ applyAppearance();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <FeedbackProvider><App /></FeedbackProvider>
+    <FeedbackProvider><OwnerGate><App /></OwnerGate></FeedbackProvider>
   </StrictMode>,
 );
 startLang();
