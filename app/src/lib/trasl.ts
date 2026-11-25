@@ -17,7 +17,7 @@ export type TAdic = { id: string; t: number; by: string; k: "info" | "preg" | "r
 export type TCierre = { ronda: number; t: number; by: string; res: "apr" | "rech" | "emp" | "sin"; si: number; no: number; rev: number };
 export type Sol = {
   id: string; tipo: TTipo; n: string; placa?: string; dep: string; com?: string; rango?: string; ing?: string; du?: string; di?: string; mot?: string; fsol: string;
-  entv?: string; docs: { n: string; url: string; t: number; by: string }[]; obs?: string; est: TEst; by: string; at: number; upd: number; ub: string;
+  entv?: string; entvI?: string; entvR?: string; entvP?: string; docs: { n: string; url: string; t: number; by: string }[]; obs?: string; est: TEst; by: string; at: number; upd: number; ub: string;
   ent: { q: string[]; r: string[]; by?: string; t?: number; fin?: number };
   orig?: { q: string[]; r: string[]; t: number; by: string };
   adic: TAdic[]; ronda: number; cierres: TCierre[];

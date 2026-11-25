@@ -68,9 +68,9 @@ function NavDock({ areas, cur, onGo, me }: { areas: Area[]; cur: string; onGo: (
       <span className="nav-dk-i">{AI && <AI />}{a.k === "cal" && !measure && <span className="absolute -right-2 -top-1.5"><CalBadge n={me} /></span>}</span>
       <span className="nav-dk-l">{a.l}{a.beta && <i className="nav-dk-b">BETA</i>}</span>{!measure && <span className="nav-dk-t">{a.l}</span>}</button>); };
   return (
-    <div ref={box} className="relative flex min-w-0 flex-1 justify-center">
+    <div ref={box} className="relative flex min-w-0 flex-1 [justify-content:safe_center]">
       <div ref={meas} aria-hidden className="pointer-events-none invisible absolute left-0 top-0 flex gap-0.5">{areas.map(a => item(a, true))}</div>
-      <nav aria-label="Áreas" className="flex items-stretch gap-0.5">
+      <nav aria-label="Áreas" className="flex min-w-0 items-stretch gap-0.5">
         {vis.map(a => item(a))}
         {rest.length > 0 && <div ref={mb} className="relative">
           <button onClick={() => setMore(!more)} aria-label="Más áreas" aria-expanded={more} className={cn("nav-dk", focusRing, more && "bg-slate-100 dark:bg-slate-800/60")}><span className="nav-dk-i"><MoreHorizontal /></span><span className="nav-dk-t">Más</span></button>
@@ -86,9 +86,9 @@ function NavDock({ areas, cur, onGo, me }: { areas: Area[]; cur: string; onGo: (
 /* selector de departamento (solo six): tarjetas con escudo; SAHP todavía no */
 function DeptMenu({ onClose, home }: { onClose: () => void; home: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => { const h = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) onClose(); }, k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    const t = setTimeout(() => document.addEventListener("mousedown", h)); document.addEventListener("keydown", k);
-    return () => { clearTimeout(t); document.removeEventListener("mousedown", h); document.removeEventListener("keydown", k); }; }, [onClose]);
+  useEffect(() => { const h = (e: PointerEvent) => { if (!ref.current?.contains(e.target as Node)) onClose(); }, k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const t = setTimeout(() => document.addEventListener("pointerdown", h)); document.addEventListener("keydown", k);
+    return () => { clearTimeout(t); document.removeEventListener("pointerdown", h); document.removeEventListener("keydown", k); }; }, [onClose]);
   return (
     <div ref={ref} className="absolute left-3 top-[4.9rem] z-50 w-80 origin-top-left animate-fade-in rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-2xl backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/95">
       <p className="px-2.5 pb-1.5 pt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Cambiar de departamento</p>
@@ -119,9 +119,18 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
   const taps = useRef<number[]>([]);
   /* six: un toque en el escudo abre el selector de departamento (LSPD / LSSD / SAHP); tres seguidos, su panel */
   const [dm, setDm] = useState(false);
-  const logoClick = () => { const now = Date.now(); taps.current = [...taps.current.filter(t => now - t < 1600), now];
-    if ((ME_ROLES.six || ME_ROLES.anita) && taps.current.length >= 3) { taps.current = []; setDm(false); go(ME_ROLES.six ? "six" : "anita", "staff"); }
+  const openPanel = () => { taps.current = []; setDm(false); go(ME_ROLES.six ? "six" : "anita", "staff"); };
+  const logoClick = () => { if (lp.current.done) { lp.current.done = false; return; } const now = Date.now(); taps.current = [...taps.current.filter(t => now - t < 1600), now];
+    if ((ME_ROLES.six || ME_ROLES.anita) && taps.current.length >= 3) openPanel();
     else if (ME_ROLES.six && !DEPT.forced) setDm(true); else go("ini", "home"); };
+  /* en celular y iPad: los toques rápidos no hacen zoom (touch-manipulation) y mantener apretado el escudo ~0,6 s también abre el panel */
+  const lp = useRef<{ t?: ReturnType<typeof setTimeout>; done: boolean }>({ done: false });
+  const logoTouch = {
+    onPointerDown: (e: React.PointerEvent) => { if (e.pointerType === "mouse" || (!ME_ROLES.six && !ME_ROLES.anita)) return; clearTimeout(lp.current.t);
+      lp.current.t = setTimeout(() => { lp.current.done = true; navigator.vibrate?.(30); openPanel(); }, 600); },
+    onPointerUp: () => clearTimeout(lp.current.t), onPointerCancel: () => clearTimeout(lp.current.t), onPointerLeave: () => clearTimeout(lp.current.t),
+    onContextMenu: (e: React.MouseEvent) => { if (ME_ROLES.six || ME_ROLES.anita) e.preventDefault(); },
+  };
   useEffect(() => { if (!ME_ROLES.six && !ME_ROLES.anita) return; const h = (e: KeyboardEvent) => { if (e.ctrlKey && e.altKey && (e.key === "6" || e.key.toLowerCase() === "a")) { e.preventDefault(); go(ME_ROLES.six ? "six" : "anita", "staff"); } };
     window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h); }, [go]);
   const [open, setOpen] = useState(false), [acc, setAcc] = useState(false);
@@ -180,7 +189,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
     const side = (
       <aside className={cn("cl-side fixed inset-y-0 left-0 z-40 flex w-[264px] flex-col transition-transform duration-200 lg:sticky lg:top-0 lg:h-[var(--app-h,100dvh)] lg:translate-x-0", open ? "translate-x-0 shadow-2xl" : "-translate-x-full")}>
         <div className="relative flex items-center gap-2 px-3 pb-2 pt-3">
-          <button onClick={logoClick} title="Inicio" className={cn("flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-white/[.04]", focusRing)}>
+          <button onClick={logoClick} {...logoTouch} title="Inicio" className={cn("flex min-w-0 flex-1 touch-manipulation select-none items-center gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-white/[.04] [-webkit-touch-callout:none]", focusRing)}>
             <img decoding="async" src={logoOf("lspdt.logo.header")} alt="" className="size-6 shrink-0 rounded object-contain" onError={e => { e.currentTarget.src = "/next/logo.svg"; }} />
             <span className="truncate text-[14px] font-semibold">{DEPTS[DEPT.id].short} Terminal</span>{ME_ROLES.six && !DEPT.forced && <ChevronDown className="size-3.5 shrink-0 text-slate-400" />}</button>
           <button onClick={() => dispatchEvent(new Event("lspdt:cmdk"))} aria-label="Buscar" title="Buscar (Ctrl + K)" className="cl-ico"><Search className="size-4" /></button>
@@ -229,7 +238,7 @@ export function Shell({ me, area, sec, go, onLogout, children }: {
       {modals}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/80">
         <div className="mx-auto flex h-[5.25rem] max-w-[2100px] items-center gap-3 px-3 sm:px-5">
-          <div className="relative flex shrink-0 flex-col items-center gap-0.5"><button onClick={logoClick} title="Inicio" className={cn("flex shrink-0 items-center gap-2.5 rounded-xl p-0.5 text-left", focusRing)}>
+          <div className="relative flex shrink-0 flex-col items-center gap-0.5"><button onClick={logoClick} {...logoTouch} title="Inicio" className={cn("flex shrink-0 touch-manipulation select-none items-center gap-2.5 rounded-xl p-0.5 text-left [-webkit-touch-callout:none]", focusRing)}>
             {logo}
             <span className="hidden min-w-0 min-[2300px]:block"><span className="block truncate text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">{kicker}</span>
               <span className="block truncate text-sm font-bold">{title}</span></span>

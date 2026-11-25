@@ -1,0 +1,2 @@
+/* hosts que pasan por el optimizador de imágenes de Vercel (la misma lista que vercel.json › images.remotePatterns); el resto se carga directo */
+export const OPT_HOSTS = new Set(["cdn.discordapp.com", "media.discordapp.net", "i.imgur.com", "imgur.com", "r2.fivemanage.com", "api.fivemanage.com", "fivemanage.com", "i.ibb.co", "i.postimg.cc", "raw.githubusercontent.com", "upload.wikimedia.org", "lh3.googleusercontent.com", "docs.fivem.net"]);

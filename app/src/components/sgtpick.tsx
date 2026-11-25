@@ -8,8 +8,8 @@ import { Avatar } from "@/components/agents";
 import { insigniaUrl, norm, rankES, RANK_COLOR, type Agent } from "@/lib/domain";
 import { cn } from "@/lib/cn";
 
-type P = { value: string; list: Agent[]; onChange: (n: string) => void; title?: string; placeholder?: string; me?: string; extra?: (a: Agent) => string; className?: string };
-export function AgentMenu({ value, list, onChange, title = "Elegir agente", placeholder = "Elegir…", me, extra, className }: P) {
+type P = { value: string; list: Agent[]; onChange: (n: string) => void; title?: string; placeholder?: string; me?: string; extra?: (a: Agent) => string; className?: string; empty?: string };
+export function AgentMenu({ value, list, onChange, title = "Elegir agente", placeholder = "Elegir…", me, extra, className, empty = "No hay agentes para elegir" }: P) {
   const [o, setO] = useState(false), [q, setQ] = useState(""), [rk, setRk] = useState(""), [hi, setHi] = useState(0);
   const [pos, setPos] = useState<{ l: number; t?: number; b?: number; w: number; h: number } | null>(null);
   const btn = useRef<HTMLButtonElement>(null), box = useRef<HTMLDivElement>(null), lst = useRef<HTMLDivElement>(null);
@@ -19,9 +19,9 @@ export function AgentMenu({ value, list, onChange, title = "Elegir agente", plac
   const ranks = [...new Set(list.map(a => a.r))], s = norm(q.trim());
   const L = list.filter(a => (!rk || a.r === rk) && (!s || norm(a.n).includes(s) || String(a.p || "").includes(s)));
   const pick = (n: string) => { onChange(n); setO(false); btn.current?.focus(); };
-  useEffect(() => { if (!o) return; const out = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node) && !btn.current?.contains(e.target as Node)) setO(false); };
-    document.addEventListener("mousedown", out); addEventListener("resize", place); addEventListener("scroll", place, true);
-    return () => { document.removeEventListener("mousedown", out); removeEventListener("resize", place); removeEventListener("scroll", place, true); }; }, [o]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!o) return; const out = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node) && !btn.current?.contains(e.target as Node)) setO(false); };
+    document.addEventListener("pointerdown", out); addEventListener("resize", place); addEventListener("scroll", place, true);
+    return () => { document.removeEventListener("pointerdown", out); removeEventListener("resize", place); removeEventListener("scroll", place, true); }; }, [o]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setHi(Math.max(0, L.findIndex(a => a.n === value))); }, [q, rk, o]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { lst.current?.querySelector<HTMLElement>(`[data-i="${hi}"]`)?.scrollIntoView({ block: "nearest" }); }, [hi]);
   const key = (e: React.KeyboardEvent) => {
@@ -64,7 +64,7 @@ export function AgentMenu({ value, list, onChange, title = "Elegir agente", plac
                 {x && <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-300">{x}</span>}
                 {sel && <Check className="size-4 shrink-0 text-brand-500" />}
               </button>); })}
-            {!L.length && <p className="px-3 py-6 text-center text-[12.5px] text-slate-400">Nadie coincide con «{q}»</p>}
+            {!L.length && <p className="px-3 py-6 text-center text-[12.5px] text-slate-400">{q.trim() ? <>Nadie coincide con «{q}»</> : rk ? "Nadie con ese rango" : empty}</p>}
           </div>
           <p className="border-t border-slate-100 px-3 py-1.5 text-[10.5px] text-slate-400 dark:border-slate-800"><kbd className="font-mono">↑↓</kbd> moverse · <kbd className="font-mono">Enter</kbd> elegir · <kbd className="font-mono">Esc</kbd> cerrar</p>
         </div>, document.body)}

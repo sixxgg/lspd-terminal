@@ -19,13 +19,13 @@ const SP: Record<string, string> = Object.fromEntries(("vehiculo:vehículo vehic
   "decision:decisión version:versión razon:razón ocasion:ocasión sesion:sesión ultimo:último ultima:última ultimos:últimos ultimas:últimas proximo:próximo proxima:próxima proximos:próximos " +
   "proximas:próximas rapido:rápido rapida:rápida rapidamente:rápidamente facil:fácil dificil:difícil tactico:táctico tactica:táctica tacticos:tácticos agresion:agresión prision:prisión " +
   "calcetin:calcetín pantalon:pantalón cinturon:cinturón caucasico:caucásico caucasica:caucásica asiatico:asiático asiatica:asiática cadaver:cadáver exito:éxito trafico:tráfico " +
-  "todavia:todavía ningun:ningún algun:algún segun:según porfavor:por favor accelerar:acelerar sereis:seréis correcion:corrección correción:corrección capitan:capitán capitania:capitanía " +
+  "todavia:todavía ningun:ningún algun:algún segun:según porfavor:por_favor accelerar:acelerar sereis:seréis correcion:corrección correción:corrección capitan:capitán capitania:capitanía " +
   "helicoptero:helicóptero metodo:método pagina:página paginas:páginas unico:único unica:única rehen:rehén ladron:ladrón camara:cámara camaras:cámaras " +
   "proteccion:protección declaracion:declaración resolucion:resolución evaluacion:evaluación proyeccion:proyección actuacion:actuación instruccion:instrucción " +
   "jovenes:jóvenes balistico:balístico balistica:balística electronico:electrónico arbol:árbol garage:garaje ocurrio:ocurrió").split(" ")
-  .map(x => x.split(":") as [string, string]).filter(([a, b]) => a !== b));
+  .map(x => x.split(":").map(w => w?.replace(/_/g, " ")) as [string, string]).filter(([a, b]) => !!a && !!b && a !== b));
 const SP_RE = new RegExp(`(?<![\\p{L}\\d_/:@#<])(${Object.keys(SP).join("|")})(?![\\p{L}\\d_])`, "giu");
-const keepCase = (src: string, dst: string) => (src === src.toUpperCase() ? dst.toUpperCase() : src[0] === src[0].toUpperCase() ? dst[0].toUpperCase() + dst.slice(1) : dst);
+const keepCase = (src: string, dst?: string) => (!dst ? src : src === src.toUpperCase() ? dst.toUpperCase() : src[0] === src[0].toUpperCase() ? dst[0].toUpperCase() + dst.slice(1) : dst);
 /* sin tocar links, menciones ni marcas de tiempo de Discord */
 const SKIP = /(https?:\/\/\S+|<[@#:t][^>]*>|`[^`]*`)/g;
 const eachText = (t: string, f: (x: string) => string) => t.split(SKIP).map((x, i) => (i % 2 ? x : f(x))).join("");

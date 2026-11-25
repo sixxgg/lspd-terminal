@@ -1,3 +1,4 @@
+import { OPT_HOSTS } from "./imghosts";
 import { LS, DEF_ROSTER, type Agent } from "./store";
 export type { Agent };
 import gta from "./gta.json";
@@ -97,10 +98,11 @@ export function srcOf(u: string) {
     const url = URL.createObjectURL(new Blob([a], { type: m.slice(5).split(";")[0] })); if (BLOB.size > 400) BLOB.clear(); BLOB.set(h, url); return url; } catch { return u; }
 }
 
-/* imágenes externas: Vercel las entrega en el tamaño justo (si falla, se usa la original) */
+/* imágenes externas: Vercel las entrega en el tamaño justo, solo de los hosts permitidos (si falla, se usa la original) */
 export const imgOpt = (u: string, w: number) => u.startsWith("data:") ? srcOf(u) :
-  location.protocol === "https:" && !/^(localhost|127\.)/.test(location.hostname) && /^https?:\/\//i.test(u)
+  location.protocol === "https:" && !/^(localhost|127\.)/.test(location.hostname) && /^https:\/\//i.test(u) && optHost(u)
     ? `/_vercel/image?url=${encodeURIComponent(u)}&w=${w}&q=75` : u;
+const optHost = (u: string) => { try { return OPT_HOSTS.has(new URL(u).hostname); } catch { return false; } };
 
 export const LUGARES: string[] = [...gta.zonas, ...gta.calles];
 export const DIVISIONES: string[] = [];

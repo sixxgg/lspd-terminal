@@ -1,31 +1,41 @@
 import crypto from "node:crypto";
 import { q, tx } from "../lib/db.js";
 import { audit, auditList, auditRoster, diffSum, keepVersion, versions, HIST_SKIP, ROSTER_OUT } from "../lib/audit.js";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
+import { mergeText } from "../lib/merge.js";
+import { fullData, imgUrl, shapeVal } from "../lib/store.js";
 import { agxCheck, send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept, isXList, xCheck, loadBoards, isBoardKey } from "../lib/core.js";
 
+/* IP privada, local o reservada (v4 y v6): el servidor nunca descarga de ahí */
+const privIp = ip => { const a = String(ip).toLowerCase().replace(/^::ffff:/, "");
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(a)) { const [b, c] = a.split(".").map(Number);
+    return b === 0 || b === 10 || b === 127 || b >= 224 || (b === 100 && c >= 64 && c <= 127) || (b === 169 && c === 254) || (b === 172 && c >= 16 && c <= 31) || (b === 192 && c === 168) || (b === 198 && (c === 18 || c === 19)); }
+  return a === "::" || a === "::1" || /^(f[cd]|fe[89ab]|ff|2001:db8|64:ff9b)/.test(a); };
 async function downloadImg(url) {
   const fail = m => Object.assign(new Error(m), { status: 400 });
-  /* solo https públicas; cada redirección se vuelve a validar (evita que un enlace lleve a la red interna) */
-  const check = s => { let u; try { u = new URL(s); } catch { throw fail("La URL no es válida"); }
+  /* solo https públicas; el nombre se resuelve antes de conectar y cada redirección se vuelve a validar (nada de red interna, ni por DNS) */
+  const check = async s => { let u; try { u = new URL(s); } catch { throw fail("La URL no es válida"); }
     const h = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-    const priv = /^(localhost|.*\.local|.*\.internal|127\.|10\.|192\.168\.|169\.254\.|0\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|::1?$|f[cd][0-9a-f]{2}:|fe80:|::ffff:)/.test(h);
-    if (u.protocol !== "https:" || priv || u.username || u.password) throw fail("Solo se aceptan URLs públicas con https"); return u; };
+    if (u.protocol !== "https:" || u.username || u.password || /^(localhost|.*\.local|.*\.internal)$/.test(h) || isIP(h) && privIp(h)) throw fail("Solo se aceptan URLs públicas con https");
+    const L = isIP(h) ? [{ address: h }] : await lookup(h, { all: true }).catch(() => { throw fail("No se encontró ese sitio"); });
+    if (!L.length || L.some(x => privIp(x.address))) throw fail("Solo se aceptan URLs públicas con https"); return u; };
   const ctl = AbortSignal.timeout(10000);
-  let u = check(url), r;
+  let u = await check(url), r;
   for (let i = 0; ; i++) {
     r = await fetch(u, { signal: ctl, redirect: "manual", headers: { "User-Agent": "LSPD-Terminal" } }).catch(() => { throw fail("No se pudo descargar la imagen"); });
-    if (r.status >= 300 && r.status < 400 && r.headers.get("location")) { if (i >= 3) throw fail("Demasiadas redirecciones"); u = check(new URL(r.headers.get("location"), u).href); continue; }
+    if (r.status >= 300 && r.status < 400 && r.headers.get("location")) { if (i >= 3) throw fail("Demasiadas redirecciones"); u = await check(new URL(r.headers.get("location"), u).href); continue; }
     break;
   }
   if (!r.ok) throw fail(`El sitio respondió ${r.status}. Si es un enlace de Discord, puede haber vencido: subí la imagen desde tu PC.`);
   const type = (r.headers.get("content-type") || "").split(";")[0].trim();
+  /* SVG se acepta para logos: /api/img las sirve con CSP sandbox y nosniff, así que no ejecutan nada */
   if (!/^image\/(png|jpe?g|gif|webp|svg\+xml|avif)$/.test(type)) throw fail("El enlace no es una imagen");
+  const len = Number(r.headers.get("content-length") || 0); if (len > 3.2e6) throw fail("La imagen pesa más de 3 MB");
   const buf = Buffer.from(await r.arrayBuffer());
   if (buf.length > 3.2e6) throw fail("La imagen pesa más de 3 MB");
   return `data:${type};base64,${buf.toString("base64")}`;
 }
-import { mergeText } from "../lib/merge.js";
-import { fullData, imgUrl, shapeVal } from "../lib/store.js";
 
 export default wrap(async (req, res) => {
   const u = await requireUser(req, res);

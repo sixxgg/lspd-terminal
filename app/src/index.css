@@ -3,6 +3,8 @@
 @tailwind utilities;
 
 @layer base {
+  /* toques rápidos en celular/iPad sin zoom ni demora */
+  button, a, [role="button"], summary, label { touch-action: manipulation; }
   :root {
     --n-50: 248 250 252; --n-100: 241 245 249; --n-200: 226 232 240; --n-300: 203 213 225; --n-400: 148 163 184; --n-500: 100 116 139;
     --n-600: 71 85 105; --n-700: 51 65 85; --n-800: 30 41 59; --n-900: 15 23 42; --n-950: 2 6 23;
@@ -381,6 +383,8 @@ button.fx-code:hover { border-color: color-mix(in srgb, var(--c) 80%, transparen
 .nav-dk-i { position: relative; display: grid; place-items: center; } .nav-dk-i > svg { width: 21px; height: 21px; }
 .nav-dk-l { display: none; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; line-height: 1; }
 .nav-dk.on { padding: 0 16px 0 13px; } .nav-dk.on .nav-dk-l { display: inline-flex; animation: nav-l .25s ease-out; }
+/* celular: el área activa nunca se monta sobre el escudo (se recorta con «…») */
+@media (max-width: 640px) { .nav-dk.on { min-width: 0; flex-shrink: 1; padding: 0 12px 0 10px; } .nav-dk.on .nav-dk-l { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; } }
 @keyframes nav-l { from { opacity: 0; transform: translateX(-4px); } }
 html:not([data-head="none"]) header nav .nav-dk-l { font-family: var(--fh, inherit); font-size: 14px; letter-spacing: .05em; }
 .nav-dk-b { font-style: normal; font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 4px; background: #f59e0b; color: #1c1300; letter-spacing: .06em; }

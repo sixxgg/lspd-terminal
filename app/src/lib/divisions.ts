@@ -1,3 +1,4 @@
+import { OPT_HOSTS } from "./imghosts";
 /* Divisiones: descripción, colores tomados del logo y paleta de roles (igual que la versión clásica) */
 import { useEffect, useState } from "react";
 import { DIVS, divAb, divEmblem } from "./domain";
@@ -75,7 +76,7 @@ function loadColors(src: string, key: string) {
     try { localStorage.setItem("lspdt.dvc", JSON.stringify(DVC)); } catch { /* */ }
     subs.forEach(f => f());
   } catch { /* imagen sin CORS */ } };
-  img.src = ext && prod ? `/_vercel/image?url=${encodeURIComponent(src)}&w=64&q=75` : src;
+  img.src = ext && prod && (() => { try { return OPT_HOSTS.has(new URL(src).hostname); } catch { return false; } })() ? `/_vercel/image?url=${encodeURIComponent(src)}&w=64&q=75` : src;
 }
 function divColors(d: string): [string, string, string] {
   const def = !LS.get("lspdt.divlogo." + d) && DEPT.id === "lspd" && DVC_DEF[d]; if (def) return def;

@@ -46,7 +46,7 @@ const OLD = ["siente", "conf", "rama", "div", "rel", "mas", "asp"];
 const resOf = (e: Ent): Record<string, string> => Object.fromEntries(Object.entries(e.res || {}).map(([k, v]) => [/^\d+$/.test(k) ? OLD[+k] || k : k, v]));
 
 /* nd = no quiere entrar a ninguna (ok: está cómodo donde está · no: no quiere más divisiones) · div = a las que quiere entrar · act = a las que ya pertenece (además de las del roster de cada división) · res = respuestas por pregunta */
-type Ent = { st?: string; rama?: string; f?: string; div?: string[]; nd?: string; act?: string[]; res?: Record<string, string>; nota?: string; ent?: string; por?: string; t?: number };
+type Ent = { st?: string; rama?: string; f?: string; div?: string[]; nd?: string; act?: string[]; res?: Record<string, string>; nota?: string; ent?: string; entI?: string; entR?: string; entP?: string; por?: string; t?: number };
 const ST = { si: { l: "Realizada", c: "#10b981", I: Check }, pen: { l: "Pendiente", c: "#f59e0b", I: Clock }, no: { l: "No realizada", c: "#ef4444", I: X } } as const;
 const RAMA = { sgt: { l: "Sargentos", c: "#ec4899", I: Shield, d: "Supervisión y mando de patrulla" }, det: { l: "Detectives", c: "#a855f7", I: Compass, d: "Investigación criminal" }, ind: { l: "Indeciso", c: "#06b6d4", I: HelpCircle, d: "Todavía no lo tiene claro" } } as const;
 type StK = keyof typeof ST; type RaK = keyof typeof RAMA;
@@ -57,7 +57,7 @@ const ndOf = (e: Ent) => (e.nd && e.nd in ND ? ND[e.nd as keyof typeof ND] : nul
 const ordDiv = (s: Iterable<string>) => { const x = new Set(s); return ALL_DIVS.filter(d => x.has(d)); };
 const actOf = (n: string, e: Ent) => ordDiv([...rosterDivs(n), ...(e.act || [])]);
 const empty = (e: Ent) => !e.st && !e.rama && !e.f && !e.nd && !(e.div || []).length && !(e.act || []).length && !(e.nota || "").trim() && !Object.values(e.res || {}).some(v => v.trim());
-const clean = (e: Ent): Ent => ({ st: e.st || "", rama: e.rama || "", f: e.f || "", nd: e.div?.length ? "" : e.nd || "", div: e.div || [], act: e.act || [], res: Object.fromEntries(Object.entries(resOf(e)).filter(([, v]) => v.trim())), nota: (e.nota || "").trim(), ent: e.ent || "" });
+const clean = (e: Ent): Ent => ({ st: e.st || "", rama: e.rama || "", f: e.f || "", nd: e.div?.length ? "" : e.nd || "", div: e.div || [], act: e.act || [], res: Object.fromEntries(Object.entries(resOf(e)).filter(([, v]) => v.trim())), nota: (e.nota || "").trim(), ent: e.ent || "", ...(e.ent && e.entR ? { entI: e.entI || "", entR: e.entR, entP: e.entP || "" } : {}) });
 
 /* la pregunta de la rama y la de divisiones cambian según el rango y lo que ya tiene (si no se editaron) */
 const famOf = (a: Agent) => { const r = rankES(a.r); return /sargento/i.test(r) ? "sgt" : /detective/i.test(r) ? "det" : "of"; };
@@ -272,7 +272,7 @@ function Divs({ list, on, lock, col, onToggle }: { list: string[]; on: string[];
 }
 function EntModal({ a, e, QS, onSave, onClose }: { a: Agent; e: Ent; QS: Q[]; onSave: (x: Ent) => void; onClose: () => void }) {
   const { toast, confirm } = useFeedback();
-  const me = useMe(), SGTS = useMemo(() => getRoster().filter(x => x.r === "Sergeant I" || x.r === "Sergeant II").sort((x, y) => lvl(y.r) - lvl(x.r) || x.n.localeCompare(y.n)), []);
+  const me = useMe(), SGTS = useMemo(() => getRoster().filter(x => (DEPT.id === "lspd" ? x.r === "Sergeant I" || x.r === "Sergeant II" : lvl(x.r) >= 7)).sort((x, y) => lvl(y.r) - lvl(x.r) || x.n.localeCompare(y.n)), []);
   const [d, setD] = useState<Ent>(() => { const c = clean(e); if (!c.ent && !e.t && SGTS.some(x => x.n === me.n)) c.ent = me.n; return c; }), [pv, setPv] = useState(false), [fd, setFd] = useState(isoToDMY(e.f));
   const set = (x: Partial<Ent>) => setD(o => ({ ...o, ...x }));
   const dirty = JSON.stringify(clean(d)) !== JSON.stringify(clean(e)), saved = !!e.t && !dirty;
@@ -295,7 +295,7 @@ function EntModal({ a, e, QS, onSave, onClose }: { a: Agent; e: Ent; QS: Q[]; on
           onBlur={() => { const v = fd.trim(); if (!v) { set({ f: "" }); return; } const iso = dmyToISO(v); if (!iso) { toast("Fecha inválida · escribila como dd/mm/aaaa", "err"); return; } set({ f: iso }); }} />
           <button type="button" className="rounded-md px-1.5 py-1 text-[11px] font-bold text-brand-600 hover:bg-brand-500/10 dark:text-brand-300" onClick={() => { set({ f: hoyISO() }); setFd(isoToDMY(hoyISO())); }}>Hoy</button></div>
         <div className="flex items-center gap-1.5"><span className="text-[11px] font-semibold text-slate-500">Entrevistó</span>
-          <AgentMenu value={d.ent || ""} list={SGTS} onChange={n => set({ ent: n })} title="¿Quién hizo la entrevista?" placeholder="Elegir sargento" me={me.n}
+          <AgentMenu value={d.ent || ""} list={SGTS} onChange={n => { const x = SGTS.find(z => z.n === n); set({ ent: n, entI: x ? x.i || x.p || "" : "", entR: x?.r || "", entP: x?.p || "" }); }} title="¿Quién hizo la entrevista?" placeholder={DEPT.id === "lspd" ? "Elegir sargento" : "Elegir entrevistador"} empty={DEPT.id === "lspd" ? "No hay sargentos en la plantilla" : "No hay mandos autorizados en la plantilla"} me={me.n}
             extra={x => { const n = Object.values(LS.json<Record<string, Ent>>("lspdt.entrev", {})).filter(z => z.ent === x.n).length; return n ? `${n} ${n === 1 ? "entrevista" : "entrevistas"}` : ""; }} /></div>
         <div className="flex flex-wrap items-center gap-1"><span className="mr-1 text-[11px] font-semibold text-slate-500">Rama</span>{(Object.keys(RAMA) as RaK[]).map(k => { const Ra = RAMA[k]; return (
           <Seg key={k} on={d.rama === k} c={Ra.c} title={Ra.d} onClick={() => set({ rama: d.rama === k ? "" : k })}><Ra.I />{raL(k, a.n)}</Seg>); })}</div>

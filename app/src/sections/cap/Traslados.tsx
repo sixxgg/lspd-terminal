@@ -8,9 +8,10 @@ import { Modal } from "@/components/modal";
 import { useFeedback } from "@/components/feedback";
 import { LS, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { fullDT, getRoster, isoToDMY, norm, uid } from "@/lib/domain";
+import { findAgent, fullDT, getRoster, isoToDMY, lvl, norm, uid, type Agent } from "@/lib/domain";
 import { AGX_KEY, ESTADOS_X, RANKS_X, type AgxE } from "@/lib/agx";
 import { cn } from "@/lib/cn";
+import { AgentMenu } from "@/components/sgtpick";
 import { CRIT, CRITV, ESTS, OPTS, RES, TIPOS, eKey, evals, mayoria, preguntas, revPend, revisores, slug, solList, vKey, votos, type CritV, type Eval, type Opt, type Sol, type TEst, type TTipo, type Voto } from "@/lib/trasl";
 
 type Tab = "ent" | "prev" | "enrev" | "apr" | "rech" | "his";
@@ -74,7 +75,7 @@ function SolForm({ s0, all, onClose, onDone }: { s0?: Sol; all: Sol[]; onClose: 
     const dup = all.find(x => x.id !== s0?.id && slug(x.n) === slug(n) && !["rech", "inc"].includes(x.est)); if (dup) { toast(`${n} ya tiene una solicitud abierta (${ESTS[dup.est].l})`, "err"); return; }
     const now = Date.now(), dep = f.tipo === "ext" ? f.dep.trim() : TIPOS[f.tipo].dep;
     const docs = [...(s0?.docs || []), ...(f.du2.trim() ? [{ n: f.dn.trim() || "Documento", url: f.du2.trim(), t: now, by: me.n }] : [])];
-    const base = { tipo: f.tipo, n, placa: f.placa.trim(), dep, com: f.com.trim(), rango: f.rango.trim(), ing: f.ing, du: f.du.trim(), di: f.di.trim(), mot: f.mot.trim(), fsol: f.fsol, entv: f.entv.trim(), obs: f.obs.trim(), docs };
+    const base = { tipo: f.tipo, n, placa: f.placa.trim(), dep, com: f.com.trim(), rango: f.rango.trim(), ing: f.ing, du: f.du.trim(), di: f.di.trim(), mot: f.mot.trim(), fsol: f.fsol, entv: f.entv.trim(), ...entvOf(f.entv.trim()), obs: f.obs.trim(), docs };
     if (s0) { const s: Sol = { ...s0, ...base, est: s0.est === "borr" && !draft ? "entp" : s0.est, upd: now, ub: me.n, log: [...s0.log, { t: now, by: me.n, x: s0.est === "borr" && !draft ? "Datos completos: pasa a Entrevista pendiente" : "Editó los datos de la solicitud" }] };
       if (!s0.ent.r.some(Boolean) && !s0.orig) s.ent = { ...s.ent, q: preguntas(s) };
       put(s); toast("Solicitud guardada"); onDone(s.id); return; }
@@ -98,7 +99,7 @@ function SolForm({ s0, all, onClose, onDone }: { s0?: Sol; all: Sol[]; onClose: 
           <Field label="Usuario de Discord"><Input value={f.du} onChange={e => up({ du: e.target.value })} maxLength={40} /></Field>
           <Field label="ID de Discord"><Input value={f.di} onChange={e => up({ di: e.target.value })} inputMode="numeric" placeholder="17 a 20 números" /></Field>
           <Field label="Fecha de solicitud"><Input type="date" value={f.fsol} onChange={e => up({ fsol: e.target.value })} /></Field>
-          <Field label="Entrevistador responsable"><Input value={f.entv} onChange={e => up({ entv: e.target.value })} maxLength={60} /></Field>
+          <Field label="Entrevistador responsable"><AgentMenu value={f.entv} list={ENTV()} onChange={n => up({ entv: n })} title="¿Quién hizo la entrevista?" placeholder="Elegir entrevistador" me={me.n} empty="No hay mandos de Capitanía o Jefatura autorizados" className="w-full" /></Field>
         </div>
         <Field label="Motivo del traslado"><Textarea rows={2} value={f.mot} onChange={e => up({ mot: e.target.value })} maxLength={1500} /></Field>
         <div className="grid gap-3 sm:grid-cols-[12rem_1fr]"><Field label="Documento (nombre)"><Input value={f.dn} onChange={e => up({ dn: e.target.value })} placeholder="Formulario OOC" /></Field>
@@ -345,3 +346,10 @@ function Incorporar({ s, onClose }: { s: Sol; onClose: () => void }) {
       <p className="mt-3 flex items-center gap-1.5 text-xs text-slate-500"><XCircle className="size-3.5" />No se puede deshacer desde acá: después se edita como cualquier agente.</p>
     </Modal>);
 }
+
+/* entrevistadores posibles: Capitanía y Jefatura autorizadas (rango o acceso dado por six), de mayor a menor rango */
+function ENTV(): Agent[] {
+  return revisores().map(n => findAgent(n) || ({ n, r: "" } as Agent)).sort((a, b) => lvl(b.r) - lvl(a.r) || a.n.localeCompare(b.n));
+}
+/* se guarda el id único, rango y placa del entrevistador además del nombre */
+function entvOf(n: string) { const a = n ? findAgent(n) : undefined; return a ? { entvI: a.i || a.p || "", entvR: a.r, entvP: a.p || "" } : {}; }
