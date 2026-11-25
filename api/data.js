@@ -6,7 +6,7 @@ import { isIP } from "node:net";
 import { mergeText } from "../lib/merge.js";
 import { isDestructive, maintCached, sdUnlocked } from "../lib/owner.js";
 import { fullData, imgUrl, shapeVal } from "../lib/store.js";
-import { agxCheck, send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept, isXList, xCheck, loadBoards, isBoardKey, sessionToken, tokenHash } from "../lib/core.js";
+import { agxCheck, send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept, isXList, xCheck, loadBoards, isBoardKey, sessionToken, tokenHash, traslOk } from "../lib/core.js";
 
 /* IP privada, local o reservada (v4 y v6): el servidor nunca descarga de ahí */
 const privIp = ip => { const a = String(ip).toLowerCase().replace(/^::ffff:/, "");
@@ -57,6 +57,15 @@ export default wrap(async (req, res) => {
       const ch = rows.map(r => r.hint && !r.img ? [r.k, null, +r.t, 1] : [r.k, r.img ? imgUrl(r.k, r.t) : shapeVal(r.k, r.v, u), +r.t]);
       const t = rows.length ? Math.max(since, ...rows.map(r => +r.t)) : since;
       return send(res, 200, { ch, t, me: { admin: u.admin, owner: u.owner, six: isSix(u), anita: !!u.anita, dadm: !!u.dadm, jef: u.dept && (u.l || 0) >= 10 ? u.n : "" } });
+    }
+    /* traslado interdepartamental: el expediente que traía en su departamento de origen, para que no se pierda al incorporarlo (solo quien gestiona traslados) */
+    if (qs.trasexp) {
+      if (!traslOk(u) || (u.dept || "lspd") !== "lssd") return send(res, 403, { msg: "Sin acceso" });
+      const sl = String(qs.trasexp).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, ""), from = qs.from === "sahp" ? "sahp" : "lspd";
+      const v = (await q("select v from kv where k=$1", [from === "lspd" ? `lspdt.exp.${sl}` : `lspdt.sahp.exp.${sl}`])).rows[0]?.v;
+      let e = []; try { e = (JSON.parse(v || "{}").e || []).filter(x => x && typeof x === "object"); } catch { /* */ }
+      await audit(u.n, "trajo el expediente de origen por traslado", "traslado", `${qs.trasexp} (${from.toUpperCase()})`, clientIp(req));
+      return send(res, 200, { e });
     }
     if (qs.hist) { // versiones guardadas de una clave (y de un registro dentro de ella, con id)
       const hk = String(qs.hist);

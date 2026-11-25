@@ -19,7 +19,7 @@ import { FB_TIPOS } from "@/content/feedback";
 import { cn } from "@/lib/cn";
 
 type Tipo = "fb" | "pos" | "neg" | "obs" | "serv" | "fto";
-type Ent = { id: string; t: number; f: string; by: string; tipo: Tipo; tit?: string; txt: string; ed?: { by: string; t: number } };
+type Ent = { id: string; t: number; f: string; by: string; tipo: Tipo; tit?: string; txt: string; ed?: { by: string; t: number }; prev?: string }; /* prev: vino de otro departamento por traslado */
 type Exp = { e: Ent[] };
 const TIPOS: Record<Tipo, [string, typeof ThumbsUp, string]> = {
   fb: ["Feedback", MessageSquareWarning, "#6366f1"], pos: ["Anotación positiva", ThumbsUp, "#22c55e"], neg: ["Anotación negativa", ThumbsDown, "#ef4444"],
@@ -113,6 +113,7 @@ function Expediente({ a }: { a: { n: string; r: string; p?: string; i?: string }
           <Card key={e.id} className="relative overflow-hidden p-4 pl-5">
             <span className="absolute inset-y-0 left-0 w-1" style={{ background: c }} />
             <div className="flex flex-wrap items-center gap-2 text-xs"><span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-bold" style={{ background: c + "1a", color: c }}><I className="size-3.5" />{l}</span>
+              {e.prev && <span title="Vino de su departamento anterior por un traslado" className="rounded bg-slate-500/15 px-1.5 text-[10px] font-bold text-slate-500">DEL {e.prev}</span>}
               {e.tit && <b className="text-[13.5px] text-slate-800 dark:text-white">{e.tit}</b>}
               <span className="ml-auto text-slate-400">{dmy(e.f)} · {e.by}{e.ed ? ` · editada por ${e.ed.by}` : ""}</span>
               {!ro && <span className="flex gap-1">

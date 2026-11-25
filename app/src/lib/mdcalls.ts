@@ -74,13 +74,17 @@ export function setReserva(n: string, on: boolean, by: string) {
 /* movimientos de personal (cambian el roster de METRO y quedan en el historial):
    op = el aspirante pasa a Operador METRO (su reserva de callsign pasa a ser suya) · swat = asciende al Pelotón D (deja la serie C)
    out = retirado de la METRO (sale del roster y libera sus callsigns) */
-export type Move = "op" | "swat" | "out";
-export const MOVE_L: Record<Move, string> = { op: "Pasa a Operador METRO", swat: "Asciende al Pelotón D (SWAT)", out: "Retirado de la METRO" };
+/* back = deja el SWAT y vuelve al Pelotón C (libera su callsign D). Los Líderes de Pelotón C (serie C terminada en 0) pueden estar en el
+   Pelotón D sin perder su liderazgo, y los del SWAT pueden tener un callsign de Líder de Pelotón C */
+export type Move = "op" | "swat" | "out" | "back";
+export const MOVE_L: Record<Move, string> = { op: "Pasa a Operador METRO", swat: "Asciende al Pelotón D (SWAT)", out: "Retirado de la METRO", back: "Vuelve al Pelotón C (deja el SWAT)" };
 export function moveMember(n: string, mv: Move, by: string) {
   const M = { ...uMap("md") } as Record<string, string[]>, r = Array.isArray(M[n]) ? M[n] : [], before = callOfAny(n);
   let after = before;
   if (mv === "op") { M[n] = ["op", ...r.filter(x => x !== "asp" && x !== "op")]; const R = resOf(); if (R[n] !== undefined) { setCalls(n, R[n]); delete R[n]; LS.setJSON(K_RES, R); } const T = tagOf(); if (T[n]) { delete T[n]; LS.setJSON(K_TAG, T); } }
-  if (mv === "swat") { M[n] = r.includes("swat") ? r : [...(r.filter(x => x !== "asp").length ? r.filter(x => x !== "asp") : ["op"]), "swat"]; after = withTok(before, "C", 0); setCalls(n, after); }
+  if (mv === "swat") { M[n] = r.includes("swat") ? r : [...(r.filter(x => x !== "asp").length ? r.filter(x => x !== "asp") : ["op"]), "swat"];
+    const c = csNums(before, "C")[0] || 0; after = c && c % 10 === 0 ? before : withTok(before, "C", 0); setCalls(n, after); } /* el Líder de Pelotón C conserva su callsign C */
+  if (mv === "back") { const L = r.filter(x => x !== "swat"); M[n] = L.length ? L : ["op"]; after = withTok(before, "D", 0); setCalls(n, after); }
   if (mv === "out") { delete M[n]; after = ""; setCalls(n, ""); const R = resOf(); if (n in R) { delete R[n]; LS.setJSON(K_RES, R); } const T = tagOf(); if (T[n]) { delete T[n]; LS.setJSON(K_TAG, T); } }
   uSaveMap("md", M); pushLog({ by, n, de: before, a: after, tipo: "miembro", mot: MOVE_L[mv] });
 }

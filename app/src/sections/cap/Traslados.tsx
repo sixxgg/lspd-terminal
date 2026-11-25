@@ -11,6 +11,7 @@ import { useMe } from "@/lib/me";
 import { findAgent, fullDT, getRoster, isoToDMY, lvl, norm, uid, type Agent } from "@/lib/domain";
 import { AGX_KEY, ESTADOS_X, RANKS_X, type AgxE } from "@/lib/agx";
 import { cn } from "@/lib/cn";
+import { api } from "@/lib/api";
 import { AgentMenu } from "@/components/sgtpick";
 import { CRIT, CRITV, ESTS, OPTS, RES, TIPOS, eKey, evals, mayoria, preguntas, revPend, revisores, slug, solList, vKey, votos, type CritV, type Eval, type Opt, type Sol, type TEst, type TTipo, type Voto } from "@/lib/trasl";
 
@@ -328,6 +329,11 @@ function Incorporar({ s, onClose }: { s: Sol; onClose: () => void }) {
     LS.setJSON(AGX_KEY, O);
     /* expediente personal: una entrada de servicio sin nada confidencial (las valoraciones quedan en el expediente de traslado) */
     const kx = `lspdt.exp.${slug(s.n)}`, ex = LS.ro<{ e: unknown[] }>(kx, { e: [] });
+    /* traslado interdepartamental: lo que traía en su expediente de origen pasa a este (marcado de dónde viene), así no se pierde */
+    const src = s.tipo === "ext" ? "" : s.tipo, prev: unknown[] = [];
+    if (src) { const r = await api(`/api/data?trasexp=${encodeURIComponent(s.n)}&from=${src}`);
+      if (r.__s === 200 && Array.isArray(r.e)) for (const x of r.e as Record<string, unknown>[]) prev.push({ ...x, id: `${src}-${x.id || uid()}`, prev: src.toUpperCase() }); }
+    if (prev.length) ex.e = [...prev.filter(x => !(ex.e as { id?: string }[]).some(y => y.id === (x as { id: string }).id)), ...ex.e];
     LS.setJSON(kx, { e: [{ id: uid(), t: now, f: f.fch, by: me.n, tipo: "serv", tit: "Ingreso por traslado", txt: `Se incorpora a la LSSD desde ${s.tipo === "ext" ? s.dep : TIPOS[s.tipo].dep} como ${f.r}, placa #${p}.${f.fto.trim() ? ` Período de adaptación / FTO lateral: ${f.fto.trim()}.` : ""}` }, ...(Array.isArray(ex.e) ? ex.e : [])] });
     put({ ...s, est: "inc", inc: { r: f.r, p, f: f.fch, e: f.e, fto: f.fto.trim() || undefined, o: f.o.trim() || undefined, t: now, by: me.n }, upd: now, ub: me.n, log: [...s.log, { t: now, by: me.n, x: `Incorporó al agente: ${f.r}, placa #${p}` }] });
     toast(`${s.n} ya está en la plantilla de la LSSD`); onClose();

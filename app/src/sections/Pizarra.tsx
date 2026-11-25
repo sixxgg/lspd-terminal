@@ -17,22 +17,29 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
 
 type K = "note" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "conn" | "pen" | "img" | "banner";
-type It = { id: string; k: K; x: number; y: number; w: number; h: number; c: string; tx?: string; fs?: number; a?: string; b?: string; pts?: number[]; src?: string; sw?: number; ds?: Dash; lk?: boolean; bo?: boolean; it?: boolean; un?: boolean; al?: "l" | "c" };
+type It = { id: string; k: K; x: number; y: number; w: number; h: number; c: string; tx?: string; fs?: number; a?: string; b?: string; pts?: number[]; src?: string; sw?: number; ds?: Dash; lk?: boolean; bo?: boolean; it?: boolean; un?: boolean; al?: "l" | "c" ; bs?: "g" | "s" | "o" | "t" };
 type Meta = { id: string; t: string; by: string; upd: number; sh?: { t: string; exp: number; by: string }[]; dp?: DeptId; deps?: DeptId[] }; /* dp: departamento dueño; deps: departamentos que la ven */
 type Tool = "sel" | "hand" | "note" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "banner" | "conn" | "pen" | "erase";
 /* contorno: continuo, a trazos, de puntos o trazo y punto (como los ejes de un plano) */
-type Dash = "s" | "d" | "o" | "dd";
-const DASH: [Dash, string, string][] = [["s", "Continuo", "0"], ["d", "A trazos", "6 4"], ["o", "De puntos", "0.1 4"], ["dd", "Trazo y punto", "8 3 0.1 3"]];
-const dashOf = (ds: Dash | undefined, w: number) => (ds === "d" ? [w * 3, w * 2] : ds === "o" ? [0.01, w * 2.2] : ds === "dd" ? [w * 4.5, w * 1.8, 0.01, w * 1.8] : []);
+/* tipos de línea (como en un plano): continua, de trazos, de puntos, trazo y punto, línea de eje (center), eje ×2 y fantasma */
+type Dash = "s" | "d" | "o" | "dd" | "c" | "c2" | "ph";
+const DASH: [Dash, string, string][] = [["s", "Continua", "0"], ["d", "De trazos", "6 4"], ["o", "De puntos", "0.1 4"], ["dd", "Trazo y punto", "8 3 0.1 3"],
+  ["c", "Línea de eje (center)", "7 2 2 2"], ["c2", "Eje ×2 (center x2)", "11 2 2 2"], ["ph", "Fantasma (trazo y dos cortos)", "7 2 2 2 2 2"]];
+const DASH_W: Record<Dash, number[]> = { s: [], d: [3, 2], o: [0.01, 2.2], dd: [4.5, 1.8, 0.01, 1.8], c: [6, 1.5, 1.5, 1.5], c2: [12, 3, 3, 3], ph: [7, 1.5, 1.5, 1.5, 1.5, 1.5] };
+const dashOf = (ds: Dash | undefined, w: number) => (DASH_W[ds || "s"] || []).map(x => (x < 0.1 ? x : x * w));
 const capOf = (ds?: Dash) => (ds === "o" || ds === "dd" ? "round" : "butt") as "round" | "butt";
 const FILL_A = "1a"; /* relleno suave: la línea manda (como en el mapa de Infraestructura) */
 /* presencia en vivo: cursor (coordenadas del lienzo) y lo que cada uno está moviendo o dibujando */
 type LiveS = { x: number | null; y: number | null; mv?: It[] };
 type Live = { n: string; v: LiveS | null; t: number };
-const SW = [2, 4, 8, 14];
+const SW = [1.5, 3, 6, 10, 16];
+const SW_L: Record<number, string> = { 1.5: "Muy fina", 3: "Fina", 6: "Media", 10: "Gruesa", 16: "Muy gruesa" };
 const hueOf = (n: string) => { let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) % 360; return `hsl(${h} 85% 62%)`; };
 
-const BG = "#2a2d33", DOT = "rgba(255,255,255,.09)", FG = "#e5e7eb";
+/* estilo propio (no Miro): fondo azul noche con cuadrícula táctica fina y una línea más marcada cada 5 */
+const BG = "#0b111c", DOT = "rgba(148,163,184,.10)", FG = "#e5e7eb";
+const gridBg = (g: number) => ({ backgroundColor: BG, backgroundImage: `linear-gradient(${DOT} 1px, transparent 1px), linear-gradient(90deg, ${DOT} 1px, transparent 1px), linear-gradient(rgba(148,163,184,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.16) 1px, transparent 1px)`,
+  backgroundSize: `${g}px ${g}px, ${g}px ${g}px, ${g * 5}px ${g * 5}px, ${g * 5}px ${g * 5}px` });
 const NOTE_C = ["#fde68a", "#fbcfe8", "#bfdbfe", "#bbf7d0", "#fed7aa", "#ddd6fe", "#f1f5f9"];
 const LINE_C = ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#e5e7eb", "#9ca3af"];
 const HEAD: [string, number, boolean][] = [["H1", 40, true], ["H2", 30, true], ["H3", 22, true], ["P", 16, false]];
@@ -47,7 +54,7 @@ function edge(i: It, to: { x: number; y: number }) {
 const connPts = (c: It, M: Map<string, It>) => { const A = M.get(c.a!), B = M.get(c.b!); return A && B ? [edge(A, ctr(B)), edge(B, ctr(A))] : null; };
 const isFill = (k: K) => k === "rect" || k === "ellipse" || k === "diamond";
 const leftAl = (i: It) => (i.al ? i.al === "l" : i.k === "frame" || i.k === "text");
-const txtCol = (i: It) => (i.k === "banner" ? "#fff" : i.k === "note" ? "#1e293b" : i.k === "frame" || i.k === "text" ? i.c : FG);
+const txtCol = (i: It) => (i.k === "banner" ? (i.bs === "o" ? i.c : "#fff") : i.k === "note" ? "#1e293b" : i.k === "frame" || i.k === "text" ? i.c : FG);
 const font = (i: It) => `${i.it ? "italic " : ""}${i.bo || i.k === "frame" || i.k === "banner" ? 800 : 500} ${i.fs || 16}px Inter, system-ui, sans-serif`;
 /* las pizarras de la PSB solo las ven sus miembros; las de cada división las edita su gente */
 /* «Mandos»: pizarras destacadas, solo Detectives y de Sargento II para arriba (el servidor ni siquiera se las manda al resto) */
@@ -113,9 +120,9 @@ async function exportPng(items: It[], name: string) {
       if (i.un && l) { const w = ctx.measureText(l).width, sx = left ? x : x - w / 2; ctx.lineWidth = Math.max(1, fs / 14); ctx.beginPath(); ctx.moveTo(sx, y + fs * 1.08); ctx.lineTo(sx + w, y + fs * 1.08); ctx.stroke(); } }); };
   for (const i of [...vis.filter(i => i.k === "frame"), ...items.filter(i => i.k === "conn"), ...vis.filter(i => i.k !== "frame")]) {
     const b = box(i); ctx.save();
-    if (i.k === "frame") { ctx.fillStyle = i.c + "14"; ctx.strokeStyle = i.c; ctx.lineWidth = 2; ctx.setLineDash([8, 6]); ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 14); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); text(i); }
+    if (i.k === "frame") { const fw = i.sw || 2; ctx.fillStyle = i.c + "14"; ctx.strokeStyle = i.c; ctx.lineWidth = fw; ctx.setLineDash(dashOf(i.ds || "d", fw)); ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 14); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); text(i); }
     else if (i.k === "note") { ctx.shadowColor = "rgba(0,0,0,.35)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4; ctx.fillStyle = i.c; ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 6); ctx.fill(); ctx.shadowColor = "transparent"; text(i); }
-    else if (i.k === "banner") { ctx.fillStyle = i.c; ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 8); ctx.fill(); text(i); }
+    else if (i.k === "banner") { ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 8); if (i.bs === "o") { ctx.fillStyle = i.c + "1f"; ctx.fill(); ctx.strokeStyle = i.c; ctx.lineWidth = 2; ctx.stroke(); } else { ctx.fillStyle = i.bs === "t" ? "#0d1422" : i.c; ctx.fill(); if (i.bs === "t") { ctx.fillStyle = i.c; ctx.fillRect(b.x, b.y, 6, b.h); } } text(i); }
     else if (isFill(i.k)) { const w = i.sw || 3; ctx.fillStyle = i.c + FILL_A; ctx.strokeStyle = i.c; ctx.lineWidth = w; ctx.setLineDash(dashOf(i.ds, w)); ctx.lineCap = capOf(i.ds); ctx.beginPath();
       if (i.k === "rect") ctx.roundRect(b.x, b.y, b.w, b.h, 10); else if (i.k === "ellipse") ctx.ellipse(b.x + b.w / 2, b.y + b.h / 2, b.w / 2, b.h / 2, 0, 0, Math.PI * 2);
       else { ctx.moveTo(b.x + b.w / 2, b.y); ctx.lineTo(b.x + b.w, b.y + b.h / 2); ctx.lineTo(b.x + b.w / 2, b.y + b.h); ctx.lineTo(b.x, b.y + b.h / 2); ctx.closePath(); }
@@ -161,7 +168,7 @@ export function PizarraArea() {
     {TOP.length > 0 && <div>
       <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-300"><Star className="size-3.5 fill-amber-400 text-amber-400" />Mandos</p>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{TOP.map(b => { const v = `${b.sc}:${b.id}`; return (
-        <div key={v} className="group relative overflow-hidden rounded-xl border border-amber-400/60 px-3.5 py-3 transition hover:border-amber-300" style={{ background: BG, backgroundImage: `radial-gradient(circle, ${DOT} 1px, transparent 1px)`, backgroundSize: "16px 16px" }}>
+        <div key={v} className="group relative overflow-hidden rounded-xl border border-amber-400/60 px-3.5 py-3 transition hover:border-amber-300" style={gridBg(16)}>
           {ren === v ? <Input autoFocus defaultValue={b.t} onBlur={e => { const t = e.target.value.trim(); if (t) setIdx(b.sc, X => X.map(x => (x.id === b.id ? { ...x, t } : x))); setRen(""); }} onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
             : <button onClick={() => pick(v)} className="block w-full text-left">
               <b className="flex items-center gap-1.5 truncate text-slate-50"><Lock className="size-3.5 shrink-0 text-amber-400" />{b.t}</b><small className="text-xs text-slate-400">{b.by} · {new Date(b.upd).toLocaleDateString()}</small></button>}
@@ -180,7 +187,7 @@ export function PizarraArea() {
       </div>
       {!L.length ? (f === "alto" ? null : <Empty icon={<Presentation />} title="Todavía no hay pizarras" desc="Creá una y elegí una plantilla para arrancar." />)
         : <div className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{L.map(b => { const ed = canEd(b.sc, me.n, me.r, b), v = `${b.sc}:${b.id}`, ext = (b.deps || []).filter(d => d !== dpOf(b)); return (
-          <div key={v} className="group relative rounded-xl border border-slate-700 px-3.5 py-3 transition hover:border-brand-400" style={{ background: BG, backgroundImage: `radial-gradient(circle, ${DOT} 1px, transparent 1px)`, backgroundSize: "16px 16px" }}>
+          <div key={v} className="group relative rounded-xl border border-slate-700 px-3.5 py-3 transition hover:border-brand-400" style={gridBg(16)}>
             {ren === v ? <Input autoFocus defaultValue={b.t} onBlur={e => { const t = e.target.value.trim(); if (t) setIdx(b.sc, X => X.map(x => (x.id === b.id ? { ...x, t } : x))); setRen(""); }} onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
               : <button onClick={() => pick(v)} className="block w-full text-left">
                 <b className="flex items-center gap-2 truncate text-slate-100"><span className="shrink-0 rounded bg-white/10 px-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300">{b.scl}</span><span className="truncate">{b.t}</span></b><small className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">{b.by} · {new Date(b.upd).toLocaleDateString()}
@@ -236,7 +243,7 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
   const ver = useStoreVersion(), { toast, confirm } = useFeedback(), me = useMe();
   const [items, setItems] = useState<It[]>(() => ext || LS.json<{ items: It[] }>(k, { items: [] }).items || []);
   const [view, setView] = useState({ x: 80, y: 80, z: 0.8 }), [tool, setTool] = useState<Tool>("sel"), [selIds, setSel] = useState<string[]>([]), [edit, setEdit] = useState("");
-  const [col, setCol] = useState<{ note: string; line: string; sw: number; ds: Dash }>({ note: NOTE_C[0], line: LINE_C[0], sw: 4, ds: "s" }), [tpl, setTpl] = useState(false), [title, setTitle] = useState(meta.t), [full, setFull] = useState(!!full0), [share, setShare] = useState(false);
+  const [col, setCol] = useState<{ note: string; line: string; sw: number; ds: Dash }>({ note: NOTE_C[0], line: LINE_C[0], sw: 3, ds: "s" }), [tpl, setTpl] = useState(false), [title, setTitle] = useState(meta.t), [full, setFull] = useState(!!full0), [share, setShare] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null), fileRef = useRef<HTMLInputElement>(null), act = useRef<Act | null>(null), ptrs = useRef(new Map<number, { x: number; y: number }>());
   const [marq, setMarq] = useState<null | { x: number; y: number; w: number; h: number }>(null), [ghost, setGhost] = useState<null | { a: string; x: number; y: number }>(null);
   const hist = useRef<{ u: It[][]; r: It[][] }>({ u: [], r: [] }), saved = useRef(JSON.stringify(items)), space = useRef(false), timer = useRef(0);
@@ -341,7 +348,7 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
       if (a.m === "move") { const ids = a.id!.split(","); setItems(a.o!.map(i => (ids.includes(i.id) ? { ...i, x: i.x + dx, y: i.y + dy, pts: i.pts?.map((v, j) => v + (j % 2 ? dy : dx)) } : i))); return; }
       if (a.m === "resize") { setItems(a.o!.map(i => { if (i.id !== a.id) return i; const b = box(i); return { ...i, x: b.x, y: b.y, w: Math.max(30, b.w + dx), h: Math.max(24, b.h + dy) }; })); return; }
       if (a.m === "draw") { setItems(L => L.map(i => (i.id === a.id ? { ...i, w: dx, h: dy } : i))); return; }
-      if (a.m === "pen") { setItems(L => L.map(i => (i.id === a.id ? { ...i, pts: [...i.pts!, p.x, p.y] } : i))); return; }
+      if (a.m === "pen") { setItems(L => L.map(i => { if (i.id !== a.id) return i; const q = i.pts!, n = q.length; if (n >= 2 && Math.hypot(p.x - q[n - 2], p.y - q[n - 1]) < 2 / view.z) return i; return { ...i, pts: [...q, p.x, p.y] }; })); return; } /* menos puntos: trazos livianos */
       if (a.m === "conn") { setGhost(g => (g ? { ...g, x: p.x, y: p.y } : g)); return; }
       if (a.m === "marq") setMarq({ x: Math.min(a.wx!, p.x), y: Math.min(a.wy!, p.y), w: Math.abs(dx), h: Math.abs(dy) }); }); };
   const up = (e: RPE) => { ptrs.current.delete(e.pointerId); const a = act.current;
@@ -360,11 +367,17 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
   };
 
   /* lo que otros están moviendo se ve encima, sin esperar a que lo suelten */
-  const shown = useMemo(() => { const ov = new Map<string, It>(); for (const o of others) for (const m of o.v?.mv || []) ov.set(m.id, m); if (!ov.size) return items;
+  const merged = useMemo(() => { const ov = new Map<string, It>(); for (const o of others) for (const m of o.v?.mv || []) ov.set(m.id, m); if (!ov.size) return items;
     const out = items.map(i => ov.get(i.id) || i); for (const [id, m] of ov) if (!M.has(id)) out.push(m); return out; }, [items, others, M]);
-  const MS = useMemo(() => (shown === items ? M : new Map(shown.map(i => [i.id, i]))), [shown, items, M]);
+  const MS = useMemo(() => (merged === items ? M : new Map(merged.map(i => [i.id, i]))), [merged, items, M]);
+  /* rendimiento: solo se dibuja lo que está en pantalla (con margen); flechas, lo elegido y lo que se edita, siempre */
+  const vw = wrapRef.current?.clientWidth || 0, vh = wrapRef.current?.clientHeight || 0, cull = Math.round(view.x / 200) + ":" + Math.round(view.y / 200) + ":" + Math.round(view.z * 10) + ":" + vw + ":" + vh;
+  const shown = useMemo(() => { if (!vw || merged.length < 60) return merged; const pad = 400 / view.z, x0 = -view.x / view.z - pad, y0 = -view.y / view.z - pad, x1 = x0 + vw / view.z + pad * 2, y1 = y0 + vh / view.z + pad * 2;
+    return merged.filter(i => { if (i.k === "conn" || selIds.includes(i.id) || edit === i.id) return true;
+      if (i.k === "pen") { const p = i.pts || []; for (let j = 0; j < p.length; j += 8) if (p[j] > x0 && p[j] < x1 && p[j + 1] > y0 && p[j + 1] < y1) return true; return false; }
+      const b = box(i); return b.x + b.w > x0 && b.x < x1 && b.y + b.h > y0 && b.y < y1; }); }, [merged, cull, selIds, edit]); // eslint-disable-line react-hooks/exhaustive-deps
   const selLk = selIds.length > 0 && selIds.every(id => M.get(id)?.lk);
-  const strokeSel = selIds.map(id => M.get(id)).filter(i => i && (i.k === "pen" || i.k === "conn" || isFill(i.k))) as It[];
+  const strokeSel = selIds.map(id => M.get(id)).filter(i => i && (i.k === "pen" || i.k === "conn" || i.k === "frame" || isFill(i.k))) as It[];
   /* las acciones de cada elemento pasan por una referencia estable: así un cambio de otro no vuelve a dibujar toda la pizarra */
   const ctlR = useRef<Ctl>(null as unknown as Ctl);
   ctlR.current = { down, edit: (i: It) => { if (canEdit && i.k !== "img") setEdit(i.id); }, text: (i: It, tx: string) => { if (tx !== i.tx) commit(itRef.current.map(x => (x.id === i.id ? { ...x, tx } : x))); setEdit(""); } };
@@ -384,11 +397,11 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
     ["note", "Nota", "Nota adhesiva (N)", StickyNote], ["text", "Texto", "Texto (T)", Type], ["rect", "Cuadro", "Rectángulo (R)", Square], ["ellipse", "Círculo", "Círculo (O)", Circle], ["diamond", "Rombo", "Rombo / decisión (D)", Diamond],
     ["frame", "Marco", "Marco (F)", Frame], ["banner", "Banner", "Banner de título (B)", Flag], ["conn", "Flecha", "Flecha (C): arrastrá de una forma a otra", ArrowUpRight], ["pen", "Lápiz", "Lápiz (P)", PenLine], ["erase", "Goma", "Goma (E): tocá algo para borrarlo", Eraser]];
   const tb = "flex w-14 shrink-0 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium leading-none transition [&>svg]:size-4", tbI = "text-slate-300 hover:bg-white/10", sep = <span className="mx-1 h-5 w-px bg-white/15" />;
-  const fb = (on: boolean) => cn("grid size-7 place-items-center rounded-md text-xs font-bold transition [&>svg]:size-3.5", on ? "bg-brand-600 text-white" : "text-slate-300 hover:bg-white/10");
-  const grid = 24 * view.z, dot = Math.max(0.7, view.z * 1.1);
+  const fb = (on: boolean) => cn("grid size-7 place-items-center rounded-lg text-xs font-bold transition [&>svg]:size-3.5", on ? "bg-brand-600 text-white shadow-[0_0_12px_rgb(var(--b-500)/.5)]" : "text-slate-300 hover:bg-white/10");
+  const grid = 24 * view.z;
   return (
-    <div className={cn("overflow-hidden rounded-2xl border border-white/10 text-slate-200", full && "fixed inset-2 z-[80] shadow-2xl")} style={{ background: "#1f2125" }}>
-      <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-3 py-2">
+    <div className={cn("overflow-hidden rounded-2xl border border-[rgb(var(--b-500)/.25)] text-slate-200 shadow-[0_0_0_1px_rgba(0,0,0,.4),0_20px_50px_-20px_rgb(var(--b-500)/.35)]", full && "fixed inset-2 z-[80] shadow-2xl")} style={{ background: "#0a0f18" }}>
+      <div className="flex flex-wrap items-center gap-2 border-b border-[rgb(var(--b-500)/.2)] bg-gradient-to-r from-[rgb(var(--b-500)/.12)] to-transparent px-3 py-2">
         {onBack && <button onClick={onBack} className="rounded-lg px-2 py-1 text-xs font-semibold text-slate-400 hover:bg-white/10">← Pizarras</button>}
         <span className="beta-tag !text-[11px]">BETA</span>
         <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300">{scope}</span>
@@ -398,7 +411,7 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
         {!full0 && <button onClick={() => setFull(!full)} title={full ? "Salir de pantalla completa" : "Pantalla completa"} className="rounded-lg p-2 text-slate-400 hover:bg-white/10"><Maximize className="size-4" /></button>}
       </div>
       <div ref={wrapRef} className={cn("relative touch-none select-none overflow-hidden", full && "h-[calc(100%-49px)]", tool === "sel" ? "cursor-grab active:cursor-grabbing" : tool === "hand" ? "cursor-grab" : "cursor-crosshair")}
-        style={{ ...(!full && { height: hh || "70vh" }), background: BG, backgroundImage: `radial-gradient(circle, ${DOT} ${dot}px, transparent ${dot}px)`, backgroundSize: `${grid}px ${grid}px`, backgroundPosition: `${view.x}px ${view.y}px` }}
+        style={{ ...(!full && { height: hh || "70vh" }), ...gridBg(grid), backgroundPosition: `${view.x}px ${view.y}px` }}
         onPointerDown={e => down(e)} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={() => k && pushLive({ x: null, y: null })} onContextMenu={e => e.preventDefault()}>
         <div className="absolute left-0 top-0 origin-top-left will-change-transform" style={{ transform: `translate3d(${view.x}px,${view.y}px,0) scale(${view.z})` }}>
           {shown.filter(i => i.k === "frame" || (i.lk && i.k === "img")).map(i => <ItemV key={i.id} i={i} sel={selIds.includes(i.id)} edit={edit === i.id} canEdit={canEdit} ctl={ctl} />)}
@@ -436,15 +449,17 @@ function Board({ k, meta, scope, canEdit, onBack, onMeta, ext, others: others0, 
         {share && k && <SharePanel k={k} meta={meta} me={me.n} onMeta={onMeta!} onClose={() => setShare(false)} />}
 
         {/* barra de formato y colores de lo elegido */}
-        {canEdit && (selIds.length > 0 || ["note", "rect", "ellipse", "diamond", "frame", "banner", "conn", "pen", "text"].includes(tool)) && <div className="absolute left-[calc(50%+2rem)] top-3 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-[#1f2125]/95 p-1.5 shadow-xl backdrop-blur" onPointerDown={e => e.stopPropagation()}>
+        {canEdit && (selIds.length > 0 || ["note", "rect", "ellipse", "diamond", "frame", "banner", "conn", "pen", "text"].includes(tool)) && <div className="absolute left-[calc(50%+2rem)] top-3 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 flex-wrap items-center gap-1 rounded-2xl border border-[rgb(var(--b-500)/.3)] bg-[#0d1422]/95 p-1.5 shadow-xl backdrop-blur" onPointerDown={e => e.stopPropagation()}>
           {(selK.length ? selK.every(x => x === "note") : tool === "note") ? NOTE_C.map(c => <button key={c} aria-label={c} onClick={() => { setCol({ ...col, note: c }); if (selIds.length) setProp({ c }); }} className="size-6 rounded-md ring-1 ring-black/20" style={{ background: c, outline: (one?.c || col.note) === c ? "2px solid #818cf8" : undefined }} />)
             : LINE_C.map(c => <button key={c} aria-label={c} onClick={() => { setCol({ ...col, line: c }); if (selIds.length) setProp({ c }); }} className="size-6 rounded-full ring-1 ring-black/20" style={{ background: c, outline: (one?.c || col.line) === c ? "2px solid #818cf8" : undefined }} />)}
-          {(["pen", "conn", "rect", "ellipse", "diamond"].includes(tool) || strokeSel.length > 0) && <>{sep}
-            {SW.map(w => <button key={w} title={`Grosor ${w}`} aria-label={`Grosor ${w}`} onClick={() => { setCol({ ...col, sw: w }); if (strokeSel.length) commit(items.map(i => (strokeSel.some(x => x.id === i.id) ? { ...i, sw: w } : i))); }}
-              className={fb((strokeSel[0]?.sw || col.sw) === w)}><span className="block w-4 rounded-full bg-current" style={{ height: Math.max(1.5, w / 2) }} /></button>)}
+          {(["pen", "conn", "rect", "ellipse", "diamond", "frame"].includes(tool) || strokeSel.length > 0) && <>{sep}
+            {SW.map(w => <button key={w} title={`Línea ${SW_L[w].toLowerCase()}`} aria-label={`Línea ${SW_L[w].toLowerCase()}`} onClick={() => { setCol({ ...col, sw: w }); if (strokeSel.length) commit(items.map(i => (strokeSel.some(x => x.id === i.id) ? { ...i, sw: w } : i))); }}
+              className={fb((strokeSel[0]?.sw || col.sw) === w)}><span className="block w-4 rounded-full bg-current" style={{ height: Math.max(1, w / 2.2) }} /></button>)}
             {sep}
-            {DASH.map(([d, l, a]) => <button key={d} title={`Contorno ${l.toLowerCase()}`} aria-label={l} onClick={() => { setCol({ ...col, ds: d }); if (strokeSel.length) commit(items.map(i => (strokeSel.some(x => x.id === i.id) ? { ...i, ds: d } : i))); }}
+            {DASH.map(([d, l, a]) => <button key={d} title={`Línea o contorno: ${l.toLowerCase()}`} aria-label={l} onClick={() => { setCol({ ...col, ds: d }); if (strokeSel.length) commit(items.map(i => (strokeSel.some(x => x.id === i.id) ? { ...i, ds: d } : i))); }}
               className={fb((strokeSel[0]?.ds || (strokeSel.length ? "s" : col.ds)) === d)}><svg width="18" height="8" viewBox="0 0 18 8"><line x1="1" y1="4" x2="17" y2="4" stroke="currentColor" strokeWidth="2" strokeDasharray={a} strokeLinecap={d === "o" || d === "dd" ? "round" : "butt"} /></svg></button>)}</>}
+          {one && one.k !== "img" && one.k !== "conn" && one.k !== "pen" && <>{sep}<button title="Editar el texto (doble clic o Enter)" aria-label="Editar el texto" onClick={() => setEdit(one.id)} className={fb(edit === one.id)}><Type /></button></>}
+          {one?.k === "banner" && <>{sep}{([["g", "Degradé"], ["s", "Liso"], ["o", "Contorno"], ["t", "Táctico"]] as const).map(([v, l]) => <button key={v} title={`Banner ${l.toLowerCase()}`} onClick={() => setProp({ bs: v })} className={cn(fb((one.bs || "g") === v), "w-auto px-2 text-[10.5px]")}>{l}</button>)}</>}
           {txSel.length > 0 && <>{sep}
             {HEAD.map(([l, fs, bo]) => <button key={l} title={l === "P" ? "Texto normal" : `Título ${l}`} onClick={() => commit(items.map(i => (selIds.includes(i.id) ? { ...i, fs, bo, h: i.k === "text" ? Math.max(Math.abs(i.h), Math.ceil(fs * 1.3 + 26)) : i.h } : i)))} className={fb(txSel.every(i => (i.fs || 16) === fs))}>{l}</button>)}
             {sep}
@@ -514,8 +529,10 @@ const ItemV = memo(function ItemV({ i, sel, edit, canEdit, ctl }: { i: It; sel: 
     body = <svg className="absolute inset-0 overflow-visible" width={b.w} height={b.h}>{i.k === "rect" ? <rect x={h2} y={h2} width={Math.max(0, b.w - w)} height={Math.max(0, b.h - w)} rx={10} {...st} />
       : i.k === "ellipse" ? <ellipse cx={b.w / 2} cy={b.h / 2} rx={Math.max(0, b.w / 2 - h2)} ry={Math.max(0, b.h / 2 - h2)} {...st} />
       : <polygon points={`${b.w / 2},${h2} ${b.w - h2},${b.h / 2} ${b.w / 2},${b.h - h2} ${h2},${b.h / 2}`} {...st} />}</svg>; }
-  else if (i.k === "banner") body = <div className="absolute inset-0 rounded-lg shadow-[0_6px_18px_rgba(0,0,0,.35)]" style={{ background: `linear-gradient(90deg, ${i.c}, ${i.c}d9)` }} />;
-  else if (i.k === "frame") body = <div className="absolute inset-0 rounded-[14px] border-2 border-dashed" style={{ borderColor: i.c, background: i.c + "14" }} />;
+  else if (i.k === "banner") body = i.bs === "o" ? <div className="absolute inset-0 rounded-lg border-2" style={{ borderColor: i.c, background: i.c + "1f" }} />
+    : i.bs === "t" ? <div className="absolute inset-0 overflow-hidden rounded-lg bg-[#0d1422] shadow-[0_6px_18px_rgba(0,0,0,.35)]" style={{ boxShadow: `inset 6px 0 0 ${i.c}, 0 6px 18px rgba(0,0,0,.35)` }}><div className="absolute inset-y-0 right-0 w-1/3" style={{ background: `repeating-linear-gradient(135deg, ${i.c}33 0 8px, transparent 8px 16px)` }} /></div>
+    : <div className="absolute inset-0 rounded-lg shadow-[0_6px_18px_rgba(0,0,0,.35)]" style={{ background: i.bs === "s" ? i.c : `linear-gradient(90deg, ${i.c}, ${i.c}d9)` }} />;
+  else if (i.k === "frame") { const w = i.sw || 2; body = <svg className="absolute inset-0 overflow-visible" width={b.w} height={b.h}><rect x={w / 2} y={w / 2} width={Math.max(0, b.w - w)} height={Math.max(0, b.h - w)} rx={14} fill={i.c + "14"} stroke={i.c} strokeWidth={w} strokeDasharray={dashOf(i.ds || "d", w).join(" ") || undefined} strokeLinecap={capOf(i.ds || "d")} /></svg>; }
   else if (i.k === "img") body = <img src={i.src} alt="" draggable={false} className="absolute inset-0 size-full rounded object-fill" />;
   return (
     <div className={cn("absolute", canEdit && !i.lk && "cursor-move")} style={{ left: b.x, top: b.y, width: b.w, height: b.h }} onPointerDown={e => onDown(e, i)} onDoubleClick={e => { e.stopPropagation(); onEdit(); }}>

@@ -6,7 +6,7 @@
    Gestionan la coordinación y los instructores (más six, Liam y Molina); el resto de la división lo ve. */
 import { useEffect, useMemo, useState } from "react";
 import { LPC_COLOR } from "@/lib/divisions";
-import { ArrowRight, ArrowUpCircle, Bookmark, Check, History, LogOut, Megaphone, Minus, MoreVertical, Plus, RefreshCw, Search, Settings2, Shield, Target, UserCheck, X } from "lucide-react";
+import { ArrowRight, ArrowUpCircle, ArrowDownCircle, Bookmark, Check, History, LogOut, Megaphone, Minus, MoreVertical, Plus, RefreshCw, Search, Settings2, Shield, Target, UserCheck, X } from "lucide-react";
 import { Button, Card, Input, Textarea } from "@/components/ui";
 import { Avatar, AgentCombo } from "@/components/agents";
 import { DiscordOutput } from "@/components/output";
@@ -58,12 +58,15 @@ export function MetroCalls({ can }: { can: boolean }) {
   /* movimientos de personal: retirar de la METRO, ascender al Pelotón D, aspirante → Operador METRO, reserva */
   const [menu, setMenu] = useState("");
   useEffect(() => { if (!menu) return; const f = () => setMenu(""); window.addEventListener("click", f); return () => window.removeEventListener("click", f); }, [menu]);
-  const doMove = async (p: P, mv: Move) => { const q = { op: `¿${p.n} pasa a Operador METRO? Deja de ser aspirante${res[p.n] ? ` y se queda con ${res[p.n]}` : ""}.`, swat: `¿${p.n} asciende al Pelotón D (SWAT)? Libera su callsign de la serie C; después elegís su callsign D.`, out: `¿Retirar a ${p.n} de la METRO? Sale del roster y libera todos sus callsigns.` }[mv];
+  const doMove = async (p: P, mv: Move) => { const q = { op: `¿${p.n} pasa a Operador METRO? Deja de ser aspirante${res[p.n] ? ` y se queda con ${res[p.n]}` : ""}.`, swat: (numOf(p, "C") % 10 === 0 && numOf(p, "C") ? `¿${p.n} asciende al Pelotón D (SWAT)? Como es Líder de Pelotón C, conserva ${csTok(numOf(p, "C"), "C")}; después elegís su callsign D.` : `¿${p.n} asciende al Pelotón D (SWAT)? Libera su callsign de la serie C; después elegís su callsign D.`), out: `¿Retirar a ${p.n} de la METRO? Sale del roster y libera todos sus callsigns.`, back: `¿${p.n} deja el SWAT y vuelve al Pelotón C? Libera su callsign de la serie D${numOf(p, "C") ? ` y se queda con ${csTok(numOf(p, "C"), "C")}` : ""}.` }[mv];
     if (!(await confirm(q, { danger: mv === "out" }))) return; moveMember(p.n, mv, me.n); toast(`${p.n} · ${MOVE_L[mv]}`); if (mv === "swat") { go("D"); setSel(p.n); } };
   const acts = (p: P): [string, typeof X, () => void, boolean?][] => {
     const inRoster = p.tipo === "miembro", L: [string, typeof X, () => void, boolean?][] = [];
     if (p.asp) L.push(["Pasar a Operador METRO", UserCheck, () => void doMove(p, "op")], [isReserva(p.n) ? "Quitar de la reserva" : "Dejar en reserva", Bookmark, () => { setReserva(p.n, !isReserva(p.n), me.n); toast(isReserva(p.n) ? `${p.n} en reserva` : `${p.n} salió de la reserva`); }]);
+    if (!inRoster && !p.asp) L.push(["Sumar al roster de la METRO", UserCheck, () => void doMove(p, "op")]);
     if (inRoster && !p.asp && !p.swat) L.push(["Ascender al Pelotón D (SWAT)", ArrowUpCircle, () => void doMove(p, "swat")]);
+    if (inRoster && p.swat) { L.push(["Volver al Pelotón C (deja el SWAT)", ArrowDownCircle, () => void doMove(p, "back")]);
+      if (!numOf(p, "C")) L.push(["Darle callsign de Líder de Pelotón C", ArrowUpCircle, () => { go("C"); setSel(p.n); toast(`Elegí una casilla terminada en 0 de la serie C para ${p.n}`); }]); }
     if (inRoster) L.push(["Retirar de la METRO", LogOut, () => void doMove(p, "out"), true]);
     else if (res[p.n] !== undefined) L.push(["Quitar de la lista", LogOut, async () => { if (await confirm(`¿Quitar a ${p.n}? Libera su callsign reservado.`, { danger: true })) { setCall(p.n, "", me.n, "reserva"); const R = resOf(); delete R[p.n]; LS.setJSON(K_RES, R); } }, true]);
     return L; };

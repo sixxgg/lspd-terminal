@@ -82,7 +82,7 @@ const TPL: { k: string; l: string; d: string; icon: LucideIcon; color: string; t
     P("Para qué sirve y cuándo se aplica."), H("h1", "Pasos"), L("ol", ""), C("info", "Tené en cuenta…"), H("h1", "Notas"), P()] },
   { k: "acta", l: "Acta de reunión", d: "Asistentes, temas y acuerdos", icon: ListChecks, color: "#16a34a", blocks: () => [
     H("h2", "Asistentes"), L("ul", ""), H("h2", "Temas tratados"), L("ol", ""), H("h2", "Acuerdos"), L("todo", "")] },
-  { k: "tac", l: "Gestión de tácticos (TAC)", d: "Nuestra versión: 487, 254-V y cod.77", icon: Lightbulb, color: "#dc2626", tag: "LSPD · Mando", sub: "Cómo se manda un táctico en el LSPD de Eleven Project", blocks: tacBlocks },
+  { k: "tac", l: "Gestión de tácticos (TAC)", d: "487, 254-V, cod.77 y el manual de gestión del TAC", icon: Lightbulb, color: "#dc2626", tag: "LSPD · Mando", sub: "Cómo se manda un táctico en el LSPD de Eleven Project", blocks: tacBlocks },
 ];
 function tacBlocks(): Blk[] {
   return [
@@ -108,6 +108,29 @@ function tacBlocks(): Blk[] {
     C("err", "Cuando se informa un cod.77 por radio, o antes de llegar al vehículo donde se va a hacer, la **prioridad del MANDO** es ordenar que **el aire despegue** y se sume al **254-V**."),
     H("h3", "Clave Robert · Art. 22"),
     P("Prohibido activarla para **pinchar ruedas en zonas urbanas o pobladas**: solo en **vías secundarias, autopistas o zonas despobladas**. Disparar para abatir a quien huye de espaldas sin peligro inminente es motivo de causa judicial."),
+    /* lo que sigue resume el «Manual de gestión del TAC» (Sgt. I Custer): una guía, no un protocolo cerrado */
+    H("h1", "6. Asignar el TAC"),
+    L("ul", "**TAC conjunto:** se pide directo al otro mando en avisos prioritarios (secuestro masivo o de compañeros, tiroteo masivo, cod.99 prioritario, robo a sucursal bancaria o a entidad federal).",
+      "**TAC propio:** cuando no hace falta ayuda de otro mando. Si las unidades no alcanzan, pasa a conjunto."),
+    C("info", "Al pedir adicionales, el mando que los pide da siempre **tres datos**: **1)** la frecuencia táctica, **2)** un resumen breve del incidente y **3)** cuántas unidades o Adams necesita."),
+    H("h1", "7. Entrar al TAC"),
+    P("Al entrar se **designa un mando** (voluntario o, si no hay, el que elija el **rango más alto**). Desde ahí, todas las unidades quedan a sus órdenes sin importar el rango. Los superiores supervisan y, si hace falta, pueden intervenir, destituir o asumir el mando."),
+    TB([["Rol", "Qué hace"], ["Supervisor", "Supervisa al mando y lo apoya; en un caso extremo designa otro mando"], ["Mando", "Organiza y lleva el TAC; responde por que se resuelva lo mejor y más rápido posible"], ["Unidades ordinarias", "Cumplen lo que el mando les encarga y le pasan información clara"]]),
+    H("h1", "8. El mando"),
+    P("El mando **no** atiende heridos, ni procesa detenidos, ni hace perímetro, ni negocia: **organiza, gestiona y controla**. Si sobran unidades, no hace otra tarea."),
+    T("Deberes", "**Número de unidades** (pedir más o dar cod.4 a las que sobran) · **Recursos** (aire, unidades tácticas, interceptores) · **Gestión general** (decidir, no esperar) · **Delegar** funciones · **Conocer la situación general** de cada unidad."),
+    T("Derechos", "Pedir ayuda · Dar **cod.4** (justificado) · **Prioridad en radio** junto con la supervisión · Pedir información a cualquier unidad · Ordenar y dividir unidades · **Finalizar el TAC** (10.98)."),
+    T("Recursos", "**Piloto de ocupado** para distinguir a quién se puede usar · **Separar TACs** si hay varias situaciones · **Distintivo** delante del nombre · **Referencias de patrulla** de colores en el GPS · **Tomar distancia** para ver el conjunto · **Micro gestión** (ordenar, no esperar voluntarios) · **No ser el primero** en entrar · Sin miedo a ordenarle a un superior · **Mando operaciones** con radio interna para unidades tácticas y negociadores."),
+    H("h1", "9. Unidades ordinarias"),
+    L("ul", "**Deberes:** seguir las órdenes del mando, darle **información detallada** y mantener la **disciplina en radio** (llamar primero y esperar el visto bueno).",
+      "**Derechos:** pedir ayuda (mejor por interna), dar comunicados **prioritarios** («ADAM-XX para mando, PRIORITARIO») y un **debriefing** con el mando al terminar.",
+      "**Recursos:** el **teléfono** para no saturar la radio, el **10.20** y **callouts** con puntos fáciles de reconocer (ej.: «10.20 al lado de la gasolinera de Viñedos»)."),
+    H("h1", "10. Tipos de TAC"),
+    TB([["Tipo", "Qué pasa", "Prioridades del mando"],
+      ["Incidente pasivo", "Se acude a socorrer a las víctimas; la policía no está en el tiroteo", "Recoger pruebas (detectives), atender PH con el SAED, prever persecuciones y acordonar"],
+      ["Incidente activo", "Hay unidades implicadas en el tiroteo", "Neutralizar la amenaza sin aislar a nadie, rescatar PH, prever persecuciones y asegurar la zona (evitar más escalada)"],
+      ["Secuestro activo", "Lo central es localizar y rescatar rehenes; suele ser móvil", "Repartir unidades (no todas a la zona), montar aire, zonas de búsqueda, negociar, prever persecución y atrincheramiento"]]),
+    T("Disposición final", "Cada TAC es distinto: hay que ser **flexible** y adaptarse. Sin miedo a decidir ni a equivocarse; se aprende de los errores y de las críticas de quien quiere ayudar."),
   ];
 }
 
@@ -219,22 +242,24 @@ function exportPdf(m: Man, all: Man[]) {
   };
   const date = new Date(m.upd || Date.now()).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" });
   const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(m.title || "Manual")}</title><style>
-@page{size:A4;margin:16mm 16mm 18mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-body{font:11pt/1.6 "Segoe UI",Inter,system-ui,Arial,sans-serif;color:#1e293b;margin:0}
+@page{size:A4;margin:14mm 14mm 16mm;@bottom-right{content:"Página " counter(page) " de " counter(pages);font:8pt "Segoe UI",Arial,sans-serif;color:#94a3b8}@bottom-left{content:"${esc(m.title || "Manual").replace(/"/g, "'")}";font:8pt "Segoe UI",Arial,sans-serif;color:#94a3b8}}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font:11pt/1.6 "Segoe UI",Inter,system-ui,Arial,sans-serif;color:#1e293b;margin:0;padding:5mm 6mm;orphans:3;widows:3}
+.frame{position:fixed;inset:0;border:1.2pt solid ${c}59;border-radius:5pt;pointer-events:none}
 .wm{position:fixed;top:50%;left:50%;width:62%;transform:translate(-50%,-50%);opacity:.06;z-index:-1}
 header{display:flex;gap:16px;align-items:center;padding-bottom:14px;border-bottom:3px solid ${c};margin-bottom:22px}
 header img{width:64px;height:64px;object-fit:contain}.tag{font-size:8.5pt;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:${c}}
 header h1{font-size:22pt;line-height:1.15;margin:2px 0 3px;border:0;padding:0}.sub{color:#64748b;font-size:10pt}.date{color:#94a3b8;font-size:8.5pt;margin-top:2px}
 .cv{width:100%;height:150px;object-fit:cover;border-radius:10px;margin-bottom:18px}
-h1,h2,h3{color:#0f172a;break-after:avoid;margin:20px 0 6px}h1{font-size:16pt;border-left:4px solid ${c};padding-left:10px}h2{font-size:13pt}h3{font-size:11.5pt}
+h1,h2,h3{color:#0f172a;break-after:avoid;page-break-after:avoid;margin:20px 0 6px}h1+*,h2+*,h3+*{break-before:avoid}h1{font-size:16pt;border-left:4px solid ${c};padding-left:10px}h2{font-size:13pt}h3{font-size:11.5pt}
 p{margin:6px 0}ul,ol{margin:6px 0;padding-left:22px}li{margin:3px 0}ul.todo{list-style:none;padding-left:4px}.bx{color:${c}}
 blockquote{margin:10px 0;padding:6px 14px;border-left:3px solid ${c};color:#475569;font-style:italic}
-.co{border-left:4px solid;border-radius:8px;padding:9px 14px;margin:10px 0;break-inside:avoid}.co .lb{display:block;font-weight:700;font-size:8.5pt;text-transform:uppercase;letter-spacing:.08em}
-.tg{border:1px solid #e2e8f0;border-radius:8px;padding:9px 14px;margin:10px 0;break-inside:avoid}
+.co{border:1px solid #e2e8f0;border-left:4px solid;border-radius:6pt;padding:9px 14px;margin:10px 0;break-inside:avoid}.co .lb{display:block;font-weight:700;font-size:8.5pt;text-transform:uppercase;letter-spacing:.08em}
+.tg{border:1px solid #cbd5e1;border-radius:6pt;padding:9px 14px;margin:10px 0;break-inside:avoid}
 pre{background:#f1f5f9;border-radius:8px;padding:10px 14px;font:9.5pt/1.5 Consolas,monospace;white-space:pre-wrap;break-inside:avoid}
-table{width:100%;border-collapse:collapse;margin:10px 0;font-size:10pt;break-inside:avoid}th,td{border:1px solid #e2e8f0;padding:6px 9px;text-align:left;vertical-align:top}th{background:${c}1a}
-hr{border:0;border-top:1px solid #e2e8f0;margin:16px 0}figure{margin:12px 0;break-inside:avoid}figure img{max-width:100%;border-radius:8px}figcaption{font-size:9pt;color:#64748b}.lk{color:${c}}
-</style></head><body>${lg && m.mark !== false ? `<img class="wm" src="${lg}">` : ""}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:10pt;border:1px solid #cbd5e1}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #cbd5e1;padding:6px 9px;text-align:left;vertical-align:top}th{background:${c}1a;font-weight:700}
+hr{border:0;border-top:1px solid #e2e8f0;margin:16px 0}figure{margin:12px 0;break-inside:avoid}figure img{max-width:100%;max-height:200mm;border-radius:6pt;border:1px solid #e2e8f0}figcaption{font-size:9pt;color:#64748b}.lk{color:${c}}
+</style></head><body><div class="frame"></div>${lg && m.mark !== false ? `<img class="wm" src="${lg}">` : ""}
 ${raw(m.cover) ? `<img class="cv" src="${raw(m.cover)}">` : ""}<header>${lg ? `<img src="${lg}">` : ""}<div>${m.tag ? `<div class="tag">${esc(m.tag)}</div>` : ""}<h1>${esc(m.title || "Sin título")}</h1>${m.sub ? `<div class="sub">${esc(m.sub)}</div>` : ""}<div class="date">Actualizado el ${date}</div></div></header>
 ${m.blocks.map(blk).join("\n")}</body></html>`;
   const f = document.createElement("iframe"); f.setAttribute("aria-hidden", "true"); f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
@@ -341,7 +366,7 @@ type Pop = { kind: "add" | "slash" | "turn"; id: string; x: number; y: number } 
 function Editor({ m0, all, onBack, onOpen, startEdit }: { m0: Man; all: Man[]; onBack: () => void; onOpen: (id: string) => void; startEdit?: boolean }) {
   const { toast, confirm } = useFeedback();
   const [d, setD] = useState<Man>(() => structuredClone(m0)), [base, setBase] = useState(() => JSON.stringify(m0));
-  const [edit, setEdit] = useState(!!startEdit), [ep, setEp] = useState(0), [pop, setPop] = useState<Pop | null>(null), [look, setLook] = useState(false);
+  const [edit, setEdit] = useState(!!startEdit), [ep, setEp] = useState(0), [pop, setPop] = useState<Pop | null>(null), [look, setLook] = useState(false), [foc, setFoc] = useState("");
   const want = useRef<{ id: string; start?: boolean } | null>(null), root = useRef<HTMLDivElement>(null), fileFor = useRef<string>(""), file = useRef<HTMLInputElement>(null);
   const dirty = JSON.stringify(d) !== base, hdr = useHdr();
   useEffect(() => { const w = want.current; if (!w) return; want.current = null; const el = root.current?.querySelector<HTMLElement>(`[data-bid="${w.id}"]`); if (el) { el.focus(); caretTo(el, !w.start); } });
@@ -531,7 +556,16 @@ function Editor({ m0, all, onBack, onOpen, startEdit }: { m0: Man; all: Man[]; o
       </Card>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_15rem]">
-        <div ref={root} key={ep} className="min-w-0">
+        <div ref={root} key={ep} className="min-w-0" onFocusCapture={e => { const el = (e.target as HTMLElement).closest("[data-bid]"), id = el?.getAttribute("data-bid") || "";
+          const b = id ? blocks.find(x => x.id === id || x.items?.some(y => y.id === id) || id.startsWith(x.id + ":")) : undefined; if (b) setFoc(b.id); }}>
+          {/* cuadro flotante: cambia el bloque donde está el cursor a texto, títulos, listas, cita o aviso (sin escribir «/») */}
+          {edit && (() => { const b = blocks.find(x => x.id === foc); const FMT: [BT, string, LucideIcon][] = [["p", "Texto", Type], ["h1", "Título 1", Heading1], ["h2", "Título 2", Heading2], ["h3", "Título 3", Heading3], ["ul", "Lista", List], ["ol", "Lista numerada", ListOrdered], ["quote", "Cita", Quote], ["callout", "Aviso", Info]];
+            return <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-3"><div role="toolbar" aria-label="Formato del bloque" className="pointer-events-auto flex items-center gap-0.5 rounded-2xl border border-slate-200 bg-white/95 p-1 shadow-xl backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+              {FMT.map(([t, l, I]) => <button key={t} type="button" title={l} aria-label={l} disabled={!b} onMouseDown={e => e.preventDefault()} onClick={() => { if (!b || b.t === t) return; const nb = turn(b, t); setBlocks(bs => bs.map(x => (x.id === b.id ? nb : x))); const f = first(nb); if (f) want.current = { id: f }; }}
+                className={cn("grid size-9 place-items-center rounded-xl transition disabled:opacity-30", b?.t === t ? "bg-brand-600 text-white dark:bg-brand-500" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800")}><I className="size-4" /></button>)}
+              <span className="mx-1 h-6 w-px bg-slate-200 dark:bg-slate-700" />
+              <button type="button" title="Agregar bloque debajo" aria-label="Agregar bloque debajo" disabled={!b} onMouseDown={e => e.preventDefault()} onClick={() => { if (!b) return; insert(idx(b.id), P()); }} className="grid size-9 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 disabled:opacity-30 dark:text-slate-300 dark:hover:bg-slate-800"><Plus className="size-4" /></button>
+            </div></div>; })()}
           <Sheet m={d} edit={edit} onTitle={s => setD(x => ({ ...x, title: s }))} onSub={s => setD(x => ({ ...x, sub: s }))}>
             {edit ? <div className="space-y-2 sm:-ml-14">
               {blocks.map(b => (

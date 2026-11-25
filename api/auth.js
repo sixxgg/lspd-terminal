@@ -94,8 +94,15 @@ async function post(req, res) {
     let acc = null, lag = null;
     if (X) { /* LSSD y SAHP: usuario OOC, placa o nombre (si no se repite) */
       const L0 = await xRoster(dept); lag = deptFind(L0, u);
+      /* placa vieja de otro departamento (se trasladó): se busca a quién era y se lo encuentra por el nombre; la placa se actualiza sola */
+      if (!lag && digits(u)) { const old = (await roster()).list.find(a => String(a.p) === digits(u)); if (old) lag = deptFind(L0, old.n); if (lag && lag.amb) lag = null; }
       if (lag && lag.amb) return send(res, 400, { msg: `Con ese usuario hay ${lag.amb.length} personajes (${lag.amb.map(a => a.n).join(" y ")}). Entrá con la placa o el nombre del que quieras usar.` });
       if (lag) acc = rows.find(x => x.name === deptAcc(lag, dept)) || rows.find(x => x.name.startsWith(dept + ":") && deptOfAcc(L0, x.name) === lag) || null;
+      /* traslado: no tiene cuenta en este departamento pero sí la del LSPD con el mismo nombre → con su misma contraseña, la cuenta pasa a este
+         departamento (deja de cargar en el LSPD) y conserva su perfil, que es común a los tres */
+      if (lag && !acc && lag.src) { const old = rows.find(x => !isDeptAcc(x.name) && norm(x.name) === norm(lag.n));
+        if (old && checkPw(b.pw, old.hash)) { const nn = deptAcc(lag, dept); await q("update accounts set name=$2 where name=$1", [old.name, nn]); await q("delete from sessions where name=$1", [old.name]);
+          await audit(lag.n, `pasó su cuenta al ${XN[dept]} por traslado`, "cuenta", `${old.name} → ${nn}`, ip); acc = { ...old, name: nn }; invalidate(); } }
     } else {
       acc = rows.find(x => !isDeptAcc(x.name) && (norm(x.email) === u || norm(x.name) === u || norm(x.email.split("@")[0]) === u)) || null;
       /* también con el número de placa (para nombres dobles o difíciles de escribir) */
@@ -112,6 +119,9 @@ async function post(req, res) {
       return send(res, 200, { n: lag.n, e: acc.email, dept, data: await fullData(deptUser(lag, acc.name, dept)) });
     }
     const ag = findIn((await roster()).list, acc.name);
+    /* se trasladó a otro departamento (figura incorporado allá por un traslado): esta cuenta ya no entra al LSPD */
+    for (const d of XDEPTS) { const t = (await xRoster(d)).find(x => x.src && x.tr && norm(x.n) === norm(acc.name) && !/retir|baja|inactiv/i.test(x.e || ""));
+      if (t) return send(res, 403, { msg: `Te trasladaste al ${XN[d]}: entrá por el ${XN[d]} con tu placa #${t.p} y tu misma contraseña. Tu perfil se mantiene.` }); }
     if (!ag) return send(res, 403, { msg: "Tu agente ya no figura en el roster." });
     if (!(await gate(ag))) {
       if ((await metaList("rejected")).includes(ag.n)) return send(res, 403, { msg: "Tu solicitud de acceso fue rechazada. Consultá con la administración." });

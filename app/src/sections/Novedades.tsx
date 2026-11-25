@@ -10,7 +10,7 @@ import { DET, lvl } from "@/lib/domain";
 import { rosterDivs } from "@/lib/units";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.0.0";
+export const APP_VERSION = "1.0.1";
 export const APP_TAG = "⟡ 𝕆𝕗𝕗𝕚𝕔𝕚𝕒𝕝";
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => (LS.get("lspdt.seenVersion") || "") !== APP_VERSION;
@@ -58,6 +58,10 @@ const LOG: Rel[] = [
     ["Robos", "[ilg] Tablet con armamento de cada misión, bandas y recompensas|Catálogo prolijo en cualquier pantalla"],
     ["Administración", "[dueños] Mantenimiento (beta) con contraseña por Discord, códigos de autodestrucción para borrar algo importante, cuentas, invitaciones, accesos y registros|[dueños] Auditoría de seguridad: imágenes solo de sitios confiables, sesiones vencidas fuera y permisos controlados en el servidor"],
   ] },
+];
+/* lo que llega después de la 1.0.0, de a una versión (también con tags) */
+const AFTER: [string, string][] = [
+  ["1.0.1", "Pizarra con estilo propio, tipos de línea (eje, eje ×2, fantasma, puntos…), grosores y banners editables sin atajos|Manuales con barra flotante de títulos e impresión con marco y número de página|[div:Metropolitan Division] METRO: Líderes del Pelotón C en el SWAT y al revés, y sumar o mover agentes más fácil|[lssd+mandos] Traslados que conservan el expediente y pasan la cuenta sola"],
 ];
 /* progreso de la página (lo estima six; se actualiza con cada versión) */
 const PROG: [string, number, string][] = [["LSPD", 100, "Completa"], ["LSSD", 92, "Falta el Training Center y ajustes de divisiones"], ["SAHP", 40, "Roster y secciones base; el resto en construcción"], ["Pizarra", 80, "Estilos de línea y rendimiento en camino"], ["Manuales", 85, "Editor más simple e impresión"]];
@@ -112,6 +116,10 @@ export function Novedades() {
           </Card>}
         </div>
       </div>
+      {(() => { const W = { n: me.n, r: me.r, dept: DEPT.id }, L = AFTER.map(([v, t]) => [v, clean(t.split("|"), W)] as [string, string[]]).filter(([, x]) => x.length).reverse(); return L.length > 0 && (
+        <Card className="divide-y divide-slate-100 p-0 dark:divide-slate-800">{L.map(([v, x]) => (
+          <div key={v} className="flex gap-4 px-5 py-3"><b className="w-16 shrink-0 font-mono text-sm text-orange-600 dark:text-orange-300">v{v}</b>
+            <ul className="min-w-0 flex-1 space-y-1 text-[14px] leading-snug text-slate-700 dark:text-slate-200">{x.map(y => <li key={y}>{y}</li>)}</ul></div>))}</Card>); })()}
       <p className="text-center text-[11px] text-slate-400">De la 0.0 a la 5.7.9, todo en uno. Desde acá empieza la cuenta de nuevo.</p>
     </div>
   );
