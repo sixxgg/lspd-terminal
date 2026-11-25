@@ -41,7 +41,8 @@ const AGX_L: Record<string, string> = { n: "Nombre", p: "Placa", r: "Rango", e: 
 function agxEdit(n: string, fn: (a: Agent) => void) {
   const a = getRoster().find(x => x.n === n); if (!a) return false;
   const b: Agent = { ...a }; fn(b);
-  const raw = (LS.ro<Agent[]>("lspdt.roster", []) || []).find(x => x.n === (a.n0 || a.n)) as (Agent & Record<string, unknown>) | undefined; if (!raw) return false;
+  /* base de cada campo: la fila de la planilla o, si entró por traslado y todavía no está en la planilla, su alta */
+  const raw = ((LS.ro<Agent[]>("lspdt.roster", []) || []).find(x => x.n === (a.n0 || a.n)) || (LS.ro<Record<string, AgxE>>(AGX_KEY, {}) || {})[a.n0 || a.n]?.add) as (Agent & Record<string, unknown>) | undefined; if (!raw) return false;
   const iso2dmy = (v?: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ""); return m ? `${m[3]}/${m[2]}/${m[1]}` : v || ""; };
   const val = (x: Agent, f: string) => String(f === "i" ? iso2dmy(x.c) : (x as Record<string, unknown>)[f] ?? "").trim();
   const key = a.n0 || a.n, O = { ...(LS.ro<Record<string, AgxE>>(AGX_KEY, {}) || {}) }, e: AgxE = { ...(O[key] || {}) }, f = { ...(e.f || {}) }, ch: string[] = [];

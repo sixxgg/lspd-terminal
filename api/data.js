@@ -8,6 +8,7 @@ import { isDestructive, maintCached, sdUnlocked } from "../lib/owner.js";
 import { fullData, imgUrl, shapeVal } from "../lib/store.js";
 import { agxCheck, send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept, isXList, xCheck, loadBoards, isBoardKey, sessionToken, tokenHash, traslOk, parseRoster } from "../lib/core.js";
 import { deptList } from "../lib/lssd.js";
+import { purgeAll, purgeDivs, settleXfers } from "../lib/xfer.js";
 
 /* IP privada, local o reservada (v4 y v6): el servidor nunca descarga de ahí */
 const privIp = ip => { const a = String(ip).toLowerCase().replace(/^::ffff:/, "");
@@ -39,8 +40,35 @@ async function downloadImg(url) {
   return `data:${type};base64,${buf.toString("base64")}`;
 }
 
+/* guardado con historial, firmado por quien lo dispara */
+const putAs = (by, ts) => async (c, K, val) => { const prev = (await c.query("select v, by, at from kv where k=$1", [K])).rows[0];
+  await c.query("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do update set v=excluded.v, t=excluded.t, by=excluded.by, at=excluded.at", [K, val, by, ts]);
+  await keepVersion(c, K, val, by, prev ? { v: prev.v, by: prev.by, at: prev.at } : null); };
+/* altas por traslado (Traslados › Incorporar): el agente sale de su departamento de origen y de sus divisiones; queda en Administración › Logs */
+async function settle(by, ip) {
+  const L = await tx(async c => { await c.query("select pg_advisory_xact_lock(hashtext('xfer:divs'))"); return settleXfers(c, putAs(by, Date.now()), by); });
+  for (const o of L) await audit(by, ROSTER_OUT, o.de === "LSPD" ? "lspdt.roster" : `lspdt.${o.de.toLowerCase()}.agx`, [o.n, o.r || "—", o.p ? "#" + String(o.p).replace(/\D/g, "") : "sin placa", `Traslado ${o.de} → ${o.a}`].join(" · "), ip);
+  if (L.length) invalidate(); return L;
+}
+/* una sola vez (marca en meta): ordena los traslados hechos antes de que esto fuera automático (salen del origen y de sus divisiones) */
+let PURGED = false;
+async function purgeOnce() {
+  if (PURGED) return; PURGED = true;
+  if ((await q("select v from meta where k='xfer:purge'")).rows[0]?.v === "2") return;
+  await settle("sistema", "");
+  const done = await tx(async c => {
+    await c.query("select pg_advisory_xact_lock(hashtext('xfer:divs'))");
+    if ((await c.query("select v from meta where k='xfer:purge'")).rows[0]?.v === "2") return [];
+    const L = await purgeAll(c, putAs("sistema", Date.now()));
+    await c.query("insert into meta(k,v) values('xfer:purge','2') on conflict(k) do update set v='2'");
+    return L;
+  });
+  if (done.length) { invalidate(); await audit("sistema", "limpieza de divisiones por traslados", "divisiones", done.slice(0, 40).join(" · "), ""); }
+}
+
 export default wrap(async (req, res) => {
   const u = await requireUser(req, res);
+  if (u) await purgeOnce().catch(() => { PURGED = false; });
   if (!u) return;
   /* mantenimiento: nadie más que six lee ni guarda (la página muestra la pantalla de mantenimiento) */
   { const M = await maintCached(); if (M && !isSix(u)) return send(res, 503, { maint: { at: M.at, msg: M.msg || "" }, msg: "La terminal está en mantenimiento" }); }
@@ -123,7 +151,8 @@ export default wrap(async (req, res) => {
   /* traslado a otro departamento o expulsión: Capitanía, Jefatura, administración o six. No se borra nada del agente: sale del roster de su
      departamento (queda registrado en lspdt.bajas con quién, cuándo y por qué) y, si es traslado, entra al otro como alta por traslado */
   if (b.xfer && typeof b.xfer === "object") {
-    const x = b.xfer, from = u.dept || "lspd", to = ["lspd", "lssd", "sahp"].includes(x.to) ? x.to : "", op = x.op === "xfer" ? "xfer" : "out";
+    /* origen: el departamento de la sesión; six y la administración general pueden operar sobre cualquiera (el que tengan abierto) */
+    const x = b.xfer, D3 = ["lspd", "lssd", "sahp"], from = (isSix(u) || (u.admin && !u.dept)) && D3.includes(x.from) ? x.from : u.dept || "lspd", to = ["lspd", "lssd", "sahp"].includes(x.to) ? x.to : "", op = x.op === "xfer" ? "xfer" : "out";
     if (!isSix(u) && !u.admin && !u.dadm && (u.l || 0) < 8) return send(res, 403, { msg: "Solo Capitanía, Jefatura o la administración" });
     const n = String(x.n || "").trim(), motivo = String(x.motivo || "").trim().slice(0, 500), ts = Date.now();
     if (!n || (op === "xfer" && (!to || to === from)) || (op === "out" && motivo.length < 5)) return send(res, 400, { msg: op === "out" ? "Escribí el motivo de la expulsión" : "Elegí a qué departamento" });
@@ -132,7 +161,7 @@ export default wrap(async (req, res) => {
       await c.query("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do update set v=excluded.v, t=excluded.t, by=excluded.by, at=excluded.at", [K, val, u.n, ts]);
       await keepVersion(c, K, val, u.n, prev ? { v: prev.v, by: prev.by, at: prev.at } : null); };
     const r = await tx(async c => {
-      for (const K of ["lspdt.roster", "lspdt.lssd.agx", "lspdt.sahp.agx", "lspdt.bajas"]) await c.query("select pg_advisory_xact_lock(hashtext($1))", [K]);
+      for (const K of ["lspdt.roster", "lspdt.lssd.agx", "lspdt.sahp.agx", "lspdt.bajas", "xfer:divs"]) await c.query("select pg_advisory_xact_lock(hashtext($1))", [K]);
       let ag = null;
       if (from === "lspd") {
         const raw = (await c.query("select v from kv where k='lspdt.roster'")).rows[0]?.v, L = parseRoster(raw).list, i = L.findIndex(a => nrm(a.n) === nrm(n));
@@ -151,7 +180,7 @@ export default wrap(async (req, res) => {
         const rk = String(x.r || "").slice(0, 60), p = String(x.p || "").replace(/\D/g, "").slice(0, 6);
         if (to === "lspd") {
           const raw = (await c.query("select v from kv where k='lspdt.roster'")).rows[0]?.v, L = parseRoster(raw).list;
-          if (!L.some(a => nrm(a.n) === nrm(ag.n))) await put(c, "lspdt.roster", JSON.stringify([...L, { n: ag.n, p, r: rk || "Police Officer I", e: "Activo", c: new Date(ts).toISOString().slice(0, 10), d: ag.d || "", di: ag.di || "" }]));
+          if (!L.some(a => nrm(a.n) === nrm(ag.n))) await put(c, "lspdt.roster", JSON.stringify([...L, { n: ag.n, p, r: rk || "Police Officer I", e: "Activo", c: new Date(ts).toISOString().slice(0, 10), d: ag.d || "", di: ag.di || "", src: DN[from], tr: "xfer-" + ts }]));
         } else {
           const K = `lspdt.${to}.agx`; let O = {}; try { O = JSON.parse((await c.query("select v from kv where k=$1", [K])).rows[0]?.v || "{}") || {}; } catch { /* */ }
           O[ag.n] = { ...(O[ag.n] || {}), add: { n: ag.n, r: rk || (to === "lssd" ? "Deputy Sheriff" : "Officer"), p, e: "Activo", u: ag.u || ag.d || nrm(ag.n).replace(/[^a-z0-9]/g, ""), d: ag.d || "", di: ag.di || "", src: DN[from], tr: "xfer-" + ts } };
@@ -166,11 +195,15 @@ export default wrap(async (req, res) => {
           if (add.length) await put(c, ek(to), JSON.stringify({ ...Z, e: [...add, ...(Z.e || [])] })); } }
       let B = []; try { B = JSON.parse((await c.query("select v from kv where k='lspdt.bajas'")).rows[0]?.v || "[]"); } catch { /* */ }
       await put(c, "lspdt.bajas", JSON.stringify([{ t: ts, n: ag.n, r: ag.r || "", p: ag.p || "", de: DN[from], tipo: op, a: op === "xfer" ? DN[to] : "", motivo, por: u.n }, ...(Array.isArray(B) ? B : [])].slice(0, 500)));
-      return { ok: 1, n: ag.n };
+      /* sale también de las divisiones, callsigns y reservas de su departamento anterior */
+      const divs = await purgeDivs(c, put, [[from, ag.n]]);
+      return { ok: 1, n: ag.n, r: ag.r || "", p: ag.p || "", divs: divs.length };
     });
     if (r.err) return send(res, 404, { msg: r.err });
     invalidate();
     await audit(u.n, op === "xfer" ? `trasladó al ${DN[to]}` : "expulsó", "agentes", `${r.n} (${DN[from]})${motivo ? " · " + motivo : ""}`, clientIp(req));
+    /* Administración › Logs: «nombre · rango · placa · qué pasó» */
+    await audit(u.n, ROSTER_OUT, from === "lspd" ? "lspdt.roster" : `lspdt.${from}.agx`, [r.n, r.r || "—", r.p ? "#" + String(r.p).replace(/\D/g, "") : "sin placa", op === "xfer" ? `Traslado ${DN[from]} → ${DN[to]}` : `Expulsado del ${DN[from]}${motivo ? ": " + motivo.slice(0, 120) : ""}`].join(" · "), clientIp(req));
     return send(res, 200, r);
   }
   /* OIS remitido a la FID: cualquiera que pueda cargar OIS abre (o actualiza) el caso en la PSB, sin tocar el resto de los expedientes */
@@ -250,6 +283,7 @@ export default wrap(async (req, res) => {
   const sum = del ? diffSum(out.old, null) : diffSum(out.exists ? out.old : null, out.v);
   if (!out.same && !/^Cambió: (seen|t|ts|last)$/.test(sum)) await audit(u.n, del ? "borró" : out.exists ? "editó" : "creó", k, sum, clientIp(req));
   if (k === "lspdt.roster" && !del && !out.same && out.exists) await auditRoster(u.n, out.old, out.v, clientIp(req));
+  if (bk === "lspdt.agx" && !del && !out.same) await settle(u.n, clientIp(req)).catch(() => {});
   if (bk === "lspdt.roster" || k === "lspdt.ui" || /^lspdt\.(asd|k9|psb|md)Roster$|^lspdt\.(groster|groles|divacc)\./.test(bk)) invalidate(); // cambió el rango o las divisiones de alguien
   const r = { t: out.t };
   if (out.v !== mine || b.url || b.from) r.v = out.v && out.v.startsWith("data:") ? imgUrl(k, out.t) : shapeVal(k, out.v, u); // devuelve el resultado solo si cambió por la fusión (sin lo que no le corresponde ver)

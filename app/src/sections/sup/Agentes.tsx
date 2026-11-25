@@ -24,6 +24,7 @@ import { cn } from "@/lib/cn";
 import { StatusPill, Thumbs } from "./Patrullas";
 import { EstadoBadge, TipoBadge, tally, type Prop } from "./Votaciones";
 import { goTo } from "@/lib/profiles";
+import { arrivedOf, placaCan, placaPend, placaUsedBy } from "@/lib/placas";
 
 const SUBDIVS = new Set(DIVS.flatMap(d => d[1] || []));
 const LICS = ["Licencia de coche", "Licencia de moto", "Licencia de camión", "Licencia de barco", "Licencia de aviación", "Licencia de caza", "Licencia de pesca", "Licencia de armas"];
@@ -115,6 +116,7 @@ export function Agentes() {
           const RR = getRoster().map(x => (x.e === "Vacaciones" ? { ...x, e: "Activo" } : x)); LS.setJSON("lspdt.roster", RR); toast("Etiquetas de vacaciones quitadas"); }}>Quitar vacaciones ({nVac})</Button>}
         {rosEd() && <Button icon={<UserPlus />} onClick={() => setReg(null)}>Registrar agente</Button>}
       </Card>
+      {placaCan(me.r) && <PlacasPend />}
       <p className="text-xs text-slate-400">Planilla del departamento · {list.length} de {R.length} agentes</p>
       {!list.length ? <Card><Empty icon={<Users />} title="Sin agentes para ese filtro" /></Card>
         : view === "grid" ? Object.entries(GROUPS).map(([k, gr]) => { const l = list.filter(a => gr.r.includes(a.r)); return l.length ? (
@@ -381,6 +383,27 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
     </div>, document.body);
 }
 
+/* agentes sin placa de servicio (los que llegaron por traslado, sobre todo): se la asigna Sargento para arriba desde acá */
+function PlacasPend() {
+  const L = placaPend(), { toast } = useFeedback(), [v, setV] = useState<Record<string, string>>({});
+  if (!L.length) return null;
+  const save = (n: string) => { const p = (v[n] || "").replace(/\D/g, ""); if (!p) { toast("Escribí la placa", "err"); return; }
+    const occ = placaUsedBy(p, n); if (occ) { toast(`La placa #${p} ya la tiene ${occ}`, "err"); return; }
+    if (updateAgent(n, a => { a.p = p; }) === false) { toast("No se pudo guardar", "err"); return; }
+    setV({ ...v, [n]: "" }); toast(`${n} · placa #${p} asignada`); };
+  return (
+    <Card className="border-amber-400/50 p-4">
+      <div className="mb-3 flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-300"><IdCard className="size-5" /></span>
+        <div><p className="text-sm font-bold">Placas pendientes · {L.length}</p><p className="text-xs text-slate-500">Agentes sin placa de servicio{DEPT.id === "lspd" ? " que llegaron por traslado" : ""}. El aviso se repite cada día hasta que se les asigne una.</p></div></div>
+      <div className="grid gap-2 md:grid-cols-2">{L.map(a => { const ar = arrivedOf(a); return (
+        <div key={a.n} className="flex items-center gap-2.5 rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-800">
+          <div className="min-w-0 flex-1"><b className="block truncate text-[13.5px]">{a.n}</b><span className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500"><RankBadge r={a.r} />{ar.src && <span>Trasladado desde el {ar.src}{ar.t ? ` · ${dmy(new Date(ar.t).toISOString().slice(0, 10))}` : ""}</span>}</span></div>
+          <Input aria-label={`Placa de ${a.n}`} value={v[a.n] || ""} onChange={e => setV({ ...v, [a.n]: e.target.value.replace(/\D/g, "").slice(0, 6) })} onKeyDown={e => e.key === "Enter" && save(a.n)} placeholder="#" inputMode="numeric" className="h-9 w-20 font-mono" />
+          <Button size="sm" onClick={() => save(a.n)}>Asignar</Button>
+        </div>); })}</div>
+    </Card>);
+}
+
 /* traslado a otro departamento o expulsión (lo hace el servidor: sale de este roster, entra al otro y el expediente viaja con el agente) */
 function XferModal({ a, onClose, onDone }: { a: Agent; onClose: () => void; onDone: () => void }) {
   const { toast, confirm } = useFeedback(), DN: Record<string, string> = { lspd: "LSPD", lssd: "LSSD", sahp: "SAHP" };
@@ -390,7 +413,7 @@ function XferModal({ a, onClose, onDone }: { a: Agent; onClose: () => void; onDo
   const go = async () => {
     if (op === "out" && mot.trim().length < 5) { toast("Escribí el motivo de la expulsión", "err"); return; }
     if (!(await confirm(op === "xfer" ? `¿Trasladar a ${a.n} al ${DN[to]}? Sale del roster del ${DN[DEPT.id]} y su expediente pasa con él.` : `¿Expulsar a ${a.n} del ${DN[DEPT.id]}? Sale del roster y no puede volver a entrar con su cuenta.`, { danger: op === "out", ok: op === "xfer" ? "Trasladar" : "Expulsar" }))) return;
-    setBusy(true); const res = await api("/api/data", { k: "lspdt.bajas", xfer: { n: a.n, op, to, r, p, motivo: mot } }); setBusy(false);
+    setBusy(true); const res = await api("/api/data", { k: "lspdt.bajas", xfer: { n: a.n, op, to, r, p, motivo: mot, from: DEPT.id } }); setBusy(false);
     if (res.__s !== 200) { toast(String(res.msg || "No se pudo"), "err"); return; }
     await reloadAll(); toast(op === "xfer" ? `${a.n} trasladado al ${DN[to]}` : `${a.n} expulsado`); onClose(); onDone();
   };
@@ -406,7 +429,7 @@ function XferModal({ a, onClose, onDone }: { a: Agent; onClose: () => void; onDo
             <Field label="Placa nueva" hint="(opcional)"><Input value={p} onChange={e => setP(e.target.value.replace(/\D/g, ""))} inputMode="numeric" /></Field>
           </div>
           <Field label="Motivo" hint="(opcional)"><Textarea rows={2} value={mot} onChange={e => setMot(e.target.value)} maxLength={500} /></Field>
-          <p className="text-xs text-slate-500">Su cuenta se pasa sola: la próxima vez entra por el {DN[to]} con su misma contraseña (y puede usar su placa vieja o la nueva).</p>
+          <p className="text-xs text-slate-500">Sale también de las divisiones del {DN[DEPT.id]}. Si no cargás la placa, Sargentos, Capitanía y Jefatura del {DN[to]} reciben el aviso para asignársela. Su cuenta se pasa sola: la próxima vez entra por el {DN[to]} con su misma contraseña (y puede usar su placa vieja o la nueva).</p>
         </> : <Field label="Motivo de la expulsión"><Textarea rows={3} value={mot} onChange={e => setMot(e.target.value)} maxLength={500} placeholder="Qué pasó y quién lo resolvió…" /></Field>}
       </div>
     </Modal>);

@@ -10,7 +10,7 @@ import { DET, lvl } from "@/lib/domain";
 import { rosterDivs } from "@/lib/units";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.0.4";
+export const APP_VERSION = "1.0.5";
 export const APP_TAG = "⟡ 𝕆𝕗𝕗𝕚𝕔𝕚𝕒𝕝";
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => (LS.get("lspdt.seenVersion") || "") !== APP_VERSION;
@@ -45,6 +45,10 @@ export function logFor(me: Who): Rel[] {
 }
 /* el registro: una entrada por versión, de la más nueva a la más vieja. Cada ítem puede llevar tag («[tag] texto»); los de «dueños» van aparte */
 const V: { v: string; f: string; t: string; it: string[] }[] = [
+  { v: "1.0.5", f: "25/11/2026", t: "Traslados entre departamentos", it: [
+    "[cap] Trasladar o expulsar funciona entre LSPD, LSSD y SAHP en cualquier sentido; el agente sale también de las divisiones de su departamento anterior",
+    "Placas pendientes: Sargentos, Capitanía y Jefatura reciben cada día el aviso de los agentes sin placa y la asignan desde Agentes",
+    "[adm] Los traslados y expulsiones quedan en Administración › Logs"] },
   { v: "1.0.4", f: "25/11/2026", t: "Armas con accesorios y líderes de pelotón", it: [
     "[six] Fichas de armas nuevas: accesorios compatibles por tipo, munición y armas que la comparten; todo se toca para saltar",
     "[div:Metropolitan Division] Los del S.W.A.T. pueden tener callsign de Líder de Pelotón C, y tocar una casilla ocupada la traspasa"] },

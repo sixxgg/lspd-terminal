@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { nickOf, profOk } from "@/lib/nick";
 import { LOGROS, TIER, goodTier } from "@/components/logros";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, CalendarClock, CalendarPlus, CheckCheck, Eye, Heart, Trophy, UserPlus, MessageSquare, Shield, Sparkles, TrendingDown, TrendingUp, UsersRound, Vote, X, type LucideIcon } from "lucide-react";
+import { Bell, IdCard, CalendarClock, CalendarPlus, CheckCheck, Eye, Heart, Trophy, UserPlus, MessageSquare, Shield, Sparkles, TrendingDown, TrendingUp, UsersRound, Vote, X, type LucideIcon } from "lucide-react";
 import { FB_ST, fbSt, fbX, useMyFeedback, useTick } from "@/components/fbnotif";
 import { LS, ME_ROLES, useStoreVersion } from "@/lib/store";
 import { uMap } from "@/lib/units";
@@ -18,6 +18,7 @@ import { cn } from "@/lib/cn";
 import { DEPT, logoOf } from "@/lib/dept";
 import { closeExpired, type Prop } from "@/lib/votes";
 import { TIPOS, slug as tSlug, solList, traslOk, votos } from "@/lib/trasl";
+import { arrivedOf, placaCan, placaPend } from "@/lib/placas";
 import { calAck, calAll, calMine, fmtWhen, isToday, reuLabel, reuList, reuVisible } from "@/lib/calendar";
 
 /* a: «app» que la manda (encabezado de la tarjeta, como en el celular); si falta, sale del tipo de aviso */
@@ -73,6 +74,11 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
       for (const l of LOGROS) if (lg[l.k] && goodTier(l.tier))
         L.push({ id: `lg:${l.k}`, t: lg[l.k], I: Trophy, c: TIER[l.tier].c, title: l.t, body: `${TIER[l.tier].l} · ${l.d}`, a: "Logro desbloqueado", go: ["me", "perfil"] });
     }
+    /* placas pendientes (agentes trasladados sin placa): a Sargentos, Capitanía y Jefatura del departamento, de nuevo cada día hasta que se asigne */
+    if (placaCan(me.r)) { const d0 = new Date(); d0.setHours(0, 0, 0, 0); const day = d0.toISOString().slice(0, 10);
+      for (const a of placaPend()) { const ar = arrivedOf(a);
+        L.push({ id: `plc:${a.n}:${day}`, a: "Agentes · Placas pendientes", t: Math.max(+d0, ar.t), I: IdCard, c: "#f59e0b", title: `Falta asignar la placa de ${a.n}`,
+          body: `${ar.src ? `Llegó trasladado desde el ${ar.src} · ` : ""}${rankES(a.r)} · asignásela en Agentes`, go: ["age", "prof"] }); } }
     /* calendario: lo de hoy que me toca y lo nuevo que cargaron mis divisiones */
     { const ack = calAck(me.n), d0 = new Date(); d0.setHours(0, 0, 0, 0);
       for (const e of calAll()) { if (!calMine(e, me.n) || e.at < Date.now() - 3 * 36e5) continue; const tl = e.tipo === "Otro" ? "evento" : e.tipo.toLowerCase();
