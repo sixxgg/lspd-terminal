@@ -73,7 +73,7 @@ let K9F: [unknown, unknown, Agent[]] = [null, null, []];
 export function getRoster(): Agent[] {
   const a = LS.ro<Agent[] | null>("lspdt.roster", null);
   if (DEPT.id !== "lspd") { if (!Array.isArray(a)) return []; const O = LS.ro<Record<string, AgxE> | null>(AGX_KEY, null);
-    if (K9F[0] !== a || K9F[1] !== O) K9F = [a, O, applyAgx(a.filter(x => x && x.r !== "K-9"), O).map(x => ({ ...x, c: x.c || dmyToISO(x.i || "") || "" }))]; return K9F[2]; }
+    if (K9F[0] !== a || K9F[1] !== O) K9F = [a, O, applyAgx(a.filter(x => x && x.r !== "K-9"), O).filter(x => !/^(Expulsado|Trasladado)/i.test(String(x.e || ""))).map(x => ({ ...x, c: x.c || dmyToISO(x.i || "") || "" }))]; return K9F[2]; }
   return Array.isArray(a) && a.length ? a : DEF_ROSTER;
 }
 export const findAgent = (n: string) => getRoster().find(a => a.n === n) || null;

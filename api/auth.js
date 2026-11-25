@@ -94,6 +94,7 @@ async function post(req, res) {
     let acc = null, lag = null;
     if (X) { /* LSSD y SAHP: usuario OOC, placa o nombre (si no se repite) */
       const L0 = await xRoster(dept); lag = deptFind(L0, u);
+      if (lag && /^(expulsado|trasladado)/i.test(String(lag.e || ""))) return send(res, 403, { msg: /^expuls/i.test(lag.e) ? "Fuiste expulsado del departamento." : `${lag.e}: entrá por ese departamento.` });
       /* placa vieja de otro departamento (se trasladó): se busca a quién era y se lo encuentra por el nombre; la placa se actualiza sola */
       if (!lag && digits(u)) { const old = (await roster()).list.find(a => String(a.p) === digits(u)); if (old) lag = deptFind(L0, old.n); if (lag && lag.amb) lag = null; }
       if (lag && lag.amb) return send(res, 400, { msg: `Con ese usuario hay ${lag.amb.length} personajes (${lag.amb.map(a => a.n).join(" y ")}). Entrá con la placa o el nombre del que quieras usar.` });

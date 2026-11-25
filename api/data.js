@@ -6,7 +6,8 @@ import { isIP } from "node:net";
 import { mergeText } from "../lib/merge.js";
 import { isDestructive, maintCached, sdUnlocked } from "../lib/owner.js";
 import { fullData, imgUrl, shapeVal } from "../lib/store.js";
-import { agxCheck, send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept, isXList, xCheck, loadBoards, isBoardKey, sessionToken, tokenHash, traslOk } from "../lib/core.js";
+import { agxCheck, send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept, isXList, xCheck, loadBoards, isBoardKey, sessionToken, tokenHash, traslOk, parseRoster } from "../lib/core.js";
+import { deptList } from "../lib/lssd.js";
 
 /* IP privada, local o reservada (v4 y v6): el servidor nunca descarga de ahí */
 const privIp = ip => { const a = String(ip).toLowerCase().replace(/^::ffff:/, "");
@@ -119,6 +120,59 @@ export default wrap(async (req, res) => {
   }
   /* edición de agentes del LSSD y la SAHP: permisos por rango y por campo (ver agxCheck) */
   if (!why && bk === "lspdt.agx") why = typeof b.v === "string" ? agxCheck(u, k, (await q("select v from kv where k=$1", [k])).rows[0]?.v ?? null, b.v) : "Valor inválido";
+  /* traslado a otro departamento o expulsión: Capitanía, Jefatura, administración o six. No se borra nada del agente: sale del roster de su
+     departamento (queda registrado en lspdt.bajas con quién, cuándo y por qué) y, si es traslado, entra al otro como alta por traslado */
+  if (b.xfer && typeof b.xfer === "object") {
+    const x = b.xfer, from = u.dept || "lspd", to = ["lspd", "lssd", "sahp"].includes(x.to) ? x.to : "", op = x.op === "xfer" ? "xfer" : "out";
+    if (!isSix(u) && !u.admin && !u.dadm && (u.l || 0) < 8) return send(res, 403, { msg: "Solo Capitanía, Jefatura o la administración" });
+    const n = String(x.n || "").trim(), motivo = String(x.motivo || "").trim().slice(0, 500), ts = Date.now();
+    if (!n || (op === "xfer" && (!to || to === from)) || (op === "out" && motivo.length < 5)) return send(res, 400, { msg: op === "out" ? "Escribí el motivo de la expulsión" : "Elegí a qué departamento" });
+    const DN = { lspd: "LSPD", lssd: "LSSD", sahp: "SAHP" }, nrm = v => String(v || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+    const put = async (c, K, val) => { const prev = (await c.query("select v, by, at from kv where k=$1", [K])).rows[0];
+      await c.query("insert into kv(k,v,t,by,at) values($1,$2,nextval('kv_seq'),$3,$4) on conflict(k) do update set v=excluded.v, t=excluded.t, by=excluded.by, at=excluded.at", [K, val, u.n, ts]);
+      await keepVersion(c, K, val, u.n, prev ? { v: prev.v, by: prev.by, at: prev.at } : null); };
+    const r = await tx(async c => {
+      for (const K of ["lspdt.roster", "lspdt.lssd.agx", "lspdt.sahp.agx", "lspdt.bajas"]) await c.query("select pg_advisory_xact_lock(hashtext($1))", [K]);
+      let ag = null;
+      if (from === "lspd") {
+        const raw = (await c.query("select v from kv where k='lspdt.roster'")).rows[0]?.v, L = parseRoster(raw).list, i = L.findIndex(a => nrm(a.n) === nrm(n));
+        if (i < 0) return { err: "No está en el roster del LSPD" }; ag = L[i];
+        await put(c, "lspdt.roster", JSON.stringify(L.filter((_, j) => j !== i)));
+      } else {
+        const K = `lspdt.${from}.agx`, raw = (await c.query("select v from kv where k=$1", [`lspdt.${from}.roster`])).rows[0]?.v;
+        let O = {}; try { O = JSON.parse((await c.query("select v from kv where k=$1", [K])).rows[0]?.v || "{}") || {}; } catch { /* */ }
+        const L = deptList(raw, from, JSON.stringify(O)); ag = L.find(a => nrm(a.n) === nrm(n)); if (!ag) return { err: `No está en el roster del ${DN[from]}` };
+        const k0 = ag.n0 || ag.n, e = O[k0] || {};
+        if (e.add) delete e.add; else { const row = deptList(raw, from, null).find(a => a.n === k0); e.f = { ...(e.f || {}), e: [String(row?.e ?? ""), op === "xfer" ? `Trasladado al ${DN[to]}` : "Expulsado"] }; }
+        e.log = [...(e.log || []), { t: ts, por: u.n, pr: u.r || "", c: [op === "xfer" ? `Trasladado al ${DN[to]}` : `Expulsado: ${motivo}`] }].slice(-50);
+        O[k0] = e; await put(c, K, JSON.stringify(O));
+      }
+      if (op === "xfer") {
+        const rk = String(x.r || "").slice(0, 60), p = String(x.p || "").replace(/\D/g, "").slice(0, 6);
+        if (to === "lspd") {
+          const raw = (await c.query("select v from kv where k='lspdt.roster'")).rows[0]?.v, L = parseRoster(raw).list;
+          if (!L.some(a => nrm(a.n) === nrm(ag.n))) await put(c, "lspdt.roster", JSON.stringify([...L, { n: ag.n, p, r: rk || "Police Officer I", e: "Activo", c: new Date(ts).toISOString().slice(0, 10), d: ag.d || "", di: ag.di || "" }]));
+        } else {
+          const K = `lspdt.${to}.agx`; let O = {}; try { O = JSON.parse((await c.query("select v from kv where k=$1", [K])).rows[0]?.v || "{}") || {}; } catch { /* */ }
+          O[ag.n] = { ...(O[ag.n] || {}), add: { n: ag.n, r: rk || (to === "lssd" ? "Deputy Sheriff" : "Officer"), p, e: "Activo", u: ag.u || ag.d || nrm(ag.n).replace(/[^a-z0-9]/g, ""), d: ag.d || "", di: ag.di || "", src: DN[from], tr: "xfer-" + ts } };
+          await put(c, K, JSON.stringify(O));
+        }
+      }
+      /* el expediente viaja con el agente: lo de su departamento anterior se suma al del nuevo, marcado de dónde viene */
+      if (op === "xfer") { const sl = nrm(ag.n).replace(/[^a-z0-9]/g, ""), ek = d => (d === "lspd" ? `lspdt.exp.${sl}` : `lspdt.${d}.exp.${sl}`);
+        let A = null, Z = { e: [] }; try { A = JSON.parse((await c.query("select v from kv where k=$1", [ek(from)])).rows[0]?.v || "null"); } catch { /* */ }
+        try { Z = JSON.parse((await c.query("select v from kv where k=$1", [ek(to)])).rows[0]?.v || "null") || { e: [] }; } catch { /* */ }
+        if (A && Array.isArray(A.e) && A.e.length) { const ids = new Set((Z.e || []).map(y => y.id)), add = A.e.filter(y => y && typeof y === "object").map(y => ({ ...y, id: `${from}-${y.id}`, prev: DN[from] })).filter(y => !ids.has(y.id));
+          if (add.length) await put(c, ek(to), JSON.stringify({ ...Z, e: [...add, ...(Z.e || [])] })); } }
+      let B = []; try { B = JSON.parse((await c.query("select v from kv where k='lspdt.bajas'")).rows[0]?.v || "[]"); } catch { /* */ }
+      await put(c, "lspdt.bajas", JSON.stringify([{ t: ts, n: ag.n, r: ag.r || "", p: ag.p || "", de: DN[from], tipo: op, a: op === "xfer" ? DN[to] : "", motivo, por: u.n }, ...(Array.isArray(B) ? B : [])].slice(0, 500)));
+      return { ok: 1, n: ag.n };
+    });
+    if (r.err) return send(res, 404, { msg: r.err });
+    invalidate();
+    await audit(u.n, op === "xfer" ? `trasladó al ${DN[to]}` : "expulsó", "agentes", `${r.n} (${DN[from]})${motivo ? " · " + motivo : ""}`, clientIp(req));
+    return send(res, 200, r);
+  }
   /* OIS remitido a la FID: cualquiera que pueda cargar OIS abre (o actualiza) el caso en la PSB, sin tocar el resto de los expedientes */
   if (b.oisFid && typeof b.oisFid === "object") {
     if (canWrite(u, "lspdt.ois")) return send(res, 403, { msg: "No podés cargar procedimientos OIS" });

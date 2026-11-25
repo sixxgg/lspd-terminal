@@ -10,7 +10,7 @@ import { DET, lvl } from "@/lib/domain";
 import { rosterDivs } from "@/lib/units";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.0.2";
+export const APP_VERSION = "1.0.3";
 export const APP_TAG = "⟡ 𝕆𝕗𝕗𝕚𝕔𝕚𝕒𝕝";
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => (LS.get("lspdt.seenVersion") || "") !== APP_VERSION;
@@ -45,6 +45,11 @@ export function logFor(me: Who): Rel[] {
 }
 /* el registro: una entrada por versión, de la más nueva a la más vieja. Cada ítem puede llevar tag («[tag] texto»); los de «dueños» van aparte */
 const V: { v: string; f: string; t: string; it: string[] }[] = [
+  { v: "1.0.3", f: "25/11/2026", t: "Traslados, expulsiones y METRO", it: [
+    "[cap] Trasladar a un agente al LSSD, la SAHP o el LSPD, o expulsarlo, desde su ficha: su expediente y su cuenta pasan con él",
+    "Murrieta Factory en cuatro robos: armas alto y bajo (8 policías) y drogas alto y bajo (6 policías)",
+    "Los nombres del catálogo de robos ya no se cortan",
+    "[div:Metropolitan Division] Comunicados de callsigns con bienvenidas al S.W.A.T., reincorporaciones y líderes de pelotón"] },
   { v: "1.0.2", f: "25/11/2026", t: "Robos al día y un panel más prolijo", it: [
     "[ilg] Las 172 misiones de la tablet con sus armas obligatorias; las inactivas quedan fuera del catálogo",
     "Novedades más simple",

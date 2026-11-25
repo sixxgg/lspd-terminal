@@ -3,7 +3,7 @@ import { DEPT, DEPTS, logoOf } from "@/lib/dept";
 import { profOk } from "@/lib/nick";
 import { useEffect, useMemo, useRef, useState, type PointerEvent as PE } from "react";
 import { Users, LayoutGrid, Rows3, UserPlus, BadgeCheck, Trophy, Shield, Clock, TrendingUp, IdCard, Activity,
-  Pencil, Star, Plus, X, Camera, Move, Trash2, Award, Check, UserMinus, ImagePlus } from "lucide-react";
+  Pencil, Star, Plus, X, Camera, Move, Trash2, Award, Check, UserMinus, ImagePlus, ArrowRightLeft } from "lucide-react";
 import { Button, Card, Empty, Field, Input, Select, Segmented, Textarea, SearchInput } from "@/components/ui";
 import { RankBadge } from "@/components/agents";
 import { Ribbon, RibbonRack } from "@/components/ribbon";
@@ -12,8 +12,9 @@ import { allDecor, decorOf, type Award as AwardT, type Decor } from "@/lib/decor
 import { Modal } from "@/components/modal";
 import { ImagePicker } from "@/components/imagepick";
 import { useFeedback } from "@/components/feedback";
-import { dmy, ALL_DIVS, DIVS, GROUPS, LEVEL, divAb, divEmblem, emailOf, findAgent, fotoOf, genderOf, getRoster, imgOpt, initials, insigniaUrl, lvl, norm, rankES, srcOf, uid, type Agent } from "@/lib/domain";
-import { ACC_LAST, LS, ME_ROLES, useStoreVersion } from "@/lib/store";
+import { dmy, ALL_DIVS, DIVS, GROUPS, LEVEL, divAb, divEmblem, emailOf, findAgent, fotoOf, genderOf, getRoster, imgOpt, initials, insigniaUrl, lvl, norm, rankES, RANK_COLOR, srcOf, uid, type Agent } from "@/lib/domain";
+import { ACC_LAST, LS, ME_ROLES, reloadAll, useStoreVersion } from "@/lib/store";
+import { api } from "@/lib/api";
 import { GEN, gMap, gRoles, gSave, rosterCo } from "@/lib/units";
 import { useMe } from "@/lib/me";
 import { allProfiles, profFull, updateAgent, updateProf, type Profile } from "@/lib/profiles";
@@ -165,7 +166,7 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
   const PH = LS.json<PHist[]>("lspdt.patHist", []), VOTES = LS.json<Prop[]>("lspdt.votes", []);
   const [tab, setTab] = useState<Tab>("res"), [editDiv, setEditDiv] = useState(false), [divSel, setDivSel] = useState<string[]>([]);
   const [ph, setPh] = useState<Ph | null>(null), [cv, setCv] = useState<{ x: number; y: number } | null>(null);
-  const [pick, setPick] = useState<"" | "foto" | "cover" | "divlogo">(""), [logoFor, setLogoFor] = useState(""), [nota, setNota] = useState("");
+  const [pick, setPick] = useState<"" | "foto" | "cover" | "divlogo">(""), [logoFor, setLogoFor] = useState(""), [nota, setNota] = useState(""), [xf, setXf] = useState(false);
   const coverRef = useRef<HTMLDivElement>(null), phRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && !pick && onClose(); document.addEventListener("keydown", k);
@@ -249,6 +250,7 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
               {me.l >= 8 && rosEd() && <button className={cn(act, "text-red-300 hover:bg-red-500/20")} onClick={async () => {
                 if (!(await confirm(`¿Dar de baja a ${a.n}? Se quita del roster (su perfil y notas se conservan).`, { danger: true, ok: "Dar de baja" }))) return;
                 LS.setJSON("lspdt.roster", getRoster().filter(x => x.n !== n)); onClose(); toast("Agente dado de baja"); }}><UserMinus />Dar de baja</button>}
+              {(me.l >= 8 || ME_ROLES.six || ME_ROLES.admin || ME_ROLES.dadm) && a.n !== me.n && <button className={cn(act, "text-amber-200 hover:bg-amber-500/20")} onClick={() => setXf(true)}><ArrowRightLeft />Trasladar o expulsar</button>}
             </div>
           </div>
         </aside>
@@ -375,7 +377,39 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
       <ImagePicker open={pick === "divlogo"} title={"Emblema · " + logoFor} k={"lspdt.divlogo." + logoFor} max={400} alpha onClose={() => setPick("")}
         onFile={d => { LS.set("lspdt.divlogo." + logoFor, d); toast("Emblema de la división actualizado"); }} onUrl={() => toast("Emblema de la división actualizado")}
         onDelete={LS.get("lspdt.divlogo." + logoFor) ? () => { LS.del("lspdt.divlogo." + logoFor); toast("Emblema restaurado"); } : undefined} />
+      {xf && <XferModal a={a} onClose={() => setXf(false)} onDone={onClose} />}
     </div>, document.body);
+}
+
+/* traslado a otro departamento o expulsión (lo hace el servidor: sale de este roster, entra al otro y el expediente viaja con el agente) */
+function XferModal({ a, onClose, onDone }: { a: Agent; onClose: () => void; onDone: () => void }) {
+  const { toast, confirm } = useFeedback(), DN: Record<string, string> = { lspd: "LSPD", lssd: "LSSD", sahp: "SAHP" };
+  const otros = ["lspd", "lssd", "sahp"].filter(d => d !== DEPT.id);
+  const [op, setOp] = useState<"xfer" | "out">("xfer"), [to, setTo] = useState(otros[0]), [r, setR] = useState(""), [p, setP] = useState(""), [mot, setMot] = useState(""), [busy, setBusy] = useState(false);
+  const ranks = to === "lspd" ? Object.keys(RANK_COLOR).slice(0, Object.keys(RANK_COLOR).indexOf("Administrativo")) : RANKS_X[to] || [];
+  const go = async () => {
+    if (op === "out" && mot.trim().length < 5) { toast("Escribí el motivo de la expulsión", "err"); return; }
+    if (!(await confirm(op === "xfer" ? `¿Trasladar a ${a.n} al ${DN[to]}? Sale del roster del ${DN[DEPT.id]} y su expediente pasa con él.` : `¿Expulsar a ${a.n} del ${DN[DEPT.id]}? Sale del roster y no puede volver a entrar con su cuenta.`, { danger: op === "out", ok: op === "xfer" ? "Trasladar" : "Expulsar" }))) return;
+    setBusy(true); const res = await api("/api/data", { k: "lspdt.bajas", xfer: { n: a.n, op, to, r, p, motivo: mot } }); setBusy(false);
+    if (res.__s !== 200) { toast(String(res.msg || "No se pudo"), "err"); return; }
+    await reloadAll(); toast(op === "xfer" ? `${a.n} trasladado al ${DN[to]}` : `${a.n} expulsado`); onClose(); onDone();
+  };
+  return (
+    <Modal open onClose={onClose} size="md" icon={<ArrowRightLeft />} title={`Trasladar o expulsar · ${a.n}`} desc="Queda registrado quién lo hizo, cuándo y por qué. No se borra su perfil ni su expediente."
+      footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button variant={op === "out" ? "danger" : "primary"} disabled={busy} onClick={() => void go()}>{op === "xfer" ? `Trasladar al ${DN[to]}` : "Expulsar"}</Button></>}>
+      <div className="space-y-4">
+        <Segmented value={op} onChange={setOp} options={[{ value: "xfer", label: "Traslado" }, { value: "out", label: "Expulsión" }]} />
+        {op === "xfer" ? <>
+          <Field label="Pasa al"><Segmented value={to} onChange={v => { setTo(v); setR(""); }} options={otros.map(d => ({ value: d, label: DN[d] }))} /></Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Rango en el nuevo departamento"><Select value={r} onChange={e => setR(e.target.value)}><option value="">El de ingreso</option>{ranks.map(x => <option key={x}>{x}</option>)}</Select></Field>
+            <Field label="Placa nueva" hint="(opcional)"><Input value={p} onChange={e => setP(e.target.value.replace(/\D/g, ""))} inputMode="numeric" /></Field>
+          </div>
+          <Field label="Motivo" hint="(opcional)"><Textarea rows={2} value={mot} onChange={e => setMot(e.target.value)} maxLength={500} /></Field>
+          <p className="text-xs text-slate-500">Su cuenta se pasa sola: la próxima vez entra por el {DN[to]} con su misma contraseña (y puede usar su placa vieja o la nueva).</p>
+        </> : <Field label="Motivo de la expulsión"><Textarea rows={3} value={mot} onChange={e => setMot(e.target.value)} maxLength={500} placeholder="Qué pasó y quién lo resolvió…" /></Field>}
+      </div>
+    </Modal>);
 }
 
 /* condecoraciones: pasador grande, vitrina de lo otorgado y selector visual por catálogo */

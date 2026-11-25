@@ -7,7 +7,7 @@ import { uid } from "./domain";
 const K_CALLS = "lspdt.mdCalls";
 export const K_RES = "lspdt.mdx.csRes", K_LOG = "lspdt.mdx.csLog", K_CFG = "lspdt.mdx.csCfg";
 export type CsTipo = "miembro" | "reserva";
-export type CsLog = { id: string; t: number; by: string; n: string; de: string; a: string; tipo: CsTipo; pub?: boolean; mot?: string };
+export type CsLog = { id: string; t: number; by: string; n: string; de: string; a: string; tipo: CsTipo; pub?: boolean; mot?: string; mv?: Move };
 export type CsCfg = { em: string; rol: string };
 /* comunicados de la METRO: emblema, roles a mencionar y formato (como los comunicados reales de la división) */
 const METRO_EM = "<:Metro:1316164549975736452>";
@@ -86,5 +86,5 @@ export function moveMember(n: string, mv: Move, by: string) {
     const c = csNums(before, "C")[0] || 0; after = c && c % 10 === 0 ? before : withTok(before, "C", 0); setCalls(n, after); } /* el Líder de Pelotón C conserva su callsign C */
   if (mv === "back") { const L = r.filter(x => x !== "swat"); M[n] = L.length ? L : ["op"]; after = withTok(before, "D", 0); setCalls(n, after); }
   if (mv === "out") { delete M[n]; after = ""; setCalls(n, ""); const R = resOf(); if (n in R) { delete R[n]; LS.setJSON(K_RES, R); } const T = tagOf(); if (T[n]) { delete T[n]; LS.setJSON(K_TAG, T); } }
-  uSaveMap("md", M); pushLog({ by, n, de: before, a: after, tipo: "miembro", mot: MOVE_L[mv] });
+  uSaveMap("md", M); pushLog({ by, n, de: before, a: after, tipo: "miembro", mot: MOVE_L[mv], mv });
 }

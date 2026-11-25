@@ -107,10 +107,23 @@ export function MetroCalls({ can }: { can: boolean }) {
     .sort((a, b) => R.findIndex(x => x[0] === uTop("md", M[a])[0]) - R.findIndex(x => x[0] === uTop("md", M[b])[0]));
   const linesOf = (s: Ser) => net.map(x => ({ n: x.n, d: csNums(x.de, s)[0] || 0, a: csNums(x.a, s)[0] || 0 })).filter(x => x.d !== x.a).sort((x, y) => (x.a || x.d) - (y.a || y.d))
     .map(x => !x.d ? `• **${x.n}** ➜ \`${csTok(x.a, s)}\` (${slotRole(s, x.a)[0]})` : !x.a ? `• **${x.n}** · ~~\`${csTok(x.d, s)}\`~~ liberado` : `• **${x.n}** · \`${csTok(x.d, s)}\` ➜ \`${csTok(x.a, s)}\` (${slotRole(s, x.a)[0]})`);
-  const per = [...log].filter(l => chosen.includes(l.id) && l.mot).sort((a, b) => a.t - b.t).map(l => `• **${l.n}** — ${l.mot}`);
-  const secs: [string, string[]][] = [["👥 MOVIMIENTOS DE PERSONAL", per], ["🛡️ SWAT · PELOTÓN D", linesOf("D")], [`${EM} METRO`, linesOf("C")]];
+  /* SWAT: primer ingreso (nunca tuvo callsign D ni pasó antes al Pelotón D) o reincorporación */
+  const chs = [...log].filter(l => chosen.includes(l.id)).sort((a, b) => a.t - b.t);
+  const swIn = chs.filter(l => l.mv === "swat" || /Pelotón D/.test(l.mot || "") && !/deja el SWAT/i.test(l.mot || "")).map(l => ({ n: l.n,
+    first: !log.some(o => o.n === l.n && o.t < l.t && (o.mv === "swat" || /Pelotón D/.test(o.mot || "") || csNums(o.de, "D")[0] || csNums(o.a, "D")[0])) }));
+  const swN = new Set(swIn.map(x => x.n));
+  /* líderes de pelotón: casillas terminadas en 0 (C y D) */
+  const lid = (["C", "D"] as Ser[]).flatMap(s => net.map(x => ({ n: x.n, d: csNums(x.de, s)[0] || 0, a: csNums(x.a, s)[0] || 0 })).filter(x => x.a && x.a % 10 === 0 && x.a !== x.d)
+    .map(x => `• **${x.n}** asume como **Líder de Pelotón ${s}** · \`${csTok(x.a, s)}\``));
+  const sinLid = (s: Ser) => linesOf(s).filter(t => !lid.some(l => l.includes(`**${t.match(/\*\*(.+?)\*\*/)?.[1]}**`) && l.includes(`Pelotón ${s}`)));
+  const per = chs.filter(l => l.mot && !swN.has(l.n)).map(l => `• **${l.n}** — ${l.mot}`);
+  const secs: [string, string[]][] = [
+    ["🎉 BIENVENIDOS AL S.W.A.T.", swIn.filter(x => x.first).map(x => `• **${x.n}** — primer ingreso al Pelotón D. ¡Felicitaciones y bienvenido!`)],
+    ["🔁 REINCORPORACIONES AL S.W.A.T.", swIn.filter(x => !x.first).map(x => `• **${x.n}** vuelve al Pelotón D. ¡Bienvenido de nuevo!`)],
+    ["⭐ LÍDERES DE PELOTÓN", lid], ["👥 MOVIMIENTOS DE PERSONAL", per], ["🛡️ SWAT · PELOTÓN D · CALLSIGNS", sinLid("D")], [`${EM} METRO · PELOTÓN C · CALLSIGNS`, sinLid("C")]];
   const body = secs.flatMap(x => x[1]);
-  const txt = metroComm({ cfg, title: "Actualización de callsigns", intro, secs: [...secs, ["📌 INDICACIONES", indic.split("\n").map(x => x.trim()).filter(Boolean).map(x => `• ${x.replace(/^[•\-]\s*/, "")}`)]],
+  const felic = swIn.some(x => x.first) ? `Felicitamos a ${swIn.filter(x => x.first).map(x => `**${x.n}**`).join(", ").replace(/, ([^,]*)$/, " y $1")} por su ingreso al **S.W.A.T.**: es el resultado de su trabajo y su compromiso con la división.` : "";
+  const txt = metroComm({ cfg, title: swIn.length && !body.some(x => x.includes("➜")) ? "Ingresos al S.W.A.T." : "Actualización de callsigns", intro: [intro, felic].filter(Boolean).join("\n\n"), secs: [...secs, ["📌 INDICACIONES", indic.split("\n").map(x => x.trim()).filter(Boolean).map(x => `• ${x.replace(/^[•\-]\s*/, "")}`)]],
     cierre, names: names ? firmantes : undefined, mention: ment });
   const markPub = () => { const ids = new Set(chosen); LS.setJSON(K_LOG, logOf().map(l => (ids.has(l.id) ? { ...l, pub: true } : l))); setPick(null); toast("Movimientos marcados como comunicados"); };
   const hist = log.filter(l => !hq.trim() || `${l.n} ${l.de} ${l.a} ${l.by}`.toLowerCase().includes(hq.trim().toLowerCase()));
