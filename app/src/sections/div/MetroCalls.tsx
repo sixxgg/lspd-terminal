@@ -13,7 +13,7 @@ import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { LS, syncWait, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { UNITS, insRole, rosterCall, uMap, uTop } from "@/lib/units";
+import { UNITS, gMap, insRole, rosterCall, uMap, uSaveMap, uTop } from "@/lib/units";
 import { CS_CFG0, K_CFG, K_LOG, K_RES, MOVE_L, emOf, metroComm, csNums, csTok, isReserva, logOf, moveMember, resOf, setCall, setReserva, withTok, type CsCfg, type CsLog, type CsTipo, type Move } from "@/lib/mdcalls";
 import { cn } from "@/lib/cn";
 import { CsBadges } from "@/components/csbadges";
@@ -46,6 +46,8 @@ export function MetroCalls({ can }: { can: boolean }) {
   const people = useMemo<P[]>(() => {
     const out: P[] = [], seen = new Set<string>();
     for (const [n, r] of Object.entries(M)) { if (!Array.isArray(r)) continue; const t = uTop("md", r); out.push({ n, role: t[1], c: t[2], tipo: "miembro", asp: t[0] === "asp", swat: r.includes("swat") }); seen.add(n); }
+    /* los del roster del SWAT (subdivisión de la METRO) cuentan como integrantes de la METRO aunque no estén cargados en su roster */
+    for (const n of Object.keys(gMap("swat"))) if (n && !seen.has(n)) { seen.add(n); out.push({ n, role: "SWAT", c: "#e05a52", tipo: "miembro", asp: false, swat: true }); }
     const prac = LS.json<{ rows: { n: string }[] }[]>("lspdt.mdx.prac", []);
     for (const n of [...(Array.isArray(prac) ? prac.flatMap(c => (c.rows || []).map(r => r.n)) : []), ...Object.keys(res), ...extra]) if (n && !seen.has(n)) { seen.add(n); out.push({ n, role: extra.includes(n) && !res[n] ? "Fuera del roster" : "Aspirante", c: "#8a8f97", tipo: "reserva", asp: true, swat: false }); }
     for (const p of out) if (isReserva(p.n)) { p.role = "Reserva"; p.c = "#14b8a6"; }
@@ -53,7 +55,12 @@ export function MetroCalls({ can }: { can: boolean }) {
   }, [M, res, extra, log.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const callOf = (p: P) => (p.tipo === "miembro" ? rosterCall(p.n) : res[p.n] || "");
   const numOf = (p: P, s: Ser = ser) => csNums(callOf(p), s)[0] || 0;
-  const setNum = (p: P, n: number, s: Ser = ser) => { const v = withTok(callOf(p), s, n); if (setCall(p.n, v, me.n, p.tipo)) toast(n ? `${p.n} · ${csTok(n, s)}` : `${p.n} · ${s === "D" ? "SWAT" : "METRO"} liberado`); setSel(""); };
+  /* si es del SWAT pero no estaba en el roster de la METRO, se lo suma (Operador + SWAT) antes de darle el callsign */
+  const ensureMem = (p: P) => { if (p.tipo === "miembro" && !Array.isArray(M[p.n])) uSaveMap("md", { ...M, [p.n]: ["op", "swat"] }); };
+  /* casilla ocupada: se la pasa al elegido y quien la tenía queda sin callsign de esa serie (queda en el historial) */
+  const take = async (p: P, x: number, who: string[]) => { if (!(await confirm(`${csTok(x, ser)} lo tiene ${who.join(", ")}. ¿Pasárselo a ${p.n}? ${who.length > 1 ? "Ellos quedan" : "Queda"} sin callsign ${ser === "D" ? "del SWAT" : "de la METRO"}.`))) return;
+    for (const n of who) { const q = people.find(z => z.n === n); if (q) setNum(q, 0); } setNum(p, x); };
+  const setNum = (p: P, n: number, s: Ser = ser) => { ensureMem(p); const v = withTok(callOf(p), s, n); if (setCall(p.n, v, me.n, p.tipo)) toast(n ? `${p.n} · ${csTok(n, s)}` : `${p.n} · ${s === "D" ? "SWAT" : "METRO"} liberado`); setSel(""); };
 
   /* movimientos de personal: retirar de la METRO, ascender al Pelotón D, aspirante → Operador METRO, reserva */
   const [menu, setMenu] = useState("");
@@ -84,14 +91,14 @@ export function MetroCalls({ can }: { can: boolean }) {
 
   /* lista de la sección */
   const qq = q.trim().toLowerCase(), match = (p: P) => !qq || `${p.n} ${callOf(p)} ${p.role}`.toLowerCase().includes(qq);
-  const inSec = people.filter(p => (ser === "D" ? p.swat || numOf(p, "D") || extra.includes(p.n) : !p.swat || numOf(p, "C") || p.asp)).filter(match);
+  const inSec = people.filter(p => (ser === "D" ? p.swat || numOf(p, "D") || extra.includes(p.n) : !p.swat || numOf(p, "C") || p.asp || extra.includes(p.n))).filter(match);
   const byNum = (a: P, b: P) => (numOf(a) || 999) - (numOf(b) || 999) || a.n.localeCompare(b.n, "es");
   const groups: [string, P[]][] = ser === "D" ? [["Con callsign", inSec.filter(p => numOf(p)).sort(byNum)], ["Sin callsign SWAT", inSec.filter(p => !numOf(p)).sort(byNum)]]
-    : [["Miembros", inSec.filter(p => !p.asp).sort(byNum)], ["Aspirantes y reservas", inSec.filter(p => p.asp).sort(byNum)]];
+    : [["Miembros", inSec.filter(p => !p.asp && !p.swat).sort(byNum)], ["Del SWAT · Líderes de Pelotón C", inSec.filter(p => p.swat).sort(byNum)], ["Aspirantes y reservas", inSec.filter(p => p.asp && !p.swat).sort(byNum)]];
   const selP = people.find(p => p.n === sel);
   const stats = (s: Ser) => ({ used: occ[s].size, dup: [...occ[s].values()].filter(v => v.length > 1).length });
   const addPerson = (n0: string) => { const n = n0.trim(); if (!n) return; const ex = people.find(p => p.n.toLowerCase() === n.toLowerCase());
-    if (ex) { setSel(ex.n); if (ser === "D" && !extra.includes(ex.n)) setExtra([...extra, ex.n]); } else { if (ser === "C") LS.setJSON(K_RES, { ...res, [n]: "" }); setExtra([...extra, n]); setSel(n); }
+    if (ex) { setSel(ex.n); if (!extra.includes(ex.n)) setExtra([...extra, ex.n]); } else { if (ser === "C") LS.setJSON(K_RES, { ...res, [n]: "" }); setExtra([...extra, n]); setSel(n); }
     toast(`Elegí una casilla libre del mapa para ${n}`); };
 
   /* ---------- comunicado ---------- */
@@ -177,7 +184,7 @@ export function MetroCalls({ can }: { can: boolean }) {
           </div>
           {selP && <p className="rounded-lg px-3 py-2 text-xs" style={{ background: S.acc + "1a" }}>Tocá una casilla libre para <b>{selP.n}</b>{numOf(selP) ? <> (hoy {csTok(numOf(selP), ser)})</> : null}.</p>}
           <div className="grid grid-cols-[repeat(auto-fill,minmax(5.6rem,1fr))] gap-1.5">{Array.from({ length: top - S.from + 1 }, (_, i) => S.from + i).map(x => { const who = occ[ser].get(x), d = (who || []).length > 1, [rl, rc] = slotRole(ser, x), mine = who?.includes(sel);
-            return who ? <div key={x} title={`${csTok(x, ser)} · ${rl}\n${who.join(" · ")}`} onClick={() => can && setSel(who[0])} style={d ? undefined : { borderColor: rc + "99", background: rc + "1f" }}
+            return who ? <div key={x} title={`${csTok(x, ser)} · ${rl}\n${who.join(" · ")}`} onClick={() => { if (!can) return; if (selP && !who.includes(selP.n)) void take(selP, x, who); else setSel(who[0]); }} style={d ? undefined : { borderColor: rc + "99", background: rc + "1f" }}
               className={cn("min-w-0 cursor-default rounded-lg border px-2 py-1.5 leading-tight", can && "cursor-pointer", d && "border-red-500 bg-red-500/15", mine && "ring-2 ring-[color:var(--a)] ring-offset-1 ring-offset-white dark:ring-offset-slate-900")}>
               <b className="block font-mono text-[12px]" style={{ color: d ? "#ef4444" : rc }}>{csTok(x, ser)}</b><span className="block truncate text-[10.5px] text-slate-600 dark:text-slate-300">{who.map(n => n.split(" ")[0]).join(" / ")}</span></div>
               : <button key={x} disabled={!can || !selP} onClick={() => selP && setNum(selP, x)} title={`${csTok(x, ser)} · ${rl} · libre`} style={{ borderColor: rc + "80", color: rc }}
