@@ -8,7 +8,7 @@ import { isDestructive, maintCached, sdUnlocked } from "../lib/owner.js";
 import { fullData, imgUrl, shapeVal } from "../lib/store.js";
 import { agxCheck, send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept, isXList, xCheck, loadBoards, isBoardKey, sessionToken, tokenHash, traslOk, parseRoster } from "../lib/core.js";
 import { deptList } from "../lib/lssd.js";
-import { purgeAll, purgeDivs, settleXfers } from "../lib/xfer.js";
+import { purgeAll, purgeDivs, settleXfers, sweepDivs } from "../lib/xfer.js";
 
 /* IP privada, local o reservada (v4 y v6): el servidor nunca descarga de ahí */
 const privIp = ip => { const a = String(ip).toLowerCase().replace(/^::ffff:/, "");
@@ -50,17 +50,23 @@ async function settle(by, ip) {
   for (const o of L) await audit(by, ROSTER_OUT, o.de === "LSPD" ? "lspdt.roster" : `lspdt.${o.de.toLowerCase()}.agx`, [o.n, o.r || "—", o.p ? "#" + String(o.p).replace(/\D/g, "") : "sin placa", `Traslado ${o.de} → ${o.a}`].join(" · "), ip);
   if (L.length) invalidate(); return L;
 }
+/* quien ya no está en la plantilla de su departamento sale de sus divisiones (roster.csv, bajas a mano, traslados): queda en el registro */
+async function sweep(by, ip) {
+  const L = await tx(async c => { await c.query("select pg_advisory_xact_lock(hashtext('xfer:divs'))"); return sweepDivs(c, putAs(by, Date.now())); });
+  if (L.length) { invalidate(); await audit(by, "quitó de las divisiones (ya no está en el roster)", "divisiones", L.slice(0, 60).join(" · "), ip); }
+  return L;
+}
 /* una sola vez (marca en meta): ordena los traslados hechos antes de que esto fuera automático (salen del origen y de sus divisiones) */
 let PURGED = false;
 async function purgeOnce() {
   if (PURGED) return; PURGED = true;
-  if ((await q("select v from meta where k='xfer:purge'")).rows[0]?.v === "2") return;
+  if ((await q("select v from meta where k='xfer:purge'")).rows[0]?.v === "3") return;
   await settle("sistema", "");
   const done = await tx(async c => {
     await c.query("select pg_advisory_xact_lock(hashtext('xfer:divs'))");
-    if ((await c.query("select v from meta where k='xfer:purge'")).rows[0]?.v === "2") return [];
-    const L = await purgeAll(c, putAs("sistema", Date.now()));
-    await c.query("insert into meta(k,v) values('xfer:purge','2') on conflict(k) do update set v='2'");
+    if ((await c.query("select v from meta where k='xfer:purge'")).rows[0]?.v === "3") return [];
+    const L = [...await purgeAll(c, putAs("sistema", Date.now())), ...await sweepDivs(c, putAs("sistema", Date.now()))];
+    await c.query("insert into meta(k,v) values('xfer:purge','3') on conflict(k) do update set v='3'");
     return L;
   });
   if (done.length) { invalidate(); await audit("sistema", "limpieza de divisiones por traslados", "divisiones", done.slice(0, 40).join(" · "), ""); }
@@ -284,6 +290,8 @@ export default wrap(async (req, res) => {
   if (!out.same && !/^Cambió: (seen|t|ts|last)$/.test(sum)) await audit(u.n, del ? "borró" : out.exists ? "editó" : "creó", k, sum, clientIp(req));
   if (k === "lspdt.roster" && !del && !out.same && out.exists) await auditRoster(u.n, out.old, out.v, clientIp(req));
   if (bk === "lspdt.agx" && !del && !out.same) await settle(u.n, clientIp(req)).catch(() => {});
+  /* roster guardado (a mano o con el roster.csv) o planilla nueva: quien ya no figura sale de sus divisiones */
+  if ((bk === "lspdt.roster" || bk === "lspdt.agx") && !del && !out.same) await sweep(u.n, clientIp(req)).catch(() => {});
   if (bk === "lspdt.roster" || k === "lspdt.ui" || /^lspdt\.(asd|k9|psb|md)Roster$|^lspdt\.(groster|groles|divacc)\./.test(bk)) invalidate(); // cambió el rango o las divisiones de alguien
   const r = { t: out.t };
   if (out.v !== mine || b.url || b.from) r.v = out.v && out.v.startsWith("data:") ? imgUrl(k, out.t) : shapeVal(k, out.v, u); // devuelve el resultado solo si cambió por la fusión (sin lo que no le corresponde ver)

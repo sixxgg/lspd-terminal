@@ -13,6 +13,7 @@ import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { LS, syncWait, useJSON, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
+import { findLoose } from "@/lib/domain";
 import { UNITS, gMap, insRole, rosterCall, uMap, uSaveMap, uTop } from "@/lib/units";
 import { CS_CFG0, K_CFG, K_LOG, K_RES, MOVE_L, emOf, metroComm, csNums, csTok, isReserva, logOf, moveMember, resOf, setCall, setReserva, withTok, type CsCfg, type CsLog, type CsTipo, type Move } from "@/lib/mdcalls";
 import { cn } from "@/lib/cn";
@@ -47,9 +48,11 @@ export function MetroCalls({ can }: { can: boolean }) {
     const out: P[] = [], seen = new Set<string>();
     for (const [n, r] of Object.entries(M)) { if (!Array.isArray(r)) continue; const t = uTop("md", r); out.push({ n, role: t[1], c: t[2], tipo: "miembro", asp: t[0] === "asp", swat: r.includes("swat") }); seen.add(n); }
     /* los del roster del SWAT (subdivisión de la METRO) cuentan como integrantes de la METRO aunque no estén cargados en su roster */
-    for (const n of Object.keys(gMap("swat"))) if (n && !seen.has(n)) { seen.add(n); out.push({ n, role: "SWAT", c: "#e05a52", tipo: "miembro", asp: false, swat: true }); }
+    for (const n of Object.keys(gMap("swat"))) if (n && !seen.has(n) && findLoose(n)) { seen.add(n); out.push({ n, role: "SWAT", c: "#e05a52", tipo: "miembro", asp: false, swat: true }); }
     const prac = LS.json<{ rows: { n: string }[] }[]>("lspdt.mdx.prac", []);
-    for (const n of [...(Array.isArray(prac) ? prac.flatMap(c => (c.rows || []).map(r => r.n)) : []), ...Object.keys(res), ...extra]) if (n && !seen.has(n)) { seen.add(n); out.push({ n, role: extra.includes(n) && !res[n] ? "Fuera del roster" : "Aspirante", c: "#8a8f97", tipo: "reserva", asp: true, swat: false }); }
+    /* de las convocatorias del examen práctico, solo quienes siguen en el roster del LSPD (los trasladados o dados de baja no aparecen) */
+    const pracN = Array.isArray(prac) ? prac.flatMap(c => (c.rows || []).map(r => r.n)).filter(n => !!findLoose(n)) : [];
+    for (const n of [...pracN, ...Object.keys(res), ...extra]) if (n && !seen.has(n)) { seen.add(n); out.push({ n, role: extra.includes(n) && !res[n] ? "Fuera del roster" : "Aspirante", c: "#8a8f97", tipo: "reserva", asp: true, swat: false }); }
     for (const p of out) if (isReserva(p.n)) { p.role = "Reserva"; p.c = "#14b8a6"; }
     return out;
   }, [M, res, extra, log.length]); // eslint-disable-line react-hooks/exhaustive-deps
