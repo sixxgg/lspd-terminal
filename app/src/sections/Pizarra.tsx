@@ -140,7 +140,7 @@ export function PizarraArea() {
   /* si quedó con el marco vacío de la primera versión, se completa con el contenido del tablero de Miro */
   useEffect(() => { if (!altoOk(me.r)) return;
     const idx = LS.json<Meta[] | null>(idxK("alto"), null);
-    if (idx == null) { const m: Meta = { id: uid(), t: INFRA_T, by: me.n, upd: Date.now(), dp: DEPT.id, deps: [DEPT.id] }; LS.setJSON(bK("alto", m.id), { items: infraItems() }); LS.setJSON(idxK("alto"), [m]); return; }
+    if (idx == null) { const m: Meta = { id: uid(), t: INFRA_T, by: me.n, upd: Date.now(), dp: DEPT.id, deps: [DEPT.id] }; LS.setJSON(idxK("alto"), [m]); LS.setJSON(bK("alto", m.id), { items: infraItems() }); return; } /* primero el índice: el servidor rechaza el contenido de una pizarra que no figura en él */
     const m = idx.find(b => b.t === INFRA_T); if (!m) return;
     const its = LS.json<{ items?: It[] }>(bK("alto", m.id), {}).items || [];
     if (its.length <= 1 && its.every(i => i.k === "frame")) { LS.setJSON(bK("alto", m.id), { items: infraItems() }); LS.setJSON(idxK("alto"), idx.map(b => (b.id === m.id ? { ...b, upd: Date.now() } : b))); } }, [me.n, me.r]);

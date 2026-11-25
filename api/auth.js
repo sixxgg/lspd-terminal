@@ -1,4 +1,4 @@
-import { q } from "../lib/db.js";
+import { q, tx } from "../lib/db.js";
 import { audit } from "../lib/audit.js";
 import { send, body, wrap, roster, findIn, lvl, CAP, norm, emailOf, hashPw, checkPw, needsRehash, randomPw, safeEq, clientIp, loginBlocked, loginFail, loginOk, sessionToken, tokenHash, newSession, endSession, current, PUBLIC_KEYS, query, canEnter, invalidate, isSix, SIX_OWNER, ID_PIN, OWNERS, dbAdmins, parseList, parseRoster as parseRosterRaw } from "../lib/core.js";
 import { fullData } from "../lib/store.js";
@@ -28,6 +28,21 @@ const uiRaw = async () => ((await q("select v from kv where k='lspdt.ui'")).rows
 const metaList = async k => parseList((await q("select v from meta where k=$1", [k])).rows[0]?.v);
 const metaObjs = async k => { try { const a = JSON.parse((await q("select v from meta where k=$1", [k])).rows[0]?.v || "[]"); return Array.isArray(a) ? a.filter(x => x && typeof x === "object") : []; } catch { return []; } };
 const setMeta = (k, l) => q("insert into meta(k,v) values($1,$2) on conflict(k) do update set v=excluded.v", [k, JSON.stringify(l)]);
+/* lo que lee y reescribe un valor de meta (invitaciones, códigos de recuperación) va en una transacción con candado: dos pedidos a la vez no pueden gastar el mismo código */
+const lockTx = (key, fn) => tx(async c => { await c.query("select pg_advisory_xact_lock(hashtext($1))", [key]); return fn(c); });
+const objsIn = raw => { try { const a = JSON.parse(raw || "[]"); return Array.isArray(a) ? a.filter(x => x && typeof x === "object") : []; } catch { return []; } };
+const listIn = raw => parseList(raw);
+const putMeta = (c, k, l) => c.query("insert into meta(k,v) values($1,$2) on conflict(k) do update set v=excluded.v", [k, JSON.stringify(l)]);
+/* gasta una invitación y crea la cuenta de forma atómica: devuelve {err} (inv | dept | dup) o {ok} */
+const claimInvite = (D, code, name, email, pw, now) => lockTx("invites", async c => {
+  const all = objsIn((await c.query("select v from meta where k='invites'")).rows[0]?.v), inv = all.find(x => x && !x.u && x.exp > Date.now() && safeEq(x.c, code));
+  if (!inv) return { err: "inv" };
+  if ((inv.d || "lspd") !== D) return { err: "dept" };
+  const r = await c.query("insert into accounts(name,email,hash,created,last) values($1,$2,$3,$4,$4) on conflict do nothing returning name", [name, email, hashPw(pw), now]);
+  if (!r.rows[0]) return { err: "dup" };
+  inv.u = name; inv.ut = now; await putMeta(c, "invites", all.filter(x => x && (x.exp > now || x.u)).slice(-300));
+  return { ok: 1, by: inv.by };
+});
 async function gate(ag) { // ¿puede entrar? (mando, RTD, ASD o aprobado por un administrador)
   const r = (await q(`select (select v from kv where k='lspdt.ui') ui, (select v from meta where k='approved') ap, (select v from kv where k='lspdt.asdRoster') asd, (select v from kv where k='lspdt.k9Roster') k9, (select v from kv where k='lspdt.mdRoster') md`)).rows[0];
   return canEnter(ag, r.ui, r.ap, r.asd, r.k9, r.md);
@@ -126,15 +141,13 @@ async function post(req, res) {
     if (tooShort(b.pw)) return send(res, 400, { msg: "La contraseña tiene que tener al menos 8 caracteres." });
     const ip = clientIp(req), wait = await loginBlocked("inv", ip);
     if (wait) return send(res, 429, { msg: `Demasiados intentos. Probá de nuevo en ${wait} min.` });
-    const all = await metaObjs("invites"), ic = String(b.code || "").trim().toUpperCase(), inv = all.find(x => x && !x.u && x.exp > Date.now() && safeEq(x.c, ic));
-    if (!inv) { await loginFail("", ip); return send(res, 403, { msg: "El código de invitación no es válido o ya se usó. Pedíselo a la administración de la terminal." }); }
-    if ((inv.d || "lspd") !== D) return send(res, 403, { msg: `Ese código es de otro departamento. Pedí uno del ${XN[D]} (empieza con «${XN[D]}-»).` });
-    const now = Date.now(), an = deptAcc(lag, D), email = norm(lag.u).replace(/[^a-z0-9]/g, "") + `@${D}.sanandreas.eu`;
-    const r = await q("insert into accounts(name,email,hash,created,last) values($1,$2,$3,$4,$4) on conflict do nothing returning name", [an, email, hashPw(b.pw), now]);
-    if (!r.rows[0]) return send(res, 409, { msg: "Ese agente ya tiene cuenta. Iniciá sesión." });
-    inv.u = an; inv.ut = now; await setMeta("invites", all.filter(x => x && (x.exp > now || x.u)).slice(-300));
+    const ic = String(b.code || "").trim().toUpperCase(), now = Date.now(), an = deptAcc(lag, D), email = norm(lag.u).replace(/[^a-z0-9]/g, "") + `@${D}.sanandreas.eu`;
+    const cl = await claimInvite(D, ic, an, email, b.pw, now);
+    if (cl.err === "inv") { await loginFail("", ip); return send(res, 403, { msg: "El código de invitación no es válido o ya se usó. Pedíselo a la administración de la terminal." }); }
+    if (cl.err === "dept") return send(res, 403, { msg: `Ese código es de otro departamento. Pedí uno del ${XN[D]} (empieza con «${XN[D]}-»).` });
+    if (cl.err === "dup") return send(res, 409, { msg: "Ese agente ya tiene cuenta. Iniciá sesión." });
     const rec = await newRec(an);
-    await newSession(res, an, b.keep !== false); await audit(lag.n, `creó su cuenta (${XN[D]})`, "cuenta", "Con invitación de " + (inv.by || "—"), ip);
+    await newSession(res, an, b.keep !== false); await audit(lag.n, `creó su cuenta (${XN[D]})`, "cuenta", "Con invitación de " + (cl.by || "—"), ip);
     return send(res, 200, { n: lag.n, e: email, dept: D, rec, data: await fullData(deptUser(lag, an, D)) });
   }
   if (a === "register") {
@@ -143,13 +156,11 @@ async function post(req, res) {
     if (tooShort(b.pw)) return send(res, 400, { msg: "La contraseña tiene que tener al menos 8 caracteres." });
     const ip = clientIp(req), wait = await loginBlocked("inv", ip);
     if (wait) return send(res, 429, { msg: `Demasiados intentos. Probá de nuevo en ${wait} min.` });
-    const all = await metaObjs("invites"), ic = String(b.code || "").trim().toUpperCase(), inv = all.find(x => x && !x.u && x.exp > Date.now() && safeEq(x.c, ic));
-    if (!inv) { await loginFail("", ip); return send(res, 403, { msg: "El código de invitación no es válido o ya se usó. Pedíselo a la administración de la terminal." }); }
-    if ((inv.d || "lspd") !== "lspd") return send(res, 403, { msg: "Ese código es de otro departamento. Pedí uno del LSPD (empieza con «LSPD-»)." });
-    const now = Date.now();
-    const r = await q("insert into accounts(name,email,hash,created,last) values($1,$2,$3,$4,$4) on conflict do nothing returning name", [ag.n, emailOf(ag.n), hashPw(b.pw), now]);
-    if (!r.rows[0]) return send(res, 409, { msg: "Ese agente ya tiene cuenta. Iniciá sesión." });
-    inv.u = ag.n; inv.ut = now; await setMeta("invites", all.filter(x => x && (x.exp > now || x.u)).slice(-300));
+    const ic = String(b.code || "").trim().toUpperCase(), now = Date.now();
+    const cl = await claimInvite("lspd", ic, ag.n, emailOf(ag.n), b.pw, now);
+    if (cl.err === "inv") { await loginFail("", ip); return send(res, 403, { msg: "El código de invitación no es válido o ya se usó. Pedíselo a la administración de la terminal." }); }
+    if (cl.err === "dept") return send(res, 403, { msg: "Ese código es de otro departamento. Pedí uno del LSPD (empieza con «LSPD-»)." });
+    if (cl.err === "dup") return send(res, 409, { msg: "Ese agente ya tiene cuenta. Iniciá sesión." });
     const rec = await newRec(ag.n);
     if (!(await gate(ag))) { // queda pendiente de aprobación
       const pend = (await metaList("pending")).filter(x => x !== ag.n); pend.push(ag.n); await setMeta("pending", pend);
@@ -157,7 +168,7 @@ async function post(req, res) {
       await audit(ag.n, "creó su cuenta (pendiente)", "cuenta", "", ip);
       return send(res, 202, { pending: true, n: ag.n, e: emailOf(ag.n), rec, msg: "Cuenta creada. " + PEND_MSG });
     }
-    await newSession(res, ag.n, b.keep !== false); await audit(ag.n, "creó su cuenta", "cuenta", "Con invitación de " + (inv.by || "—"), ip);
+    await newSession(res, ag.n, b.keep !== false); await audit(ag.n, "creó su cuenta", "cuenta", "Con invitación de " + (cl.by || "—"), ip);
     return send(res, 200, { n: ag.n, e: emailOf(ag.n), rec, data: await fullData(await userOf(ag.n, ag)) });
   }
 
@@ -170,10 +181,18 @@ async function post(req, res) {
     const acc = lg && !lg.amb ? AR.find(x => x.name === deptAcc(lg, b.dept)) : AR.find(x => norm(x.email) === u || norm(x.name) === u || norm(x.email.split("@")[0]) === u);
     const L = acc ? await metaList("rec:" + acc.name) : [], h = tokenHash(normRec(b.code)), i = L.indexOf(h);
     if (!acc || i < 0) { await loginFail(u, ip); await new Promise(r => setTimeout(r, 600)); return send(res, 403, { msg: "La cuenta o el código de recuperación no son correctos." }); }
-    L.splice(i, 1); await setMeta("rec:" + acc.name, L);
-    await q("update accounts set hash=$2 where name=$1", [acc.name, hashPw(b.pw)]);
-    await q("delete from sessions where name=$1", [acc.name]); invalidate(); await loginOk(u);
-    return send(res, 200, { ok: 1, left: L.length, e: acc.email });
+    /* gastar el código y cambiar la clave, atómico: el mismo código no sirve dos veces aunque lleguen dos pedidos juntos */
+    const left = await lockTx("rec:" + acc.name, async c => {
+      const cur = listIn((await c.query("select v from meta where k=$1", ["rec:" + acc.name])).rows[0]?.v), j = cur.indexOf(h);
+      if (j < 0) return -1;
+      cur.splice(j, 1); await putMeta(c, "rec:" + acc.name, cur);
+      await c.query("update accounts set hash=$2 where name=$1", [acc.name, hashPw(b.pw)]);
+      await c.query("delete from sessions where name=$1", [acc.name]);
+      return cur.length;
+    });
+    if (left < 0) { await loginFail(u, ip); await new Promise(r => setTimeout(r, 600)); return send(res, 403, { msg: "La cuenta o el código de recuperación no son correctos." }); }
+    invalidate(); await loginOk(u);
+    return send(res, 200, { ok: 1, left, e: acc.email });
   }
 
   if (a === "logout") { const w = await current(req).catch(() => null); if (w) await audit(w.n, "cerró sesión", "login", "", clientIp(req)); await endSession(req, res); return send(res, 200, { ok: 1 }); }
@@ -200,15 +219,23 @@ async function post(req, res) {
   if (["invites", "invite", "uninvite"].includes(a) && !canInvite(me)) return send(res, 403, { msg: "Las invitaciones las generan solo los dueños de la terminal." });
   if (a === "invites") return send(res, 200, { list: (await invList()).filter(x => x.by === me.n), used: (await metaObjs("invites")).filter(x => x.by === me.n && x.u).slice(-20), max: INV_MAX });
   if (a === "invite") {
-    const all = await metaObjs("invites"), mine = (await invList()).filter(x => x.by === me.n);
-    if (mine.length >= INV_MAX) return send(res, 429, { msg: `Ya tenés ${INV_MAX} invitaciones activas. Revocá alguna o esperá a que se usen.` });
-    const d = me.dadm && me.dept ? me.dept : DEPT_INV[b.d] ? b.d : "lspd", x = { c: invCode(d), d, by: me.n, t: Date.now(), exp: Date.now() + INV_TTL };
-    await setMeta("invites", [...all.filter(i => i && (i.exp > Date.now() || i.u)), x].slice(-300)); return send(res, 200, x);
+    const out = await lockTx("invites", async c => {
+      const all = objsIn((await c.query("select v from meta where k='invites'")).rows[0]?.v), mine = all.filter(x => x && x.exp > Date.now() && !x.u && x.by === me.n);
+      if (mine.length >= INV_MAX) return null;
+      const d = me.dadm && me.dept ? me.dept : DEPT_INV[b.d] ? b.d : "lspd", x = { c: invCode(d), d, by: me.n, t: Date.now(), exp: Date.now() + INV_TTL };
+      await putMeta(c, "invites", [...all.filter(i => i && (i.exp > Date.now() || i.u)), x].slice(-300)); return x;
+    });
+    if (!out) return send(res, 429, { msg: `Ya tenés ${INV_MAX} invitaciones activas. Revocá alguna o esperá a que se usen.` });
+    return send(res, 200, out);
   }
   if (a === "uninvite") {
-    const all = await metaObjs("invites"), i = all.find(x => x && x.c === b.c);
-    if (!i || i.by !== me.n) return send(res, 403, { msg: "No podés revocar esa invitación." });
-    await setMeta("invites", all.filter(x => x !== i)); return send(res, 200, { ok: 1 });
+    const r = await lockTx("invites", async c => {
+      const all = objsIn((await c.query("select v from meta where k='invites'")).rows[0]?.v), i = all.find(x => x && x.c === b.c);
+      if (!i || i.by !== me.n) return false;
+      await putMeta(c, "invites", all.filter(x => x !== i)); return true;
+    });
+    if (!r) return send(res, 403, { msg: "No podés revocar esa invitación." });
+    return send(res, 200, { ok: 1 });
   }
   if (a === "passwd") {
     /* si six la restableció, cambiarla es obligatorio y no pide la actual (ya entró con la temporal) */

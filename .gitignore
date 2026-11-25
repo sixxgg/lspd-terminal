@@ -1,3 +1,10 @@
 node_modules/
 .vercel/
 .env*
+
+# salida del build de la app (la compila Vercel: cd app && npm ci && npm run build)
+public/next/
+
+# datos sensibles de la tablet: se cargan desde el panel de six, nunca al repo (es público)
+tablet-*.json
+*.tablet.json

@@ -80,7 +80,7 @@ let onLost: () => void = () => {};
 export const storeHooks = (t: typeof onToast, lost: typeof onLost) => { onToast = t; onLost = lost; };
 
 const Sync = {
-  q: new Set<string>(), cur: null as string | null, busy: false,
+  q: new Set<string>(), cur: null as string | null, busy: false, fails: 0,
   pending() { return this.busy || this.q.size > 0; },
   push(k: string) { this.q.add(k); setNet("saving"); void this.run(); },
   async run() {
@@ -90,7 +90,14 @@ const Sync = {
       const hv = has(CACHE, k), v = hv ? CACHE[k] : null;
       const r = await api("/api/data", hv ? { k, v, base: has(BASE, k) ? BASE[k] : null } : { k, del: true });
       if (r.__s === 401) { this.cur = null; this.busy = false; onLost(); return; }
-      if (r.__s === 0 || r.__s >= 500) { this.q.add(k); setNet("off"); await new Promise(z => setTimeout(z, 4000)); continue; }
+      if (r.__s === 0 || r.__s >= 500) {
+        /* sin red o servidor caído: reintenta con espera creciente (4 s, 8 s… hasta 30 s) y, si la sesión se cerró o falla muchas veces, deja de insistir y vuelve a intentar en 30 s */
+        this.q.add(k); setNet("off"); this.fails++;
+        if (!ONLINE) { this.q.clear(); this.fails = 0; this.cur = null; this.busy = false; return; } /* sesión cerrada: lo pendiente era de esa sesión, no se reenvía */
+        if (this.fails > 6) { this.fails = 0; this.cur = null; this.busy = false; window.setTimeout(() => void this.run(), 30000); return; }
+        await new Promise(z => setTimeout(z, Math.min(4000 * 2 ** (this.fails - 1), 30000))); continue;
+      }
+      this.fails = 0;
       if (r.__s !== 200) {
         onToast(r.msg || "No se pudo guardar el cambio", "err");
         if (has(BASE, k)) CACHE[k] = BASE[k]; else delete CACHE[k];
@@ -113,7 +120,7 @@ const NEED = new Set<string>();
 async function poll() {
   if (!ONLINE || polling) return; polling = true;
   try {
-    const nd = [...NEED].slice(0, 60); NEED.clear();
+    const nd = [...NEED].slice(0, 60); for (const k of nd) NEED.delete(k); /* solo se quitan las pedidas: las que pasan de 60 quedan para la próxima consulta */
     const r = await api(`/api/data?since=${SYNC_T}${nd.length ? "&need=" + nd.map(encodeURIComponent).join(",") : ""}`);
     if (r.__s === 401) { onLost(); return; }
     if (r.__s !== 200) { setNet("off"); return; }

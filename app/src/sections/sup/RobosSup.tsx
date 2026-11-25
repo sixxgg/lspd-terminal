@@ -11,6 +11,7 @@ import { fullDT } from "@/lib/domain";
 import { DivNav } from "../div/DivTools";
 import { CATS, ROBOS_V, WPN, bandasDe, catalogo, edOfPub, recOf, sedesDe, tabOf, unidades, type Cat } from "../six/robosData";
 import { BANDAS, BANDA_KEYS, useTablet, type Banda, type TabData } from "../six/tabletData";
+import { ArmasMis } from "../six/ArmasMis";
 import { BandaChips, TabletView } from "./RobosTablet";
 import { art, fullItems, pena, pubItems, type PubItem, type Ref, type RobosPub } from "../six/robosLegal";
 
@@ -83,7 +84,8 @@ export function RobosSup() {
             <div className="divide-y divide-slate-100 dark:divide-slate-800">{G.map(it => { const R = recOf(it.mis); return (
               <button key={it.id} onClick={() => setSel(it)} className={cn("grid w-full gap-x-3 gap-y-1 px-4 py-2.5 text-left text-[12.5px] transition hover:bg-slate-50 xl:items-center dark:hover:bg-slate-800/40", T ? "xl:grid-cols-[minmax(0,1.5fr)_5rem_6.5rem_minmax(0,1fr)_4rem_minmax(0,1.6fr)_minmax(0,1fr)]" : "xl:grid-cols-[minmax(0,1.5fr)_5rem_6.5rem_minmax(0,1fr)_4rem_minmax(0,1.6fr)]")}>
                 <span className="min-w-0"><b className="block truncate text-[13.5px]">{it.n}</b><span className="text-[11px] text-slate-500">{it.ilg || "—"}{(() => { const X = tabOf(it.mis), S = sedesDe(it.id, T).length; return [X && ` · Nv. ${X.nv}+ · ${X.pt} pol. para arrancar`, S > 0 && ` · ${S} sede${S > 1 ? "s" : ""} en la tablet`].filter(Boolean).join(""); })()}</span>
-                  {bandasDe(it.mis).length > 0 && <span className="mt-0.5 flex flex-wrap gap-1"><BandaChips L={bandasDe(it.mis)} sm /></span>}</span>
+                  {bandasDe(it.mis).length > 0 && <span className="mt-0.5 flex flex-wrap gap-1"><BandaChips L={bandasDe(it.mis)} sm /></span>}
+                  {T && it.mis.some(m => m.tab?.some(t => t.arm)) && <span className="mt-0.5 flex flex-wrap gap-1"><ArmasMis L={it.mis.flatMap(m => m.tab || [])} sm /></span>}</span>
                 <span><span className="text-slate-400 xl:hidden">Atracadores: </span><b className="tabular-nums">{atr(it)}</b></span>
                 <span><span className="text-slate-400 xl:hidden">Policías: </span><b className="tabular-nums text-sky-600 dark:text-sky-400">{it.pol ?? "—"}</b>{it.pol ? <span className="block text-[10.5px] text-slate-500">{unidades(it.pol)}</span> : null}</span>
                 <span className="truncate"><span className="text-slate-400 xl:hidden">Rehenes: </span>{it.reh || "—"}</span>
@@ -130,7 +132,7 @@ function RoboModal({ it, T, onClose }: { it: PubItem; T: TabData | null; onClose
           <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Armas</p><Armas arm={it.arm} /><p className="mt-1 text-[11px] text-slate-500">{it.arm}</p></div>
           {it.mis.length > 0 && <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Misiones</p>
             <ul className="space-y-1 text-[12px]">{it.mis.map(m => <li key={m.n + m.f[0]} className="rounded-lg bg-slate-50 px-2.5 py-1.5 dark:bg-slate-800/50"><b>{m.n}</b> <span className="text-slate-500">· {m.min}–{m.max}{m.rec ? ` · ${m.rec}` : ""}</span>
-              {m.tab?.map((t, i) => <span key={i} className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500"><Tablet className="size-3" />Nv. {t.nv}+ · {t.min}–{t.max} jug. · {t.pt} pol. · ${t.$.toLocaleString("es-AR")} · +{t.xp} xp{t.b && <BandaChips L={[t.b]} sm />}</span>)}</li>)}</ul></div>}
+              {m.tab?.map((t, i) => <span key={i} className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500"><Tablet className="size-3" />Nv. {t.nv}+ · {t.min}–{t.max} jug. · {t.pt} pol. · ${t.$.toLocaleString("es-AR")} · +{t.xp} xp{t.b && <BandaChips L={[t.b]} sm />}{t.arm && <ArmasMis L={[t]} sm />}</span>)}</li>)}</ul></div>}
           {sedes.length > 0 && <div><p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Sedes en la tablet ({sedes.length})</p>
             <ul className="flex flex-wrap gap-1 text-[11px]">{sedes.map(t => <li key={t.n} className="rounded-md bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{t.n} <span className="text-slate-400">· {t.cd} min</span></li>)}</ul></div>}
         </div>
