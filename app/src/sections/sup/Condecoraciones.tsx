@@ -1,6 +1,6 @@
 /* Condecoraciones: catálogo de medallas, franjas de servicio y condecoraciones; otorgar y quitar a los agentes */
 import { useState } from "react";
-import { Award as AwardI, ImagePlus, Medal, Pencil, Plus, RotateCcw, Ribbon as RibbonI, Save, Search, Trash2, X } from "lucide-react";
+import { Award as AwardI, History, ImagePlus, Medal, Pencil, Plus, RotateCcw, Ribbon as RibbonI, Save, Search, Trash2, X } from "lucide-react";
 import { Button, Card, Empty, Field, Input, Segmented, Select, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { useFeedback } from "@/components/feedback";
@@ -13,6 +13,7 @@ import { dmy, findAgent, hoyISO, norm, rankES, uid } from "@/lib/domain";
 import { LS, ME_ROLES, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { allProfiles, updateProf } from "@/lib/profiles";
+import { EntregaTab, HistorialTab } from "./CondEntrega";
 
 const TABS: [Tab, string, typeof Medal][] = [["cond", "Condecoraciones", AwardI], ["med", "Medallas", Medal], ["fra", "Franjas de servicio", RibbonI]];
 
@@ -23,7 +24,18 @@ export function holders() {
   return m;
 }
 
+/* tres apartados: el catálogo, la entrega (con el rol de la ceremonia) y el historial de entregas del departamento */
+type View = "cat" | "ent" | "his";
 export function Condecoraciones() {
+  const [v, setV] = useState<View>("cat");
+  return (
+    <div className="space-y-5">
+      <Segmented value={v} onChange={setV} options={[{ value: "cat" as View, label: "Catálogo", icon: <AwardI /> }, { value: "ent" as View, label: "Entrega de condecoración", icon: <Medal /> }, { value: "his" as View, label: "Historial", icon: <History /> }]} />
+      {v === "cat" ? <Catalogo /> : v === "ent" ? <EntregaTab onDone={() => setV("his")} /> : <HistorialTab />}
+    </div>);
+}
+
+function Catalogo() {
   useStoreVersion();
   const me = useMe(), [tab, setTab] = useState<Tab>("cond"), [q, setQ] = useState(""), [cat, setCat] = useState(""), [openK, setOpen] = useState(""), [ed, setEd] = useState<Decor | "new" | null>(null);
   const H = holders(), ALL = allDecor(), open = openK ? ALL.find(d => d.k === openK) || null : null, canCat = canCatalog(me.r);

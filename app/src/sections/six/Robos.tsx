@@ -4,7 +4,7 @@ import { toPng } from "html-to-image";
 import { useFeedback } from "@/components/feedback";
 import { cn } from "@/lib/cn";
 import { BANDAS, useTablet, type TabData } from "./tabletData";
-import { CATS, inactivas, misionesCon, ROB_EDIT, ROB_LOG, WPN, bandasDe, catalogo, robDiff, sedesDe, tabOf, type RobLog, perfilDe, recOf, unidades, type Cat, type Item, type RobEdit } from "./robosData";
+import { CATS, inactivas, misionesCon, sinBanda, ROB_EDIT, ROB_LOG, WPN, bandasDe, catalogo, robDiff, sedesDe, tabOf, type RobLog, perfilDe, recOf, unidades, type Cat, type Item, type RobEdit } from "./robosData";
 import { Modal } from "@/components/modal";
 import { useJSON } from "@/lib/store";
 
@@ -97,7 +97,7 @@ export function Catalogo({ cat, share }: { cat: Cat | "all"; share?: boolean }) 
   const isPend = (x: Item) => x.notas.some(n => n.t === "rev" || n.t === "dup");
   const FLT = { act: (x: Item) => !!x.chg, nuevo: (x: Item) => !!x.nuevo && x.cat !== "mis", pend: isPend } as const;
   const list = all.filter(x => (cat === "all" || x.cat === cat) && (!flt || FLT[flt](x)) && (!q.trim() || (x.n + " " + x.mis.map(m => m.n).join(" ")).toLowerCase().includes(q.trim().toLowerCase())));
-  const MIS = misionesCon(TD), dup = MIS.filter(m => !m.off && m.f.length > 1), rev = MIS.filter(m => !m.off && /revisar|falta/i.test(m.rec)), chg = all.filter(x => x.chg), nuevos = all.filter(x => x.nuevo && x.cat !== "mis");
+  const MIS = misionesCon(TD), dup = MIS.filter(sinBanda), rev = MIS.filter(m => !m.off && /revisar|falta/i.test(m.rec)), chg = all.filter(x => x.chg), nuevos = all.filter(x => x.nuevo && x.cat !== "mis");
   /* FOTO 4K: una imagen por bloque (resumen y cada tipo de robo), a 1920 px x2 = 3840 px de ancho */
   const foto = async () => {
     setBusy(true); setShot(true);

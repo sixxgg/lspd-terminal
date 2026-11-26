@@ -128,7 +128,24 @@ const MISIONES: Mision[] = [
   m("High Class", "Robo de vehículo", 2, 4, "", { cat: "veh", f: [85] }), m("Null Operation", "Encargo", 2, 4, "", { cat: "esp", f: [86] }),
 ];
 /* versión del catálogo: si la publicada en la base es de otra versión, Supervisores usa la nueva sin esperar a que six la vuelva a publicar */
-export const ROBOS_V = 6;
+export const ROBOS_V = 7;
+
+/* ---------- bandas de las misiones repetidas (Saskia, 26/11/2026): cada fila repetida es la versión para una banda ----------
+   x2 → armas alto y bajo · x4 → armas y drogas, alto y bajo · Null Operation x5 → armas y drogas (la quinta, sin aclarar) */
+const ARMAS: Banda[] = ["armas_alto", "armas_bajo"], AYD: Banda[] = ["armas_alto", "armas_bajo", "drogas_alto", "drogas_bajo"];
+const BANDAS_N: [string, Banda[], string?][] = [
+  ["Prepárate para la armería", ARMAS], ["Atraco a la armería de Sandy", ARMAS], ["Asalto a la armería del centro", ARMAS], ["Asalto al matadero de Clucking Bell", ARMAS],
+  ["Robo a la tienda de informática", ARMAS], ["Robo de tienda de informática", ARMAS], ["Asalto a la armería de Morningwood", ARMAS], ["Asalto armería de Paleto", ARMAS], ["Asalto a la armería de Paleto", ARMAS],
+  ["Asalto a la comisaría", ARMAS], ["Va de SMG la cosa", ARMAS], ["Acaba con Carlson", ARMAS], ["Boom Boom", ARMAS],
+  ["Murrieta Factory", AYD], ["Asalto al remolcador", AYD], ["Null Operation", AYD, "Tiene una quinta versión que no dice para qué banda es."],
+];
+/* para qué bandas es una misión según su nombre (si figura en la lista) */
+/* filas repetidas que todavía no dicen para qué banda son */
+export const sinBanda = (m: Mision) => !m.off && m.f.length > 1 && !bandasN(m.n);
+const bandasN = (n: string): { b: Banda[]; x?: string } | null => { const k = nk(n), e = BANDAS_N.find(([m]) => nk(m) === k); return e ? { b: e[1], x: e[2] } : null; };
+/* todavía no activas (Saskia): fuera del catálogo aunque la tablet las tenga */
+const NO_ACT = ["Asalto subterráneo", "El último vínculo", "Bunker Calafia", "Robo en Merryweather"].map(nk);
+const noAct = (n: string) => NO_ACT.includes(nk(n));
 
 /* ---------- la tablet manda: cada misión de la planilla se une con sus variantes de la tablet (jugadores y dinero de la tablet);
    las que solo están en la tablet entran como misiones nuevas ---------- */
@@ -137,12 +154,13 @@ export function misionesCon(T?: TabData | null): Mision[] {
   const L: Mision[] = MISIONES.map(m => ({ ...m, rec: T?.rec?.[m.n] || "" }));
   if (!T) return L;
   for (const t of T.mis) {
-    if (t.off) continue; /* inactiva en la tablet: fuera del catálogo */
+    if (t.off || noAct(t.n)) continue; /* inactiva en la tablet (o todavía no activa): fuera del catálogo */
     const k = nk(t.n), mi = L.find(x => nk(x.n) === k);
     if (mi) { (mi.tab ||= []).push(t); continue; }
     L.push({ n: t.n, tipo: t.tipo, min: t.min, max: t.max, rec: "", f: [], cat: (t.cat as Cat) || "mis", robo: t.robo, tab: [t] });
   }
   for (const mi of L) {
+    if (noAct(mi.n)) { mi.off = true; mi.tab = undefined; continue; }
     if (!mi.tab?.length) continue;
     mi.off = false; mi.min = Math.min(...mi.tab.map(t => t.min)); mi.max = Math.max(...mi.tab.map(t => t.max));
     const $ = [...new Set(mi.tab.map(t => t.$))].sort((a, b) => a - b).map(n => `${n.toLocaleString("es-AR")}$`), ex = mi.rec.includes("+") ? mi.rec.slice(mi.rec.indexOf("+") + 1).trim() : "";
@@ -151,7 +169,7 @@ export function misionesCon(T?: TabData | null): Mision[] {
   return L;
 }
 /* para qué banda es cada robo: las etiquetas de sus misiones en la tablet */
-export const bandasDe = (mis: Mision[]): Banda[] => BANDA_KEYS.filter(b => mis.some(m => m.tab?.some(t => t.b === b)));
+export const bandasDe = (mis: Mision[]): Banda[] => BANDA_KEYS.filter(b => mis.some(m => m.tab?.some(t => t.b === b) || !!bandasN(m.n)?.b.includes(b)));
 /* lo de la tablet de un robo: nivel mínimo, policías en servicio que pide para arrancar y experiencia */
 export function tabOf(mis: Mision[]) {
   const T = mis.flatMap(m => m.tab || []); if (!T.length) return null;
@@ -228,9 +246,12 @@ export function catalogo(ED: Record<string, RobEdit> = {}, T?: TabData | null): 
     else if (!it.mis.length && !sedesDe(it.id, T).length) it.notas.push({ t: "sin", x: "No tiene misión en el Excel: sin recompensa cargada." });
     for (const mi of it.fixPol ? [] : it.mis) {
       if (/revisar|falta/i.test(mi.rec)) it.notas.push({ t: "rev", x: `«${mi.n}» (fila ${mi.f.join(", ")}): la recompensa está pendiente.` });
-      if (mi.f.length > 1) it.notas.push({ t: "dup", x: `«${mi.n}» está repetida en las filas ${mi.f.join(" y ")} y no dice para qué banda es cada una.` });
+      const bn = bandasN(mi.n);
+      if (bn) { const nb = (k: string) => bn.b.filter(b => b.startsWith(k)).length;
+        it.notas.push({ t: "act", x: `«${mi.n}»: una versión por banda · ${[nb("armas") ? "armas (alto y bajo)" : "", nb("drogas") ? "drogas (alto y bajo)" : ""].filter(Boolean).join(" y ")}.${bn.x ? " " + bn.x : ""}` }); }
+      else if (mi.f.length > 1) it.notas.push({ t: "dup", x: `«${mi.n}» está repetida en las filas ${mi.f.join(" y ")} y no dice para qué banda es cada una.` });
       const tw = MIS.find(o => o !== mi && base(o.n) === base(mi.n));
-      if (tw) it.notas.push({ t: "dup", x: `Mismo nombre que la fila ${tw.f[0]} (${tw.rec}): parece otra versión para otro perfil, sin especificar.` });
+      if (tw && !bn) it.notas.push({ t: "dup", x: `Mismo nombre que la fila ${tw.f[0]} (${tw.rec}): parece otra versión para otro perfil, sin especificar.` });
     }
     /* lo fijo y lo que edita six: lo último manda */
     const e = { ...(FIX[it.id] || {}), ...(ED[it.id] || {}) } as Partial<RobEdit>, c: string[] = [];
