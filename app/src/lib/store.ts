@@ -30,7 +30,8 @@ export const getNet = () => net;
 /* departamentos: las secciones usan siempre las claves del LSPD (lspdt.*); en el LSSD y la SAHP se leen y escriben en lspdt.<depto>.*.
    Lo compartido (marca, Legal, Pizarra, robos, lo privado de six) es igual para los tres. Lo mismo decide el servidor (lib/core.js, SHARED_KEY). */
 /* las imágenes (logos, fondos, íconos) son de cada departamento; los perfiles, uno solo para los tres */
-const SHARED = /^lspdt\.(ui|lib|six|anita|ilg|ilgAcc|penal|legacc|boards?|miro|robos|uprof|unote|ucom|uvis|ufolt?|uverif|xcal|decorx|clasic|satd|lssd|sahp)(\.|$)/;
+/* la PSB es interdepartamental: sus datos son los mismos para los tres (igual que en el servidor) */
+const SHARED = /^lspdt\.(ui|lib|six|anita|ilg|ilgAcc|penal|legacc|boards?|miro|robos|uprof|unote|ucom|uvis|ufolt?|uverif|xcal|decorx|clasic|satd|lssd|sahp|psbRoster|psbIds|psbCit|psbCases|faltas|drec\.psb|instr\.psb|comms\.psb|unif\.psb|groles\.psb|divacc\.psb)(\.|$)/;
 let KD = "";
 export function setKeyDept(d: string) { const n = d === "lspd" ? "" : d; if (n === KD) return; KD = n; RO.clear(); bump(); }
 /* la clave real en la base para el departamento activo (y la de otro departamento, para las vistas que juntan los tres) */

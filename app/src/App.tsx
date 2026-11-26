@@ -19,7 +19,7 @@ const PublicBoard = lz(() => import("./sections/Pizarra"), "PublicBoard");
 const QS = new URLSearchParams(location.search), SHARE = QS.get("pizarra"), VER = QS.get("ver"), ROB = QS.get("robos"), INV = QS.get("inv");
 const RobosShare = lz(() => import("./sections/six/RobosShare"), "RobosShare");
 const PublicSection = lz(() => import("./sections/div/DivTools"), "PublicSection");
-import { AREAS, canArea, fixNav, isSoon, secsOf } from "./nav";
+import { AREAS, canArea, fixNav, isSoon, secsOf, syncAreas } from "./nav";
 import { api, authApi } from "./lib/api";
 import { BootScreen } from "./components/boot";
 import { ForcePw } from "./layout/ForcePw";
@@ -165,6 +165,7 @@ function Main() {
   const ag = findAgent(me.n), user = { n: me.n, r: ag?.r || me.r, p: ag?.p || me.p };
   if (nav.a === "anita" && ME_ROLES.anita && !me.must) return <MeCtx.Provider value={user}><Suspense fallback={<div className="min-h-[100dvh] bg-black" />}><Six who="anita" resume={nav.s === "re"} onExit={() => { setNav({ a: "ini", s: "home" }); scrollTopApp(); }} /></Suspense></MeCtx.Provider>;
   if (nav.a === "six" && ME_ROLES.six && !me.must) return <MeCtx.Provider value={user}><Suspense fallback={<div className="min-h-[100dvh] bg-black" />}><Six start={nav.s === "not" ? "not" : "ini"} resume={nav.s === "re"} onExit={() => { setNav({ a: "ini", s: "home" }); scrollTopApp(); }} /></Suspense></MeCtx.Provider>;
+  syncAreas(); /* el menú depende de datos que llegan después (por ejemplo, ser de la PSB desde otro departamento) */
   let area = AREAS.find(a => a.k === nav.a) || AREAS[0];
   if (!canArea(area, user.r)) area = AREAS[0];
   const SS = secsOf(area, user.r), sec = SS.find(s => s.k === nav.s) || SS[0];

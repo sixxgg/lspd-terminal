@@ -22,7 +22,9 @@ export function useXRoster(on = true): XAgent[] {
   useEffect(() => { if (on) void load(); }, [on]);
   return useSyncExternalStore(f => { subs.add(f); return () => { subs.delete(f); }; }, () => L ?? local(), () => local());
 }
-let LC: XAgent[] = [], LK: unknown = null;
-function local(): XAgent[] { const R = getRoster(); if (R !== LK) { LK = R; LC = R.map(a => ({ ...a, dep: DN[DEPT.id as keyof typeof DN] || "LSPD" })); } return LC; }
+/* la lista del departamento abierto, estable mientras no cambie (useSyncExternalStore necesita la misma referencia) */
+let LC: XAgent[] = [], LK = "";
+function local(): XAgent[] { const R = getRoster(), k = DEPT.id + "|" + R.map(a => `${a.n}·${a.r}·${a.p}`).join("|");
+  if (k !== LK) { LK = k; LC = R.map(a => ({ ...a, dep: DN[DEPT.id as keyof typeof DN] || "LSPD" })); } return LC; }
 /* busca en los tres (primero el propio departamento) */
 export const findAny = (n: string): XAgent | null => { const a = findAgent(n); if (a) return { ...a, dep: DN[DEPT.id as keyof typeof DN] || "LSPD" }; return (L || []).find(x => x.n === n) || null; };

@@ -38,6 +38,8 @@ const DESC_LSSD: Record<string, string> = { ...Object.fromEntries(Object.entries
 onDept(() => {
   for (const k of Object.keys(DIV_DESC)) delete DIV_DESC[k]; Object.assign(DIV_DESC, DEPT.id === "lssd" ? DESC_LSSD : DEPT.id === "sahp" ? {} : DESC_LSPD);
   for (const k of Object.keys(DIV_DONE)) delete DIV_DONE[k]; if (DEPT.id === "lspd") Object.assign(DIV_DONE, DONE_LSPD);
+  /* la PSB es interdepartamental: existe en los tres (la ven sus miembros) */
+  else { DIV_DONE["Professional Standards Bureau"] = "psb"; DIV_DESC["Professional Standards Bureau"] = DESC_LSPD["Professional Standards Bureau"] || "Asuntos internos de todo el SAPD."; }
 });
 /* división con roster genérico: entra solo quien está cargado en su roster (también lo controla el servidor) */
 /* academia conjunta de los tres departamentos: abierta para todos */

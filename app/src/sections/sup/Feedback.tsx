@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { MessageSquareWarning, UserRound, FileText, Save, ChevronDown, Trash2, Pencil, ListChecks, X } from "lucide-react";
+import { MessageSquareWarning, UserRound, FileText, Save, ChevronDown, Trash2, Pencil, ListChecks, X, CarFront } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Checkbox, Empty, Field, Input, Segmented, Textarea, SearchInput } from "@/components/ui";
 import { AgentPicker, Avatar, RankBadge } from "@/components/agents";
 import { CopyMenu, DiscordOutput } from "@/components/output";
@@ -9,10 +9,10 @@ import { findAgent, fmtDate, genderOf, lvl, norm, rankES, uid , myKey } from "@/
 import { getPenal, penalOf, artCmp } from "@/lib/penal";
 import { LS, useJSON } from "@/lib/store";
 import { useMe } from "@/lib/me";
-import { FB_TIPOS, FB_TPL, fbErrs, fbNew, fbText } from "@/content/feedback";
+import { FB_TIPOS, FB_TPL, FB_UNITS, fbErrs, fbNew, fbText } from "@/content/feedback";
 import { cn } from "@/lib/cn";
 
-type Fb = { ag: string; tipo: string; tpl: string; f: Record<string, string>; obs: string; mejora: string; evid: string; hablado: boolean; fecha: string; id: string; por?: string; t?: number; texto?: string; edit?: string };
+type Fb = { ag: string; tipo: string; tpl: string; f: Record<string, string>; obs: string; mejora: string; evid: string; hablado: boolean; fecha: string; id: string; unit?: string; call?: string; por?: string; t?: number; texto?: string; edit?: string };
 type Tpl = { k: string; l: string; tipo: string; f: [string, string, string, string?][] };
 const TPL = FB_TPL as unknown as Tpl[];
 const TIPOS = FB_TIPOS as [string, string, string, string, string, string][];
@@ -87,6 +87,21 @@ function FbForm({ init, onSaved }: { init: Fb | null; onSaved: (id: string) => v
                 <span className={cn("mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border-2", A.tipo === k ? "border-brand-500" : "border-slate-300 dark:border-slate-600")}>{A.tipo === k && <i className="size-2 rounded-full bg-brand-500" />}</span>
                 <span><span className="inline-flex items-center gap-1.5 text-sm font-semibold"><i className="size-2 rounded-full" style={{ background: c }} />{l}</span><small className="block text-xs text-slate-500">{d}</small></span>
               </button>))}</div>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardHeader icon={<CarFront />} title="Unidad" desc="En qué unidad patrullaba (opcional): sale en el feedback y en el texto." />
+          <CardBody>
+            <div className="flex flex-wrap gap-1.5">{(FB_UNITS as [string, string, string][]).map(([k, l, e]) => (
+              <button key={k} title={l} onClick={() => up({ unit: A.unit === k ? "" : k })}
+                className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition", A.unit === k ? "border-brand-500 bg-brand-600 text-white dark:bg-brand-500" : "border-slate-200 bg-white text-slate-600 hover:border-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300")}>
+                <span aria-hidden>{e}</span>{k}</button>))}
+              <button onClick={() => up({ unit: A.unit && !(FB_UNITS as string[][]).some(x => x[0] === A.unit) ? "" : "OTRA" })}
+                className={cn("rounded-full border px-3 py-1 text-xs font-semibold transition", A.unit && !(FB_UNITS as string[][]).some(x => x[0] === A.unit) ? "border-brand-500 bg-brand-600 text-white dark:bg-brand-500" : "border-slate-200 bg-white text-slate-600 hover:border-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300")}>Otra</button></div>
+            {!!A.unit && <div className="grid gap-3 sm:grid-cols-2">
+              {!(FB_UNITS as string[][]).some(x => x[0] === A.unit) && <Field label="Unidad"><Input value={A.unit === "OTRA" ? "" : A.unit} onChange={e => up({ unit: e.target.value.toUpperCase() || "OTRA" })} placeholder="Ej: TOM, X-RAY, METRO" /></Field>}
+              <Field label="Indicativo" hint="(opcional)"><Input value={A.call || ""} onChange={e => up({ call: e.target.value.toUpperCase() })} placeholder={`Ej: 2-${A.unit === "OTRA" ? "ADAM" : A.unit}-15`} className="font-mono" /></Field>
+            </div>}
           </CardBody>
         </Card>
         <Card>

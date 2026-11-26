@@ -13,7 +13,7 @@ export const LEVEL: Record<string, number> = {
   /* LSSD y SAHP: su nivel equivalente en la escala del LSPD (mismas reglas de rango en los tres; igual que en el servidor, lib/lssd.js) */
   "Sheriff": 13, "Undersheriff": 12, "Assistant Sheriff": 11.5, "Division Chief": 11, "Area Commander": 10, "Sergeant": 7,
   "Deputy Sheriff Master FTO": 4, "Deputy Sheriff Bonus II": 3, "Deputy Sheriff Bonus I": 2, "Deputy Sheriff": 1, "Deputy Sheriff Trainee": 0.5,
-  "Commissioner": 13, "Deputy Commissioner": 12, "Assistant Commissioner": 11.5, "Chief": 11, "Officer": 1, "Cadet": 0.5,
+  "Commissioner": 13, "Deputy Commissioner": 12, "Assistant Commissioner": 11.5, "Chief": 11, "Corporal": 5, "FCO": 4, "Officer II": 2, "Officer I": 1, "Officer": 1, "Cadet": 0.5, "ADM": 0,
 };
 const RANK_ES: Record<string, string> = {
   "Chief of Police": "Jefe de Policía", "Assistant Chief": "Jefe Adjunto", "Deputy Chief": "Jefe Supervisor", "Commander": "Comandante",
@@ -28,6 +28,9 @@ export const RANK_COLOR: Record<string, string> = {
   "Police Officer I": "#3b82f6", "Administrativo": "#94a3b8",
   "Sheriff": "#e3b33c", "Undersheriff": "#d4a937", "Assistant Sheriff": "#c99a2e", "Division Chief": "#b8892a", "Area Commander": "#22c55e", "Sergeant": "#ec4899",
   "Deputy Sheriff Master FTO": "#10b981", "Deputy Sheriff Bonus II": "#34d399", "Deputy Sheriff Bonus I": "#4ade80", "Deputy Sheriff": "#16a34a", "Deputy Sheriff Trainee": "#94a3b8",
+  /* SAHP (colores de su planilla) */
+  "Commissioner": "#e3b33c", "Deputy Commissioner": "#d4a937", "Assistant Commissioner": "#c99a2e", "Chief": "#d4a017", "Corporal": "#c084c4", "FCO": "#3b5bdb",
+  "Officer II": "#2563eb", "Officer I": "#60a5fa", "Officer": "#60a5fa", "Cadet": "#94a3b8", "ADM": "#94a3b8",
 };
 const INSIG: Record<string, string> = {
   "Police Officer III": "po3", "Police Officer III+": "po3p", "Sergeant I": "sgt1", "Sergeant II": "sgt2", "Detective I": "det1",
@@ -53,8 +56,10 @@ const GROUPS_LSSD: Record<string, { l: string; r: string[] }> = {
 const GROUPS_SAHP: Record<string, { l: string; r: string[] }> = {
   jef: { l: "Executive Staff", r: ["Commissioner", "Deputy Commissioner", "Assistant Commissioner", "Chief"] },
   cap: { l: "Command Staff", r: ["Captain", "Lieutenant"] },
-  sup: { l: "Supervisor Staff", r: ["Sergeant"] },
-  ofi: { l: "Officers", r: ["Officer", "Cadet"] },
+  sup: { l: "Supervisor Staff", r: ["Sergeant", "Corporal"] },
+  fco: { l: "Field Coordinators", r: ["FCO"] },
+  ofi: { l: "Officers", r: ["Officer II", "Officer I", "Officer", "Cadet"] },
+  adm: { l: "Administración", r: ["ADM"] },
 };
 export const GROUPS: Record<string, { l: string; r: string[] }> = { ...GROUPS_LSPD };
 const FEM = new Set(["Claire Robinson", "Madison Wells", "Vega Chambers", "Evelyn Molina", "Lara Calloway", "Madison Pierce", "Yooa Baek-Harrington",

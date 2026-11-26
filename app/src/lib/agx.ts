@@ -35,7 +35,7 @@ export const ESTADOS_X = ["Activo", "Inactivo", "En excedencia", "De baja tempor
 /* rangos de cada departamento, de mayor a menor */
 export const RANKS_X: Record<string, string[]> = {
   lssd: ["Sheriff", "Undersheriff", "Assistant Sheriff", "Division Chief", "Area Commander", "Captain", "Lieutenant", "Sergeant", "Deputy Sheriff Master FTO", "Deputy Sheriff Bonus II", "Deputy Sheriff Bonus I", "Deputy Sheriff", "Deputy Sheriff Trainee"],
-  sahp: ["Commissioner", "Deputy Commissioner", "Assistant Commissioner", "Chief", "Captain", "Lieutenant", "Sergeant", "Officer", "Cadet"],
+  sahp: ["Commissioner", "Deputy Commissioner", "Assistant Commissioner", "Chief", "Captain", "Lieutenant", "Sergeant", "Corporal", "FCO", "Officer II", "Officer I", "Officer", "Cadet", "ADM"],
 };
 /* qué campos edita cada nivel (lo mismo que controla el servidor) */
 const AGX_SUP = ["e", "d", "di", "o"];

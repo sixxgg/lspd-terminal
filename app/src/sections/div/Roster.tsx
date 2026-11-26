@@ -1,5 +1,6 @@
 /* Roster de cualquier división o subdivisión: integrantes agrupados por rol en tarjetas con el color del rol,
    y alta / edición en el mismo modal chico que la uniformidad (rol, especialidades, indicativo…). */
+import type { Agent } from "@/lib/store";
 import { useState, type ReactNode } from "react";
 import { Check, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { Button, Empty, Field, Input } from "@/components/ui";
@@ -15,8 +16,8 @@ const ink = (c: string) => { const h = c.replace("#", ""); if (h.length < 6) ret
 type Ed = { n: string; nuevo: boolean; main: string; subs: string[]; call: string; disc: string };
 type Opt = { get: (n: string) => string; set: (n: string, v: string) => void; l: string; ph: string };
 
-export function RosterBoard({ ab, roles, subs = [], map, canEdit, onSave, call, disc, tags, editExtra, info }: {
-  ab: string; roles: RRole[]; subs?: RRole[]; map: Record<string, string[]>; canEdit: boolean; onSave: (m: Record<string, string[]>) => void;
+export function RosterBoard({ ab, roles, subs = [], map, canEdit, onSave, call, disc, tags, editExtra, info, agents }: {
+  ab: string; roles: RRole[]; subs?: RRole[]; map: Record<string, string[]>; canEdit: boolean; onSave: (m: Record<string, string[]>) => void; agents?: Agent[];
   call?: Opt; disc?: Opt; tags?: (n: string) => ReactNode; editExtra?: (n: string) => ReactNode; info?: (n: string) => string;
 }) {
   const { toast, confirm } = useFeedback(), [ed, setEd] = useState<Ed | null>(null);
@@ -74,7 +75,7 @@ export function RosterBoard({ ab, roles, subs = [], map, canEdit, onSave, call, 
         footer={<>{ed && !ed.nuevo && <Button size="sm" variant="ghost" className="mr-auto text-red-500" icon={<Trash2 />} onClick={remove}>Quitar</Button>}
           <Button size="sm" variant="ghost" onClick={() => setEd(null)}>Cancelar</Button><Button size="sm" icon={<Check />} onClick={save}>Guardar</Button></>}>
         {ed && <div className="space-y-2.5 [&_label]:text-xs">
-          <Field label="Agente">{ed.nuevo ? <AgentCombo value={ed.n} onChange={n => setEd({ ...ed, n, call: call?.get(n) || "" })} filter={a => !map[a.n]} placeholder={`Buscar agente para la ${ab}…`} />
+          <Field label="Agente">{ed.nuevo ? <AgentCombo value={ed.n} onChange={n => setEd({ ...ed, n, call: call?.get(n) || "" })} filter={a => !map[a.n]} agents={agents} placeholder={`Buscar agente para la ${ab}…`} />
             : <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-2 py-1.5 dark:border-slate-800"><Avatar n={ed.n} size={28} /><div><b className="block text-sm">{ed.n}</b><span className="text-xs text-slate-500">{(() => { const a = findAgent(ed.n); return a ? `${rankES(a.r)}${a.p ? ` · #${a.p}` : ""}` : ""; })()}</span></div></div>}</Field>
           <Field label="Rol"><div className="flex flex-wrap gap-1.5">{roles.map(r => <button key={r.k} type="button" onClick={() => setEd({ ...ed, main: r.k })} className={pill(ed.main === r.k)} style={pillS(ed.main === r.k, r.c)}>{r.l}</button>)}</div></Field>
           {subs.length > 0 && <Field label="Subdivisiones y especialidades"><div className="flex flex-wrap gap-1.5">{subs.map(r => { const on = ed.subs.includes(r.k); return (

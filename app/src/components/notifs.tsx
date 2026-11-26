@@ -13,7 +13,7 @@ import { uMap } from "@/lib/units";
 import { emailOf } from "@/lib/domain";
 import { ago, dmy, lvl, rankES } from "@/lib/domain";
 import { JUMP, jumpNow } from "@/lib/jump";
-import { APP_VERSION, hasNews } from "@/sections/Novedades";
+import { APP_VERSION, NEWS_REV, hasNews } from "@/sections/Novedades";
 import { cn } from "@/lib/cn";
 import { DEPT, logoOf } from "@/lib/dept";
 import { closeExpired, type Prop } from "@/lib/votes";
@@ -100,7 +100,7 @@ export function NotifBell({ me, go }: { me: { n: string; r: string }; go: (a: st
       for (const a of x.adic) if (a.by !== me.n && Date.now() - a.t < 14 * 864e5 && ["prev", "enrev"].includes(x.est))
         L.push({ id: `tra:a:${a.id}`, t: a.t, I: MessageSquare, c: "#a855f7", title: `Nueva información en el traslado de ${x.n}`, body: `${a.by}: ${a.x.slice(0, 80)}`, a: "Traslados", go: [lvl(me.r) >= 10 ? "jef" : "cap", "tra"] });
     }
-    if (hasNews()) L.push({ id: "ver:" + APP_VERSION, t: lsGet<number>("lspdt.next.verT:" + APP_VERSION, 0) || (lsSet("lspdt.next.verT:" + APP_VERSION, Date.now()), Date.now()), I: Sparkles, c: "#f472b6", title: `Versión ${APP_VERSION}`, body: "Hay novedades en la terminal. Tocá para verlas.", go: ["ini", "nov"] });
+    if (hasNews()) L.push({ id: "ver:" + NEWS_REV, t: lsGet<number>("lspdt.next.verT:" + NEWS_REV, 0) || (lsSet("lspdt.next.verT:" + NEWS_REV, Date.now()), Date.now()), I: Sparkles, c: "#f472b6", title: `Versión ${APP_VERSION}`, body: "Hay novedades en la terminal. Tocá para verlas.", go: ["ini", "nov"] });
     return L.sort((a, b) => b.t - a.t).slice(0, 30);
   }, [fb.list, cases, psb, me.n, kEv, ver]); // eslint-disable-line react-hooks/exhaustive-deps
   const unread = items.filter(x => x.t > seen).length, host = document.querySelector<HTMLElement>(".tab-screen"), logo = logoOf();

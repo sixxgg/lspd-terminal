@@ -6,8 +6,8 @@ const chev = (y: number) => `M6 ${y} L20 ${y - 7} L34 ${y} L34 ${y + 4.5} L20 ${
 const gold = `stroke="#7a5a12" stroke-width=".6" fill="${G}"`, silver = `stroke="#64748b" stroke-width=".6" fill="${S}"`;
 const STARS: Record<string, number> = { "Sheriff": 5, "Undersheriff": 4, "Assistant Sheriff": 3, "Division Chief": 2, "Area Commander": 1,
   "Commissioner": 5, "Deputy Commissioner": 4, "Assistant Commissioner": 3, "Chief": 2 };
-const CHEV: Record<string, number> = { "Sergeant": 3, "Deputy Sheriff Master FTO": 2, "Deputy Sheriff Bonus II": 2, "Deputy Sheriff Bonus I": 1 };
-const KNOWN = new Set([...Object.keys(STARS), ...Object.keys(CHEV), "Captain", "Lieutenant", "Deputy Sheriff", "Deputy Sheriff Trainee", "K-9", "Officer", "Cadet"]);
+const CHEV: Record<string, number> = { "Sergeant": 3, "Deputy Sheriff Master FTO": 2, "Deputy Sheriff Bonus II": 2, "Deputy Sheriff Bonus I": 1, "Corporal": 2, "FCO": 2, "Officer II": 1 };
+const KNOWN = new Set([...Object.keys(STARS), ...Object.keys(CHEV), "Captain", "Lieutenant", "Deputy Sheriff", "Deputy Sheriff Trainee", "K-9", "Officer", "Officer I", "Cadet", "ADM"]);
 
 function art(r: string) {
   const n = STARS[r];
@@ -19,7 +19,7 @@ function art(r: string) {
   const c = CHEV[r];
   if (c) { const y0 = 20 - (c - 1) * 3.5 + 2; return Array.from({ length: c }, (_, i) => `<path d="${chev(y0 + i * 7)}" ${gold}/>`).join("")
     + (r === "Deputy Sheriff Master FTO" ? `<path d="M8 29 Q20 36 32 29 L32 32.5 Q20 39.5 8 32.5Z" ${gold}/>` : ""); }
-  if (r === "Deputy Sheriff" || r === "Officer") return `<polygon points="${star(20, 20, 7)}" ${gold}/>`;
+  if (r === "Deputy Sheriff" || r === "Officer" || r === "Officer I") return `<polygon points="${star(20, 20, 7)}" ${gold}/>`;
   return `<polygon points="${star(20, 20, 7)}" fill="none" stroke="#e3b33c" stroke-width="1.4"/>`;
 }
 /* Sheriff y Undersheriff: más ancha para que entren 5 y 4 estrellas grandes */

@@ -1,3 +1,4 @@
+import { isPSB } from "./lib/units";
 import { PROF, profOk } from "@/lib/nick";
 import { SATD, divVisible } from "@/lib/divisions";
 import type { LucideIcon } from "lucide-react";
@@ -118,11 +119,13 @@ const LSSD_DIV_SEC: Sec[] = [
 ];
 const SOON = (k: string, l: string, icon: LucideIcon, min: number, req: string): Area => ({ k, l, icon, min, req, sec: [{ k: "soon", l, d: "En construcción", icon, ready: true }] });
 /* g: áreas que se abren completas (iguales al LSPD, con los datos del departamento) para las cuentas con acceso dado desde Administración */
-function xAreas(d: "lssd" | "sahp", g: { sup?: boolean; cap?: boolean; jef?: boolean } = {}): Area[] {
+function xAreas(d: "lssd" | "sahp", g: { sup?: boolean; cap?: boolean; jef?: boolean; psb?: boolean } = {}): Area[] {
   const base = LSPD_AREAS.filter(a => SHARE.includes(a.k)).map(a => (a.k === "ini" ? { ...a, sec: a.sec.map(s => (s.k === "home" ? { ...s, d: d === "lssd" ? "Los Santos Sheriff's Department" : "San Andreas Highway Patrol" } : s)) }
     : a.k === "ofi" ? { ...a, sec: a.sec.filter(s => s.k !== "pro").map(s => (s.k === "rad" ? { ...s, d: `10.03 con sujetos y vehículo de huida, por /r${d} o /rsapd` } : s)), ...(d === "sahp" ? { min: 1, req: "Officer" } : { req: "Deputy Sheriff Bonus I" }) } /* Procedimientos es del LSPD; en la SAHP no hay Officer III */ : a));
   /* LSSD: sus divisiones; SAHP: por ahora solo la academia conjunta (San Andreas Training Division) */
-  const div: Area = { k: "div", l: "Divisiones", icon: Landmark, min: 0, sec: (d === "lssd" ? LSSD_DIV_SEC : [SATD_SEC]).slice().sort(byLabel) };
+  /* la PSB es interdepartamental: la ven sus miembros del LSSD y la SAHP (y six) */
+  const PSB_SEC = LSPD_AREAS.find(a => a.k === "div")!.sec.find(x => x.k === "dv_psb")!;
+  const div: Area = { k: "div", l: "Divisiones", icon: Landmark, min: 0, sec: [...(d === "lssd" ? LSSD_DIV_SEC : [SATD_SEC]), ...(g.psb ? [PSB_SEC] : [])].sort(byLabel) };
   const adm0 = LSPD_AREAS.find(a => a.k === "adm")!, adm = { ...adm0, sec: [...adm0.sec, ...RAW_AREAS.find(a => a.k === "adm")!.sec.filter(x => x.k === "fbt")].sort(byLabel) };
   /* Supervisores: por ahora solo Condecoraciones (las mismas del LSPD: se ven en Agentes y en el Inicio) */
   const sup = LSPD_AREAS.find(x => x.k === "sup")!;
@@ -144,7 +147,8 @@ function xAreas(d: "lssd" | "sahp", g: { sup?: boolean; cap?: boolean; jef?: boo
     const B = base.map(a => (a.k === "ofi" ? { ...a, min: 0, req: "Deputy Sheriff Trainee" } : a));
     return [...B, div, supL, capL, jefL, { ...adm, sec: adm.sec.filter(s => admK.includes(s.k)) }].sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
   }
-  const L = [...base, div, g.sup ? { ...sup, req: "Sergeant" } : { ...sup, req: "Sergeant", sec: sup.sec.filter(x => x.k === "cond") },
+  /* SAHP: sin acceso completo a Supervisores, igual ven Condecoraciones y Feedback (este, de Corporal para arriba) */
+  const L = [...base, div, g.sup ? { ...sup, req: "Sergeant" } : { ...sup, req: "Corporal", min: 5, sec: sup.sec.filter(x => x.k === "cond" || x.k === "fbk").map(x => (x.k === "fbk" ? { ...x, min: 5 } : x)) },
     g.cap ? { ...cap, req: "Lieutenant" } : SOON("cap", "Capitanía", Briefcase, 8, "Lieutenant"),
     g.jef ? { ...jef, req: "Chief" } : SOON("jef", "Jefatura", Star, 10, "Chief"), { ...adm, sec: adm.sec.filter(s => ADM_X.includes(s.k)) }];
   return L.sort((a, b) => (a.k === "ini" ? -1 : b.k === "ini" ? 1 : byLabel(a, b)));
@@ -153,10 +157,11 @@ function xAreas(d: "lssd" | "sahp", g: { sup?: boolean; cap?: boolean; jef?: boo
    En el LSSD y la SAHP, Supervisores, Capitanía y Jefatura se abren completas para six y para quien tenga acceso (Administración › Accesos). */
 export const AREAS: Area[] = [...LSPD_AREAS];
 let AK = "lspd";
-function syncAreas() {
+export function syncAreas() {
   const d = DEPT.id;
   if (d === "lspd") { if (AK !== "lspd") { AK = "lspd"; AREAS.splice(0, AREAS.length, ...LSPD_AREAS); } return; }
-  const A = LS.json<Record<string, string[]>>("lspdt.areaAcc", {}), g = Object.fromEntries(["sup", "cap", "jef"].map(k => [k, !!ME_ROLES.six || !!A[k]?.includes(PROF.me)]));
+  const A = LS.json<Record<string, string[]>>("lspdt.areaAcc", {}), g: Record<string, boolean> = Object.fromEntries(["sup", "cap", "jef"].map(k => [k, !!ME_ROLES.six || !!A[k]?.includes(PROF.me)]));
+  g.psb = !!ME_ROLES.six || isPSB(PROF.me);
   const key = d + JSON.stringify(g) + (ME_ROLES.dadm ? "a" : "") + (ME_ROLES.admin || ME_ROLES.six ? "A" : ""); if (key === AK) return; AK = key; AREAS.splice(0, AREAS.length, ...xAreas(d, g));
 }
 onDept(syncAreas);

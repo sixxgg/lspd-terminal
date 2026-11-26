@@ -9,6 +9,7 @@ import { fullData, imgUrl, shapeVal } from "../lib/store.js";
 import { agxCheck, send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept, isXList, xCheck, loadBoards, isBoardKey, sessionToken, tokenHash, traslOk, parseRoster } from "../lib/core.js";
 import { deptList } from "../lib/lssd.js";
 import { renameAgent } from "../lib/rename.js";
+import { seed1126 } from "../lib/seed.js";
 import { allRosters, purgeAll, purgeDivs, settleXfers, sweepDivs } from "../lib/xfer.js";
 
 /* IP privada, local o reservada (v4 y v6): el servidor nunca descarga de ahí */
@@ -57,6 +58,20 @@ async function sweep(by, ip) {
   if (L.length) { invalidate(); await audit(by, "quitó de las divisiones (ya no está en el roster)", "divisiones", L.slice(0, 60).join(" · "), ip); }
   return L;
 }
+/* cargas puntuales (una vez cada una): PSB interdepartamental y ascensos de la SAHP del 26/11 */
+let SEEDED = false;
+async function seedOnce() {
+  if (SEEDED) return; SEEDED = true;
+  if ((await q("select v from meta where k='seed:1126'")).rows[0]?.v === "1") return;
+  const done = await tx(async c => {
+    await c.query("select pg_advisory_xact_lock(hashtext('seed'))");
+    if ((await c.query("select v from meta where k='seed:1126'")).rows[0]?.v === "1") return [];
+    const L = await seed1126(c, putAs("sistema", Date.now()), "sistema");
+    await c.query("insert into meta(k,v) values('seed:1126','1') on conflict(k) do update set v='1'");
+    return L;
+  });
+  if (done.length) { invalidate(); await audit("sistema", "carga de datos", "roster", done.join(" · "), ""); }
+}
 /* una sola vez (marca en meta): ordena los traslados hechos antes de que esto fuera automático (salen del origen y de sus divisiones) */
 let PURGED = false;
 async function purgeOnce() {
@@ -76,6 +91,7 @@ async function purgeOnce() {
 export default wrap(async (req, res) => {
   const u = await requireUser(req, res);
   if (u) await purgeOnce().catch(() => { PURGED = false; });
+  if (u) await seedOnce().catch(() => { SEEDED = false; });
   if (!u) return;
   /* mantenimiento: nadie más que six lee ni guarda (la página muestra la pantalla de mantenimiento) */
   { const M = await maintCached(); if (M && !isSix(u)) return send(res, 503, { maint: { at: M.at, msg: M.msg || "" }, msg: "La terminal está en mantenimiento" }); }

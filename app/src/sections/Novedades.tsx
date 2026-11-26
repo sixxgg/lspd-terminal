@@ -10,11 +10,13 @@ import { DET, lvl } from "@/lib/domain";
 import { rosterDivs } from "@/lib/units";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.0.7";
+export const APP_VERSION = "1.0.0";
+/* revisión de las novedades dentro de la misma versión: cambia con cada entrega, así se enciende el aviso */
+export const NEWS_REV = "1.0.0·8";
 export const APP_TAG = "⟡ 𝕆𝕗𝕗𝕚𝕔𝕚𝕒𝕝";
 /* hay novedades que el usuario todavía no vio */
-export const hasNews = () => (LS.get("lspdt.seenVersion") || "") !== APP_VERSION;
-export const markSeen = () => LS.set("lspdt.seenVersion", APP_VERSION);
+export const hasNews = () => (LS.get("lspdt.seenVersion") || "") !== NEWS_REV;
+export const markSeen = () => LS.set("lspdt.seenVersion", NEWS_REV);
 
 /* cada entrada es una etapa (de la .1 a la siguiente versión redonda): v = hasta, from = desde, d = resumen, sub = las versiones que tuvo; hero = la primera, en grande */
 type Rel = { v: string; from: string; f: string; t: string; d?: string; sub?: [string, string][] }; /* sub: [número, texto] (en el inicio se ve el número de versión) */
@@ -44,42 +46,30 @@ export function logFor(me: Who): Rel[] {
   return LOG.map(r => ({ ...r, sub: (r.sub || []).map(([v, t]) => [v, clean(t.split("|"), me).join(" · ")] as [string, string]).filter(([, t]) => t) })).filter(r => r.sub.length);
 }
 /* el registro: una entrada por versión, de la más nueva a la más vieja. Cada ítem puede llevar tag («[tag] texto»); los de «dueños» van aparte */
+/* six: todo queda en la v1.0.0 (Estable) hasta que él diga de cambiar de versión. Lo nuevo se suma arriba en esta misma entrada
+   y se sube NEWS_REV para que se encienda el aviso de novedades. */
 const V: { v: string; f: string; t: string; it: string[] }[] = [
-  { v: "1.0.7", f: "26/11/2026", t: "PSB en todo el SAPD y cambio de nombre", it: [
+  { v: "1.0.0", f: "26/11/2026", t: "Estable", it: [
+    "SAHP: roster completo cargado, con Corporal, FCO, Officer II/I y ADM; ascensos del 26/11",
+    "[div:Professional Standards Bureau] La PSB es interdepartamental: sus miembros del LSSD y la SAHP entran a la división con todas sus herramientas",
+    "[sup] Feedbacks con más variantes, textos mejor calibrados y la unidad de patrullaje (HENRY, MARY, ADAM, LINCOLN, BIKE…)",
     "[div:Professional Standards Bureau] Notificación, expediente y Citación 10-80 con agentes del LSPD, el LSSD y la SAHP",
-    "[cap] Cambiar el nombre de un agente desde su ficha: se actualiza en roster, divisiones, callsigns, perfil, expediente y su cuenta"] },
-  { v: "1.0.6", f: "25/11/2026", t: "Divisiones al día con el roster", it: [
+    "[cap] Cambiar el nombre de un agente desde su ficha: se actualiza en roster, divisiones, callsigns, perfil, expediente y su cuenta",
     "Quien sale del roster (también al subir el roster.csv) sale solo de la METRO, el S.W.A.T. y el resto de sus divisiones",
-    "[div:Metropolitan Division] Callsign ya no muestra a los trasladados que estaban en convocatorias viejas"] },
-  { v: "1.0.5", f: "25/11/2026", t: "Traslados entre departamentos", it: [
-    "[cap] Trasladar o expulsar funciona entre LSPD, LSSD y SAHP en cualquier sentido; el agente sale también de las divisiones de su departamento anterior",
+    "[cap] Trasladar o expulsar entre LSPD, LSSD y SAHP en cualquier sentido; su expediente y su cuenta pasan con él",
     "Placas pendientes: Sargentos, Capitanía y Jefatura reciben cada día el aviso de los agentes sin placa y la asignan desde Agentes",
-    "[adm] Los traslados y expulsiones quedan en Administración › Logs"] },
-  { v: "1.0.4", f: "25/11/2026", t: "Armas con accesorios y líderes de pelotón", it: [
-    "[six] Fichas de armas nuevas: accesorios compatibles por tipo, munición y armas que la comparten; todo se toca para saltar",
-    "[div:Metropolitan Division] Los del S.W.A.T. pueden tener callsign de Líder de Pelotón C, y tocar una casilla ocupada la traspasa"] },
-  { v: "1.0.3", f: "25/11/2026", t: "Traslados, expulsiones y METRO", it: [
-    "[cap] Trasladar a un agente al LSSD, la SAHP o el LSPD, o expulsarlo, desde su ficha: su expediente y su cuenta pasan con él",
-    "Murrieta Factory en cuatro robos: armas alto y bajo (8 policías) y drogas alto y bajo (6 policías)",
-    "Los nombres del catálogo de robos ya no se cortan",
-    "[div:Metropolitan Division] Comunicados de callsigns con bienvenidas al S.W.A.T., reincorporaciones y líderes de pelotón"] },
-  { v: "1.0.2", f: "25/11/2026", t: "Robos al día y un panel más prolijo", it: [
-    "[ilg] Las 172 misiones de la tablet con sus armas obligatorias; las inactivas quedan fuera del catálogo",
-    "Novedades más simple",
-    "[six] Paneles de six en una sola línea",
-    "[dueños] La contraseña de mantenimiento y los códigos de autodestrucción se ven en el panel de six (ya no por Discord)"] },
-  { v: "1.0.1", f: "25/11/2026", t: "Pizarra, Manuales y METRO", it: [
-    "Pizarra con estilo propio, tipos de línea (eje, eje ×2, fantasma, puntos) y banners editables",
-    "Manuales con barra flotante de títulos e impresión con marco y número de página",
-    "[div:Metropolitan Division] Líderes del Pelotón C en el SWAT y al revés",
-    "[lssd+mandos] Los traslados conservan el expediente y pasan la cuenta sola"] },
-  { v: "1.0.0", f: "25/11/2026", t: "Official", it: [
+    "[adm] Traslados, expulsiones y cambios de nombre quedan en Administración › Logs",
+    "[div:Metropolitan Division] Callsigns: Líderes de Pelotón C del S.W.A.T., traspaso de casillas y comunicados con bienvenidas y reincorporaciones",
+    "[six] Fichas de armas con accesorios compatibles, munición y armas que la comparten",
+    "Murrieta Factory en cuatro robos (armas alto/bajo: 8 policías · drogas alto/bajo: 6 policías) y catálogo de robos sin nombres cortados",
+    "[ilg] Las 172 misiones de la tablet con sus armas obligatorias",
+    "Pizarra con estilo propio, tipos de línea y banners editables; Manuales con barra de títulos e impresión con marco",
+    "[dueños] Contraseña de mantenimiento y códigos de autodestrucción en el panel de six (ya no por Discord)",
     "Todo lo que hubo del .bat a la 5.7.9, en una sola versión",
     "Inicio, Oficiales, Supervisores, Capitanía, Jefatura, Divisiones, Legal, Manuales, Pizarra y Galería en los tres departamentos",
     "Funciona igual en PC, celular y iPad",
-    "[sup] 10-80 con lugares editables, briefing con puntos por agente, feedbacks naturales y checklist de METRO y S.W.A.T.",
-    "[dueños] Mantenimiento (beta) y códigos de autodestrucción para borrar algo importante",
-    "[dueños] Auditoría de seguridad y limpieza de duplicados en la base"] },
+    "[sup] 10-80 con lugares editables, briefing con puntos por agente y checklist de METRO y S.W.A.T.",
+    "[dueños] Mantenimiento (beta), códigos de autodestrucción, auditoría de seguridad y limpieza de duplicados en la base"] },
 ];
 /* progreso de la página (lo estima six) */
 const PROG: [string, number][] = [["LSPD", 100], ["LSSD", 92], ["SAHP", 40]];
