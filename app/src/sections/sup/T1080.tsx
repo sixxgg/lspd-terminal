@@ -8,6 +8,8 @@ import { CopyLine } from "@/components/output";
 import { Note } from "@/components/layout";
 import { useFeedback } from "@/components/feedback";
 import { excOf, findAgent, genderOf, lvl, rkTxt, uid } from "@/lib/domain";
+import { DEPT } from "@/lib/dept";
+import { findAny, useXRoster } from "@/lib/xroster";
 import { isPSB } from "@/lib/units";
 import { useMe } from "@/lib/me";
 import { useJSON, useStoreVersion } from "@/lib/store";
@@ -40,6 +42,10 @@ const OTRO: Lug = { k: "otro", g: "", l: "Otro…", t: "", h: "Escribí el lugar
 const CITG = ["Supervisores", "Capitanía", "Jefatura"] as const;
 
 const AWC = "Evelyn Molina";
+/* rangos del LSSD y la SAHP en castellano para la citación (los del propio departamento ya salen traducidos) */
+const RK_X: Record<string, string> = { Sheriff: "Sheriff", Undersheriff: "Undersheriff", "Assistant Sheriff": "Assistant Sheriff", "Division Chief": "Jefe de División", "Area Commander": "Comandante de Área",
+  Captain: "Capitán", Lieutenant: "Teniente", Sergeant: "Sargento", "Deputy Sheriff Bonus II": "Deputy Sheriff", "Deputy Sheriff Bonus I": "Deputy Sheriff", "Deputy Sheriff": "Deputy Sheriff", "Deputy Sheriff Trainee": "Deputy Sheriff en formación",
+  Commissioner: "Comisionado", "Deputy Commissioner": "Subcomisionado", Chief: "Jefe", "Assistant Chief": "Jefe Adjunto", Trooper: "Trooper", Officer: "Oficial", Cadet: "Cadete" };
 export function T1080({ psbOnly }: { psbOnly?: boolean }) {
   const [tab, setTab] = useState<"new" | "his">("new"), [L] = useJSON<Cit1080[]>(keyOf(psbOnly), []);
   const pend = L.filter(x => !x.j).length;
@@ -60,11 +66,14 @@ function Nueva({ psbOnly, onSaved }: { psbOnly?: boolean; onSaved: () => void })
   const [ags, setAgs] = useState<string[]>([]), [art, setArt] = useState<Record<string, string>>({}), [cit, setCit] = useState<string[]>([me.n]), [tags, setTags] = useState<string[]>([]);
   const [esc, setEsc] = useState(psbOnly ? "conf" : "wc"), [otro, setOtro] = useState(""), [citG, setCitG] = useState<string>(me.l >= 10 ? "Jefatura" : me.l >= 8 ? "Capitanía" : "Supervisores"), [div, setDiv] = useState(false), [edL, setEdL] = useState(false);
   const [LG, setLG] = useJSON<Lug[]>(LUG_KEY, DEF_LUG), LUG = Array.isArray(LG) && LG.length ? LG : DEF_LUG;
-  const s = LUG.find(x => x.k === esc) || (esc === "otro" ? OTRO : LUG[0]), A = ags.map(n => findAgent(n)).filter(Boolean) as NonNullable<ReturnType<typeof findAgent>>[], many = A.length > 1;
+  const s = LUG.find(x => x.k === esc) || (esc === "otro" ? OTRO : LUG[0]), A = ags.map(n => (psbOnly ? findAny(n) : findAgent(n))).filter(Boolean) as NonNullable<ReturnType<typeof findAny>>[], many = A.length > 1;
+  /* la PSB abarca a todo el SAPD: cita también a agentes del LSSD y la SAHP (si su roster está cargado) */
+  const XR = useXRoster(!!psbOnly), myDep = ({ lspd: "LSPD", lssd: "LSSD", sahp: "SAHP" } as Record<string, string>)[DEPT.id] || "LSPD";
+  const depSub = (n: string) => { const x = findAny(n); return x && x.dep !== myDep ? x.dep : ""; };
   /* la PSB y las tareas de división citan a cualquier rango */
   const canCite = (x: { n: string; r: string }) => x.n !== me.n && !ags.includes(x.n) && (psbOnly || div || lvl(x.r) < myL || !!excOf()[me.n]?.t1080);
   const lugar = esc === "otro" ? otro.trim() || "[lugar]" : s.t;
-  const quien = A.length ? joinY(A.map(a => `${art[a.n] || "el"} ${rkTxt(a.r)} ${a.n}`)) : "el [Rango] [Nombre del agente]";
+  const quien = A.length ? joinY(A.map(a => `${art[a.n] || "el"} ${a.dep && a.dep !== myDep ? RK_X[a.r] || a.r : rkTxt(a.r)} ${a.n}${a.dep && a.dep !== myDep ? ` (${a.dep})` : ""}`)) : "el [Rango] [Nombre del agente]";
   const txt = `/rlspd Para ${quien}: ${many ? "acudan" : "acuda"} ${lugar} con la vestimenta Clase A al finalizar sus actividades. Por favor, ${many ? "confirmen" : "confirme"} lectura.`;
   const errs = [!A.length && "agente a citar", esc === "otro" && !otro.trim() && "lugar"].filter(Boolean) as string[];
   return (
@@ -74,7 +83,7 @@ function Nueva({ psbOnly, onSaved }: { psbOnly?: boolean; onSaved: () => void })
         <CardBody>
           <Field label={`Agentes a citar${A.length ? ` · ${A.length}` : ""}`}>
             {!!ags.length && <AgChips list={ags} art={art} onArt={n => setArt(o => ({ ...o, [n]: o[n] === "la" ? "el" : "la" }))} onRemove={n => setAgs(ags.filter(x => x !== n))} />}
-            <AgentPicker value={ags} multiple onChange={n => { if (ags.includes(n)) return; setAgs([...ags, n]); setArt(o => ({ ...o, [n]: genderOf(n) === "f" ? "la" : "el" })); }} filter={canCite} empty={psbOnly ? "No hay más agentes para citar" : "No hay agentes que puedas citar con tu rango"} />
+            <AgentPicker value={ags} multiple onChange={n => { if (ags.includes(n)) return; setAgs([...ags, n]); setArt(o => ({ ...o, [n]: genderOf(n) === "f" ? "la" : "el" })); }} filter={canCite} agents={psbOnly ? XR : undefined} sub={psbOnly ? depSub : undefined} empty={psbOnly ? "No hay más agentes para citar" : "No hay agentes que puedas citar con tu rango"} />
           </Field>
           {!psbOnly && <label className="flex cursor-pointer items-center gap-2 text-[13px]"><input type="checkbox" checked={div} onChange={e => setDiv(e.target.checked)} className="size-4 accent-brand-600" />
             <span><b>Tarea de división</b> <span className="text-slate-500">· se puede citar a cualquier rango</span></span></label>}

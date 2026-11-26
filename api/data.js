@@ -8,7 +8,8 @@ import { isDestructive, maintCached, sdUnlocked } from "../lib/owner.js";
 import { fullData, imgUrl, shapeVal } from "../lib/store.js";
 import { agxCheck, send, body, query, wrap, requireUser, canWrite, invalidate, IMG_KEY, ADMIN_KEY, PSB_DENY, canRead, isSix, clientIp, baseKey, keyDept, isXList, xCheck, loadBoards, isBoardKey, sessionToken, tokenHash, traslOk, parseRoster } from "../lib/core.js";
 import { deptList } from "../lib/lssd.js";
-import { purgeAll, purgeDivs, settleXfers, sweepDivs } from "../lib/xfer.js";
+import { renameAgent } from "../lib/rename.js";
+import { allRosters, purgeAll, purgeDivs, settleXfers, sweepDivs } from "../lib/xfer.js";
 
 /* IP privada, local o reservada (v4 y v6): el servidor nunca descarga de ahí */
 const privIp = ip => { const a = String(ip).toLowerCase().replace(/^::ffff:/, "");
@@ -81,6 +82,11 @@ export default wrap(async (req, res) => {
 
   if (req.method === "GET") {
     const qs = query(req), since = Number(qs.since);
+    /* PSB: abarca a todo el SAPD, así que ve los rosters cargados de los tres departamentos (solo nombre, rango y placa) */
+    if (qs.xroster) {
+      if (!isSix(u) && !u.admin && !u.psb) return send(res, 403, { msg: "Solo la PSB" });
+      return send(res, 200, await allRosters({ query: (t, p) => q(t, p) }));
+    }
     if (qs.since !== undefined && qs.since !== "" && Number.isFinite(since) && since >= 0) {
       // cambios desde la última consulta (con margen, el cliente descarta lo que ya tiene)
       /* margen de 50 por si un guardado más viejo terminó después; pero el valor solo viaja si es nuevo (t > since) o si el navegador
@@ -156,6 +162,18 @@ export default wrap(async (req, res) => {
   if (!why && bk === "lspdt.agx") why = typeof b.v === "string" ? agxCheck(u, k, (await q("select v from kv where k=$1", [k])).rows[0]?.v ?? null, b.v) : "Valor inválido";
   /* traslado a otro departamento o expulsión: Capitanía, Jefatura, administración o six. No se borra nada del agente: sale del roster de su
      departamento (queda registrado en lspdt.bajas con quién, cuándo y por qué) y, si es traslado, entra al otro como alta por traslado */
+  /* cambio de nombre de un agente (casamiento, corrección…): se reemplaza en todos los datos y, en el LSPD, en su cuenta */
+  if (b.rename && typeof b.rename === "object") {
+    const x = b.rename, D3 = ["lspd", "lssd", "sahp"], d = (isSix(u) || (u.admin && !u.dept)) && D3.includes(x.dept) ? x.dept : u.dept || "lspd";
+    if (!isSix(u) && !u.admin && !u.dadm && (u.l || 0) < 8) return send(res, 403, { msg: "Solo Capitanía, Jefatura o la administración" });
+    const ts = Date.now(), put = putAs(u.n, ts);
+    const r = await tx(async c => { await c.query("select pg_advisory_xact_lock(hashtext('xfer:divs'))"); return renameAgent(c, put, { d, old: x.old, neu: x.neu, by: u.n }); });
+    if (r.err) return send(res, 400, { msg: r.err });
+    invalidate();
+    await audit(u.n, "cambió el nombre de un agente", "agentes", `${r.old} → ${r.neu} (${d.toUpperCase()}) · ${r.changed.length} registros${r.acc ? " · cuenta renombrada" : ""}`, clientIp(req));
+    await audit(u.n, ROSTER_OUT, d === "lspd" ? "lspdt.roster" : `lspdt.${d}.agx`, [r.old, r.r || "—", r.p ? "#" + String(r.p).replace(/\D/g, "") : "sin placa", `Cambio de nombre → ${r.neu}`].join(" · "), clientIp(req));
+    return send(res, 200, { ok: 1, n: r.neu, changed: r.changed.length, acc: r.acc });
+  }
   if (b.xfer && typeof b.xfer === "object") {
     /* origen: el departamento de la sesión; six y la administración general pueden operar sobre cualquiera (el que tengan abierto) */
     const x = b.xfer, D3 = ["lspd", "lssd", "sahp"], from = (isSix(u) || (u.admin && !u.dept)) && D3.includes(x.from) ? x.from : u.dept || "lspd", to = ["lspd", "lssd", "sahp"].includes(x.to) ? x.to : "", op = x.op === "xfer" ? "xfer" : "out";

@@ -3,7 +3,7 @@ import { DEPT, DEPTS, logoOf } from "@/lib/dept";
 import { profOk } from "@/lib/nick";
 import { useEffect, useMemo, useRef, useState, type PointerEvent as PE } from "react";
 import { Users, LayoutGrid, Rows3, UserPlus, BadgeCheck, Trophy, Shield, Clock, TrendingUp, IdCard, Activity,
-  Pencil, Star, Plus, X, Camera, Move, Trash2, Award, Check, UserMinus, ImagePlus, ArrowRightLeft } from "lucide-react";
+  Pencil, Star, Plus, X, Camera, Move, Trash2, Award, Check, UserMinus, ImagePlus, ArrowRightLeft, PenLine } from "lucide-react";
 import { Button, Card, Empty, Field, Input, Select, Segmented, Textarea, SearchInput } from "@/components/ui";
 import { RankBadge } from "@/components/agents";
 import { Ribbon, RibbonRack } from "@/components/ribbon";
@@ -168,7 +168,7 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
   const PH = LS.json<PHist[]>("lspdt.patHist", []), VOTES = LS.json<Prop[]>("lspdt.votes", []);
   const [tab, setTab] = useState<Tab>("res"), [editDiv, setEditDiv] = useState(false), [divSel, setDivSel] = useState<string[]>([]);
   const [ph, setPh] = useState<Ph | null>(null), [cv, setCv] = useState<{ x: number; y: number } | null>(null);
-  const [pick, setPick] = useState<"" | "foto" | "cover" | "divlogo">(""), [logoFor, setLogoFor] = useState(""), [nota, setNota] = useState(""), [xf, setXf] = useState(false);
+  const [pick, setPick] = useState<"" | "foto" | "cover" | "divlogo">(""), [logoFor, setLogoFor] = useState(""), [nota, setNota] = useState(""), [xf, setXf] = useState(false), [rn, setRn] = useState(false);
   const coverRef = useRef<HTMLDivElement>(null), phRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && !pick && onClose(); document.addEventListener("keydown", k);
@@ -253,6 +253,7 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
                 if (!(await confirm(`¿Dar de baja a ${a.n}? Se quita del roster (su perfil y notas se conservan).`, { danger: true, ok: "Dar de baja" }))) return;
                 LS.setJSON("lspdt.roster", getRoster().filter(x => x.n !== n)); onClose(); toast("Agente dado de baja"); }}><UserMinus />Dar de baja</button>}
               {(me.l >= 8 || ME_ROLES.six || ME_ROLES.admin || ME_ROLES.dadm) && a.n !== me.n && <button className={cn(act, "text-amber-200 hover:bg-amber-500/20")} onClick={() => setXf(true)}><ArrowRightLeft />Trasladar o expulsar</button>}
+              {(me.l >= 8 || ME_ROLES.six || ME_ROLES.admin || ME_ROLES.dadm) && <button className={cn(act, "hover:bg-white/15")} onClick={() => setRn(true)}><PenLine />Cambiar nombre</button>}
             </div>
           </div>
         </aside>
@@ -380,6 +381,7 @@ function ProfileModal({ n, onClose, onEdit }: { n: string; onClose: () => void; 
         onFile={d => { LS.set("lspdt.divlogo." + logoFor, d); toast("Emblema de la división actualizado"); }} onUrl={() => toast("Emblema de la división actualizado")}
         onDelete={LS.get("lspdt.divlogo." + logoFor) ? () => { LS.del("lspdt.divlogo." + logoFor); toast("Emblema restaurado"); } : undefined} />
       {xf && <XferModal a={a} onClose={() => setXf(false)} onDone={onClose} />}
+      {rn && <RenameModal a={a} self={a.n === me.n} onClose={() => setRn(false)} onDone={onClose} />}
     </div>, document.body);
 }
 
@@ -402,6 +404,29 @@ function PlacasPend() {
           <Button size="sm" onClick={() => save(a.n)}>Asignar</Button>
         </div>); })}</div>
     </Card>);
+}
+
+/* cambio de nombre (casamiento, corrección…): lo hace el servidor en todos los datos; lo ya redactado en textos queda como estaba */
+function RenameModal({ a, self, onClose, onDone }: { a: Agent; self: boolean; onClose: () => void; onDone: () => void }) {
+  const { toast, confirm } = useFeedback(), [v, setV] = useState(a.n), [busy, setBusy] = useState(false), neu = v.replace(/\s+/g, " ").trim();
+  const ok = neu.length >= 4 && /\s/.test(neu) && neu !== a.n;
+  const go = async () => {
+    if (!ok) { toast("Escribí nombre y apellido nuevos", "err"); return; }
+    if (!(await confirm(`¿Cambiar el nombre de ${a.n} a ${neu}? Se actualiza en el roster, sus divisiones, callsigns, perfil, expediente e historiales${DEPT.id === "lspd" ? ", y su cuenta pasa a llamarse así" : ""}.`))) return;
+    setBusy(true); const res = await api("/api/data", { k: "lspdt.bajas", rename: { old: a.n, neu, dept: DEPT.id } }); setBusy(false);
+    if (res.__s !== 200) { toast(String(res.msg || "No se pudo"), "err"); return; }
+    toast(`${a.n} ahora es ${neu}`);
+    if (self) { window.location.reload(); return; }
+    await reloadAll(); onClose(); onDone();
+  };
+  return (
+    <Modal open onClose={onClose} size="sm" icon={<PenLine />} title={`Cambiar nombre · ${a.n}`} desc="Por casamiento, corrección u otro motivo. Queda en Administración › Logs."
+      footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button disabled={busy || !ok} onClick={() => void go()}>Cambiar nombre</Button></>}>
+      <div className="space-y-3">
+        <Field label="Nombre nuevo"><Input autoFocus value={v} onChange={e => setV(e.target.value)} onKeyDown={e => e.key === "Enter" && void go()} maxLength={60} /></Field>
+        <p className="text-xs text-slate-500">Se cambia en todos lados: roster, divisiones, callsigns, perfil, condecoraciones, expediente, informes y registros. Los textos ya redactados (comunicados, mensajes) quedan como se escribieron.{DEPT.id === "lspd" ? " Su cuenta pasa al nombre nuevo y sigue entrando con su misma contraseña." : " Sigue entrando con su misma cuenta."}</p>
+      </div>
+    </Modal>);
 }
 
 /* traslado a otro departamento o expulsión (lo hace el servidor: sale de este roster, entra al otro y el expediente viaja con el agente) */

@@ -10,7 +10,7 @@ import { DET, lvl } from "@/lib/domain";
 import { rosterDivs } from "@/lib/units";
 import { cn } from "@/lib/cn";
 
-export const APP_VERSION = "1.0.6";
+export const APP_VERSION = "1.0.7";
 export const APP_TAG = "⟡ 𝕆𝕗𝕗𝕚𝕔𝕚𝕒𝕝";
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => (LS.get("lspdt.seenVersion") || "") !== APP_VERSION;
@@ -45,6 +45,9 @@ export function logFor(me: Who): Rel[] {
 }
 /* el registro: una entrada por versión, de la más nueva a la más vieja. Cada ítem puede llevar tag («[tag] texto»); los de «dueños» van aparte */
 const V: { v: string; f: string; t: string; it: string[] }[] = [
+  { v: "1.0.7", f: "26/11/2026", t: "PSB en todo el SAPD y cambio de nombre", it: [
+    "[div:Professional Standards Bureau] Notificación, expediente y Citación 10-80 con agentes del LSPD, el LSSD y la SAHP",
+    "[cap] Cambiar el nombre de un agente desde su ficha: se actualiza en roster, divisiones, callsigns, perfil, expediente y su cuenta"] },
   { v: "1.0.6", f: "25/11/2026", t: "Divisiones al día con el roster", it: [
     "Quien sale del roster (también al subir el roster.csv) sale solo de la METRO, el S.W.A.T. y el resto de sus divisiones",
     "[div:Metropolitan Division] Callsign ya no muestra a los trasladados que estaban en convocatorias viejas"] },

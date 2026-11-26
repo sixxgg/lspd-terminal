@@ -33,15 +33,16 @@ export function RankBadge({ r }: { r: string }) {
 /* Buscador de agentes: escribís y aparecen los que coinciden (nombre, placa o rango), ordenados de la A a la Z.
    Con ↑ ↓ y Enter se elige sin mouse. Si hay uno elegido se muestra como ficha, con ✕ para cambiarlo.
    free: también acepta un nombre que no está en el roster (otro departamento, alguien que ya se fue) · sm: más bajo, para tablas y formularios densos */
-export function AgentCombo({ value, onChange, names, filter, placeholder = "Buscar agente por nombre, placa o rango…", sub, chosen = [], empty = "Sin resultados", clearable = true, className, free, sm }: {
-  value: string; onChange: (n: string) => void; names?: string[]; filter?: (a: Agent) => boolean; placeholder?: string;
+export function AgentCombo({ value, onChange, names, agents, filter, placeholder = "Buscar agente por nombre, placa o rango…", sub, chosen = [], empty = "Sin resultados", clearable = true, className, free, sm }: {
+  value: string; onChange: (n: string) => void; names?: string[]; agents?: Agent[]; filter?: (a: Agent) => boolean; placeholder?: string;
   sub?: (n: string) => string; chosen?: string[]; empty?: string; clearable?: boolean; className?: string; free?: boolean; sm?: boolean;
 }) {
   useStoreVersion();
   const [q, setQ] = useState(""), [open, setOpen] = useState(false), [hi, setHi] = useState(0), [edit, setEdit] = useState(false);
   const box = useRef<HTMLDivElement>(null), inp = useRef<HTMLInputElement>(null), listRef = useRef<HTMLDivElement>(null);
-  const R = getRoster(), byN = useMemo(() => new Map(R.map(a => [a.n, a])), [R]);
-  const pool = useMemo(() => (names ? names.map(n => byN.get(n) || ({ n, r: "", p: "" } as Agent)) : R.filter(a => lvl(a.r) > 0 && (!filter || filter(a))))
+  /* agents: otra lista de agentes (por ejemplo, los tres departamentos para la PSB) en lugar del roster del departamento */
+  const R0 = getRoster(), R = agents || R0, byN = useMemo(() => new Map(R.map(a => [a.n, a])), [R]);
+  const pool = useMemo(() => (names ? names.map(n => byN.get(n) || ({ n, r: "", p: "" } as Agent)) : R.filter(a => (!!agents || lvl(a.r) > 0) && (!filter || filter(a))))
     .slice().sort((a, b) => a.n.localeCompare(b.n, "es")), [names, R, byN, filter]);
   const list = useMemo(() => { const s = norm(q.trim()); if (!s) return pool;
     const hit = pool.filter(a => norm(`${a.n} ${a.p || ""} ${rankES(a.r)} ${sub ? sub(a.n) : ""}`).includes(s));
@@ -81,7 +82,7 @@ export function AgentCombo({ value, onChange, names, filter, placeholder = "Busc
             className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm", !list.length && "bg-brand-50 dark:bg-brand-500/15")}><UserPlus className="size-4 shrink-0 text-slate-400" /><span className="min-w-0 flex-1 truncate">Usar «<b>{q.trim()}</b>» <span className="text-xs text-slate-400">· no está en el roster</span></span></button>}
           {!list.length && !free && <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-400"><Users className="size-4" />{empty}</div>}
           {list.slice(0, 80).map((a, i) => { const on = a.n === value || chosen.includes(a.n); return (
-            <button key={a.n} type="button" role="option" aria-selected={i === hi} data-i={i} onMouseEnter={() => setHi(i)} onMouseDown={e => e.preventDefault()} onClick={() => pick(a.n)}
+            <button key={`${a.n}|${a.p}|${i}`} type="button" role="option" aria-selected={i === hi} data-i={i} onMouseEnter={() => setHi(i)} onMouseDown={e => e.preventDefault()} onClick={() => pick(a.n)}
               className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm", i === hi ? "bg-brand-50 dark:bg-brand-500/15" : "", on && "text-brand-700 dark:text-brand-200")}>
               <Avatar n={a.n} size={24} /><span className="min-w-0 flex-1 truncate font-medium">{a.n}{sub && sub(a.n) ? <span className="ml-1.5 text-xs font-normal text-slate-400">{sub(a.n)}</span> : null}</span>
               {a.e && a.e !== "Activo" && <Badge>{a.e}</Badge>}{a.r && <RankBadge r={a.r} />}
@@ -95,9 +96,9 @@ export function AgentCombo({ value, onChange, names, filter, placeholder = "Busc
 }
 
 /* Compatibilidad: el selector anterior ahora es el buscador (en modo múltiple marca los ya elegidos y no muestra ficha) */
-export function AgentPicker({ value, onChange, filter, multiple, empty = "Sin resultados" }: {
-  value: string | string[]; onChange: (n: string) => void; filter?: (a: Agent) => boolean; multiple?: boolean; max?: number; empty?: string;
+export function AgentPicker({ value, onChange, filter, multiple, empty = "Sin resultados", agents, sub }: {
+  value: string | string[]; onChange: (n: string) => void; filter?: (a: Agent) => boolean; multiple?: boolean; max?: number; empty?: string; agents?: Agent[]; sub?: (n: string) => string;
 }) {
   const sel = Array.isArray(value) ? value : value ? [value] : [];
-  return <AgentCombo value={multiple ? "" : sel[0] || ""} chosen={multiple ? sel : []} onChange={onChange} filter={filter} empty={empty} clearable={!multiple} />;
+  return <AgentCombo value={multiple ? "" : sel[0] || ""} chosen={multiple ? sel : []} onChange={onChange} filter={filter} empty={empty} clearable={!multiple} agents={agents} sub={sub} />;
 }

@@ -5,10 +5,12 @@ import { AgentCombo, AgentPicker } from "@/components/agents";
 import { DiscordOutput } from "@/components/output";
 import { useFeedback } from "@/components/feedback";
 import { Col, Split } from "@/components/layout";
-import { RK_EN, apellido, emailOf, findAgent, genderOf, getRoster, joinY, lvl, norm, rankES, rkFem, uid , myKey } from "@/lib/domain";
+import { RK_EN, apellido, emailOf, findAgent, genderOf, joinY, norm, rankES, rkFem, uid , myKey } from "@/lib/domain";
 import { LS, useStoreVersion } from "@/lib/store";
 import { useMe } from "@/lib/me";
 import { UNITS, isPSB, uMap, uTop } from "@/lib/units";
+import { DEPT } from "@/lib/dept";
+import { findAny, useXRoster } from "@/lib/xroster";
 import FALTAS_RAW from "@/lib/faltas.json";
 import { cn } from "@/lib/cn";
 
@@ -70,7 +72,7 @@ const usePX = (): [PXT, (fn: (x: PXT) => void) => void] => {
 };
 /* número de caso: CF-26-001600 es el acusado; CF-26-001600-1, -2… son los testigos o los demás acusados del mismo hecho */
 const casoTxt = (p: PXT) => `CF-${p.cA || "XX"}-${p.cB || "XXXXXX"}${p.cC ? "-" + p.cC : ""}`;
-const psbDeOf = (n: string) => { const a = findAgent(n); return a ? `${RK_EN[a.r] || rankES(a.r)} ${a.n}${a.p ? " #" + a.p : ""}` : n; };
+const psbDeOf = (n: string) => { const a = findAny(n); return a ? `${RK_EN[a.r] || rankES(a.r)} ${a.n}${a.p ? " #" + a.p : ""}` : n; };
 
 type Go = (t: string) => void;
 export function Psb({ tab, go = () => {} }: { tab: string; go?: Go }) {
@@ -125,16 +127,18 @@ function CaseFlow({ tab, go }: { tab: string; go: Go }) {
     </Card>);
 }
 
+/* departamento del agente, solo si no es el abierto (la PSB abarca a todo el SAPD) */
+const depSub = (n: string) => { const a = findAny(n); return a && a.dep !== ({ lspd: "LSPD", lssd: "LSSD", sahp: "SAHP" } as Record<string, string>)[DEPT.id] ? a.dep : ""; };
 function CaseCard() {
   const [p, up] = usePX();
-  const R = getRoster().filter(a => lvl(a.r) > 0).sort((a, b) => lvl(b.r) - lvl(a.r) || a.n.localeCompare(b.n));
+  const X = useXRoster();
   return (
     <Card>
       <CardHeader icon={<FolderOpen />} title="Expediente" desc="Se comparte entre Notificación, Elevación, Aprobación SAJD y Resolución." />
       <CardBody>
         <div className="grid gap-4 sm:grid-cols-[auto_1fr]">
           <Field label="N° de caso"><CaseInput /></Field>
-          <Field label="Agente investigado"><AgentCombo value={p.ag} onChange={n => up(x => { x.ag = n; })} names={R.map(a => a.n)} placeholder="Buscar al agente investigado…" /></Field>
+          <Field label="Agente investigado"><AgentCombo value={p.ag} onChange={n => up(x => { x.ag = n; })} agents={X} sub={depSub} placeholder="Buscar al agente investigado (LSPD, LSSD o SAHP)…" /></Field>
         </div>
         <Field label="División"><Segmented size="sm" value={p.dv} onChange={v => up(x => { x.dv = v; })} options={["IAD", "FID", "SOD"].map(v => ({ value: v, label: v }))} /></Field>
       </CardBody>
@@ -161,9 +165,9 @@ function Notif({ go }: { go: Go }) {
   const me = useMe(), [p, up] = usePX(), F = getFaltas();
   const [g, setG] = useState("all"), [q, setQ] = useState("");
   const [cargo, setCargo] = useState(() => LS.get(myKey("psbCargo", me.n)) || psbRank(me.n) || "Junior Investigator");
-  const a = p.ag ? findAgent(p.ag) : null, caso = casoTxt(p), de = emailOf(me.n), para = p.para || (a ? emailOf(a.n) : "");
+  const XR = useXRoster(), a = p.ag ? findAny(p.ag) : null, caso = casoTxt(p), de = emailOf(me.n), para = p.para || (a ? emailOf(a.n) : "");
   const sel = p.fl.map(i => F.find(f => f.id === i)).filter(Boolean) as Falta[];
-  const canPsb = (x: { n: string; r: string }) => x.n !== me.n && lvl(x.r) > 0; /* la PSB notifica a cualquier rango */
+  const canPsb = (x: { n: string; r: string }) => x.n !== me.n; /* la PSB notifica a cualquier rango de los tres departamentos */
   const text = useMemo(() => {
     const f = a && genderOf(a.n) === "f", o = a ? (f ? "a" : "o") : "o/a", hecho = p.hecho.trim();
     const faltasTxt = !sel.length ? "[faltas]" : sel.length === 1 ? `la presunta falta ${sel[0].g} «${sel[0].n}»` : "las presuntas faltas " + joinY(sel.map(x => `«${x.n}» (${x.g})`));
@@ -183,7 +187,7 @@ function Notif({ go }: { go: Go }) {
           <CardBody>
             <Field label="N° de caso"><CaseInput /></Field>
             <Field label="Agente investigado">
-              <AgentPicker value={p.ag} onChange={n => up(x => { x.ag = n; x.para = ""; })} filter={canPsb} empty="No hay más agentes" />
+              <AgentPicker value={p.ag} onChange={n => up(x => { x.ag = n; x.para = ""; })} filter={canPsb} agents={XR} sub={depSub} empty="No hay más agentes" />
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="De"><Input value={de} readOnly className="font-mono text-xs text-slate-500" /></Field>
@@ -274,7 +278,7 @@ function Forms({ tab, go }: { tab: string; go: Go }) {
         ...(V.nota.trim() ? [V.nota.trim(), ""] : []), ...(V.conf ? [`🔒 *Recuerden que la información de este expediente es confidencial y no debe comentarse fuera de la ${p.dv}.*`] : [])].join("\n").trim();
     }
     if (tab === "jus") {
-      const a = p.ag ? findAgent(p.ag) : null, f = F.find(x => x.id === J.falta), S = J.s.filter(x => x.t.trim() || x.p.trim()), aal = a && genderOf(a.n) === "f" ? "a la agente" : "al agente";
+      const a = p.ag ? findAny(p.ag) : null, f = F.find(x => x.id === J.falta), S = J.s.filter(x => x.t.trim() || x.p.trim()), aal = a && genderOf(a.n) === "f" ? "a la agente" : "al agente";
       const cl = E.const.trim().split("\n").map(x => x.trim().replace(/^[-•]\s*/, "")).filter(Boolean);
       const sum = J.sum !== false && eleLista(E, cf) ? ["> **Resumen del expediente " + cf + ":**", ...(E.hechos.trim() ? [`> - **Hechos:** ${E.hechos.trim().replace(/\n+/g, " ")}`] : []), ...(cl.length ? [`> - **Constatado:** ${cl.join("; ")}`] : []),
         `> - **Conclusión de la PSB:** ${E.concl}${E.concl === "Sustained" ? ` · propuesta: ${NIV_T[E.niv]}` : ""}`, ""] : [];
