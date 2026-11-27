@@ -1,7 +1,7 @@
 import { DEPT, DEPTS, bgOf } from "@/lib/dept";
 import { useEffect, useState, type ReactNode } from "react";
-import { WifiOff, BatteryFull, BatteryCharging, BatteryLow, BatteryMedium, MapPin, ShieldCheck } from "lucide-react";
-import { usePref } from "@/lib/appearance";
+import { WifiOff, BatteryFull, BatteryCharging, BatteryLow, BatteryMedium, MapPin, ShieldCheck, Search, ArrowUpToLine, Maximize2, Siren } from "lucide-react";
+import { scrollTopApp, usePref } from "@/lib/appearance";
 import { getNet, useStoreVersion } from "@/lib/store";
 import { TAB_ICONS } from "@/lib/tabfx";
 import { cn } from "@/lib/cn";
@@ -51,9 +51,21 @@ function Uplink() {
     <span className="hidden 2xl:inline">▸ PKT {v.pk.toLocaleString("es-AR")} ▸ TTL {v.ttl}</span><span className="cur">▮</span></span>;
 }
 
+/* teclas físicas del lateral derecho (como las programables de una tablet rugerizada): arriba, buscador, pantalla completa y código 3 */
+const fullTg = () => { try { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen(); } catch { /* */ } };
+function Keys({ c3, setC3 }: { c3: boolean; setC3: (v: boolean) => void }) {
+  const K = [{ l: "P1", t: "Ir arriba", I: ArrowUpToLine, f: scrollTopApp }, { l: "P2", t: "Buscador (Ctrl+K)", I: Search, f: () => dispatchEvent(new Event("lspdt:cmdk")) }, { l: "P3", t: "Pantalla completa", I: Maximize2, f: fullTg }];
+  return <div className="tb-keys">
+    {K.map(k => <button key={k.l} type="button" className="tb-key" title={k.t} aria-label={k.t} onClick={k.f}><k.I /><span>{k.l}</span></button>)}
+    <i className="tb-keysep" aria-hidden />
+    <button type="button" className={cn("tb-key sos", c3 && "on")} title={c3 ? "Apagar luces (código 3)" : "Encender luces (código 3)"} aria-pressed={c3} onClick={() => setC3(!c3)}><Siren /><span>C3</span></button>
+  </div>;
+}
+const ASSET = (() => { let h = 0; for (const ch of DEPT.id + "mdt") h = (h * 33 + ch.charCodeAt(0)) >>> 0; return String(h % 9000 + 1000); })();
+
 /* marco de tablet + efecto de pantalla; sin marco, el efecto cubre la ventana */
 export function Device({ children, brand }: { children: ReactNode; brand?: Record<string, string> }) {
-  const p = usePref(); useStoreVersion();
+  const p = usePref(); useStoreVersion(); const [c3, setC3] = useState(false);
   const net = getNet();
   const bg = bgOf("lspdt.bg.tablet", DEPT.id, brand);
   const crt = <div className="crt-host" aria-hidden="true"><div className="crt"><div className="crt-n" /></div></div>;
@@ -61,14 +73,15 @@ export function Device({ children, brand }: { children: ReactNode; brand?: Recor
   return (
     <>
       <div className={cn("backdrop", bg && "img")} style={bg ? { backgroundImage: `url("${bg}")` } : undefined} />
-      <div className="tablet" data-brand={p.brand} style={{ ["--bspd" as string]: `${p.brandSpd}s` }}>
-        <i className="tb-corner tl" /><i className="tb-corner tr" /><i className="tb-corner bl" /><i className="tb-corner br" /><i className="tb-grip l" /><i className="tb-grip r" />
+      <div className={cn("tablet", c3 && "c3")} data-brand={p.brand} style={{ ["--bspd" as string]: `${p.brandSpd}s` }}>
+        <i className="tb-corner tl" /><i className="tb-corner tr" /><i className="tb-corner bl" /><i className="tb-corner br" /><i className="tb-grip l" /><i className="tb-bumper" aria-hidden /><i className="tb-lightbar" aria-hidden><b /><b /><b /><b /><b /><b /></i>
+        <Keys c3={c3} setC3={setC3} />
         <div className="tb-bar top" aria-hidden>
           <span className="tb-leds"><i style={{ ["--l" as string]: "#39ff88" }}>PWR</i><i className="net" style={{ ["--l" as string]: net === "off" ? "#ff4d52" : "#38bdf8" }}>NET</i><i className="rec" style={{ ["--l" as string]: "#ff2b4a" }}>REC</i></span>
           {p.brand !== "off" ? <span className="tb-brand"><svg viewBox="0 0 64 64"><path d={TAB_ICONS.banana[1]} /></svg>BANANITA</span> : <span className="tb-brand">{DEPTS[DEPT.id].short}</span>}
-          <span className="flex items-center gap-3">MDT-X7 · RUGGED<span className="tb-cam" /></span>
+          <span className="flex items-center gap-3">MDT R12 · POLICE EDITION<span className="tb-cam" /></span>
         </div>
-        <div className="tb-bar bot" aria-hidden><span>{DEPTS[DEPT.id].short} // UNIDAD MÓVIL</span><span>PROPERTY OF {DEPTS[DEPT.id].name.toUpperCase()}</span><span>MIL-STD-810H · IP68</span></div>
+        <div className="tb-bar bot" aria-hidden><span className="tb-tag"><i className="bc" /><span>{DEPTS[DEPT.id].short} · ACTIVO MDT-{ASSET}</span></span><span>PROPERTY OF {DEPTS[DEPT.id].name.toUpperCase()}</span><span>MIL-STD-810H · IP68 · 1,8 M DROP</span></div>
         <i className="tb-glow" aria-hidden />
         <div className="tab-screen bg-slate-50 dark:bg-slate-950">
           <div className="tab-status">

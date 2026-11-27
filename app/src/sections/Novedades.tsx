@@ -12,7 +12,7 @@ import { cn } from "@/lib/cn";
 
 export const APP_VERSION = "1.0.0";
 /* revisión de las novedades dentro de la misma versión: cambia con cada entrega, así se enciende el aviso */
-export const NEWS_REV = "1.0.0·9";
+export const NEWS_REV = "1.0.0·10";
 export const APP_TAG = "⟡ 𝕆𝕗𝕗𝕚𝕔𝕚𝕒𝕝";
 /* hay novedades que el usuario todavía no vio */
 export const hasNews = () => (LS.get("lspdt.seenVersion") || "") !== NEWS_REV;
@@ -50,6 +50,9 @@ export function logFor(me: Who): Rel[] {
    y se sube NEWS_REV para que se encienda el aviso de novedades. */
 const V: { v: string; f: string; t: string; it: string[] }[] = [
   { v: "1.0.0", f: "26/11/2026", t: "Estable", it: [
+    "Marco de tablet nuevo, rugerizado y policial: bumper de goma, teclas físicas (ir arriba, buscador, pantalla completa), barra de luces «código 3» y etiqueta de inventario",
+    "[sup] Entrega de condecoración: la condecoración se elige desde un catálogo en tarjetas con su cinta y su descripción, y la elegida muestra qué reconoce y cómo se gana",
+    "Medallas y franjas de servicio con su descripción en el catálogo",
     "[sup] Condecoraciones: «Entrega de condecoración» con el rol de la ceremonia (/me y /do de hasta 290 caracteres, para uno o varios agentes) e «Historial» de entregas de cada departamento",
     "[ilg] Robos: las misiones repetidas ya dicen para qué banda es cada versión y las que todavía no están activas salieron del catálogo",
     "[dueños] Base de datos más liviana: el historial de versiones guarda hasta 60 por dato",

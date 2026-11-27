@@ -116,6 +116,20 @@ export const DECOR: Decor[] = [
 ];
 /* qué reconoce cada una y cómo se gana (texto de six) */
 const TXT: Record<string, [string, string]> = {
+  "Medalla al Valor": ["La más alta del departamento: valentía extrema con plena conciencia del riesgo para la propia vida.", "Acto heroico más allá del deber, en servicio, con riesgo inminente de muerte. Nominación del mando y aprobación de Jefatura."],
+  "Medalla por Preservación de la Vida": ["Salvar una vida en peligro poniendo en riesgo la propia, con buen juicio táctico.", "Intervención planificada que resuelve una situación crítica preservando la vida de terceros o del sospechoso."],
+  "Medalla por Servicio Distinguido": ["Servicio excepcional en un puesto de gran responsabilidad.", "Desempeño sobresaliente y sostenido que deja una mejora clara para el departamento. Propuesta del mando."],
+  "Medalla Policial": ["Valentía en servicio, un escalón por debajo de la Medalla al Valor.", "Acto valeroso con riesgo personal durante un incidente, resuelto con éxito."],
+  "Corazón Púrpura": ["Agente herido de gravedad en el cumplimiento del deber.", "Lesión grave producida por un ataque intencional mientras estaba en servicio."],
+  "Medalla al Servicio Meritorio": ["Trayectoria de servicio meritorio y constante.", "Trabajo destacado mantenido en el tiempo, por encima de lo esperable para el rango."],
+  "Estrella Policial": ["Juicio y destreza táctica en un incidente crítico.", "Resolver con éxito un enfrentamiento o situación de alto riesgo aplicando correctamente los procedimientos."],
+  "Medalla de Salvamento": ["Salvar una vida.", "Acción directa que evita la muerte de una persona (primeros auxilios, rescate, RCP) aunque no haya riesgo grave propio."],
+  "Medalla de la Comisión por Servicio Distinguido": ["Reconocimiento de la Comisión a un servicio sobresaliente.", "Otorgada por la Comisión a propuesta de Jefatura por una contribución destacada al departamento o a la ciudad."],
+  "Medalla de Integridad": ["Honestidad y ética intachables bajo presión.", "Actuar con integridad ejemplar ante una situación comprometida (soborno, presión, conflicto de interés)."],
+  "Medalla de Policía Comunitaria": ["Trabajo con la comunidad que mejora la convivencia y la seguridad.", "Proyecto o acción sostenida de acercamiento y resolución de problemas junto a vecinos y comercios."],
+  "Medalla de Relaciones Humanas": ["Compasión y trato humano más allá del deber.", "Gesto destacado de ayuda o empatía hacia un ciudadano o compañero que trasciende la tarea policial."],
+  "Premio Liberty (K-9)": ["Reconocimiento al binomio K-9 (guía y perro).", "Actuación destacada del binomio en servicio, o perro herido o caído en el cumplimiento del deber."],
+  "Medalla Nacional Al Valor": ["Máximo reconocimiento nacional al valor de un agente de seguridad pública.", "Acto de valentía extraordinaria con riesgo extremo para la propia vida, por encima de la Medalla al Valor del departamento."],
   "Citación de Unidad de la Comisión": ["Equivalente colectivo a la Medalla al Valor.", "Operativo donde una unidad completa actuó con valor excepcional. La gana toda la unidad participante."],
   "Citación de Unidad Meritoria": ["Trabajo en equipo destacado.", "Unidad cierra un caso complejo o lleva a cabo un operativo prolongado con éxito."],
   "Cinta de Servicio de Patrulla": ["Tiempo dedicado a patrulla activa.", "Acumulación de horas en patrulla."],
@@ -175,7 +189,7 @@ const TXT: Record<string, [string, string]> = {
   "Instructor del Año": ["Reconocimiento anual elegido por la división.", "Votación anual interna de RTD (jefe de división + instructores)."],
   "Cinta de Mentor": ["Premia formar oficiales que se quedan, no solo cantidad.", "10+ cadetes graduados por ti que siguen activos (mínimo 30 días post-graduación)."],
 };
-DECOR.forEach(d => { const x = TXT[d.t]; if (x) { d.d = x[0]; d.h = x[1]; } });
+DECOR.forEach(d => { const x = TXT[d.t]; if (x) { d.d = x[0]; d.h = x[1]; } else if (d.tab === "fra") { const t = d.t.match(/\((.+)\)/)?.[1] || ""; d.d = `Tiempo de servicio activo cumplido en el departamento (${t}).`; d.h = `Se entrega al cumplir ${t} de servicio. Acumulativa: cada franja suma una más en la manga.`; } });
 
 /* ---------- catálogo compartido (LSPD, LSSD y SAHP) ----------
    lspdt.decorx: altas y cambios que hacen Capitanía y Jefatura de cualquier departamento; la misma clave para los tres,
